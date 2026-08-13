@@ -58,6 +58,31 @@ exe:
 build:
     npm run tauri build
 
+# 打包并复制到 ./release 目录（exe + NSIS + MSI 安装程序）
+release:
+    npm run tauri build
+    @just release-collect
+
+# 将构建产物收集到 ./release（Windows）
+[windows]
+release-collect:
+    if exist release rmdir /s /q release
+    mkdir release
+    copy /y "src-tauri\target\release\api-manager.exe" release\
+    if exist "src-tauri\target\release\bundle\nsis" copy /y "src-tauri\target\release\bundle\nsis\*.exe" release\
+    if exist "src-tauri\target\release\bundle\msi" copy /y "src-tauri\target\release\bundle\msi\*.msi" release\
+    dir release
+
+# 将构建产物收集到 ./release（Unix / WSL；若工具链为 Windows MSVC，产物为 .exe）
+[unix]
+release-collect:
+    rm -rf release
+    mkdir -p release
+    for f in src-tauri/target/release/api-manager src-tauri/target/release/api-manager.exe; do if [ -f "$f" ]; then cp -f "$f" release/; fi; done
+    cp -rf src-tauri/target/release/bundle/nsis release/ 2>/dev/null || true
+    cp -rf src-tauri/target/release/bundle/msi release/ 2>/dev/null || true
+    ls -la release
+
 # 重新生成应用图标（群青主题 #2E59A7）
 icon:
     node scripts/gen-icon.cjs app-icon.png

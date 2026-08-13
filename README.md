@@ -99,6 +99,7 @@
 just dev         # 开发模式运行（前端热更新 + Rust dev）
 just test        # 运行全部测试（Rust 单测 + 前端类型检查 + 前端构建）
 just build       # 完整打包：exe + NSIS / MSI 安装程序
+just release     # 打包并收集到 ./release/ 目录（exe + NSIS + MSI，自动清理旧产物）
 just exe         # 仅构建 release 可执行文件（快速）
 just tsc         # 前端类型检查
 just check       # Rust 编译检查

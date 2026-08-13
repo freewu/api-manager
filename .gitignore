@@ -15,3 +15,6 @@ scripts/gen-icon.cjs
 # misc
 .DS_Store
 *.log
+
+# 发布产物目录
+release/
