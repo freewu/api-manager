@@ -1,0 +1,9 @@
+[windows]
+set shell := ["cmd.exe", "/c"]
+
+[unix]
+set shell := ["bash", "-uc"]
+
+probe:
+    echo PROBE_OK
+    pwd

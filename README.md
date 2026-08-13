@@ -68,9 +68,9 @@
 - Node.js ≥ 18（本机位于 `D:\env\nodejs`）
 - Rust（Windows MSVC 工具链，`C:\Users\24358\.cargo`）
 - WebView2（Windows 10/11 自带）
-- [just](https://github.com/casey/just)（命令运行器，本机已安装）
+- [just](https://github.com/casey/just)（命令运行器，Windows / WSL 均已安装）
 
-### 常用命令（just）
+### 常用命令（just，Windows / WSL 通用）
 
 ```bash
 just dev         # 开发模式运行（前端热更新 + Rust dev）
@@ -85,7 +85,10 @@ just push "信息" # 提交并推送到远程
 just             # 列出全部命令
 ```
 
-> 说明：WSL 环境下 `node` / `cargo` 由 `~/bin` 下的包装脚本指向 Windows 可执行文件，`just` 已自动处理 PATH。
+> **跨平台说明**：justfile 同时支持 Windows 与 WSL——
+> Windows 下自动使用 `cmd` 作为 shell（node/npm/cargo 取自系统 PATH）；
+> WSL 下使用 `bash`，`node` / `cargo` 由 `~/bin` 下的包装脚本指向 Windows 可执行文件（PATH 已由 justfile 自动处理）。
+> 若 Windows 命令行下中文参数乱码，可先执行 `chcp 65001` 切换 UTF-8 代码页。
 
 ### 构建产物
 

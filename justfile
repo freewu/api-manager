@@ -1,6 +1,25 @@
-# API Manager 开发命令
-# 工具链：~/bin 下有 node / cargo 包装脚本（指向 Windows 的 node.exe / cargo.exe）
-export PATH := env_var("PATH") + ":" + env_var("HOME") + "/bin"
+# ============================================================
+# API Manager 开发命令（跨平台：Windows / WSL / macOS / Linux）
+#
+# 环境要求（Windows）：node、npm、cargo、just 在系统 PATH 中
+# 环境要求（WSL）：   ~/bin 下有 node/cargo 包装脚本指向 Windows 可执行文件
+#
+# 说明：
+#   - Windows 使用 cmd 作为 shell，确保在任何环境都能运行
+#   - 其他平台使用 bash
+# ============================================================
+
+# Windows 使用 cmd.exe
+[windows]
+set shell := ["cmd.exe", "/c"]
+
+# Unix 系（WSL / macOS / Linux）使用 bash
+[unix]
+set shell := ["bash", "-uc"]
+
+# WSL/Linux 下需要把 ~/bin（node/cargo 包装脚本）加入 PATH；
+# Windows 上直接使用系统 PATH（node/cargo 已在 PATH 中）
+export PATH := env_var("PATH") + if os() == "windows" { "" } else { ":" + env_var_or_default("HOME", "") + "/bin" }
 
 # 列出全部可用命令
 default:
@@ -45,8 +64,17 @@ icon:
     npx tauri icon app-icon.png
 
 # 清理构建产物
-clean:
+clean: clean-dist
     cd src-tauri && cargo clean
+
+# 清理前端产物（Windows / Unix 各自实现）
+[windows]
+clean-dist:
+    if exist dist rmdir /s /q dist
+    if exist node_modules\.vite rmdir /s /q node_modules\.vite
+
+[unix]
+clean-dist:
     rm -rf dist node_modules/.vite
 
 # ========== Git ==========
