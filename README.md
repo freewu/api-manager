@@ -65,24 +65,29 @@
 
 ### 环境要求
 
-- Node.js ≥ 18
-- Rust（Windows MSVC 工具链）
+- Node.js ≥ 18（本机位于 `D:\env\nodejs`）
+- Rust（Windows MSVC 工具链，`C:\Users\24358\.cargo`）
 - WebView2（Windows 10/11 自带）
+- [just](https://github.com/casey/just)（命令运行器，本机已安装）
 
-### 开发运行
-
-```bash
-npm install
-npm run tauri dev
-```
-
-### 构建安装包
+### 常用命令（just）
 
 ```bash
-npm run tauri build
+just dev         # 开发模式运行（前端热更新 + Rust dev）
+just test        # 运行全部测试（Rust 单测 + 前端类型检查 + 前端构建）
+just build       # 完整打包：exe + NSIS / MSI 安装程序
+just exe         # 仅构建 release 可执行文件（快速）
+just tsc         # 前端类型检查
+just check       # Rust 编译检查
+just icon        # 重新生成应用图标（群青主题）
+just clean       # 清理构建产物
+just push "信息" # 提交并推送到远程
+just             # 列出全部命令
 ```
 
-构建产物：
+> 说明：WSL 环境下 `node` / `cargo` 由 `~/bin` 下的包装脚本指向 Windows 可执行文件，`just` 已自动处理 PATH。
+
+### 构建产物
 
 - `src-tauri/target/release/api-manager.exe` — 可执行文件
 - `src-tauri/target/release/bundle/nsis/API Manager_0.1.0_x64-setup.exe` — 安装包
@@ -91,7 +96,7 @@ npm run tauri build
 ### 运行测试
 
 ```bash
-cd src-tauri && cargo test
+just test
 ```
 
 ### 示例工作区
@@ -103,4 +108,5 @@ cd src-tauri && cargo test
 
 - **前端**：React 18 + TypeScript + Vite 5
 - **后端**：Tauri 2（Rust），Axum 提供 Mock 服务，reqwest 发送测试请求
+- **主题色**：群青 `#2E59A7`
 - **插件**：`tauri-plugin-dialog`（目录选择）

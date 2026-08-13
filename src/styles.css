@@ -11,8 +11,8 @@
   --text: #e8e9eb;
   --text-dim: #9ba0a8;
   --text-faint: #6b7078;
-  --accent: #ff6c37;
-  --accent-hover: #ff8557;
+  --accent: #2e59a7;
+  --accent-hover: #3a6fc4;
   --ok: #2ec27e;
   --warn: #e5a50a;
   --err: #f26d6d;
@@ -109,12 +109,12 @@ body {
   width: 26px;
   height: 26px;
   border-radius: 7px;
-  background: linear-gradient(135deg, var(--accent), #ff9a5c);
+  background: linear-gradient(135deg, #2e59a7, #6f8fd6);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 13px;
-  color: #1a1b1e;
+  color: #fff;
   font-weight: 800;
 }
 
@@ -225,7 +225,7 @@ body {
 .btn.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #1a1b1e;
+  color: #fff;
   font-weight: 600;
 }
 .btn.primary:hover {
@@ -505,7 +505,7 @@ body {
 .send-btn {
   background: var(--accent);
   border: none;
-  color: #1a1b1e;
+  color: #fff;
   font-weight: 700;
   font-size: 13px;
   padding: 8px 22px;
