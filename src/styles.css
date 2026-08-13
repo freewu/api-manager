@@ -1053,3 +1053,72 @@ body {
 .empty-editor .big {
   font-size: 40px;
 }
+
+/* ===== 环境变量 ===== */
+.env-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 3px 6px 3px 10px;
+}
+
+.env-select {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+  outline: none;
+  max-width: 160px;
+}
+.env-select:focus {
+  border-color: var(--accent);
+}
+
+.env-manager {
+  display: flex;
+  flex-direction: column;
+  min-width: 520px;
+}
+
+.env-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.env-tab {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+.env-tab:hover {
+  border-color: var(--border-light);
+  color: var(--text);
+}
+.env-tab.active {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.env-tab.current {
+  border-color: var(--accent);
+  background: rgba(46, 89, 167, 0.15);
+}
+.env-tab em {
+  font-style: normal;
+  color: var(--accent);
+  font-size: 9px;
+}

@@ -2,13 +2,16 @@ mod mock;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 pub const INFO_FILE: &str = "__info.json";
+pub const ENV_FILE: &str = "__envs.json";
 
 // ==================== 状态 ====================
 
@@ -25,6 +28,16 @@ pub struct MockRunState {
     pub route_count: Mutex<usize>,
     pub abort: Mutex<Option<tokio::task::AbortHandle>>,
     pub routes: Mutex<Option<std::sync::Arc<std::sync::RwLock<Vec<crate::mock::MockRoute>>>>>,
+    /// 当前生效的全局环境变量（供 reload 时热更新）
+    pub envs: Mutex<Option<std::sync::Arc<std::sync::RwLock<HashMap<String, String>>>>>,
+}
+
+/// 系统托盘相关状态
+pub struct TrayState {
+    /// 托盘菜单中“启动/停止 Mock”菜单项，用于动态更新文字
+    pub mock_item: Mutex<Option<tauri::menu::MenuItem<tauri::Wry>>>,
+    /// 是否正在退出（退出时不拦截窗口关闭）
+    pub exiting: AtomicBool,
 }
 
 // ==================== 数据结构 ====================
@@ -194,6 +207,60 @@ pub struct MockStatus {
     pub url: Option<String>,
     pub port: Option<u16>,
     pub route_count: usize,
+}
+
+// ==================== 环境变量（全局） ====================
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvVariable {
+    pub key: String,
+    pub value: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(default)]
+pub struct Environment {
+    pub name: String,
+    pub variables: Vec<EnvVariable>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(default)]
+pub struct EnvStore {
+    pub active: String,
+    pub environments: Vec<Environment>,
+}
+
+/// 从工作区读取环境配置（不存在则返回空）
+fn read_env_file(dir: &Path) -> EnvStore {
+    let p = dir.join(ENV_FILE);
+    fs::read_to_string(&p)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+/// 取当前激活环境的所有已启用变量 -> HashMap
+pub fn read_env_map(root: &Path) -> HashMap<String, String> {
+    let store = read_env_file(root);
+    let active = store.active.clone();
+    store
+        .environments
+        .into_iter()
+        .find(|e| e.name == active)
+        .map(|e| {
+            e.variables
+                .into_iter()
+                .filter(|v| v.enabled && !v.key.trim().is_empty())
+                .map(|v| (v.key.trim().to_string(), v.value))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 // ==================== 工具 ====================
@@ -576,6 +643,20 @@ fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
+// ==================== 全局环境变量命令 ====================
+
+#[tauri::command]
+fn read_envs(state: State<'_, WorkspaceState>) -> Result<EnvStore, String> {
+    let root = workspace_root(&state)?;
+    Ok(read_env_file(&root))
+}
+
+#[tauri::command]
+fn save_envs(state: State<'_, WorkspaceState>, data: EnvStore) -> Result<(), String> {
+    let root = workspace_root(&state)?;
+    write_pretty(&root.join(ENV_FILE), &data)
+}
+
 // ==================== 请求测试 ====================
 
 fn decode_body(bytes: &[u8], headers: &[(String, String)]) -> String {
@@ -696,16 +777,16 @@ async fn send_request(req: HttpRequestData) -> Result<HttpResult, String> {
 // ==================== Mock 服务 ====================
 
 #[tauri::command]
-async fn mock_start(
-    app: AppHandle,
-    port: u16,
-) -> Result<MockStatus, String> {
-    mock::start_mock(&app, port).await
+async fn mock_start(app: AppHandle, port: u16) -> Result<MockStatus, String> {
+    let res = mock::start_mock(&app, port).await;
+    update_tray_mock_item(&app);
+    res
 }
 
 #[tauri::command]
 async fn mock_stop(app: AppHandle) -> Result<MockStatus, String> {
     mock::stop_mock(&app);
+    update_tray_mock_item(&app);
     Ok(mock::status(&app))
 }
 
@@ -720,6 +801,128 @@ async fn mock_reload(app: AppHandle) -> Result<MockStatus, String> {
     Ok(mock::status(&app))
 }
 
+// ==================== 系统托盘 ====================
+
+fn show_main_window(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
+
+fn hide_main_window(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.hide();
+    }
+}
+
+/// 更新托盘菜单中 Mock 菜单项文字
+pub fn update_tray_mock_item(app: &AppHandle) {
+    let state = app.state::<TrayState>();
+    let running = *app
+        .state::<MockRunState>()
+        .running
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    let guard = state.mock_item.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(item) = guard.as_ref() {
+        let _ = item.set_text(if running {
+            "停止 Mock 服务"
+        } else {
+            "启动 Mock 服务"
+        });
+    }
+}
+
+/// 托盘菜单：启动/停止 Mock 服务
+fn tray_toggle_mock(app: &AppHandle) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let status = mock::status(&app);
+        if status.running {
+            mock::stop_mock(&app);
+        } else {
+            // 从工作区 __info.json 读取端口，默认 5050
+            let port = {
+                let root = app
+                    .state::<WorkspaceState>()
+                    .root
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .clone();
+                match root {
+                    Some(r) => read_info_file(&r).mock_port.unwrap_or(5050),
+                    None => 5050,
+                }
+            };
+            let _ = mock::start_mock(&app, port).await;
+        }
+        update_tray_mock_item(&app);
+    });
+}
+
+/// 创建系统托盘图标与菜单
+fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
+    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+
+    app.manage(TrayState {
+        mock_item: Mutex::new(None),
+        exiting: AtomicBool::new(false),
+    });
+
+    let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
+    let hide = MenuItem::with_id(app, "hide", "隐藏窗口", true, None::<&str>)?;
+    let toggle_mock =
+        MenuItem::with_id(app, "toggle_mock", "启动 Mock 服务", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+    let menu = Menu::with_items(
+        app,
+        &[
+            &show,
+            &hide,
+            &PredefinedMenuItem::separator(app)?,
+            &toggle_mock,
+            &PredefinedMenuItem::separator(app)?,
+            &quit,
+        ],
+    )?;
+
+    *app.state::<TrayState>().mock_item.lock().unwrap() = Some(toggle_mock.clone());
+
+    TrayIconBuilder::with_id("main")
+        .icon(app.default_window_icon().expect("缺少默认应用图标").clone())
+        .menu(&menu)
+        .tooltip("API Manager")
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "show" => show_main_window(app),
+            "hide" => hide_main_window(app),
+            "toggle_mock" => tray_toggle_mock(app),
+            "quit" => {
+                app.state::<TrayState>()
+                    .exiting
+                    .store(true, Ordering::Relaxed);
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            // 左键单击托盘图标 -> 显示窗口
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_main_window(tray.app_handle());
+            }
+        })
+        .build(app)?;
+    Ok(())
+}
+
 // ==================== 入口 ====================
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -728,6 +931,24 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(WorkspaceState::default())
         .manage(MockRunState::default())
+        .setup(|app| {
+            setup_tray(app)?;
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            // 点击窗口关闭按钮 -> 隐藏到托盘（而非退出）
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let exiting = window
+                    .app_handle()
+                    .try_state::<TrayState>()
+                    .map(|s| s.exiting.load(Ordering::Relaxed))
+                    .unwrap_or(false);
+                if !exiting {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             get_workspace,
             pick_workspace,
@@ -740,6 +961,8 @@ pub fn run() {
             delete_entry,
             read_info,
             save_info,
+            read_envs,
+            save_envs,
             get_app_version,
             send_request,
             mock_start,
@@ -833,5 +1056,50 @@ mod tests {
         let res = send_request(req).await.unwrap();
         assert!(!res.ok);
         assert!(res.error.is_some());
+    }
+
+    #[test]
+    fn test_read_env_map() {
+        // 示例工作区：激活“开发环境”
+        let root =
+            Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../examples/demo-workspace"));
+        let map = read_env_map(root);
+        assert_eq!(
+            map.get("baseUrl").map(|s| s.as_str()),
+            Some("http://127.0.0.1:5050")
+        );
+        assert_eq!(map.get("token").map(|s| s.as_str()), Some("dev-token-123456"));
+        // 不存在的环境 -> 空
+        assert!(!map.contains_key("nope"));
+    }
+
+    #[test]
+    fn test_env_store_roundtrip() {
+        let dir = std::env::temp_dir().join(format!("env-test-{}", std::process::id()));
+        let _ = fs::create_dir_all(&dir);
+        let store = EnvStore {
+            active: "dev".into(),
+            environments: vec![
+                Environment {
+                    name: "dev".into(),
+                    variables: vec![EnvVariable {
+                        key: "k".into(),
+                        value: "v".into(),
+                        enabled: true,
+                    }],
+                },
+                Environment {
+                    name: "prod".into(),
+                    variables: vec![],
+                },
+            ],
+        };
+        write_pretty(&dir.join(ENV_FILE), &store).unwrap();
+        let back = read_env_file(&dir);
+        assert_eq!(back.active, "dev");
+        assert_eq!(back.environments.len(), 2);
+        assert_eq!(back.environments[0].variables[0].key, "k");
+        assert_eq!(read_env_map(&dir).get("k").map(|s| s.as_str()), Some("v"));
+        let _ = fs::remove_dir_all(&dir);
     }
 }

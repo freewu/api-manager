@@ -44,6 +44,32 @@ export interface InfoJson {
   collapsed?: boolean;
 }
 
+// ---- 全局环境变量 ----
+
+export interface EnvVariable {
+  key: string;
+  value: string;
+  enabled: boolean;
+}
+
+export interface Environment {
+  name: string;
+  variables: EnvVariable[];
+}
+
+export interface EnvStore {
+  active: string;
+  environments: Environment[];
+}
+
+export function emptyEnv(): EnvStore {
+  return { active: "", environments: [] };
+}
+
+export function emptyEnvVariable(): EnvVariable {
+  return { key: "", value: "", enabled: true };
+}
+
 export interface TreeNode {
   kind: "folder" | "api";
   name: string;

@@ -11,24 +11,29 @@ import {
   mockStop,
   pickWorkspace,
   readApi,
+  readEnv,
   readInfo,
   readTree,
   renameEntry,
   saveApi,
+  saveEnv,
   saveInfo,
   sendRequest,
 } from "./commands";
 import { Editor } from "./components/Editor";
+import { EnvModal } from "./components/EnvModal";
 import { Modal } from "./components/Modal";
 import { Response } from "./components/Response";
 import { Sidebar } from "./components/Sidebar";
 import {
   ApiFile,
+  EnvStore,
   HttpRequestData,
   HttpResult,
   InfoJson,
   MockStatus,
   TreeNode,
+  emptyEnv,
 } from "./types";
 
 interface ModalState {
@@ -67,6 +72,8 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [version, setVersion] = useState("");
   const [mockPort, setMockPort] = useState(5050);
+  const [envs, setEnvs] = useState<EnvStore>(emptyEnv());
+  const [envModal, setEnvModal] = useState(false);
   const toastTimer = useRef<number | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -94,9 +101,10 @@ export default function App() {
   }, []);
 
   async function loadAll(ws: string) {
-    const [t, info] = await Promise.all([readTree(), readInfo(ws)]);
+    const [t, info, e] = await Promise.all([readTree(), readInfo(ws), readEnv()]);
     setTree(t);
     setRootInfo(info || {});
+    setEnvs(e || emptyEnv());
     if (info?.mockPort) setMockPort(info.mockPort);
     // 自动选中第一个接口
     const first = findFirstApi(t);
@@ -161,16 +169,27 @@ export default function App() {
     if (!api) return;
     setSending(true);
     try {
-      const headers = api.headers.filter((h) => h.enabled && h.key.trim());
-      let url = api.url || rootInfo.baseUrl + api.path;
+      // 当前激活环境的变量表
+      const activeEnv = envs.environments.find((e) => e.name === envs.active);
+      const vars: Record<string, string> = {};
+      for (const v of activeEnv?.variables || []) {
+        if (v.enabled && v.key.trim()) vars[v.key.trim()] = v.value;
+      }
+      const sub = (s: string) =>
+        s.replace(/\{\{([^{}]+)\}\}/g, (m, k: string) => vars[k.trim()] ?? m);
+
+      const headers = api.headers
+        .filter((h) => h.enabled && h.key.trim())
+        .map((h) => ({ ...h, key: sub(h.key), value: sub(h.value) }));
+      let url = sub(api.url || rootInfo.baseUrl + api.path);
       // 替换路径参数
       for (const p of api.params.filter((x) => x.enabled && x.key)) {
-        url = url.replaceAll(`{${p.key}}`, encodeURIComponent(p.value));
+        url = url.replaceAll(`{${p.key}}`, encodeURIComponent(sub(p.value)));
       }
       // 拼接 query
       const qs = api.query
         .filter((q) => q.enabled && q.key)
-        .map((q) => `${encodeURIComponent(q.key)}=${encodeURIComponent(q.value)}`)
+        .map((q) => `${encodeURIComponent(sub(q.key))}=${encodeURIComponent(sub(q.value))}`)
         .join("&");
       if (qs) url += (url.includes("?") ? "&" : "?") + qs;
 
@@ -178,10 +197,10 @@ export default function App() {
         api.body.mode === "form"
           ? api.body.form
               .filter((f) => f.enabled && f.key)
-              .map((f) => `${encodeURIComponent(f.key)}=${encodeURIComponent(f.value)}`)
+              .map((f) => `${encodeURIComponent(sub(f.key))}=${encodeURIComponent(sub(f.value))}`)
               .join("&")
           : api.body.mode === "raw" || api.body.mode === "json"
-          ? api.body.raw
+          ? sub(api.body.raw)
           : undefined;
 
       const req: HttpRequestData = {
@@ -229,6 +248,36 @@ export default function App() {
       }
     } catch (e) {
       showToast("Mock 操作失败: " + e);
+    }
+  };
+
+  const handleEnvSwitch = async (active: string) => {
+    const next = { ...envs, active };
+    setEnvs(next);
+    try {
+      await saveEnv(next);
+      if (mock.running) {
+        const m = await mockReload();
+        setMock(m);
+      }
+      showToast(active ? `已切换环境: ${active}` : "已切换到无环境");
+    } catch (e) {
+      showToast("切换环境失败: " + e);
+    }
+  };
+
+  const handleSaveEnv = async (data: EnvStore) => {
+    try {
+      await saveEnv(data);
+      setEnvs(data);
+      setEnvModal(false);
+      if (mock.running) {
+        const m = await mockReload();
+        setMock(m);
+      }
+      showToast(data.active ? `环境已保存，当前: ${data.active}` : "环境已保存");
+    } catch (e) {
+      showToast("保存环境失败: " + e);
     }
   };
 
@@ -389,6 +438,25 @@ export default function App() {
           📁 {workspace}
         </div>
         <div className="toolbar-spacer" />
+        <div className="env-box">
+          <span style={{ fontSize: 12, color: "var(--text-dim)" }}>环境</span>
+          <select
+            className="env-select"
+            value={envs.active || ""}
+            onChange={(e) => handleEnvSwitch(e.target.value)}
+            title="全局环境变量（请求时 {{变量名}} 会被替换）"
+          >
+            <option value="">（无环境）</option>
+            {envs.environments.map((e) => (
+              <option key={e.name} value={e.name}>
+                {e.name}
+              </option>
+            ))}
+          </select>
+          <button className="btn" title="管理环境变量" onClick={() => setEnvModal(true)}>
+            🌐
+          </button>
+        </div>
         {api && (
           <button className="btn" onClick={handleSave} disabled={!dirty} title={dirty ? "保存当前接口" : "无修改"}>
             💾 保存{dirty ? " *" : ""}
@@ -453,6 +521,14 @@ export default function App() {
       </div>
 
       {toast && <div className="toast">{toast}</div>}
+
+      {envModal && (
+        <EnvModal
+          envs={envs}
+          onClose={() => setEnvModal(false)}
+          onSave={handleSaveEnv}
+        />
+      )}
 
       {modal?.type === "newApi" && (
         <Modal

@@ -31,7 +31,7 @@
     "status": 200,
     "headers": [],
     "delay": 200,
-    "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"id\": \"{{path.id}}\",\n    \"name\": \"张三\",\n    \"email\": \"zhangsan@example.com\",\n    \"role\": \"admin\",\n    \"createdAt\": \"2026-01-01 10:00:00\"\n  },\n  \"message\": \"ok\"\n}"
+    "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"id\": \"{{path.id}}\",\n    \"name\": \"张三\",\n    \"email\": \"zhangsan@example.com\",\n    \"role\": \"admin\",\n    \"token\": \"{{token}}\",\n    \"createdAt\": \"2026-01-01 10:00:00\"\n  },\n  \"message\": \"ok\"\n}"
   },
   "examples": []
 }

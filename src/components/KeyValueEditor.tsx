@@ -1,21 +1,27 @@
-import { KeyValue } from "../types";
+interface Row {
+  key: string;
+  value: string;
+  enabled: boolean;
+}
 
-interface Props {
-  rows: KeyValue[];
-  onChange: (rows: KeyValue[]) => void;
+interface Props<T extends Row> {
+  rows: T[];
+  onChange: (rows: T[]) => void;
   valuePlaceholder?: string;
   keyPlaceholder?: string;
   showCheck?: boolean;
+  makeRow?: () => T;
 }
 
-export function KeyValueEditor({
+export function KeyValueEditor<T extends Row>({
   rows,
   onChange,
   valuePlaceholder = "值",
   keyPlaceholder = "键",
   showCheck = true,
-}: Props) {
-  const update = (i: number, patch: Partial<KeyValue>) => {
+  makeRow,
+}: Props<T>) {
+  const update = (i: number, patch: Partial<Row>) => {
     const next = rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r));
     onChange(next);
   };
@@ -25,7 +31,12 @@ export function KeyValueEditor({
   };
 
   const add = () => {
-    onChange([...rows, { key: "", value: "", enabled: true, description: "" }]);
+    onChange([
+      ...rows,
+      makeRow
+        ? makeRow()
+        : ({ key: "", value: "", enabled: true, description: "" } as unknown as T),
+    ]);
   };
 
   return (

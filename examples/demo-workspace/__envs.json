@@ -1,0 +1,35 @@
+{
+  "active": "开发环境",
+  "environments": [
+    {
+      "name": "开发环境",
+      "variables": [
+        {
+          "key": "baseUrl",
+          "value": "http://127.0.0.1:5050",
+          "enabled": true
+        },
+        {
+          "key": "token",
+          "value": "dev-token-123456",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "生产环境",
+      "variables": [
+        {
+          "key": "baseUrl",
+          "value": "https://api.example.com",
+          "enabled": true
+        },
+        {
+          "key": "token",
+          "value": "prod-token-abcdef",
+          "enabled": true
+        }
+      ]
+    }
+  ]
+}

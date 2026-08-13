@@ -37,6 +37,8 @@ pub struct MockRoute {
 #[derive(Clone)]
 pub struct MockServerState {
     pub routes: Arc<RwLock<Vec<MockRoute>>>,
+    /// 全局环境变量（来自工作区 __envs.json 的激活环境）
+    pub envs: Arc<RwLock<HashMap<String, String>>>,
 }
 
 fn parse_route(api: &ApiFile) -> Option<MockRoute> {
@@ -138,8 +140,10 @@ pub async fn start_mock(app: &AppHandle, port: u16) -> Result<MockStatus, String
 
     let routes = scan_workspace(&root);
     let routes_arc = Arc::new(RwLock::new(routes));
+    let envs = Arc::new(RwLock::new(crate::read_env_map(&root)));
     let server_state = MockServerState {
         routes: routes_arc.clone(),
+        envs: envs.clone(),
     };
 
     let router: Router<MockServerState> = Router::new()
@@ -163,6 +167,7 @@ pub async fn start_mock(app: &AppHandle, port: u16) -> Result<MockStatus, String
     *run_state.addr.lock().unwrap() = Some(format!("http://127.0.0.1:{}", addr.port()));
     *run_state.route_count.lock().unwrap() = routes_arc.read().map(|r| r.len()).unwrap_or(0);
     *run_state.routes.lock().unwrap() = Some(routes_arc);
+    *run_state.envs.lock().unwrap() = Some(envs);
     *run_state.abort.lock().unwrap() = Some(handle.abort_handle());
 
     Ok(status(app))
@@ -178,6 +183,7 @@ pub fn stop_mock(app: &AppHandle) {
     *run_state.addr.lock().unwrap() = None;
     *run_state.route_count.lock().unwrap() = 0;
     *run_state.routes.lock().unwrap() = None;
+    *run_state.envs.lock().unwrap() = None;
 }
 
 pub fn status(app: &AppHandle) -> MockStatus {
@@ -210,6 +216,7 @@ pub fn reload_mock(app: &AppHandle) -> Result<(), String> {
             .ok_or_else(|| "尚未选择工作目录".to_string())?
     };
     let routes = scan_workspace(&root);
+    let envs = crate::read_env_map(&root);
     let count = {
         let opt = run_state.routes.lock().unwrap().clone();
         match opt {
@@ -221,11 +228,34 @@ pub fn reload_mock(app: &AppHandle) -> Result<(), String> {
             None => 0,
         }
     };
+    if let Some(envs_arc) = run_state.envs.lock().unwrap().clone() {
+        *envs_arc.write().unwrap() = envs;
+    }
     *run_state.route_count.lock().unwrap() = count;
     Ok(())
 }
 
 // ==================== 请求处理 ====================
+
+/// 全局环境变量 {{key}} 替换（保留 path/method 等系统变量不受覆盖）
+pub fn apply_env_vars(body: &str, envs: &HashMap<String, String>) -> String {
+    let mut out = body.to_string();
+    let mut keys: Vec<&String> = envs.keys().collect();
+    keys.sort_by_key(|k| std::cmp::Reverse(k.len()));
+    for key in keys {
+        if key == "path"
+            || key == "method"
+            || key.starts_with("path.")
+            || key.starts_with("query.")
+        {
+            continue;
+        }
+        if let Some(v) = envs.get(key) {
+            out = out.replace(&format!("{{{{{key}}}}}"), v);
+        }
+    }
+    out
+}
 
 async fn mock_handler(
     AxState(state): AxState<MockServerState>,
@@ -313,6 +343,9 @@ async fn mock_handler(
     body = body.replace("{{method}}", method.as_str());
     body = body.replace("{{path}}", &path);
 
+    // 全局环境变量 {{key}}
+    body = apply_env_vars(&body, &state.envs.read().unwrap_or_else(|e| e.into_inner()));
+
     let mut builder = Response::builder()
         .status(StatusCode::from_u16(route.status).unwrap_or(StatusCode::OK));
     let mut has_content_type = false;
@@ -398,5 +431,21 @@ mod tests {
         assert!(methods.contains(&"GET"));
         assert!(methods.contains(&"POST"));
         assert!(methods.contains(&"DELETE"));
+    }
+
+    #[test]
+    fn test_apply_env_vars() {
+        let mut envs = HashMap::new();
+        envs.insert("token".to_string(), "T-123".to_string());
+        envs.insert("baseUrl".to_string(), "http://x".to_string());
+        envs.insert("path".to_string(), "应被保留".to_string()); // 系统变量不替换
+        let out = apply_env_vars(
+            "{\"token\": \"{{token}}\", \"base\": \"{{baseUrl}}\", \"p\": \"{{path}}\", \"pd\": \"{{path.id}}\"}",
+            &envs,
+        );
+        assert!(out.contains("\"T-123\""));
+        assert!(out.contains("\"http://x\""));
+        assert!(out.contains("{{path}}")); // 保留
+        assert!(out.contains("{{path.id}}")); // 保留
     }
 }

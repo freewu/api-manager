@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   ApiFile,
+  EnvStore,
   HttpRequestData,
   HttpResult,
   InfoJson,
@@ -50,6 +51,14 @@ export function readInfo(path: string): Promise<InfoJson> {
 
 export function saveInfo(path: string, data: InfoJson): Promise<void> {
   return invoke<void>("save_info", { path, data });
+}
+
+export function readEnv(): Promise<EnvStore> {
+  return invoke<EnvStore>("read_envs");
+}
+
+export function saveEnv(data: EnvStore): Promise<void> {
+  return invoke<void>("save_envs", { data });
 }
 
 export function sendRequest(req: HttpRequestData): Promise<HttpResult> {
