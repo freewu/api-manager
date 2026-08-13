@@ -1,0 +1,124 @@
+// ---- 与 Rust 后端对应的类型定义 ----
+
+export interface KeyValue {
+  key: string;
+  value: string;
+  enabled: boolean;
+  description: string;
+}
+
+export interface BodyData {
+  mode: "none" | "raw" | "json" | "form";
+  raw: string;
+  form: KeyValue[];
+}
+
+export interface MockConfig {
+  enabled: boolean;
+  status: number;
+  headers: KeyValue[];
+  delay: number;
+  body: string;
+}
+
+export interface ApiFile {
+  name: string;
+  method: string;
+  path: string;
+  url: string;
+  description: string;
+  headers: KeyValue[];
+  query: KeyValue[];
+  params: KeyValue[];
+  body: BodyData;
+  mock: MockConfig;
+  examples: unknown[];
+}
+
+export interface InfoJson {
+  name?: string;
+  description?: string;
+  baseUrl?: string;
+  mockPort?: number;
+  order?: number;
+  collapsed?: boolean;
+}
+
+export interface TreeNode {
+  kind: "folder" | "api";
+  name: string;
+  path: string;
+  method?: string;
+  endpoint?: string;
+  mockEnabled?: boolean;
+  description?: string;
+  collapsed?: boolean;
+  children?: TreeNode[];
+}
+
+export interface HttpRequestData {
+  method: string;
+  url: string;
+  headers: KeyValue[];
+  body?: string;
+  timeoutMs: number;
+}
+
+export interface HttpResult {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  headers: [string, string][];
+  body: string;
+  timeMs: number;
+  size: number;
+  url: string;
+  error?: string;
+}
+
+export interface MockStatus {
+  running: boolean;
+  url?: string;
+  port?: number;
+  routeCount: number;
+}
+
+export const METHODS = [
+  "GET",
+  "POST",
+  "PUT",
+  "DELETE",
+  "PATCH",
+  "HEAD",
+  "OPTIONS",
+] as const;
+
+export const BODY_MODES = ["none", "raw", "json", "form"] as const;
+
+export function emptyKV(): KeyValue {
+  return { key: "", value: "", enabled: true, description: "" };
+}
+
+export function emptyBody(): BodyData {
+  return { mode: "none", raw: "", form: [] };
+}
+
+export function emptyMock(): MockConfig {
+  return { enabled: false, status: 200, headers: [], delay: 0, body: "" };
+}
+
+export function emptyApi(): ApiFile {
+  return {
+    name: "未命名接口",
+    method: "GET",
+    path: "/",
+    url: "",
+    description: "",
+    headers: [],
+    query: [],
+    params: [],
+    body: emptyBody(),
+    mock: emptyMock(),
+    examples: [],
+  };
+}
