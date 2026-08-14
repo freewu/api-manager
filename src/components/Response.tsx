@@ -1,10 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HttpResult } from "../types";
 
 interface Props {
   result: HttpResult | null;
   sending: boolean;
 }
+
+type View = "raw" | "html" | "json" | "xml";
+const VIEWS: View[] = ["raw", "html", "json", "xml"];
 
 function statusClass(status: number) {
   if (status >= 200 && status < 300) return "status-2xx";
@@ -49,10 +52,67 @@ export function highlightJson(text: string): string {
   }
 }
 
+/** 对 HTML / XML 做简单语法高亮，返回 HTML 片段 */
+export function highlightMarkup(text: string): string {
+  const esc = escapeHtml(text);
+  return esc.replace(
+    /(&lt;!--[\s\S]*?--&gt;)|(&lt;\/?\??[\w:.-]+)|(\/?&gt;)|([\w:.-]+=)("[^"]*"|'[^']*')/g,
+    (m, comment: string | undefined, tag: string | undefined, tagEnd: string | undefined, attr: string | undefined, val: string | undefined) => {
+      if (comment) return `<span class="xml-comment">${comment}</span>`;
+      if (tag) return `<span class="xml-tag">${tag}</span>`;
+      if (tagEnd) return `<span class="xml-tag">${tagEnd}</span>`;
+      if (attr) return `<span class="xml-attr">${attr}</span><span class="xml-value">${val}</span>`;
+      return m;
+    }
+  );
+}
+
+/** 根据 Content-Type 与内容自动判断默认视图 */
+function detectView(body: string, contentType: string | undefined): View {
+  const ct = (contentType || "").toLowerCase();
+  if (ct.includes("json") || ct.includes("javascript")) return "json";
+  if (ct.includes("html")) return "html";
+  if (ct.includes("xml")) return "xml";
+  const t = body.trim();
+  if (!t) return "raw";
+  if (t.startsWith("{") || t.startsWith("[")) return "json";
+  if (t.startsWith("<")) return /<!doctype|<html|<head|<body/i.test(t) ? "html" : "xml";
+  return "raw";
+}
+
 export function Response({ result, sending }: Props) {
   const [tab, setTab] = useState<"body" | "headers">("body");
+  const [view, setView] = useState<View>("raw");
 
-  const bodyHtml = useMemo(() => (result ? highlightJson(result.body) : ""), [result]);
+  const contentType = useMemo(
+    () => result?.headers.find(([k]) => k.toLowerCase() === "content-type")?.[1],
+    [result]
+  );
+
+  // 新响应到达时自动选择视图
+  useEffect(() => {
+    if (result) setView(detectView(result.body, contentType));
+  }, [result, contentType]);
+
+  const bodyEl = useMemo(() => {
+    if (!result) return null;
+    switch (view) {
+      case "raw":
+        return <div className="json-view raw-view">{result.body || ""}</div>;
+      case "html":
+      case "xml":
+        return (
+          <div
+            className="json-view"
+            dangerouslySetInnerHTML={{ __html: highlightMarkup(result.body) }}
+          />
+        );
+      case "json":
+        return (
+          <div className="json-view" dangerouslySetInnerHTML={{ __html: highlightJson(result.body) }} />
+        );
+    }
+  }, [result, view]);
 
   if (sending && !result) {
     return (
@@ -128,7 +188,33 @@ export function Response({ result, sending }: Props) {
               </div>
             </div>
             {tab === "body" && (
-              <div className="json-view" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+              <>
+                {result.body !== "" && (
+                  <div className="view-bar">
+                    {VIEWS.map((v) => (
+                      <div
+                        key={v}
+                        className={`view-chip ${view === v ? "active" : ""}`}
+                        onClick={() => setView(v)}
+                      >
+                        {v.toUpperCase()}
+                      </div>
+                    ))}
+                    {contentType && (
+                      <span className="view-ct" title="响应 Content-Type">
+                        {contentType.split(";")[0]}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {result.body ? (
+                  bodyEl
+                ) : (
+                  <div className="response-empty">
+                    <span>（空响应体）</span>
+                  </div>
+                )}
+              </>
             )}
             {tab === "headers" && (
               <table className="resp-headers-table">

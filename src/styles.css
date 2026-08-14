@@ -73,6 +73,33 @@
 :root[data-theme="light"] .switch.on::after {
   background: #fff;
 }
+:root[data-theme="light"] .json-key {
+  color: #0f5aa8;
+}
+:root[data-theme="light"] .json-string {
+  color: #1a7f37;
+}
+:root[data-theme="light"] .json-number {
+  color: #c2410c;
+}
+:root[data-theme="light"] .json-boolean {
+  color: #7c3aed;
+}
+:root[data-theme="light"] .json-null {
+  color: #6b7280;
+}
+:root[data-theme="light"] .xml-tag {
+  color: #0f5aa8;
+}
+:root[data-theme="light"] .xml-attr {
+  color: #b45309;
+}
+:root[data-theme="light"] .xml-value {
+  color: #1a7f37;
+}
+:root[data-theme="light"] .xml-comment {
+  color: #6b7280;
+}
 
 * {
   box-sizing: border-box;
@@ -955,6 +982,9 @@ body {
   white-space: pre-wrap;
   word-break: break-all;
 }
+.raw-view {
+  color: var(--text);
+}
 .json-key {
   color: #7ec8ff;
 }
@@ -970,6 +1000,55 @@ body {
 .json-null {
   color: #90a4ae;
   font-style: italic;
+}
+
+/* HTML / XML 语法高亮 */
+.xml-tag {
+  color: #7ec8ff;
+}
+.xml-attr {
+  color: #ffd479;
+}
+.xml-value {
+  color: #a5d6a7;
+}
+.xml-comment {
+  color: #90a4ae;
+  font-style: italic;
+}
+
+/* 响应体视图切换 */
+.view-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.view-chip {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.view-chip:hover {
+  border-color: var(--border-light);
+  color: var(--text);
+}
+.view-chip.active {
+  border-color: var(--accent);
+  background: rgba(88, 166, 255, 0.12);
+  color: var(--accent);
+  font-weight: 600;
+}
+.view-ct {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
 }
 
 .error-banner {
