@@ -1,0 +1,31 @@
+{
+  "body": {
+    "form": [],
+    "mode": "none",
+    "raw": ""
+  },
+  "description": "删除指定用户",
+  "examples": [],
+  "headers": [],
+  "method": "DELETE",
+  "mock": {
+    "body": "{\n  \"code\": 0,\n  \"message\": \"删除成功\"\n}",
+    "delay": 0,
+    "enabled": true,
+    "headers": [],
+    "status": 200
+  },
+  "name": "删除用户",
+  "params": [
+    {
+      "description": "用户ID",
+      "enabled": true,
+      "key": "id",
+      "value": "1"
+    }
+  ],
+  "path": "/api/users/{id}",
+  "query": [],
+  "url": "",
+  "uuid": "fcfbd216-d746-4ef5-9a84-552df3699dcd"
+}

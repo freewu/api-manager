@@ -596,6 +596,7 @@ export default function App() {
         <div className="logo">
           <div className="logo-badge">API</div>
           <span>API Manager</span>
+          {version && <span className="logo-version">v{version}</span>}
         </div>
         <div className="workspace-chip" title="点击更换工作目录" onClick={handlePickWorkspace}>
           📁 {workspace}

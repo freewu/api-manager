@@ -1,0 +1,43 @@
+{
+  "active": "开发环境",
+  "environments": [
+    {
+      "name": "开发环境",
+      "variables": [
+        {
+          "defaultValue": "https://api.example.com",
+          "description": "接口服务地址",
+          "enabled": true,
+          "key": "baseUrl",
+          "value": "http://127.0.0.1:5050"
+        },
+        {
+          "defaultValue": "demo-token",
+          "description": "鉴权令牌",
+          "enabled": true,
+          "key": "token",
+          "value": "dev-token-123456"
+        }
+      ]
+    },
+    {
+      "name": "生产环境",
+      "variables": [
+        {
+          "defaultValue": "https://api.example.com",
+          "description": "接口服务地址",
+          "enabled": true,
+          "key": "baseUrl",
+          "value": "https://api.example.com"
+        },
+        {
+          "defaultValue": "demo-token",
+          "description": "鉴权令牌",
+          "enabled": true,
+          "key": "token",
+          "value": "prod-token-abcdef"
+        }
+      ]
+    }
+  ]
+}

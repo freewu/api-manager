@@ -1,0 +1,6 @@
+{
+  "baseUrl": "{{baseUrl}}",
+  "description": "这是一个示例工作区，展示了 API Manager 的目录组织方式",
+  "mockPort": 5050,
+  "name": "演示 API 集合"
+}
