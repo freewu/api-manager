@@ -126,6 +126,9 @@ impl Default for MockConfig {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiFile {
+    /// 接口唯一标识（用于版本管理等），旧文件无此字段时自动生成
+    #[serde(default)]
+    pub uuid: String,
     #[serde(default)]
     pub name: String,
     #[serde(default = "default_method")]
@@ -471,11 +474,63 @@ fn read_api(path: String) -> Result<ApiFile, String> {
 
 #[tauri::command]
 fn save_api(path: String, data: ApiFile) -> Result<String, String> {
+    let mut data = data;
+    if data.uuid.trim().is_empty() {
+        data.uuid = uuid::Uuid::new_v4().to_string();
+    }
     if let Some(parent) = Path::new(&path).parent() {
         fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {e}"))?;
     }
     write_pretty(Path::new(&path), &data)?;
     Ok(path)
+}
+
+/// 保存接口新版本：写入工作区 .version/<uuid>/<名称>.<版本号>.json
+#[tauri::command]
+fn save_api_version(
+    state: State<'_, WorkspaceState>,
+    data: ApiFile,
+) -> Result<String, String> {
+    let root = workspace_root(&state)?;
+    let mut data = data;
+    if data.uuid.trim().is_empty() {
+        data.uuid = uuid::Uuid::new_v4().to_string();
+    }
+    let uuid = data.uuid.trim().to_string();
+    let name = sanitize_filename(&data.name);
+    let name = if name.trim().is_empty() {
+        "未命名接口".to_string()
+    } else {
+        name.trim().to_string()
+    };
+
+    let ver_dir = root.join(".version").join(&uuid);
+    fs::create_dir_all(&ver_dir).map_err(|e| format!("创建版本目录失败: {e}"))?;
+
+    // 计算下一个版本号：<名称>.1.json / .2.json ...
+    let version = next_version(&ver_dir, &name);
+
+    let target = ver_dir.join(format!("{name}.{version}.json"));
+    write_pretty(&target, &data)?;
+    Ok(format!(".version/{uuid}/{name}.{version}.json"))
+}
+
+/// 计算下一个版本号：扫描 <name>.<n>.json 取最大 n + 1
+fn next_version(ver_dir: &Path, name: &str) -> u32 {
+    let mut max: u32 = 0;
+    if let Ok(rd) = fs::read_dir(ver_dir) {
+        for entry in rd.flatten() {
+            let fname = entry.file_name().to_string_lossy().to_string();
+            if let Some(rest) = fname.strip_prefix(&format!("{name}.")) {
+                if let Some(num) = rest.strip_suffix(".json") {
+                    if let Ok(n) = num.parse::<u32>() {
+                        max = max.max(n);
+                    }
+                }
+            }
+        }
+    }
+    max + 1
 }
 
 #[tauri::command]
@@ -494,16 +549,18 @@ fn create_api(
         return Err("保存位置不在工作区内".into());
     }
     fs::create_dir_all(&dir_path).map_err(|e| format!("创建目录失败: {e}"))?;
-    let base = sanitize_filename(&name);
-    let display_name = if base.is_empty() {
+    // 显示名保留原始输入（支持 /xxx/xxx 路径风格名称），仅文件名做安全化处理
+    let display_name = if name.trim().is_empty() {
         "未命名接口".to_string()
     } else {
-        base
+        name.trim().to_string()
     };
-    let file_path = unique_path(&dir_path, &display_name, ".json");
+    let file_base = sanitize_filename(&display_name);
+    let file_path = unique_path(&dir_path, &file_base, ".json");
 
     let data = ApiFile {
-        name: display_name.clone(),
+        uuid: uuid::Uuid::new_v4().to_string(),
+        name: display_name,
         method: "GET".into(),
         path: "/".into(),
         url: String::new(),
@@ -560,38 +617,43 @@ fn rename_entry(
     let root = workspace_root(&state)?;
     let old = PathBuf::from(&path);
     ensure_inside_workspace(&root, &old)?;
-    let new_name = sanitize_filename(&new_name);
-    if new_name.is_empty() {
+    // 显示名保留原始输入（支持 /xxx/xxx），仅用于文件系统的名称做安全化处理
+    let display_name = new_name.trim().to_string();
+    if display_name.is_empty() {
+        return Err("名称不能为空".into());
+    }
+    let fs_name = sanitize_filename(&display_name);
+    if fs_name.is_empty() {
         return Err("名称不能为空".into());
     }
     let parent = old.parent().ok_or("无上级目录")?;
     let (base, ext) = if old.is_dir() {
-        (new_name, String::new())
+        (fs_name, String::new())
     } else {
         let ext = old
             .extension()
             .map(|e| format!(".{}", e.to_string_lossy()))
             .unwrap_or_else(|| ".json".into());
-        let base = if new_name.to_lowercase().ends_with(&ext.to_lowercase()) {
-            new_name.trim_end_matches(&ext).to_string()
+        let base = if fs_name.to_lowercase().ends_with(&ext.to_lowercase()) {
+            fs_name.trim_end_matches(&ext).to_string()
         } else {
-            new_name
+            fs_name
         };
         (base, ext)
     };
     let new_path = unique_path(parent, &base, &ext);
     fs::rename(&old, &new_path).map_err(|e| format!("重命名失败: {e}"))?;
     if old.is_dir() {
-        // 目录重命名时同步更新 __info.json 的 name
+        // 目录重命名时同步更新 __info.json 的 name（显示名，可含 / 路径风格）
         let mut info = read_info_file(&new_path);
-        info.name = Some(base);
+        info.name = Some(display_name);
         let _ = write_pretty(&new_path.join(INFO_FILE), &info);
     } else {
-        // 接口文件重命名时同步更新 JSON 内的 name 字段
+        // 接口文件重命名时同步更新 JSON 内的 name 字段（显示名，可含 / 路径风格）
         if let Ok(content) = fs::read_to_string(&new_path) {
             if let Ok(mut v) = serde_json::from_str::<Value>(&content) {
                 if let Some(obj) = v.as_object_mut() {
-                    obj.insert("name".into(), Value::String(base.clone()));
+                    obj.insert("name".into(), Value::String(display_name));
                     let _ = write_pretty(&new_path, &v);
                 }
             }
@@ -1026,6 +1088,7 @@ pub fn run() {
             read_tree,
             read_api,
             save_api,
+            save_api_version,
             create_api,
             create_folder,
             rename_entry,
@@ -1208,6 +1271,19 @@ mod tests {
         let map = read_env_map(&dir);
         assert_eq!(map.get("empty_value").map(|s| s.as_str()), Some("fallback"));
         assert_eq!(map.get("has_value").map(|s| s.as_str()), Some("real"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_next_version() {
+        // 版本号递增：<name>.1.json / .2.json ...
+        let dir = std::env::temp_dir().join(format!("version-test-{}", std::process::id()));
+        let _ = fs::create_dir_all(&dir);
+        for f in ["x.1.json", "x.3.json", "other.9.json"] {
+            fs::write(dir.join(f), "{}").unwrap();
+        }
+        assert_eq!(next_version(&dir, "x"), 4);
+        assert_eq!(next_version(&dir, "y"), 1);
         let _ = fs::remove_dir_all(&dir);
     }
 }

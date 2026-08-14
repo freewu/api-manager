@@ -29,6 +29,10 @@ export function saveApi(path: string, data: ApiFile): Promise<string> {
   return invoke<string>("save_api", { path, data });
 }
 
+export function saveApiVersion(data: ApiFile): Promise<string> {
+  return invoke<string>("save_api_version", { data });
+}
+
 export function createApi(dir: string, name: string): Promise<string> {
   return invoke<string>("create_api", { dir, name });
 }

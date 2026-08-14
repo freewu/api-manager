@@ -22,6 +22,7 @@ export interface MockConfig {
 }
 
 export interface ApiFile {
+  uuid: string;
   name: string;
   method: string;
   path: string;
@@ -137,6 +138,7 @@ export function emptyMock(): MockConfig {
 
 export function emptyApi(): ApiFile {
   return {
+    uuid: "",
     name: "未命名接口",
     method: "GET",
     path: "/",

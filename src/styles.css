@@ -350,6 +350,17 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.node .node-endpoint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-left: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40%;
+  flex-shrink: 1;
+}
 .node .node-method {
   font-family: var(--font-mono);
   font-size: 10px;

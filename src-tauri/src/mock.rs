@@ -370,6 +370,7 @@ mod tests {
     #[test]
     fn test_parse_route_segments() {
         let mut api = ApiFile {
+            uuid: "test-uuid".into(),
             name: "t".into(),
             method: "GET".into(),
             path: "/api/users/{id}".into(),

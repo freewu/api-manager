@@ -17,6 +17,7 @@ import {
   readTree,
   renameEntry,
   saveApi,
+  saveApiVersion,
   saveEnv,
   saveInfo,
   sendRequest,
@@ -175,6 +176,8 @@ export default function App() {
       }
       setSelectedPath(node.path);
       const data = await readApi(node.path);
+      // 旧接口文件无 uuid 时自动补一个，保证版本目录与接口一一对应
+      if (!data.uuid) data.uuid = crypto.randomUUID();
       setApi(data);
       setDirty(false);
       setResponse(null);
@@ -263,6 +266,26 @@ export default function App() {
       }
     } catch (e) {
       showToast("保存失败: " + e);
+    }
+  };
+
+  // 保存接口新版本 -> 工作区 .version/<uuid>/<名称>.<版本号>.json
+  const handleSaveVersion = async () => {
+    if (!api) return;
+    try {
+      let data = api;
+      if (!data.uuid) {
+        data = { ...data, uuid: crypto.randomUUID() };
+        // 先持久化 uuid 到主文件，避免后续版本目录分裂
+        if (selectedPath) {
+          await saveApi(selectedPath, data);
+          setDirty(false);
+        }
+      }
+      const rel = await saveApiVersion(data);
+      showToast(`已保存新版本: ${rel}`);
+    } catch (e) {
+      showToast("保存版本失败: " + e);
     }
   };
 
@@ -525,6 +548,11 @@ export default function App() {
         {api && (
           <button className="btn" onClick={handleSave} disabled={!dirty} title={dirty ? "保存当前接口" : "无修改"}>
             💾 保存{dirty ? " *" : ""}
+          </button>
+        )}
+        {api && (
+          <button className="btn" onClick={handleSaveVersion} title="将当前接口内容保存为新版本（.version/<uuid>/<名称>.<版本号>.json）">
+            🔖 保存新版本
           </button>
         )}
         <div className="mock-box">

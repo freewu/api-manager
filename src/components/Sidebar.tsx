@@ -88,6 +88,11 @@ function NodeRow({
         )}
         <span className="node-icon">{isFolder ? "📁" : "🌐"}</span>
         <span className="node-name">{node.name}</span>
+        {!isFolder && node.endpoint && (
+          <span className="node-endpoint" title={node.endpoint}>
+            {node.endpoint}
+          </span>
+        )}
         {!isFolder && node.method && (
           <span className={`node-method ${methodClass(node.method)}`}>{node.method}</span>
         )}
