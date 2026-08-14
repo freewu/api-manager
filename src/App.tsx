@@ -173,7 +173,8 @@ export default function App() {
       const activeEnv = envs.environments.find((e) => e.name === envs.active);
       const vars: Record<string, string> = {};
       for (const v of activeEnv?.variables || []) {
-        if (v.enabled && v.key.trim()) vars[v.key.trim()] = v.value;
+        if (v.enabled && v.key.trim())
+          vars[v.key.trim()] = v.value.trim() ? v.value : v.defaultValue;
       }
       const sub = (s: string) =>
         s.replace(/\{\{([^{}]+)\}\}/g, (m, k: string) => vars[k.trim()] ?? m);

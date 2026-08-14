@@ -7,13 +7,15 @@
         {
           "key": "baseUrl",
           "value": "http://127.0.0.1:5050",
+          "defaultValue": "https://api.example.com",
           "description": "接口服务地址",
           "enabled": true
         },
         {
           "key": "token",
           "value": "dev-token-123456",
-          "description": "鉴权令牌（开发）",
+          "defaultValue": "demo-token",
+          "description": "鉴权令牌",
           "enabled": true
         }
       ]
@@ -24,12 +26,14 @@
         {
           "key": "baseUrl",
           "value": "https://api.example.com",
+          "defaultValue": "https://api.example.com",
           "description": "接口服务地址",
           "enabled": true
         },
         {
           "key": "token",
           "value": "prod-token-abcdef",
+          "defaultValue": "",
           "description": "鉴权令牌（生产）",
           "enabled": true
         }

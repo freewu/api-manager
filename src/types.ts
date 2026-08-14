@@ -48,7 +48,8 @@ export interface InfoJson {
 
 export interface EnvVariable {
   key: string;
-  value: string;
+  value: string; // 现有值
+  defaultValue: string; // 默认值（现值为空时使用）
   description: string;
   enabled: boolean;
 }
@@ -68,7 +69,7 @@ export function emptyEnv(): EnvStore {
 }
 
 export function emptyEnvVariable(): EnvVariable {
-  return { key: "", value: "", description: "", enabled: true };
+  return { key: "", value: "", defaultValue: "", description: "", enabled: true };
 }
 
 export interface TreeNode {

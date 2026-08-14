@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { EnvStore } from "../types";
-import { EnvVarEditor } from "./EnvVarEditor";
+import { EnvValueModal } from "./EnvValueModal";
 import { Modal } from "./Modal";
 
 interface Props {
@@ -9,6 +9,7 @@ interface Props {
   onSave: (envs: EnvStore) => void;
 }
 
+/** 第一个弹出框：环境变量集管理（新增 / 复制 / 编辑 / 删除 / 拖动排序） */
 export function EnvModal({ envs, onClose, onSave }: Props) {
   const [draft, setDraft] = useState<EnvStore>(() => ({
     active: envs.active,
@@ -25,6 +26,8 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
   );
   const [editing, setEditing] = useState(false);
   const [nameBackup, setNameBackup] = useState("");
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [valueModal, setValueModal] = useState(false);
 
   const env = draft.environments[idx];
   const setEnv = (patch: Partial<(typeof draft.environments)[number]>) => {
@@ -61,7 +64,10 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
     const name = uniqueName(`${base} (副本)`);
     setDraft((d) => ({
       ...d,
-      environments: [...d.environments, { ...env, name, variables: env.variables.map((v) => ({ ...v })) }],
+      environments: [
+        ...d.environments,
+        { ...env, name, variables: env.variables.map((v) => ({ ...v })) },
+      ],
     }));
     setIdx(draft.environments.length);
     setEditing(false);
@@ -98,12 +104,34 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
     setEditing(false);
   };
 
-  const setActive = (name: string) => setDraft((d) => ({ ...d, active: name }));
+  // ---- 拖动排序 ----
 
-  const selectEnv = (i: number) => {
-    setIdx(i);
+  const onDragStart = (i: number) => {
+    setDragIdx(i);
     setEditing(false);
   };
+
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const onDrop = (i: number) => {
+    if (dragIdx === null || dragIdx === i) {
+      setDragIdx(null);
+      return;
+    }
+    setDraft((d) => {
+      const next = [...d.environments];
+      const [moved] = next.splice(dragIdx, 1);
+      next.splice(i, 0, moved);
+      return { ...d, environments: next };
+    });
+    setIdx(i);
+    setDragIdx(null);
+  };
+
+  const setActive = (name: string) => setDraft((d) => ({ ...d, active: name }));
 
   const save = () => {
     const cleaned = {
@@ -112,7 +140,7 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
         .map((e) => ({
           name: e.name.trim(),
           variables: e.variables.filter(
-            (v) => v.key.trim() || v.value.trim() || v.description.trim()
+            (v) => v.key.trim() || v.value.trim() || v.defaultValue.trim() || v.description.trim()
           ),
         }))
         .filter((e) => e.name),
@@ -121,137 +149,134 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
   };
 
   return (
-    <Modal
-      title="环境变量管理"
-      onClose={onClose}
-      className="modal-wide"
-      footer={
-        <>
-          <button className="btn" onClick={onClose}>
-            取消
-          </button>
-          <button className="btn primary" onClick={save}>
-            保存
-          </button>
-        </>
-      }
-    >
-      <div className="env-manager">
-        {/* ====== 第一块：环境变量集 ====== */}
-        <div className="section-title env-section">
-          环境变量集
-          <span className="help">在这里新增 / 复制 / 编辑 / 删除整套变量配置</span>
-        </div>
-        <div className="env-set-bar">
-          <div className="env-tabs">
+    <>
+      <Modal
+        title="环境变量集管理"
+        onClose={onClose}
+        footer={
+          <>
+            <button className="btn" onClick={onClose}>
+              取消
+            </button>
+            <button className="btn primary" onClick={save}>
+              保存
+            </button>
+          </>
+        }
+      >
+        <div className="env-manager env-set-manager">
+          <div className="section-title env-section">
+            环境变量集
+            <span className="help">新增 / 复制 / 编辑 / 删除，拖动 ⋮⋮ 调整顺序</span>
+          </div>
+
+          <div className="env-set-list">
             {draft.environments.map((e, i) => (
-              <span
+              <div
                 key={i}
-                className={`env-tab ${i === idx ? "active" : ""} ${draft.active === e.name ? "current" : ""}`}
-                onClick={() => selectEnv(i)}
+                className={`env-set-row ${i === idx ? "active" : ""} ${dragIdx === i ? "dragging" : ""}`}
+                draggable
+                onDragStart={() => onDragStart(i)}
+                onDragOver={onDragOver}
+                onDrop={() => onDrop(i)}
+                onDragEnd={() => setDragIdx(null)}
+                onClick={() => {
+                  setIdx(i);
+                  setEditing(false);
+                }}
                 title={draft.active === e.name ? "当前环境" : e.name}
               >
-                {e.name}
-                {draft.active === e.name && <em>●</em>}
-              </span>
+                <span className="env-drag-handle" title="拖动排序">⋮⋮</span>
+                {editing && i === idx ? (
+                  <>
+                    <input
+                      className="env-name-input"
+                      value={e.name}
+                      autoFocus
+                      onClick={(ev) => ev.stopPropagation()}
+                      onChange={(ev) => setEnv({ name: ev.target.value })}
+                      onKeyDown={(ev) => {
+                        if (ev.key === "Enter") finishEdit();
+                        if (ev.key === "Escape") cancelEdit();
+                      }}
+                      spellCheck={false}
+                    />
+                    <button className="btn small primary" onClick={(ev) => { ev.stopPropagation(); finishEdit(); }}>
+                      确定
+                    </button>
+                    <button className="btn small" onClick={(ev) => { ev.stopPropagation(); cancelEdit(); }}>
+                      取消
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="env-set-name">{e.name}</span>
+                    {draft.active === e.name && <span className="env-current-badge">当前</span>}
+                    <span className="env-set-count">{e.variables.length} 个变量</span>
+                  </>
+                )}
+              </div>
             ))}
             {draft.environments.length === 0 && (
-              <span className="env-empty-hint">暂无环境变量集</span>
+              <div className="env-empty-block">暂无环境变量集，点击「+ 新增」创建</div>
             )}
           </div>
+
           <div className="env-set-actions">
             <button className="btn small" onClick={addEnv} title="新增环境变量集">
               + 新增
             </button>
-            <button
-              className="btn small"
-              onClick={copyEnv}
-              disabled={!env}
-              title="复制当前环境变量集（含所有变量值）"
-            >
+            <button className="btn small" onClick={copyEnv} disabled={!env} title="复制当前环境变量集（含所有变量值）">
               ⧉ 复制
             </button>
-            <button
-              className="btn small"
-              onClick={startEdit}
-              disabled={!env}
-              title="重命名当前环境变量集"
-            >
+            <button className="btn small" onClick={startEdit} disabled={!env} title="重命名当前环境变量集">
               ✎ 编辑
             </button>
-            <button
-              className="btn small danger"
-              onClick={removeEnv}
-              disabled={!env}
-              title="删除当前环境变量集"
-            >
+            <button className="btn small danger" onClick={removeEnv} disabled={!env} title="删除当前环境变量集">
               🗑 删除
             </button>
+            <span className="env-set-actions-spacer" />
+            <button
+              className="btn primary"
+              disabled={!env}
+              onClick={() => setValueModal(true)}
+              title="管理选中集的变量值"
+            >
+              ✏ 管理变量值
+            </button>
           </div>
-        </div>
 
-        {/* 当前选中集的名称 / 设为当前环境 */}
-        {env && (
-          <div className="env-meta-row">
-            {editing ? (
-              <>
+          {env && (
+            <div className="env-meta-row">
+              <label className="meta-item" style={{ cursor: "pointer" }}>
                 <input
-                  className="env-name-input"
-                  value={env.name}
-                  autoFocus
-                  onChange={(e) => setEnv({ name: e.target.value })}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") finishEdit();
-                    if (e.key === "Escape") cancelEdit();
-                  }}
-                  spellCheck={false}
+                  type="checkbox"
+                  checked={draft.active === env.name}
+                  onChange={(e) => setActive(e.target.checked ? env.name : "")}
+                  style={{ width: "auto" }}
                 />
-                <button className="btn small primary" onClick={finishEdit}>
-                  确定
-                </button>
-                <button className="btn small" onClick={cancelEdit}>
-                  取消
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="env-name-label">{env.name}</span>
-                <label className="meta-item" style={{ cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={draft.active === env.name}
-                    onChange={(e) => setActive(e.target.checked ? env.name : "")}
-                    style={{ width: "auto" }}
-                  />
-                  设为当前环境
-                </label>
-              </>
-            )}
-          </div>
-        )}
+                设为当前环境
+              </label>
+              <span style={{ color: "var(--text-faint)", fontSize: 11 }}>
+                当前选中：{env.name}
+              </span>
+            </div>
+          )}
 
-        {/* ====== 第二块：环境变量值 ====== */}
-        <div className="section-title env-section">
-          环境变量值
-          <span className="help">
-            选中环境变量集后维护变量，请求时用 {`{{变量名}}`} 引用，支持在 URL / Headers / Query / Body / Mock 响应体中使用
-          </span>
-        </div>
-        {!env ? (
-          <div className="env-empty-block">
-            请先新增或选择一个环境变量集，再进行变量值的维护
+          <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 8 }}>
+            环境配置保存在工作区根目录的 <code>__envs.json</code> 文件中，可随目录一起纳入 Git 管理。
           </div>
-        ) : (
-          <EnvVarEditor
-            rows={env.variables}
-            onChange={(rows) => setEnv({ variables: rows })}
-          />
-        )}
-
-        <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 10 }}>
-          环境配置保存在工作区根目录的 <code>__envs.json</code> 文件中，可随目录一起纳入 Git 管理。
         </div>
-      </div>
-    </Modal>
+      </Modal>
+
+      {valueModal && env && (
+        <EnvValueModal
+          name={env.name}
+          variables={env.variables}
+          onSave={(variables) => setEnv({ variables })}
+          onClose={() => setValueModal(false)}
+        />
+      )}
+    </>
   );
 }

@@ -5,7 +5,7 @@ interface Props {
   onChange: (rows: EnvVariable[]) => void;
 }
 
-/** 环境变量值编辑器：变量名 / 默认值 / 描述说明 */
+/** 环境变量值编辑器：变量名 / 现有值 / 默认值 / 描述说明 */
 export function EnvVarEditor({ rows, onChange }: Props) {
   const update = (i: number, patch: Partial<EnvVariable>) => {
     onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -16,7 +16,7 @@ export function EnvVarEditor({ rows, onChange }: Props) {
   };
 
   const add = () => {
-    onChange([...rows, { key: "", value: "", description: "", enabled: true }]);
+    onChange([...rows, { key: "", value: "", defaultValue: "", description: "", enabled: true }]);
   };
 
   return (
@@ -26,7 +26,8 @@ export function EnvVarEditor({ rows, onChange }: Props) {
           <tr>
             <th style={{ width: 30 }}></th>
             <th>变量名</th>
-            <th style={{ width: "38%" }}>默认值</th>
+            <th>现有值</th>
+            <th>默认值</th>
             <th>描述说明</th>
             <th style={{ width: 60 }}></th>
           </tr>
@@ -53,9 +54,19 @@ export function EnvVarEditor({ rows, onChange }: Props) {
               <td>
                 <input
                   value={r.value}
-                  placeholder="默认值"
+                  placeholder="现有值"
                   onChange={(e) => update(i, { value: e.target.value })}
                   spellCheck={false}
+                  title="请求时使用的值"
+                />
+              </td>
+              <td>
+                <input
+                  value={r.defaultValue}
+                  placeholder="默认值（现值为空时使用）"
+                  onChange={(e) => update(i, { defaultValue: e.target.value })}
+                  spellCheck={false}
+                  title="现值为空时使用该默认值"
                 />
               </td>
               <td>

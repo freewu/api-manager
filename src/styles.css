@@ -1085,47 +1085,94 @@ body {
 .env-manager {
   display: flex;
   flex-direction: column;
-  min-width: 560px;
 }
 
 .env-section {
   margin-top: 0;
 }
 
-.env-set-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+.env-set-manager {
+  min-width: 380px;
 }
 
-.env-tabs {
+/* 环境变量集列表（可拖动排序） */
+.env-set-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.env-set-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  flex: 1;
-  min-width: 0;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  cursor: pointer;
+  user-select: none;
+}
+.env-set-row:hover {
+  border-color: var(--border-light);
+}
+.env-set-row.active {
+  border-color: var(--accent);
+  background: rgba(46, 89, 167, 0.12);
+}
+.env-set-row.dragging {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+.env-drag-handle {
+  color: var(--text-faint);
+  font-size: 12px;
+  letter-spacing: -2px;
+  cursor: grab;
+  flex-shrink: 0;
+}
+.env-drag-handle:active {
+  cursor: grabbing;
+}
+
+.env-set-name {
+  font-size: 12.5px;
+  color: var(--text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.env-current-badge {
+  font-size: 10px;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 9px;
+  padding: 0 6px;
+  flex-shrink: 0;
+}
+
+.env-set-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-faint);
+  flex-shrink: 0;
 }
 
 .env-set-actions {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  margin-top: 10px;
 }
 
-.env-empty-hint {
-  color: var(--text-faint);
-  font-size: 12px;
-  padding: 2px 0;
-}
-
-.env-meta-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 10px 0 2px;
+.env-set-actions-spacer {
+  flex: 1;
 }
 
 .env-name-input {
@@ -1136,14 +1183,15 @@ body {
   padding: 5px 8px;
   font-size: 12.5px;
   outline: none;
-  width: 240px;
+  width: 200px;
   font-family: inherit;
 }
 
-.env-name-label {
-  font-size: 12.5px;
-  color: var(--text);
-  font-weight: 600;
+.env-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 2px;
 }
 
 .env-empty-block {
@@ -1155,7 +1203,8 @@ body {
   text-align: center;
 }
 
-.env-var-table td:nth-child(4) input {
+.env-var-table td:nth-child(4) input,
+.env-var-table td:nth-child(5) input {
   font-family: var(--font-base);
 }
 
@@ -1163,33 +1212,4 @@ body {
 .env-var-table td:nth-child(3) input {
   font-family: var(--font-mono);
 }
-.env-tab {
-  padding: 4px 12px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--bg-panel);
-  color: var(--text-dim);
-  font-size: 12px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  user-select: none;
-}
-.env-tab:hover {
-  border-color: var(--border-light);
-  color: var(--text);
-}
-.env-tab.active {
-  border-color: var(--accent);
-  color: var(--text);
-}
-.env-tab.current {
-  border-color: var(--accent);
-  background: rgba(46, 89, 167, 0.15);
-}
-.env-tab em {
-  font-style: normal;
-  color: var(--accent);
-  font-size: 9px;
-}
+

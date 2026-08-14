@@ -217,6 +217,8 @@ pub struct EnvVariable {
     pub key: String,
     pub value: String,
     #[serde(default)]
+    pub default_value: String,
+    #[serde(default)]
     pub description: String,
     #[serde(default = "default_true")]
     pub enabled: bool,
@@ -259,7 +261,14 @@ pub fn read_env_map(root: &Path) -> HashMap<String, String> {
             e.variables
                 .into_iter()
                 .filter(|v| v.enabled && !v.key.trim().is_empty())
-                .map(|v| (v.key.trim().to_string(), v.value))
+                .map(|v| {
+                    let val = if v.value.trim().is_empty() {
+                        v.default_value
+                    } else {
+                        v.value
+                    };
+                    (v.key.trim().to_string(), val)
+                })
                 .collect()
         })
         .unwrap_or_default()
@@ -1087,6 +1096,7 @@ mod tests {
                     variables: vec![EnvVariable {
                         key: "k".into(),
                         value: "v".into(),
+                        default_value: "".into(),
                         description: "".into(),
                         enabled: true,
                     }],
@@ -1103,6 +1113,40 @@ mod tests {
         assert_eq!(back.environments.len(), 2);
         assert_eq!(back.environments[0].variables[0].key, "k");
         assert_eq!(read_env_map(&dir).get("k").map(|s| s.as_str()), Some("v"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_env_default_value_fallback() {
+        // 现有值为空时，自动使用默认值
+        let dir = std::env::temp_dir().join(format!("env-default-test-{}", std::process::id()));
+        let _ = fs::create_dir_all(&dir);
+        let store = EnvStore {
+            active: "dev".into(),
+            environments: vec![Environment {
+                name: "dev".into(),
+                variables: vec![
+                    EnvVariable {
+                        key: "empty_value".into(),
+                        value: "".into(),
+                        default_value: "fallback".into(),
+                        description: "".into(),
+                        enabled: true,
+                    },
+                    EnvVariable {
+                        key: "has_value".into(),
+                        value: "real".into(),
+                        default_value: "fallback".into(),
+                        description: "".into(),
+                        enabled: true,
+                    },
+                ],
+            }],
+        };
+        write_pretty(&dir.join(ENV_FILE), &store).unwrap();
+        let map = read_env_map(&dir);
+        assert_eq!(map.get("empty_value").map(|s| s.as_str()), Some("fallback"));
+        assert_eq!(map.get("has_value").map(|s| s.as_str()), Some("real"));
         let _ = fs::remove_dir_all(&dir);
     }
 }
