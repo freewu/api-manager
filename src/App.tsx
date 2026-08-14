@@ -28,12 +28,14 @@ import {
   saveInfo,
   saveSettings,
   sendRequest,
+  saveHistory,
   updateTrayEnv,
   workspaceIsEmpty,
 } from "./commands";
 import { Editor } from "./components/Editor";
 import { EnvModal } from "./components/EnvModal";
 import { EnvValueModal } from "./components/EnvValueModal";
+import { HistoryModal } from "./components/HistoryModal";
 import { Modal } from "./components/Modal";
 import { Response } from "./components/Response";
 import { SettingsModal } from "./components/SettingsModal";
@@ -94,6 +96,7 @@ export default function App() {
   const [emptyMenu, setEmptyMenu] = useState<{ x: number; y: number } | null>(null);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [demoCreate, setDemoCreate] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = Number(localStorage.getItem("sidebar-width"));
@@ -404,6 +407,25 @@ export default function App() {
       };
       const res = await sendRequest(req);
       setResponse(res);
+      // 每次请求都保存到 .history 目录（按天分文件）
+      try {
+        await saveHistory({
+          method: req.method,
+          url: req.url,
+          reqHeaders: req.headers.map((h) => [h.key, h.value]),
+          reqBody: req.body,
+          ok: res.ok,
+          status: res.status,
+          statusText: res.statusText,
+          respHeaders: res.headers,
+          respBody: res.body,
+          timeMs: res.timeMs,
+          size: res.size,
+          error: res.error,
+        });
+      } catch (e) {
+        console.error("保存请求历史失败", e);
+      }
     } catch (e) {
       setResponse({ ok: false, status: 0, statusText: "", headers: [], body: "", timeMs: 0, size: 0, url: "", error: String(e) });
     } finally {
@@ -742,6 +764,7 @@ export default function App() {
           onStats={setStatsNode}
           onOpenSettings={() => setSettingsOpen(true)}
           onImportPostman={() => void handleImportPostman()}
+          onOpenHistory={() => setHistoryOpen(true)}
           onMove={handleMove}
           enableVersion={settings.enableVersion}
         />
@@ -842,6 +865,8 @@ export default function App() {
       )}
 
       {statsNode && <StatsModal node={statsNode} onClose={() => setStatsNode(null)} />}
+
+      {historyOpen && <HistoryModal onClose={() => setHistoryOpen(false)} />}
 
       {settingsOpen && (
         <SettingsModal

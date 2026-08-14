@@ -113,6 +113,78 @@ export function sendRequest(req: HttpRequestData): Promise<HttpResult> {
   return invoke<HttpResult>("send_request", { req });
 }
 
+// ---- 请求历史 ----
+
+export interface HistorySummary {
+  id: string;
+  time: number;
+  method: string;
+  url: string;
+  ok: boolean;
+  status: number;
+  statusText: string;
+  timeMs: number;
+  size: number;
+  error?: string;
+}
+
+export interface HistoryDetail {
+  id: string;
+  time: number;
+  method: string;
+  url: string;
+  ok: boolean;
+  status: number;
+  statusText: string;
+  timeMs: number;
+  size: number;
+  error?: string;
+  reqHeaders: [string, string][];
+  reqBody?: string;
+  respHeaders: [string, string][];
+  respBody: string;
+}
+
+export interface HistoryInput {
+  method: string;
+  url: string;
+  reqHeaders: [string, string][];
+  reqBody?: string;
+  ok: boolean;
+  status: number;
+  statusText: string;
+  respHeaders: [string, string][];
+  respBody: string;
+  timeMs: number;
+  size: number;
+  error?: string;
+}
+
+export interface HistoryDay {
+  day: string;
+  count: number;
+}
+
+export function saveHistory(input: HistoryInput): Promise<string> {
+  return invoke<string>("save_history", { input });
+}
+
+export function historyRecords(offset: number, limit: number): Promise<HistorySummary[]> {
+  return invoke<HistorySummary[]>("history_records", { offset, limit });
+}
+
+export function historyDetail(id: string): Promise<HistoryDetail> {
+  return invoke<HistoryDetail>("history_detail", { id });
+}
+
+export function historyDays(): Promise<HistoryDay[]> {
+  return invoke<HistoryDay[]>("history_days");
+}
+
+export function historyClear(): Promise<void> {
+  return invoke<void>("history_clear");
+}
+
 export function mockStart(port: number): Promise<MockStatus> {
   return invoke<MockStatus>("mock_start", { port });
 }

@@ -1556,6 +1556,305 @@ async fn send_request(req: HttpRequestData) -> Result<HttpResult, String> {
     }
 }
 
+// ==================== 请求历史 ====================
+
+pub const HISTORY_DIR: &str = ".history";
+
+/// 单条历史记录文件内容（.history/<日期>/<时间戳>_<uuid>.json）
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryFile {
+    pub id: String,
+    /// 记录时间（Unix 秒）
+    pub time: u64,
+    pub method: String,
+    pub url: String,
+    #[serde(default)]
+    pub req_headers: Vec<(String, String)>,
+    #[serde(default)]
+    pub req_body: Option<String>,
+    #[serde(default)]
+    pub ok: bool,
+    #[serde(default)]
+    pub status: u16,
+    #[serde(default)]
+    pub status_text: String,
+    #[serde(default)]
+    pub resp_headers: Vec<(String, String)>,
+    #[serde(default)]
+    pub resp_body: String,
+    #[serde(default)]
+    pub time_ms: u64,
+    #[serde(default)]
+    pub size: usize,
+    #[serde(default)]
+    pub error: Option<String>,
+}
+
+impl HistoryFile {
+    fn summary(&self) -> HistoryRecord {
+        HistoryRecord {
+            id: self.id.clone(),
+            time: self.time,
+            method: self.method.clone(),
+            url: self.url.clone(),
+            ok: self.ok,
+            status: self.status,
+            status_text: self.status_text.clone(),
+            time_ms: self.time_ms,
+            size: self.size,
+            error: self.error.clone(),
+        }
+    }
+}
+
+/// 历史列表摘要（不含请求/响应全文，便于分页加载）
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryRecord {
+    pub id: String,
+    pub time: u64,
+    pub method: String,
+    pub url: String,
+    pub ok: bool,
+    pub status: u16,
+    pub status_text: String,
+    pub time_ms: u64,
+    pub size: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// 单条历史详情（含请求与响应全文）
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryDetail {
+    pub id: String,
+    pub time: u64,
+    pub method: String,
+    pub url: String,
+    pub ok: bool,
+    pub status: u16,
+    pub status_text: String,
+    pub time_ms: u64,
+    pub size: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    pub req_headers: Vec<(String, String)>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub req_body: Option<String>,
+    pub resp_headers: Vec<(String, String)>,
+    pub resp_body: String,
+}
+
+/// 某天的记录数量（用于按天分组显示）
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryDay {
+    pub day: String,
+    pub count: u32,
+}
+
+/// 前端保存一条请求历史（发送请求后由前端调用）
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryInput {
+    pub method: String,
+    pub url: String,
+    #[serde(default)]
+    pub req_headers: Vec<(String, String)>,
+    #[serde(default)]
+    pub req_body: Option<String>,
+    #[serde(default)]
+    pub ok: bool,
+    #[serde(default)]
+    pub status: u16,
+    #[serde(default)]
+    pub status_text: String,
+    #[serde(default)]
+    pub resp_headers: Vec<(String, String)>,
+    #[serde(default)]
+    pub resp_body: String,
+    #[serde(default)]
+    pub time_ms: u64,
+    #[serde(default)]
+    pub size: usize,
+    #[serde(default)]
+    pub error: Option<String>,
+}
+
+/// 列出 .history 下全部记录文件（跨天，最新在前）
+fn list_history_files(root: &Path) -> Result<Vec<PathBuf>, String> {
+    let hist_dir = root.join(HISTORY_DIR);
+    if !hist_dir.exists() {
+        return Ok(vec![]);
+    }
+    let mut files: Vec<PathBuf> = Vec::new();
+    for day_entry in fs::read_dir(&hist_dir).map_err(|e| format!("读取历史目录失败: {e}"))? {
+        let day_entry = day_entry.map_err(|e| e.to_string())?;
+        let day_path = day_entry.path();
+        if !day_path.is_dir() {
+            continue;
+        }
+        for f in fs::read_dir(&day_path).map_err(|e| format!("读取历史目录失败: {e}"))? {
+            let f = f.map_err(|e| e.to_string())?;
+            if f.path().extension().map(|e| e == "json").unwrap_or(false) {
+                files.push(f.path());
+            }
+        }
+    }
+    // 按修改时间倒序（最新在前），同秒时按文件名倒序
+    files.sort_by(|a, b| {
+        let ta = a.metadata().and_then(|m| m.modified()).ok();
+        let tb = b.metadata().and_then(|m| m.modified()).ok();
+        tb.cmp(&ta).then_with(|| b.file_name().cmp(&a.file_name()))
+    });
+    Ok(files)
+}
+
+fn save_history_to(root: &Path, input: HistoryInput) -> Result<String, String> {
+    let now = chrono::Local::now();
+    let day = now.format("%Y-%m-%d").to_string();
+    let dir = root.join(HISTORY_DIR).join(&day);
+    fs::create_dir_all(&dir).map_err(|e| format!("创建历史目录失败: {e}"))?;
+    let id = uuid::Uuid::new_v4().to_string();
+    let secs = now.timestamp() as u64;
+    let file = HistoryFile {
+        id: id.clone(),
+        time: secs,
+        method: input.method,
+        url: input.url,
+        req_headers: input.req_headers,
+        req_body: input.req_body,
+        ok: input.ok,
+        status: input.status,
+        status_text: input.status_text,
+        resp_headers: input.resp_headers,
+        resp_body: input.resp_body,
+        time_ms: input.time_ms,
+        size: input.size,
+        error: input.error,
+    };
+    let name = unique_path(&dir, &format!("{secs}_{id}"), ".json");
+    write_pretty(&name, &file)?;
+    Ok(id)
+}
+
+fn history_records_from(root: &Path, offset: u32, limit: u32) -> Result<Vec<HistoryRecord>, String> {
+    let files = list_history_files(root)?;
+    let start = (offset as usize).min(files.len());
+    let end = (start + limit as usize).min(files.len());
+    let mut out = Vec::new();
+    for p in &files[start..end] {
+        if let Ok(content) = fs::read_to_string(p) {
+            if let Ok(f) = serde_json::from_str::<HistoryFile>(&content) {
+                out.push(f.summary());
+            }
+        }
+    }
+    Ok(out)
+}
+
+fn history_detail_from(root: &Path, id: &str) -> Result<HistoryDetail, String> {
+    let files = list_history_files(root)?;
+    for p in files {
+        let Ok(content) = fs::read_to_string(&p) else {
+            continue;
+        };
+        let Ok(rec) = serde_json::from_str::<HistoryFile>(&content) else {
+            continue;
+        };
+        if rec.id == id {
+            return Ok(HistoryDetail {
+                id: rec.id,
+                time: rec.time,
+                method: rec.method,
+                url: rec.url,
+                ok: rec.ok,
+                status: rec.status,
+                status_text: rec.status_text,
+                time_ms: rec.time_ms,
+                size: rec.size,
+                error: rec.error,
+                req_headers: rec.req_headers,
+                req_body: rec.req_body,
+                resp_headers: rec.resp_headers,
+                resp_body: rec.resp_body,
+            });
+        }
+    }
+    Err("记录不存在".into())
+}
+
+fn history_days_from(root: &Path) -> Result<Vec<HistoryDay>, String> {
+    let hist_dir = root.join(HISTORY_DIR);
+    if !hist_dir.exists() {
+        return Ok(vec![]);
+    }
+    let mut days = Vec::new();
+    for day_entry in fs::read_dir(&hist_dir).map_err(|e| format!("读取历史目录失败: {e}"))? {
+        let day_entry = day_entry.map_err(|e| e.to_string())?;
+        let p = day_entry.path();
+        if !p.is_dir() {
+            continue;
+        }
+        let mut count = 0u32;
+        for f in fs::read_dir(&p).map_err(|e| format!("读取历史目录失败: {e}"))? {
+            if let Ok(f) = f {
+                if f.path().extension().map(|e| e == "json").unwrap_or(false) {
+                    count += 1;
+                }
+            }
+        }
+        if count > 0 {
+            days.push(HistoryDay {
+                day: day_entry.file_name().to_string_lossy().to_string(),
+                count,
+            });
+        }
+    }
+    days.sort_by(|a, b| b.day.cmp(&a.day));
+    Ok(days)
+}
+
+#[tauri::command]
+fn save_history(state: State<'_, WorkspaceState>, input: HistoryInput) -> Result<String, String> {
+    let root = workspace_root(&state)?;
+    save_history_to(&root, input)
+}
+
+#[tauri::command]
+fn history_records(
+    state: State<'_, WorkspaceState>,
+    offset: u32,
+    limit: u32,
+) -> Result<Vec<HistoryRecord>, String> {
+    let root = workspace_root(&state)?;
+    history_records_from(&root, offset, limit)
+}
+
+#[tauri::command]
+fn history_detail(state: State<'_, WorkspaceState>, id: String) -> Result<HistoryDetail, String> {
+    let root = workspace_root(&state)?;
+    history_detail_from(&root, &id)
+}
+
+#[tauri::command]
+fn history_days(state: State<'_, WorkspaceState>) -> Result<Vec<HistoryDay>, String> {
+    let root = workspace_root(&state)?;
+    history_days_from(&root)
+}
+
+#[tauri::command]
+fn history_clear(state: State<'_, WorkspaceState>) -> Result<(), String> {
+    let root = workspace_root(&state)?;
+    let hist_dir = root.join(HISTORY_DIR);
+    if hist_dir.exists() {
+        fs::remove_dir_all(&hist_dir).map_err(|e| format!("清空历史失败: {e}"))?;
+    }
+    Ok(())
+}
+
 // ==================== Mock 服务 ====================
 
 #[tauri::command]
@@ -1815,6 +2114,11 @@ pub fn run() {
             update_tray_env,
             get_app_version,
             send_request,
+            save_history,
+            history_records,
+            history_detail,
+            history_days,
+            history_clear,
             mock_start,
             mock_stop,
             mock_status,
@@ -2094,6 +2398,58 @@ mod tests {
         assert_eq!(next_version(&dir, "x"), 4);
         assert_eq!(next_version(&dir, "y"), 1);
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_history_roundtrip() {
+        // 保存 -> 分页列表 -> 详情 -> 按天统计 全链路
+        let root = std::env::temp_dir().join(format!("history-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+
+        let input = HistoryInput {
+            method: "GET".into(),
+            url: "http://127.0.0.1:8080/api/users".into(),
+            req_headers: vec![("Content-Type".into(), "application/json".into())],
+            req_body: Some("{\"a\":1}".into()),
+            ok: true,
+            status: 200,
+            status_text: "OK".into(),
+            resp_headers: vec![("X-Test".into(), "yes".into())],
+            resp_body: "{\"hello\":\"world\"}".into(),
+            time_ms: 12,
+            size: 100,
+            error: None,
+        };
+        let id = save_history_to(&root, input).unwrap();
+        assert!(root.join(HISTORY_DIR).exists());
+
+        // 列表分页
+        let page = history_records_from(&root, 0, 100).unwrap();
+        assert_eq!(page.len(), 1);
+        assert_eq!(page[0].id, id);
+        assert_eq!(page[0].status, 200);
+        // offset 越界返回空
+        assert!(history_records_from(&root, 5, 100).unwrap().is_empty());
+
+        // 详情
+        let detail = history_detail_from(&root, &id).unwrap();
+        assert_eq!(detail.req_headers[0].0, "Content-Type");
+        assert_eq!(detail.req_body.as_deref(), Some("{\"a\":1}"));
+        assert_eq!(detail.resp_body, "{\"hello\":\"world\"}");
+        // 不存在的 id
+        assert!(history_detail_from(&root, "nope").is_err());
+
+        // 按天统计
+        let days = history_days_from(&root).unwrap();
+        assert_eq!(days.len(), 1);
+        assert_eq!(days[0].count, 1);
+
+        // 清空
+        fs::remove_dir_all(root.join(HISTORY_DIR)).unwrap();
+        assert!(history_records_from(&root, 0, 100).unwrap().is_empty());
+        assert!(history_days_from(&root).unwrap().is_empty());
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
