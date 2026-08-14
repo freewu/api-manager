@@ -69,7 +69,7 @@ release:
 release-collect:
     if exist release rmdir /s /q release
     mkdir release
-    copy /y "src-tauri\target\release\api-manager.exe" release\
+    copy /y "src-tauri\target\release\api-manager.exe" release\api-manager.exe
     dir release
 
 # 将单体可执行文件收集到 ./release（Unix / WSL；若工具链为 Windows MSVC，产物为 .exe）
