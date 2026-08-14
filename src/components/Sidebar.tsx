@@ -105,7 +105,7 @@ function NodeRow({
   return (
     <div>
       <div
-        className={`node ${selected ? "selected" : ""} ${canDrop && dragOver === dropTarget ? "drag-over" : ""} ${isFolder ? "folder-node" : ""}`}
+        className={`node ${selected ? "selected" : ""} ${canDrop && dragOver === dropTarget ? "drag-over" : ""} ${dragSrc === node.path ? "dragging" : ""} ${isFolder ? "folder-node" : ""}`}
         style={{ paddingLeft: indent }}
         draggable={true}
         onDragStart={(e) => {
@@ -127,6 +127,9 @@ function NodeRow({
         }}
         onDragLeave={(e) => {
           e.stopPropagation();
+          // 仅当真正离开本行时清除高亮（移动到行内子元素不算离开）
+          const rt = e.relatedTarget as Node | null;
+          if (rt && e.currentTarget.contains(rt)) return;
           onDragLeaveTarget(dropTarget);
         }}
         onDrop={(e) => {

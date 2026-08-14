@@ -481,6 +481,9 @@ body {
   outline-offset: -2px;
   background: rgba(88, 166, 255, 0.08);
 }
+.node.dragging {
+  opacity: 0.45;
+}
 .tree.drag-over-root {
   outline: 2px dashed var(--accent);
   outline-offset: -3px;
