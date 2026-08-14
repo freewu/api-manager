@@ -10,6 +10,7 @@ interface Props {
   onRename: (node: TreeNode) => void;
   onDelete: (node: TreeNode) => void;
   onEditInfo: (node: TreeNode) => void;
+  onVersions: (node: TreeNode) => void;
 }
 
 interface CtxMenu {
@@ -32,6 +33,7 @@ function NodeRow({
   onRename,
   onDelete,
   onEditInfo,
+  onVersions,
   onContextMenu,
   filter,
 }: Props & {
@@ -147,6 +149,7 @@ function NodeRow({
               onRename={onRename}
               onDelete={onDelete}
               onEditInfo={onEditInfo}
+              onVersions={onVersions}
               onContextMenu={onContextMenu}
               filter={filter}
               tree={null}
@@ -168,14 +171,18 @@ function NodeRow({
 }
 
 export function Sidebar(props: Props) {
-  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete } = props;
+  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions } = props;
   const [filter, setFilter] = useState("");
   const [menu, setMenu] = useState<CtxMenu | null>(null);
+  const [bgMenu, setBgMenu] = useState<{ x: number; y: number } | null>(null);
 
   // 右键菜单：点击任意处 / Esc / 滚动时关闭
   useEffect(() => {
-    if (!menu) return;
-    const close = () => setMenu(null);
+    if (!menu && !bgMenu) return;
+    const close = () => {
+      setMenu(null);
+      setBgMenu(null);
+    };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("click", close);
     window.addEventListener("scroll", close, true);
@@ -185,7 +192,7 @@ export function Sidebar(props: Props) {
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("keydown", onKey);
     };
-  }, [menu]);
+  }, [menu, bgMenu]);
 
   const openMenu = (e: React.MouseEvent, node: TreeNode) => {
     setMenu({
@@ -208,7 +215,17 @@ export function Sidebar(props: Props) {
           />
         </div>
       </div>
-      <div className="tree">
+      <div
+        className="tree"
+        onContextMenu={(e) => {
+          // 空白处右键：新建接口 / 新建分组（节点行上的右键会 stopPropagation）
+          e.preventDefault();
+          setBgMenu({
+            x: Math.min(e.clientX, window.innerWidth - 190),
+            y: Math.min(e.clientY, window.innerHeight - 160),
+          });
+        }}
+      >
         {tree && tree.children && (
           <div>
             {tree.children.map((child, i) => (
@@ -223,6 +240,7 @@ export function Sidebar(props: Props) {
                 onRename={onRename}
                 onDelete={onDelete}
                 onEditInfo={onEditInfo}
+                onVersions={onVersions}
                 onContextMenu={openMenu}
                 filter={filter.trim().toLowerCase()}
                 tree={null}
@@ -300,6 +318,15 @@ export function Sidebar(props: Props) {
                 ✎ 修改
               </button>
               <button
+                onClick={() => {
+                  onVersions(menu.node);
+                  setMenu(null);
+                }}
+              >
+                📑 查看版本信息
+              </button>
+              <div className="node-ctx-sep" />
+              <button
                 className="danger"
                 onClick={() => {
                   onDelete(menu.node);
@@ -310,6 +337,27 @@ export function Sidebar(props: Props) {
               </button>
             </>
           )}
+        </div>
+      )}
+
+      {bgMenu && (
+        <div className="node-ctx-menu" style={{ left: bgMenu.x, top: bgMenu.y }}>
+          <button
+            onClick={() => {
+              onNewApi("");
+              setBgMenu(null);
+            }}
+          >
+            🌐 新增接口
+          </button>
+          <button
+            onClick={() => {
+              onNewFolder("");
+              setBgMenu(null);
+            }}
+          >
+            📁 新增目录
+          </button>
         </div>
       )}
     </div>

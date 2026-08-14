@@ -173,6 +173,21 @@ pub struct TreeNode {
     pub children: Option<Vec<TreeNode>>,
 }
 
+/// 版本文件信息（.version/<uuid>/<名称>.<n>.json）
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VersionInfo {
+    pub version: u32,
+    pub name: String,
+    pub path: String,
+    /// 文件修改时间（Unix 秒）
+    pub modified: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub method: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub endpoint: Option<String>,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HttpRequestData {
@@ -493,7 +508,7 @@ fn save_api_version(
 ) -> Result<String, String> {
     let root = workspace_root(&state)?;
     let mut data = data;
-    if data.uuid.trim().is_empty() {
+    if !valid_uuid(data.uuid.trim()) {
         data.uuid = uuid::Uuid::new_v4().to_string();
     }
     let uuid = data.uuid.trim().to_string();
@@ -515,6 +530,11 @@ fn save_api_version(
     Ok(format!(".version/{uuid}/{name}.{version}.json"))
 }
 
+/// uuid 仅允许十六进制字符与连字符，防止路径穿越
+fn valid_uuid(s: &str) -> bool {
+    !s.is_empty() && s.chars().all(|c| c.is_ascii_hexdigit() || c == '-')
+}
+
 /// 计算下一个版本号：扫描 <name>.<n>.json 取最大 n + 1
 fn next_version(ver_dir: &Path, name: &str) -> u32 {
     let mut max: u32 = 0;
@@ -531,6 +551,71 @@ fn next_version(ver_dir: &Path, name: &str) -> u32 {
         }
     }
     max + 1
+}
+
+/// 列出某个接口（按 uuid）的所有历史版本，按版本号从大到小排序
+#[tauri::command]
+fn list_versions(state: State<'_, WorkspaceState>, uuid: String) -> Result<Vec<VersionInfo>, String> {
+    let root = workspace_root(&state)?;
+    let uuid = uuid.trim().to_string();
+    if !valid_uuid(&uuid) {
+        return Ok(vec![]);
+    }
+    let dir = root.join(".version").join(&uuid);
+    if !dir.exists() {
+        return Ok(vec![]);
+    }
+    let mut list: Vec<VersionInfo> = Vec::new();
+    for entry in fs::read_dir(&dir).map_err(|e| format!("读取版本目录失败: {e}"))? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        if path.extension().map(|e| e != "json").unwrap_or(true) {
+            continue;
+        }
+        let stem = path
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        // <名称>.<版本号>
+        let (name, version) = match stem.rfind('.') {
+            Some(idx) => match stem[idx + 1..].parse::<u32>() {
+                Ok(n) => (stem[..idx].to_string(), n),
+                Err(_) => continue,
+            },
+            None => continue,
+        };
+        let modified = entry
+            .metadata()
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let mut method = None;
+        let mut endpoint = None;
+        if let Ok(content) = fs::read_to_string(&path) {
+            if let Ok(v) = serde_json::from_str::<Value>(&content) {
+                method = v.get("method").and_then(|x| x.as_str()).map(String::from);
+                endpoint = v.get("path").and_then(|x| x.as_str()).map(String::from);
+            }
+        }
+        list.push(VersionInfo {
+            version,
+            name,
+            path: path.to_string_lossy().to_string(),
+            modified,
+            method,
+            endpoint,
+        });
+    }
+    list.sort_by(|a, b| b.version.cmp(&a.version));
+    Ok(list)
+}
+
+/// 读取某个历史版本文件的原始内容（用于 diff）
+#[tauri::command]
+fn read_api_version(path: String) -> Result<String, String> {
+    fs::read_to_string(&path).map_err(|e| format!("读取版本失败: {e}"))
 }
 
 #[tauri::command]
@@ -1089,6 +1174,8 @@ pub fn run() {
             read_api,
             save_api,
             save_api_version,
+            list_versions,
+            read_api_version,
             create_api,
             create_folder,
             rename_entry,

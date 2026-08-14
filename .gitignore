@@ -18,3 +18,6 @@ scripts/gen-icon.cjs
 
 # 发布产物目录
 release/
+
+# 接口版本快照（运行时产物）
+.version/

@@ -6,6 +6,7 @@ import {
   deleteEntry,
   getAppVersion,
   getWorkspace,
+  listVersions,
   mockReload,
   mockStart,
   mockStatus,
@@ -29,6 +30,7 @@ import { EnvValueModal } from "./components/EnvValueModal";
 import { Modal } from "./components/Modal";
 import { Response } from "./components/Response";
 import { Sidebar } from "./components/Sidebar";
+import { VersionModal } from "./components/VersionModal";
 import {
   ApiFile,
   EnvStore,
@@ -38,6 +40,7 @@ import {
   InfoJson,
   MockStatus,
   TreeNode,
+  VersionInfo,
   emptyEnv,
 } from "./types";
 
@@ -80,6 +83,8 @@ export default function App() {
   const [envs, setEnvs] = useState<EnvStore>(emptyEnv());
   const [envModal, setEnvModal] = useState(false);
   const [envValue, setEnvValue] = useState(false);
+  const [versionModal, setVersionModal] = useState<{ api: ApiFile; versions: VersionInfo[] } | null>(null);
+  const [emptyMenu, setEmptyMenu] = useState<{ x: number; y: number } | null>(null);
   const toastTimer = useRef<number | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -114,6 +119,19 @@ export default function App() {
     })();
     return () => unlisten?.();
   }, []);
+
+  // 空区域右键菜单：点击任意处 / Esc 关闭
+  useEffect(() => {
+    if (!emptyMenu) return;
+    const close = () => setEmptyMenu(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("click", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [emptyMenu]);
 
   async function loadAll(ws: string) {
     const [t, info, e] = await Promise.all([readTree(), readInfo(ws), readEnv()]);
@@ -471,6 +489,18 @@ export default function App() {
     }
   };
 
+  // 查看接口版本信息（右键 -> 查看版本信息）
+  const openVersions = async (node: TreeNode) => {
+    try {
+      const data = await readApi(node.path);
+      if (!data.uuid) data.uuid = crypto.randomUUID();
+      const versions = await listVersions(data.uuid);
+      setVersionModal({ api: data, versions });
+    } catch (e) {
+      showToast("读取版本信息失败: " + e);
+    }
+  };
+
   const baseUrl = rootInfo.baseUrl || "";
 
   // ---------- 渲染 ----------
@@ -550,11 +580,6 @@ export default function App() {
             💾 保存{dirty ? " *" : ""}
           </button>
         )}
-        {api && (
-          <button className="btn" onClick={handleSaveVersion} title="将当前接口内容保存为新版本（.version/<uuid>/<名称>.<版本号>.json）">
-            🔖 保存新版本
-          </button>
-        )}
         <div className="mock-box">
           <span style={{ fontSize: 12, color: "var(--text-dim)" }}>Mock</span>
           <input
@@ -587,6 +612,7 @@ export default function App() {
           onRename={(node) => openModal("rename", "", node)}
           onDelete={(node) => openModal("delete", "", node)}
           onEditInfo={(node) => openInfoModal(node)}
+          onVersions={openVersions}
         />
 
         <div className="content">
@@ -600,20 +626,59 @@ export default function App() {
                   setDirty(true);
                 }}
                 onSend={handleSend}
+                onSaveVersion={handleSaveVersion}
                 sending={sending}
               />
               <Response result={response} sending={sending} />
             </>
           ) : (
-            <div className="empty-editor">
+            <div
+              className="empty-editor"
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setEmptyMenu({
+                  x: Math.min(e.clientX, window.innerWidth - 190),
+                  y: Math.min(e.clientY, window.innerHeight - 160),
+                });
+              }}
+            >
               <span className="big">📄</span>
-              <span>从左侧选择一个接口开始</span>
+              <span>从左侧选择一个接口开始（右键可新建接口 / 分组）</span>
             </div>
           )}
         </div>
       </div>
 
       {toast && <div className="toast">{toast}</div>}
+
+      {emptyMenu && (
+        <div className="node-ctx-menu" style={{ left: emptyMenu.x, top: emptyMenu.y }}>
+          <button
+            onClick={() => {
+              openModal("newApi", "");
+              setEmptyMenu(null);
+            }}
+          >
+            🌐 新增接口
+          </button>
+          <button
+            onClick={() => {
+              openModal("newFolder", "");
+              setEmptyMenu(null);
+            }}
+          >
+            📁 新增目录
+          </button>
+        </div>
+      )}
+
+      {versionModal && (
+        <VersionModal
+          api={versionModal.api}
+          versions={versionModal.versions}
+          onClose={() => setVersionModal(null)}
+        />
+      )}
 
       {envModal && (
         <EnvModal

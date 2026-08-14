@@ -7,6 +7,7 @@ import type {
   InfoJson,
   MockStatus,
   TreeNode,
+  VersionInfo,
 } from "./types";
 
 export function getWorkspace(): Promise<string | null> {
@@ -31,6 +32,14 @@ export function saveApi(path: string, data: ApiFile): Promise<string> {
 
 export function saveApiVersion(data: ApiFile): Promise<string> {
   return invoke<string>("save_api_version", { data });
+}
+
+export function listVersions(uuid: string): Promise<VersionInfo[]> {
+  return invoke<VersionInfo[]>("list_versions", { uuid });
+}
+
+export function readApiVersion(path: string): Promise<string> {
+  return invoke<string>("read_api_version", { path });
 }
 
 export function createApi(dir: string, name: string): Promise<string> {

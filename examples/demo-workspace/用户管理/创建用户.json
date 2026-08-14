@@ -1,4 +1,5 @@
 {
+  "uuid": "5ecf4cb0-ba49-4b3c-afb5-8090fa91059c",
   "name": "创建用户",
   "method": "POST",
   "path": "/api/users",

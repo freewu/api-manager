@@ -85,6 +85,15 @@ export interface TreeNode {
   children?: TreeNode[];
 }
 
+export interface VersionInfo {
+  version: number;
+  name: string;
+  path: string;
+  modified: number;
+  method?: string;
+  endpoint?: string;
+}
+
 export interface HttpRequestData {
   method: string;
   url: string;
