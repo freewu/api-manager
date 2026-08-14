@@ -21,7 +21,8 @@ export function EnvVarEditor({ rows, onChange }: Props) {
 
   return (
     <div>
-      <table className="kv-table env-var-table">
+      <div className="env-var-scroll">
+        <table className="kv-table env-var-table">
         <thead>
           <tr>
             <th style={{ width: 30 }}></th>
@@ -86,6 +87,7 @@ export function EnvVarEditor({ rows, onChange }: Props) {
           ))}
         </tbody>
       </table>
+      </div>
       <button className="btn small kv-add" onClick={add}>
         + 新增变量
       </button>

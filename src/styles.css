@@ -1179,7 +1179,7 @@ body {
   animation: modal-in 0.16s ease;
 }
 .modal-wide {
-  width: 840px;
+  width: 980px;
 }
 .modal-xwide {
   width: 1000px;
@@ -1941,6 +1941,14 @@ body {
 .env-var-table td:nth-child(2) input,
 .env-var-table td:nth-child(3) input {
   font-family: var(--font-mono);
+}
+
+/* 全局变量超过约 10 行后内部滚动 */
+.env-var-scroll {
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
 

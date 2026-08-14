@@ -4,7 +4,7 @@
   "method": "POST",
   "path": "/api/users",
   "url": "{{url}}/api/users",
-  "description": "创建一个新用户",
+  "description": "创建一个新用户11111",
   "headers": [
     {
       "key": "Content-Type",
