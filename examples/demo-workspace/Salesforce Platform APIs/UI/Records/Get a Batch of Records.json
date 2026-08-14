@@ -1,0 +1,74 @@
+{
+  "uuid": "df3e37f2-7b48-4b13-ae5a-0dcd0c46e981",
+  "name": "Get a Batch of Records",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/records/batch/{RECORD_IDS}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/records/batch/:RECORD_IDS",
+  "description": "Get data for a batch of records.",
+  "headers": [],
+  "query": [
+    {
+      "key": "childRelationships",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "fields",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "layoutTypes",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "modes",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "optionalFields",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "pageSize",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "updateMru",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "RECORD_IDS",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

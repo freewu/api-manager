@@ -1,0 +1,44 @@
+{
+  "uuid": "c7d7b1bc-4374-4aa7-b00e-f793068c31ae",
+  "name": "Contract Amender API",
+  "method": "PATCH",
+  "path": "/services/apexrest/SBQQ/ServiceRouter",
+  "url": "{{_endpoint}}/services/apexrest/SBQQ/ServiceRouter?loader=SBQQ.ContractManipulationAPI.ContractAmender&uid=",
+  "description": "Receive a CPQ contract ID in a request, and return quote data for an amendment quote.\nAvailable in: Salesforce CPQ Summer ’16 and later\nSpecial Access Rules: All of these user permissions are required.\nInsert and update on quote and opportunity objects\nRead on quote, opportunity, and product2 objects\nDelete on quote object\n\nhttps://developer.salesforce.com/docs/atlas.en-us.cpq_dev_api.meta/cpq_dev_api/cpq_api_contract_amender.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "loader",
+      "value": "SBQQ.ContractManipulationAPI.ContractAmender",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "uid",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

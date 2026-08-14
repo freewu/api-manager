@@ -1,0 +1,31 @@
+{
+  "uuid": "6272c6a9-1641-4e27-a032-9d5cfab7f6cd",
+  "name": "Get Job Info Query",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/jobs/query/{{_jobId}}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/jobs/query/{{_jobId}}",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,44 @@
+{
+  "uuid": "02ab106a-49a1-4782-ac51-b927db482127",
+  "name": "Opt Out from a Promotion",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/connect/loyalty/programs/{loyaltyProgramName}/program-processes/{processName}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/connect/loyalty/programs/:loyaltyProgramName/program-processes/:processName",
+  "description": "[Opt Out from a Promotion](https://developer.salesforce.com/docs/atlas.en-us.loyalty.meta/loyalty/connect_resources_unenroll_promotion.htm)\n\nNOTE:\n\nIn the Pre-request. Script Tab, make changes in the variables value accordingly with the real Process Name to invoke.",
+  "headers": [],
+  "query": [
+    {
+      "key": "journalTypeId",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "loyaltyProgramName",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "processName",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n   \"processParameters\":[\n      {\n         \"MembershipNumber\":\"M1\",\n         \"PromotionName\":\"Promo1\"\n      }\n   ]\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

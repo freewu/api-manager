@@ -1,0 +1,31 @@
+{
+  "uuid": "c0f24212-d05d-41eb-af51-df6fe6e6de55",
+  "name": "Delete managed event subscription",
+  "method": "DELETE",
+  "path": "/services/data/v{{version}}/tooling/sobjects/ManagedEventSubscription/{managedEventSubscriptionId}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/ManagedEventSubscription/:managedEventSubscriptionId",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "managedEventSubscriptionId",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

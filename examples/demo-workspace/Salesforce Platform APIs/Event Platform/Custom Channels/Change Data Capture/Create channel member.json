@@ -1,0 +1,24 @@
+{
+  "uuid": "0715d05b-fd37-4f04-b42f-426b52566998",
+  "name": "Create channel member",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/tooling/sobjects/PlatformEventChannelMember",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/PlatformEventChannelMember",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"FullName\": \"Account_Channel_chn_AccountChangeEvent\",\n    \"Metadata\": {\n        \"eventChannel\": \"Account_Channel__chn\",\n        \"selectedEntity\": \"AccountChangeEvent\"\n    }\n}\n",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

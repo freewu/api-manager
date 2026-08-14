@@ -1,0 +1,24 @@
+{
+  "uuid": "96b2d7ff-23d5-4c9d-baab-05c80e7746a2",
+  "name": "Authentication Configuration Endpoint",
+  "method": "GET",
+  "path": "/.well-known/auth-configuration",
+  "url": "{{url}}{{site}}/.well-known/auth-configuration",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

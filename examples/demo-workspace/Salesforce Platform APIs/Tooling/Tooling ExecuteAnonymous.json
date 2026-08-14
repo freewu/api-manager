@@ -1,0 +1,38 @@
+{
+  "uuid": "a0891d11-91ba-4aeb-80b2-a9e2fa6747b9",
+  "name": "Tooling ExecuteAnonymous",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/tooling/executeAnonymous/",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/executeAnonymous/?anonymousBody=System.Debug('awesome');",
+  "description": "Executes Apex code anonymously. Available from API version 29.0 or later.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "anonymousBody",
+      "value": "System.Debug('awesome');",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

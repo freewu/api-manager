@@ -1,0 +1,24 @@
+{
+  "uuid": "1b0feda6-aed5-4832-b038-93a4ea3d3b54",
+  "name": "Create channel member",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/tooling/sobjects/PlatformEventChannelMember",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/PlatformEventChannelMember",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"FullName\": \"Carbon_ComparisonChannel_chn_Carbon_Comparison_e\",\n    \"Metadata\": {\n        \"eventChannel\": \"Carbon_ComparisonChannel__chn\",\n        \"selectedEntity\": \"Carbon_Comparison__e\",\n        \"urls\": null\n    }\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

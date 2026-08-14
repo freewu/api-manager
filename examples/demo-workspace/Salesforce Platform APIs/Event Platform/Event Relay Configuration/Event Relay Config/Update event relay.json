@@ -1,0 +1,50 @@
+{
+  "uuid": "d1e3d63f-ad63-49cf-8bb4-96487d4689b5",
+  "name": "Update event relay",
+  "method": "PATCH",
+  "path": "/services/data/v{{version}}/tooling/sobjects/EventRelayConfig/{EVENT_RELAY_CONFIG_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/EventRelayConfig/:EVENT_RELAY_CONFIG_ID",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "SOAPAction",
+      "value": "\"\"",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Authorization",
+      "value": "Bearer {{_accessToken}}",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "EVENT_RELAY_CONFIG_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"FullName\": \"MyEventRelay\",\n    \"Metadata\": {\n        \"label\": \"My Event Relay\",\n        \"relayOption\": \"{\\\"ReplayRecovery\\\":\\\"LATEST\\\"}\"\n    }\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

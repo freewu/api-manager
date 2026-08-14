@@ -1,0 +1,31 @@
+{
+  "uuid": "f17137d9-9ce6-47b7-9e82-ee7548a6c89b",
+  "name": "Get Lookup Field Actions",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/actions/lookup/{SOBJECT_API_NAMES}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/actions/lookup/:SOBJECT_API_NAMES",
+  "description": "Get the actions on Lightning pages (FlexiPages).",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAMES",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

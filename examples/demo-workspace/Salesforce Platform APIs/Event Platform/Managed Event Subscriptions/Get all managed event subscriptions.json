@@ -1,0 +1,31 @@
+{
+  "uuid": "97ff59b1-1d9e-4b40-96d8-5bc3aed5d4d6",
+  "name": "Get all managed event subscriptions",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/tooling/query/",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/query/?q=SELECT%20Id,IsDeleted,DeveloperName,Language,MasterLabel,NamespacePrefix,ManageableState,CreatedDate,CreatedById,LastModifiedDate,LastModifiedById,SystemModstamp,Version%20FROM%20ManagedEventSubscription",
+  "description": "",
+  "headers": [],
+  "query": [
+    {
+      "key": "q",
+      "value": "SELECT%20Id,IsDeleted,DeveloperName,Language,MasterLabel,NamespacePrefix,ManageableState,CreatedDate,CreatedById,LastModifiedDate,LastModifiedById,SystemModstamp,Version%20FROM%20ManagedEventSubscription",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

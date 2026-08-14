@@ -1,0 +1,31 @@
+{
+  "uuid": "99915143-3670-4bd3-9938-359ae19613ba",
+  "name": "Lightning Usage by Page",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/sobjects/LightningUsageByBrowserMetrics",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/LightningUsageByBrowserMetrics",
+  "description": "Represents standard pages users viewed most frequently in Lightning Experience.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_lightning_usagebypagemetrics.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

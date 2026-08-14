@@ -1,0 +1,37 @@
+{
+  "uuid": "fee0773e-4d6b-4749-88cb-849fb5cc7c11",
+  "name": "Integration Procedure Invocation Using GET",
+  "method": "GET",
+  "path": "/services/apexrest/{NAMESPACE}/v1/integrationprocedure/{TYPE_SUBTYPE}/",
+  "url": "{{_endpoint}}/services/apexrest/:NAMESPACE/v1/integrationprocedure/:TYPE_SUBTYPE/",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "NAMESPACE",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "TYPE_SUBTYPE",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

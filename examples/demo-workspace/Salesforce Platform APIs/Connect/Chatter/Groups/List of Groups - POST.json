@@ -1,0 +1,73 @@
+{
+  "uuid": "a96311f5-e17b-4fe7-8c87-ac8a9eda76c7",
+  "name": "List of Groups - POST",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/chatter/groups",
+  "url": "{{_endpoint}}/services/data/v{{version}}/chatter/groups?name=New Chatter Group  (Private Access)&visibility=PrivateAccess&description=Created via API&information=Private Information&isArchived=false&isAutoArchiveDisabled=false&isBroadcast=false&canHaveChatterGuests\t=true",
+  "description": "A list of all the groups in the organization. Get information about groups or create a group.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resources_groups_ListOfGroups.htm",
+  "headers": [],
+  "query": [
+    {
+      "key": "name",
+      "value": "New Chatter Group  (Private Access)",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "visibility",
+      "value": "PrivateAccess",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "description",
+      "value": "Created via API",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "information",
+      "value": "Private Information",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "isArchived",
+      "value": "false",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "isAutoArchiveDisabled",
+      "value": "false",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "isBroadcast",
+      "value": "false",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "canHaveChatterGuests",
+      "value": "true",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

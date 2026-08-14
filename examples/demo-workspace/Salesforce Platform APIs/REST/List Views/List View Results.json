@@ -1,0 +1,57 @@
+{
+  "uuid": "01704bbf-5601-454d-8d1c-eb8edbb03148",
+  "name": "List View Results",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/sobjects/{SOBJECT_API_NAME}/listviews/{LIST_VIEW_ID}/results",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/:SOBJECT_API_NAME/listviews/:LIST_VIEW_ID/results",
+  "description": "Returns detailed information about a list view, including the ID, the columns, and the SOQL query.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "limit",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "offset",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "LIST_VIEW_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

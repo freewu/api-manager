@@ -1,0 +1,37 @@
+{
+  "uuid": "37605219-0528-4ba1-ba45-843486556880",
+  "name": "Versions",
+  "method": "GET",
+  "path": "/services/data",
+  "url": "{{_endpoint}}/services/data",
+  "description": "Lists summary information about each Salesforce version currently available, including the version, label, and a link to each version's root.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Sforce-Call-Options",
+      "value": "client=postman",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

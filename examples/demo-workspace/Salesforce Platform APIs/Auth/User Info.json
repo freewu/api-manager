@@ -1,0 +1,31 @@
+{
+  "uuid": "77cf6bf2-4b4a-4d1f-b458-9239bdf201cd",
+  "name": "User Info",
+  "method": "GET",
+  "path": "/services/oauth2/userinfo",
+  "url": "{{url}}{{site}}/services/oauth2/userinfo",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

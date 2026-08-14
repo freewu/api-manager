@@ -1,0 +1,50 @@
+{
+  "uuid": "36e0050a-afc4-4547-952f-52c4724f8aff",
+  "name": "Following",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/chatter/users/{USER_ID}/following",
+  "url": "{{_endpoint}}/services/data/v{{version}}/chatter/users/:USER_ID/following",
+  "description": "Returns a list of people, groups, records, topics, and files that the specified user is following. Also used to follow records.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resources_users_FollowingUsers.htm?search_text=following",
+  "headers": [],
+  "query": [
+    {
+      "key": "filterType",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "page",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "pageSize",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "USER_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

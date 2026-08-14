@@ -1,0 +1,31 @@
+{
+  "uuid": "356453d0-4350-4dcc-aa55-05c334646ff6",
+  "name": "Prediction models",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/smartdatadiscovery/predictionDefinitions/{PREDICTION_DEFINITION_ID}/models",
+  "url": "{{_endpoint}}/services/data/v{{version}}/smartdatadiscovery/predictionDefinitions/:PREDICTION_DEFINITION_ID/models",
+  "description": "Get available prediction definitions.",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "PREDICTION_DEFINITION_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,31 @@
+{
+  "uuid": "df423d08-9641-4697-86e8-d5489a2db8d6",
+  "name": "Get Job Unprocessed Record Results",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/jobs/ingest/{{_jobId}}/unprocessedrecords",
+  "url": "{{_endpoint}}/services/data/v{{version}}/jobs/ingest/{{_jobId}}/unprocessedrecords",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

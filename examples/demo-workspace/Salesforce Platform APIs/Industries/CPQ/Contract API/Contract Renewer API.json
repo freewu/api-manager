@@ -1,0 +1,38 @@
+{
+  "uuid": "d724db9d-092e-44cb-b7a7-52d01ed8af0f",
+  "name": "Contract Renewer API",
+  "method": "PATCH",
+  "path": "/services/apexrest/SBQQ/ServiceRouter",
+  "url": "{{_endpoint}}/services/apexrest/SBQQ/ServiceRouter?loader=SBQQ.ContractManipulationAPI.ContractRenewer",
+  "description": "Receive a CPQ contract in a request, and return quote data for one or more renewal quotes.\nAvailable in: Salesforce CPQ Summer ’16 and later\nSpecial Access Rules: All of these user permissions are required.\nInsert and update on quote and opportunity objects\nRead on quote, opportunity, and product2 objects\nDelete on quote object\n\nhttps://developer.salesforce.com/docs/atlas.en-us.cpq_dev_api.meta/cpq_dev_api/cpq_api_contract_renewer.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "loader",
+      "value": "SBQQ.ContractManipulationAPI.ContractRenewer",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"context\": {\n        \"masterContractId\": null,\n        \"renewedContracts\": [\n            {\n                \"attributes\": {\n                    \"type\": \"Contract\"\n                },\n                \"Id\": \"800540000006LLVAA2\"\n            }\n        ]\n    }\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,55 @@
+{
+  "uuid": "1874a7d9-605f-447e-8ade-afa637d85b37",
+  "name": "Bulk Close Job",
+  "method": "POST",
+  "path": "/services/async/{{version}}/job/{{_jobId}}",
+  "url": "{{_endpoint}}/services/async/{{version}}/job/{{_jobId}}",
+  "description": "",
+  "headers": [
+    {
+      "key": "X-SFDC-Session",
+      "value": "{{_accessToken}}",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "charset",
+      "value": "UTF-8",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Accept-Encoding",
+      "value": "gzip",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "Content-Encoding",
+      "value": "gzip",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n   \"state\" : \"Closed\"\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

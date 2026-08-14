@@ -1,0 +1,31 @@
+{
+  "uuid": "22ab20f6-e502-4b51-87eb-818a0ad0a919",
+  "name": "ID Token",
+  "method": "GET",
+  "path": "/id/{{_orgId}}/{{_userId}}",
+  "url": "{{_endpoint}}/id/{{_orgId}}/{{_userId}}",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,24 @@
+{
+  "uuid": "d1c483d4-4cb5-4122-aab0-115adacc3fdb",
+  "name": "Update a Batch of Favorites",
+  "method": "PUT",
+  "path": "/services/data/v{{version}}/ui-api/favorites/batch",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/favorites/batch",
+  "description": "Update all favorites at once. The sort order is updated to the given relative ordering. Any favorites missing from the request body are deleted.",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"favorites\": [\n        {\n            \"id\": \"0MVR00000004DhnOAE\",\n            \"name\": \"Q4 Perf\"\n        }\n    ]\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

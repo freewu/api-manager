@@ -1,0 +1,38 @@
+{
+  "uuid": "c2b3198c-7e22-431b-a415-f9bf56548c3d",
+  "name": "Launch Flow",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/actions/custom/flow/{flowApiName}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/actions/custom/flow/:flowApiName",
+  "description": "Launches an Autolaunched Flow with the supplied input parameters.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "flowApiName",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"inputs\": [\n        {}\n    ]\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

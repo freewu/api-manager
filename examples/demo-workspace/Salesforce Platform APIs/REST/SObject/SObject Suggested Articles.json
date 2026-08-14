@@ -1,0 +1,57 @@
+{
+  "uuid": "d38bafd9-b176-4265-a7b6-92a03f5d3e97",
+  "name": "SObject Suggested Articles",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/sobjects/{SOBJECT_API_NAME}/suggestedArticles",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/:SOBJECT_API_NAME/suggestedArticles?description=&language=&subject=",
+  "description": "Returns a list of suggested Salesforce Knowledge articles for a case, work order, or work order line item.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "description",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "language",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "subject",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

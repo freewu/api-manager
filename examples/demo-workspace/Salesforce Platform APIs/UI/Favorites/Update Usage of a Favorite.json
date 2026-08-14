@@ -1,0 +1,31 @@
+{
+  "uuid": "96cf76e8-c27b-4ba5-928e-ab8d1e5bc468",
+  "name": "Update Usage of a Favorite",
+  "method": "PATCH",
+  "path": "/services/data/v{{version}}/ui-api/favorites/{FAVORITE_ID}/usage",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/favorites/:FAVORITE_ID/usage",
+  "description": "Update the usage of an individual favorite, for example, the last time and number of times the favorite was clicked.",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "FAVORITE_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,38 @@
+{
+  "uuid": "e583dfd2-cf7a-4e38-b97d-7cdc8c666b50",
+  "name": "runDecisionMatrix",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/actions/custom/runDecisionMatrix/{UniqueName}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/actions/custom/runDecisionMatrix/:UniqueName",
+  "description": "# Decision Matrix Actions\n\nInvoke a decision matrix in a flow with the Decision Matrix Actions. A decision matrix is a user-defined table where you can look up an output based on the inputs you provide.\n\nFor example, you can look up a candidate’s eligibility to avail medical insurance in a decision matrix based on the candidate’s age and gender.\n\nThese actions are available in API version 55.0 and later.\n\n## Supported REST HTTP Methods\n\nURI/services/data/v55.0/actions/custom/runDecisionMatrix/{UniqueName}\n\nNote\n\nThe value of UniqueName is the unique identifier of the record, which is sourced from the name of a decision matrix.\n\nFormatsJSONHTTP MethodsPOSTAuthenticationAuthorization: Bearer token\n\n## Inputs\n\nVary depending on the selected decision matrix.\n\n## Outputs\n\nVary depending on the inputs of the selected decision matrix.\n\n## Usage\n\nSample Request\n\nHere’s an example POST request that has the inputs, such as, age and state:\n\n```\n{\n   \"inputs\":[\n      {\n         \"age\":\"25\",\n         \"state\":\"NY\"\n      },\n      {\n         \"age\":\"25\",\n         \"state\":\"CA\"\n      },\n      {\n         \"age\":\"\",\n         \"state\":\"WA\"\n      }\n   ]\n}\n\n ```\n\nSample Response\n\nHere’s an example response that has the premium and tax values based on the inputs provided in the example request.\n\n```\n[\n   {\n      \"actionName\":\"premiumTaxLookup\",\n      \"errors\":null,\n      \"isSuccess\":true,\n      \"outputValues\":{\n         \"premium\":2400.0,\n         \"tax\":200.0\n      }\n   },\n   {\n      \"actionName\":\"premiumTaxLookup\",\n      \"errors\":null,\n      \"isSuccess\":true,\n      \"outputValues\":{\n         \"premium\":2400.0,\n         \"tax\":200.0\n      }\n   },\n   {\n      \"actionName\":\"premiumTaxLookup\",\n      \"errors\":[\n         {\n            \"statusCode\":\"REQUIRED_FIELD_MISSING\",\n            \"message\":\"Missing required input parameter: age\",\n            \"fields\":[\n            ]\n         }\n      ],\n      \"isSuccess\":false,\n      \"outputValues\":null\n   }\n]\n\n ```",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "UniqueName",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n   \"inputs\":[\n      {\n         \"myColumnInput\":\"One\"\n      }\n   ]\n}\n",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

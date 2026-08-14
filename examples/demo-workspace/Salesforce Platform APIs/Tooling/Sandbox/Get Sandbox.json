@@ -1,0 +1,31 @@
+{
+  "uuid": "cc09cc4e-def0-4cac-a17a-8b3a364231dc",
+  "name": "Get Sandbox",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/tooling/sobjects/SandboxInfo/{SANDBOX_INFO_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/SandboxInfo/:SANDBOX_INFO_ID",
+  "description": "Retrieves a sandbox record.",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "SANDBOX_INFO_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

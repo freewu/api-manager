@@ -1,0 +1,49 @@
+{
+  "uuid": "5b2ce1ae-4214-48da-9868-32db5a65199b",
+  "name": "Get All Navigation Items",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/nav-items",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/nav-items",
+  "description": "Gets all navigation items (tabs) that the user has access to.",
+  "headers": [],
+  "query": [
+    {
+      "key": "formFactor",
+      "value": "Small",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "navItemNames",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "page",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "pageSize",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,38 @@
+{
+  "uuid": "8ddb48bf-194c-4e1a-a6ab-196e663ac6e2",
+  "name": "SObject Tree",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/composite/tree/{SOBJECT_API_NAME}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/composite/tree/:SOBJECT_API_NAME",
+  "description": "Creates one or more sObject trees with root records of the specified type. An sObject tree is a collection of nested, parent-child records with a single root record.\nIn the request data, you supply the record hierarchies, required and optional field values, each record’s type, and a reference ID for each record. Upon success, the response contains the IDs of the created records. If an error occurs while creating a record, the entire request fails. In this case, the response contains only the reference ID of the record that caused the error and the error information.\n\nThe request can contain the following:\nUp to a total of 200 records across all trees\nUp to five records of different types\nSObject trees up to five levels deep\nBecause an sObject tree can contain a single record, you can use this resource to create up to 200 unrelated records of the same type.\n\nWhen the request is processed and records are created, triggers, processes, and workflow rules fire separately for each of the following groups of records.\nRoot records across all sObject trees in the request\nAll second-level records of the same type—for example, second-level Contacts across all sObject trees in the request\nAll third-level records of the same type\nAll fourth-level records of the same type\nAll fifth-level records of the same type\n\nhttps://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_composite_sobject_tree.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n\"records\" :[{\n    \"attributes\" : {\"type\" : \"Account\", \"referenceId\" : \"ref1\"},\n    \"name\" : \"SampleAccount1\",\n    \"phone\" : \"1234567890\",\n    \"website\" : \"www.salesforce.com\",\n    \"numberOfEmployees\" : \"100\",\n    \"industry\" : \"Banking\",\n    \"Contacts\" : {\n      \"records\" : [{\n         \"attributes\" : {\"type\" : \"Contact\", \"referenceId\" : \"ref2\"},\n         \"lastname\" : \"Smith\",\n         \"Title\" : \"President\",\n         \"email\" : \"sample@salesforce.com\"\n         },{\n         \"attributes\" : {\"type\" : \"Contact\", \"referenceId\" : \"ref3\"},\n         \"lastname\" : \"Evans\",\n         \"title\" : \"Vice President\",\n         \"email\" : \"sample@salesforce.com\"\n         }]\n      }\n    },{\n    \"attributes\" : {\"type\" : \"Account\", \"referenceId\" : \"ref4\"},\n    \"name\" : \"SampleAccount2\",\n    \"phone\" : \"1234567890\",\n    \"website\" : \"www.salesforce.com\",\n    \"numberOfEmployees\" : \"52000\",\n    \"industry\" : \"Banking\",\n    \"childAccounts\" : {\n      \"records\" : [{\n        \"attributes\" : {\"type\" : \"Account\", \"referenceId\" : \"ref5\"},\n        \"name\" : \"SampleChildAccount1\",\n        \"phone\" : \"1234567890\",\n        \"website\" : \"www.salesforce.com\",\n        \"numberOfEmployees\" : \"100\",\n        \"industry\" : \"Banking\"\n        }]\n      },\n    \"Contacts\" : {\n      \"records\" : [{\n        \"attributes\" : {\"type\" : \"Contact\", \"referenceId\" : \"ref6\"},\n        \"lastname\" : \"Jones\",\n        \"title\" : \"President\",\n        \"email\" : \"sample@salesforce.com\"\n        }]\n      }\n  }]\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

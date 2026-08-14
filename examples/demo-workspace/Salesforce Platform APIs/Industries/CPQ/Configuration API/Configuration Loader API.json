@@ -1,0 +1,44 @@
+{
+  "uuid": "b6caa4cd-e210-4544-a46d-dfe7444fe64c",
+  "name": "Configuration Loader API",
+  "method": "PATCH",
+  "path": "/services/apexrest/SBQQ/ServiceRouter",
+  "url": "{{_endpoint}}/services/apexrest/SBQQ/ServiceRouter?loader=SBQQ.ConfigAPI.ConfigLoader&uid=",
+  "description": "The Configuration Loader API returns all the data for the product, including its product options and configuration model. When configuring a nested bundle, set the parentProductproperty to the parent product to inherit configuration attributes on the nested bundle.\nAvailable in: Salesforce CPQ Spring ’17 and later\n\nhttps://developer.salesforce.com/docs/atlas.en-us.cpq_dev_api.meta/cpq_dev_api/cpq_api_config_loader.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "loader",
+      "value": "SBQQ.ConfigAPI.ConfigLoader",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "uid",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

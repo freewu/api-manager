@@ -1,0 +1,24 @@
+{
+  "uuid": "57ab38ae-ca02-4077-892d-4845376c9a16",
+  "name": "List of Groups",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/chatter/groups",
+  "url": "{{_endpoint}}/services/data/v{{version}}/chatter/groups",
+  "description": "A list of all the groups in the organization. Get information about groups or create a group.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resources_groups_ListOfGroups.htm",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,31 @@
+{
+  "uuid": "ae5f5bc1-6955-4f56-ab63-9f4585811eb0",
+  "name": "Get Photo Actions",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/actions/photo/{RECORD_IDS}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/actions/photo/:RECORD_IDS",
+  "description": "Get the photo actions for pages. Currently, only group and user pages support photo actions.",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "RECORD_IDS",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

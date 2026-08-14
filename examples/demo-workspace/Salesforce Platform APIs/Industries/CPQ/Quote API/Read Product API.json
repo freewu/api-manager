@@ -1,0 +1,44 @@
+{
+  "uuid": "71ab8f07-82a0-490f-86dd-267b402bbb08",
+  "name": "Read Product API",
+  "method": "PATCH",
+  "path": "/services/apexrest/SBQQ/ServiceRouter",
+  "url": "{{_endpoint}}/services/apexrest/SBQQ/ServiceRouter?loader=SBQQ.ProductAPI.ProductLoader&uid=",
+  "description": "The Read Product API takes the request’s product ID, pricebook ID, and currency code and returns a Product model. The Product model loads the product from your catalog when the user requests it.\nAvailable in: Salesforce CPQ Summer ’16 and later\nSpecial Access Rules: Users must have read access to the product2 object.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.cpq_dev_api.meta/cpq_dev_api/cpq_api_read_product.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "loader",
+      "value": "SBQQ.ProductAPI.ProductLoader",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "uid",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\"context\" : {\"pricebookId\": \"01sA0000000wuhg\", \"currencyCode\":\"USD\"}}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

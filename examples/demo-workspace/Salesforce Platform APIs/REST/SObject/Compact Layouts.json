@@ -1,0 +1,38 @@
+{
+  "uuid": "8c9acc79-ba86-4dad-ba64-6d5ad7c8cbc5",
+  "name": "Compact Layouts",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/compactLayouts",
+  "url": "{{_endpoint}}/services/data/v{{version}}/compactLayouts?q=Account,Contact",
+  "description": "Returns a list of compact layouts for multiple objects. This resource is available in REST API version 31.0 and later.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "q",
+      "value": "Account,Contact",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

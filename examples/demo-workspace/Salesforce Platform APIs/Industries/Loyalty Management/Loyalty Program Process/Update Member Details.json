@@ -1,0 +1,44 @@
+{
+  "uuid": "a38c3835-a8e3-4f94-b096-b92c75151817",
+  "name": "Update Member Details",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/connect/loyalty/programs/{loyaltyProgramName}/program-processes/{processName}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/connect/loyalty/programs/:loyaltyProgramName/program-processes/:processName",
+  "description": "[Update Member Details](https://developer.salesforce.com/docs/atlas.en-us.loyalty.meta/loyalty/connect_resources_update_member_details.htm)\n\nNOTE:\n\nIn the Pre-request. Script Tab, make changes in the variables value accordingly with the real Process Name to invoke.",
+  "headers": [],
+  "query": [
+    {
+      "key": "journalTypeId",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "loyaltyProgramName",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "processName",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n   \"processParameters\":[\n      {\n         \"MemberId\":\"0lMRM0000004G5h2AE\",\n         \"MembershipNumber\":\"M1234\",\n         \"Email\":\"adam.smith@nto.com\",\n         \"EnrollmentDate\":\"2023-05-28\",\n         \"LastName\":\"Smith\"\n      }\n   ]\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

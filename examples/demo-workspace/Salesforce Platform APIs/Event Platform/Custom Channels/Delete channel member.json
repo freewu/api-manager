@@ -1,0 +1,31 @@
+{
+  "uuid": "4a9c8f47-c196-4003-9d4d-206aa81c3f15",
+  "name": "Delete channel member",
+  "method": "DELETE",
+  "path": "/services/data/v{{version}}/tooling/sobjects/PlatformEventChannelMember/{PLATFORM_EVENT_CHANNEL_MEMBER_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/PlatformEventChannelMember/:PLATFORM_EVENT_CHANNEL_MEMBER_ID",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "PLATFORM_EVENT_CHANNEL_MEMBER_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

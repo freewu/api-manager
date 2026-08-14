@@ -1,0 +1,38 @@
+{
+  "uuid": "9a66af47-016b-420d-9fe2-2f706713c687",
+  "name": "Update Last Selected App",
+  "method": "PATCH",
+  "path": "/services/data/v{{version}}/ui-api/apps/{APP_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/apps/:APP_ID?formFactor=Large",
+  "description": "Returns metadata for an app, and saves an app as the last selected for a user.",
+  "headers": [],
+  "query": [
+    {
+      "key": "formFactor",
+      "value": "Large",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "APP_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

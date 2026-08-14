@@ -1,0 +1,31 @@
+{
+  "uuid": "562900ae-9336-438b-9a3a-0863b9ccbea3",
+  "name": "Get Product Relationship Type",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/query",
+  "url": "{{_endpoint}}/services/data/v{{version}}/query?q=Select ID, Name from productrelationshiptype where Name IN ('Bundle PRT') ",
+  "description": "",
+  "headers": [],
+  "query": [
+    {
+      "key": "q",
+      "value": "Select ID, Name from productrelationshiptype where Name IN ('Bundle PRT') ",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

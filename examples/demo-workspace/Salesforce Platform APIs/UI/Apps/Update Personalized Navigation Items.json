@@ -1,0 +1,31 @@
+{
+  "uuid": "63f333d2-f3be-4167-99fe-74fe5ca34140",
+  "name": "Update Personalized Navigation Items",
+  "method": "PUT",
+  "path": "/services/data/v{{version}}/ui-api/apps/{APP_ID}/user-nav-items",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/apps/:APP_ID/user-nav-items",
+  "description": "Updates the order of a user’s personalized navigation items (tabs) and adds a navigation item to the list in the order specified.",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "APP_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

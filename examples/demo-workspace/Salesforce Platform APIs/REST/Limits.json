@@ -1,0 +1,24 @@
+{
+  "uuid": "c1e4aa1e-b779-4015-963e-45d6004caf95",
+  "name": "Limits",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/limits",
+  "url": "{{_endpoint}}/services/data/v{{version}}/limits",
+  "description": "Lists information about limits in your org. For each limit, this resource returns the maximum allocation and the remaining allocation based on usage. This resource is available in REST API version 29.0 and later for API users with the View Setup and Configuration permission",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

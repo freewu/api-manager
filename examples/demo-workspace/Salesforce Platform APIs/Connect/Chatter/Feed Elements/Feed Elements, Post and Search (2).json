@@ -1,0 +1,31 @@
+{
+  "uuid": "782d999f-459f-45ed-b592-5225bf878540",
+  "name": "Feed Elements, Post and Search",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/chatter/feed-elements",
+  "url": "{{_endpoint}}/services/data/v{{version}}/chatter/feed-elements",
+  "description": "https://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resources_feed_element.htm\n\nhttps://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resources_feed_element.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n   \"body\": {\n      \"messageSegments\": [\n         {\n            \"type\": \"Text\",\n            \"text\": \"Chatter Feed Item Created via API: \"\n         },\n         {\n            \"markupType\" : \"Paragraph\",\n            \"type\" : \"MarkupBegin\"\n         },\n         {\n            \"markupType\" : \"Bold\",\n            \"type\" : \"MarkupBegin\"\n         },\n         {\n             \"text\" : \"First line of text.\",\n             \"type\" : \"Text\"\n         },\n         {\n            \"markupType\" : \"Bold\",\n            \"type\" : \"MarkupEnd\"\n         },\n         {\n            \"markupType\" : \"Paragraph\",\n            \"type\" : \"MarkupEnd\"\n         },\n         {\n            \"markupType\" : \"Paragraph\",\n            \"type\" : \"MarkupBegin\"\n         },\n         {\n            \"text\" : \"&nbsp;\",\n            \"type\" : \"Text\"\n         },\n         {\n            \"markupType\" : \"Paragraph\",\n            \"type\" : \"MarkupEnd\"\n         },\n         {\n            \"markupType\" : \"Paragraph\",\n            \"type\" : \"MarkupBegin\"\n         },\n         {\n            \"text\" : \"Second line of text.\",\n            \"type\" : \"Text\"\n         },\n         {\n            \"markupType\" : \"Paragraph\",\n            \"type\" : \"MarkupEnd\"\n         },\n         {\n            \"markupType\" : \"Code\",\n            \"type\" : \"MarkupBegin\"\n         },\n         {\n             \"text\" : \"<script>\\nvar i, t = 0;\\nfor (i = 0; i < 5; i++) {\\n   t += i;\\n}\\n</script>\",\n             \"type\" : \"Text\"\n         },\n         {\n            \"markupType\" : \"Code\",\n            \"type\" : \"MarkupEnd\"\n         },\n         {\n            \"type\": \"Mention\",\n            \"id\": \"<USER_GROUP_ID>\"\n         }\n      ]\n   },\n   \"capabilities\": {\n      \"files\": {\n         \"items\": [\n            {\n               \"id\": \"<FILE_ID>\"\n            }\n         ]\n      }\n   },\n   \"subjectId\": \"<USER_RECORD_GROUP_ID>\",\n   \"feedElementType\": \"FeedItem\"\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

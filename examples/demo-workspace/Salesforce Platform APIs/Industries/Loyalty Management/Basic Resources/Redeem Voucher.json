@@ -1,0 +1,50 @@
+{
+  "uuid": "8cb78f20-210a-435e-a691-28e7a6a003aa",
+  "name": "Redeem Voucher",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/loyalty/programs/{loyaltyProgramName}/members/{membershipNumber}/vouchers/{voucherCode}/redeem",
+  "url": "{{_endpoint}}/services/data/v{{version}}/loyalty/programs/:loyaltyProgramName/members/:membershipNumber/vouchers/:voucherCode/redeem?voucherNumber=",
+  "description": "Standard Documentation:\n\n[https://developer.salesforce.com/docs/atlas.en-us.loyalty.meta/loyalty/connect_resources_redeem_voucher.htm](https://developer.salesforce.com/docs/atlas.en-us.loyalty.meta/loyalty/connect_resources_redeem_voucher.htm)",
+  "headers": [],
+  "query": [
+    {
+      "key": "voucherNumber",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "loyaltyProgramName",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "membershipNumber",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "voucherCode",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n   \"currencyIsoCode\" : \"EUR\",\n   \"redeemAmount\" : 1.5\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

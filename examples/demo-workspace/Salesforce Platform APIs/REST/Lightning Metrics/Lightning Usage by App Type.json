@@ -1,0 +1,31 @@
+{
+  "uuid": "bd58cfc1-969d-49b0-9fd2-f00eb17c1894",
+  "name": "Lightning Usage by App Type",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/sobjects/LightningUsageByAppTypeMetrics",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/LightningUsageByAppTypeMetrics",
+  "description": "Return the total number of Lightning Experience and Salesforce Mobile users.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_lightning_usagebyapptypemetrics.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

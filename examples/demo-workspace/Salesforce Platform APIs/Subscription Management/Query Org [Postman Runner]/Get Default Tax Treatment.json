@@ -1,0 +1,31 @@
+{
+  "uuid": "cc2b9ca8-f13d-4564-a1b4-b0ae9cef0f9f",
+  "name": "Get Default Tax Treatment",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/query",
+  "url": "{{_endpoint}}/services/data/v{{version}}/query?q=Select Id, Name from TaxTreatment Where name='No Tax Treatment'",
+  "description": "",
+  "headers": [],
+  "query": [
+    {
+      "key": "q",
+      "value": "Select Id, Name from TaxTreatment Where name='No Tax Treatment'",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,31 @@
+{
+  "uuid": "7635c4df-1345-43eb-a818-e2ecb9b65be2",
+  "name": "Delete Table",
+  "method": "DELETE",
+  "path": "/services/data/v{{version}}/connect/business-rules/decision-table/definitions/{decisionTableId}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/connect/business-rules/decision-table/definitions/:decisionTableId",
+  "description": "# Decision Table Definitions ( DELETE)\n\nDelete a decision table definition associated with a decision table.\n\nResource\n\n```\n/connect/business-rules/decision-table/definitions/${decisionTableId}\n\n ```\n\nResource Example\n\n```\nhttps://yourInstance.salesforce.com/services/data/v59.0/connect/business-rules/decision-table/definitions/0lDxx00000002Ur\n\n ```\n\nAvailable version\n\n58.0\n\nRequires Chatter\n\nNo\n\nHTTP methods\n\nDELETE\n\nResponse body for DELETE\n\n[Decision Table Output](https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/connect_responses_decision_table_output.htm)\n\n# Decision Table Output\n\nOutput representation of the decision table details.JSON example for GET, POST, and PATCH\n\n```\n{\n   \"code\":\"200\",\n   \"decisionTable\":{\n      \"collectOperator\":\"Count\",\n      \"conditionCriteria\":\"1 OR 2 OR 3\",\n      \"conditionType\":\"Any\",\n      \"decisionResultPolicy\":\"UniqueValues\",\n      \"description\":\"Eligiblity of Products using Qualification Rules\",\n      \"id\":\"0lDxx00000000BJ\",\n      \"parameters\":[\n         {\n            \"fieldName\":\"IsDeleted\",\n            \"isGroupByField\":false,\n            \"isPriority\":false,\n            \"operator\":\"Equals\",\n            \"sequence\":1,\n            \"usage\":\"Input\"\n         },\n         {\n            \"fieldName\":\"CreatedById\",\n            \"isGroupByField\":false,\n            \"isPriority\":false,\n            \"usage\":\"Output\"\n         },\n         {\n            \"fieldName\":\"Title\",\n            \"isGroupByField\":false,\n            \"isPriority\":false,\n            \"operator\":\"Equals\",\n            \"sequence\":3,\n            \"usage\":\"Input\"\n         },\n         {\n            \"fieldName\":\"Id\",\n            \"isGroupByField\":false,\n            \"isPriority\":false,\n            \"operator\":\"Equals\",\n            \"sequence\":2,\n            \"usage\":\"Input\"\n         }\n      ],\n      \"setupName\":\"Product Qualificiation eligibility3\",\n      \"sourceCriteria\":[\n         \n      ],\n      \"sourceObject\":\"AccountFeed\",\n      \"sourceType\":\"SingleSobject\",\n      \"sourceconditionLogic\":\"1 AND 2 AND 3\",\n      \"status\":\"Draft\"\n   },\n   \"isSuccess\":true,\n   \"message\":\"\"\n}\n\n ```\n\nJSON example for DELETE\n\n```\n{\n   \"code\":\"200\",\n   \"isSuccess\":true,\n   \"message\":\"\"\n}\n\n ```\n\n| Property Name | Type | Description | Filter Group and Version | Available Version |\n| --- | --- | --- | --- | --- |\n| code | String | Response code from the API request. | Small, 58.0 | 58.0 |\n| decisionTable | [Decision Table Definition Output](https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/connect_responses_decision_table_definition_output.htm) | Details of the decision table definition associated with the decision table. | Small, 58.0 | 58.0 |\n| isSuccess | Boolean | Indicates whether the API request is successful (true) or not (false). | Small, 58.0 | 58.0 |\n| message | String | Error message when the API request fails. | Small, 58.0 | 58.0 |",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "decisionTableId",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

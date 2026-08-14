@@ -1,0 +1,37 @@
+{
+  "uuid": "aa2a9910-1ac2-4b12-a64b-b1287b754a84",
+  "name": "Get List View Records",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/ui-api/list-records/{SOBJECT_API_NAME}/{LIST_VIEW_API_NAME}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/list-records/:SOBJECT_API_NAME/:LIST_VIEW_API_NAME",
+  "description": "Get record data for a list view using a request body.",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "LIST_VIEW_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n  \"fields\": [\"Name\", \"Type\", \"AnnualRevenue\", \"CreatedDate\"],\n  \"pageSize\" : 10,\n  \"sortBy\": [\"CreatedDate\"],\n  \"searchTerm\" : \"United\",\n  \"where\": \"{AnnualRevenue: { gt: 1000000}}\"\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

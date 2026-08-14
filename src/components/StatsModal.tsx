@@ -30,6 +30,7 @@ function computeStats(node: TreeNode): Stats {
   const methods = new Map<string, number>();
   let mockEnabled = 0;
 
+  // 单次遍历：累计方法分布与 mock（有副作用，只调用一次）
   const countApis = (n: TreeNode): number => {
     if (n.kind === "api") {
       if (n.mockEnabled) mockEnabled++;
@@ -52,10 +53,17 @@ function computeStats(node: TreeNode): Stats {
   };
   countFolders(node);
 
+  // 纯计数（无副作用），避免饼图数据被重复累计
+  const countChildApis = (n: TreeNode): number => {
+    if (n.kind === "api") return 1;
+    let c = 0;
+    for (const child of n.children || []) c += countChildApis(child);
+    return c;
+  };
   const items = (node.children || []).map((c) => ({
     name: c.name,
     kind: c.kind,
-    apis: countApis(c),
+    apis: countChildApis(c),
   }));
 
   const methodList = [...methods.entries()].sort((a, b) => b[1] - a[1]);

@@ -1,0 +1,31 @@
+{
+  "uuid": "51cfdb60-138b-4b12-94c2-4ce516b10dd0",
+  "name": "Get Tooling Metadata SObject",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/tooling/sobjects/{SOBJECT_API_NAME}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/:SOBJECT_API_NAME",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

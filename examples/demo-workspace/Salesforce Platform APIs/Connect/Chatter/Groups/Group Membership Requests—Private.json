@@ -1,0 +1,44 @@
+{
+  "uuid": "2b131180-9c8e-4144-a49e-821089bd6622",
+  "name": "Group Membership Requests—Private",
+  "method": "PATCH",
+  "path": "/services/data/v{{version}}/chatter/group-membership-requests/{CHATTER_GROUP_REQUEST_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/chatter/group-membership-requests/:CHATTER_GROUP_REQUEST_ID?status=Accepted&responseMessage=Welcome to the group!",
+  "description": "Update the status of a request by a user to join a private group or get information about a request to join a private group.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resources_group_membership_requests.htm?search_text=group-membership-requests",
+  "headers": [],
+  "query": [
+    {
+      "key": "status",
+      "value": "Accepted",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "responseMessage",
+      "value": "Welcome to the group!",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "CHATTER_GROUP_REQUEST_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

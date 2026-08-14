@@ -1,0 +1,44 @@
+{
+  "uuid": "3d76dc73-c57e-4f62-9398-8362a29bdf53",
+  "name": "Get an App",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/apps/{APP_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/apps/:APP_ID?formFactor=Small",
+  "description": "Get metadata about an app.",
+  "headers": [],
+  "query": [
+    {
+      "key": "formFactor",
+      "value": "Small",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "userCustomizations",
+      "value": "true",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "APP_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

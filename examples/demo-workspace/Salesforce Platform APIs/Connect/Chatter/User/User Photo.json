@@ -1,0 +1,56 @@
+{
+  "uuid": "4eb88df3-5765-4551-b70c-d3281ab0b4a0",
+  "name": "User Photo",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/connect/user-profiles/me/photo",
+  "url": "{{_endpoint}}/services/data/v{{version}}/connect/user-profiles/me/photo",
+  "description": "Get, post, and crop a user photo.\nTo use an image from the Files page as a user photo, pass the file ID in the fileId property of the request body or in the fileId request parameter. Images uploaded on the User page don’t have a file ID and can’t be used as the fileId.\n\nTo upload a binary file as the user photo, you must send it in a multipart/form-data message. For information about how to create the multipart/form-data message, see Uploading Binary Files.\n\nTo display user profile photos in a feed, cache the user photos. Then use the photoVersionId property of the Photo response body to determine when you need to update a photo. This technique helps you avoid running over limits and may improve mobile client performance.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "multipart/form-data",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "Content-Disposition",
+      "value": "form-data; name=\"photo\"",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "Content-Type",
+      "value": "application/json; charset=UTF-8",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "form",
+    "raw": "",
+    "form": [
+      {
+        "key": "json",
+        "value": "{\"cropY\":\"0\",\"cropX\":\"0\",\"cropSize\":\"200\"}",
+        "enabled": true,
+        "description": ""
+      },
+      {
+        "key": "fileUpload",
+        "value": "",
+        "enabled": true,
+        "description": ""
+      }
+    ]
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

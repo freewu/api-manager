@@ -1,0 +1,38 @@
+{
+  "uuid": "7eb6735d-2c38-46e9-853a-6f4c1a60e95b",
+  "name": "Tooling Search",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/tooling/search",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/search?q=",
+  "description": "Runs one or more methods within one or more Apex classes, using the asynchronous test execution mechanism. In the request body, you can specify test class names and IDs, suite names and IDs, the maximum number of failed tests to allow, and the test level, as comma-separated lists or as an array. You can also indicate whether to opt out of collecting code coverage information during the test run (available in API version 43.0 and later).",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "q",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "[\n    {\n        \"className\": \"YourClassName\",\n        \"testMethods\": [\n            \"testMethod1\",\n            \"testMethod2\",\n            \"testMethod3\"\n        ]\n    },\n    {\n        \"maxFailedTests\": \"2\"\n    }\n]\n\nor\n\n[\n    {\n        \"classId\": \"01pD0000000Fhy9IAC\",\n        \"testMethods\": [\n            \"testMethod1\",\n            \"testMethod2\",\n            \"testMethod3\"\n        ]\n    },\n    {\n        \"maxFailedTests\": \"2\"\n    }\n]",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

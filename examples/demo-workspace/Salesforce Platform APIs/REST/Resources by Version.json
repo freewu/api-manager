@@ -1,0 +1,31 @@
+{
+  "uuid": "fed91bb3-9727-448a-bb8a-bfec8c633738",
+  "name": "Resources by Version",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/",
+  "url": "{{_endpoint}}/services/data/v{{version}}/",
+  "description": "Lists available resources for the specified API version, including resource name and URI.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}
