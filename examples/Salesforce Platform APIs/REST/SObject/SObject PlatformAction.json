@@ -1,0 +1,31 @@
+{
+  "uuid": "87720f02-600b-409a-96f8-8b7b059b7be2",
+  "name": "SObject PlatformAction",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/sobjects/PlatformAction",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/PlatformAction",
+  "description": "PlatformAction is a virtual read-only object. It enables you to query for actions displayed in the UI, given a user, a context, device format, and a record ID. Examples include standard and custom buttons, quick actions, and productivity actions.\nReturns the description of the PlatformAction.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

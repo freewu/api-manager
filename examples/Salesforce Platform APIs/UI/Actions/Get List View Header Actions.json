@@ -1,0 +1,31 @@
+{
+  "uuid": "640ec960-24dc-47b9-91b9-1e4238a8168f",
+  "name": "Get List View Header Actions",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/actions/list-view/{LIST_VIEW_IDS}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/actions/list-view/:LIST_VIEW_IDS",
+  "description": "Get the actions on records in related lists.",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "LIST_VIEW_IDS",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,31 @@
+{
+  "uuid": "5de3e4bc-37d2-40bb-bc88-880874bb99d9",
+  "name": "Accounts with Filter",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/graphql",
+  "url": "{{_endpoint}}/services/data/v{{version}}/graphql",
+  "description": "",
+  "headers": [
+    {
+      "key": "X-Chatter-Entity-Encoding",
+      "value": "false",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,31 @@
+{
+  "uuid": "7164a848-f5ee-41fa-9dd7-7dd8063d9fbb",
+  "name": "List event relays",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/tooling/query/",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/query/?q=SELECT FIELDS(ALL) FROM EventRelayConfig LIMIT 200",
+  "description": "",
+  "headers": [],
+  "query": [
+    {
+      "key": "q",
+      "value": "SELECT FIELDS(ALL) FROM EventRelayConfig LIMIT 200",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

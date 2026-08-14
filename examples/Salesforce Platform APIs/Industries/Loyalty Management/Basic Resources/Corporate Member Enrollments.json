@@ -1,0 +1,31 @@
+{
+  "uuid": "fd202782-9cce-4ccb-9f73-b30aeb3ae103",
+  "name": "Corporate Member Enrollments",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/loyalty-programs/{loyaltyProgramName}/corporate-member-enrollments",
+  "url": "{{_endpoint}}/services/data/v{{version}}/loyalty-programs/:loyaltyProgramName/corporate-member-enrollments",
+  "description": "Standard Documentation:\n\n[https://developer.salesforce.com/docs/atlas.en-us.loyalty.meta/loyalty/connect_resources_enroll_corporate_member.htm](https://developer.salesforce.com/docs/atlas.en-us.loyalty.meta/loyalty/connect_resources_enroll_corporate_member.htm)",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "loyaltyProgramName",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"enrollmentDate\" : \"2021-01-01T05:05:05\",\n    \"membershipNumber\" : \"Member123\",\n    \"associatedAccountDetails\" : {\n        \"name\" : \"Name1\",\n        \"phone\" : \"908989898\",\n        \"website\" : \"www.ab.com\",\n        \"allowDuplicateRecords\" : \"false\"\n    },\n    \"memberStatus\" : \"Active\",\n    \"createTransactionJournals\" : \"true\"\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

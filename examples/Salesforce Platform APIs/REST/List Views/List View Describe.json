@@ -1,0 +1,44 @@
+{
+  "uuid": "16d3a0f0-4efd-46ff-a274-30cff5dab6de",
+  "name": "List View Describe",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/sobjects/{SOBJECT_API_NAME}/listviews/{QUERY_LOCATOR}/describe",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/:SOBJECT_API_NAME/listviews/:QUERY_LOCATOR/describe",
+  "description": "Returns detailed information about a list view, including the ID, the columns, and the SOQL query.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "QUERY_LOCATOR",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

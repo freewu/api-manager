@@ -27,8 +27,14 @@ export function createDemo(): Promise<void> {
   return invoke<void>("create_demo");
 }
 
-export function importPostman(): Promise<string | null> {
-  return invoke<string | null>("import_postman");
+export interface PostmanImportResult {
+  folder: string;
+  env: string;
+  vars: number;
+}
+
+export function importPostman(): Promise<PostmanImportResult | null> {
+  return invoke<PostmanImportResult | null>("import_postman");
 }
 
 export function readTree(): Promise<TreeNode> {

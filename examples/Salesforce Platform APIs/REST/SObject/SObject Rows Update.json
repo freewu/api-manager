@@ -1,0 +1,44 @@
+{
+  "uuid": "fe6bf996-4d57-4717-9c1e-1bfd62e52794",
+  "name": "SObject Rows Update",
+  "method": "PATCH",
+  "path": "/services/data/v{{version}}/sobjects/{SOBJECT_API_NAME}/{RECORD_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/:SOBJECT_API_NAME/:RECORD_ID",
+  "description": "Accesses records based on the specified object ID. Retrieves, updates, or deletes records. This resource can also be used to retrieve field values. Use the GET method to retrieve records or fields, the DELETE method to delete records, and the PATCH method to update records.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "RECORD_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n\t\"field API name\": \"value\"\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

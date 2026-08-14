@@ -1,0 +1,31 @@
+{
+  "uuid": "1bc2003a-39e5-450e-9643-c141a2099c25",
+  "name": "Create a Record",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/ui-api/records",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/records",
+  "description": "Create a record. First, make a request to the Clone Record Default or Create Record Default resources to get the default metadata and data for the record.\nAs of API version 43.0, if you pass read-only fields in a request body, the response is an Error with Output.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"allowSaveOnDuplicate\": false,\n    \"apiName\": \"Object\",\n    \"fields\": {\n        \"FieldAPIName\": \"FieldValue\"\n    }\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

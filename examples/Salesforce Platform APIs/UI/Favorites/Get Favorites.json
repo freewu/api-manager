@@ -1,0 +1,24 @@
+{
+  "uuid": "f9ec1137-4af1-4990-aebf-aa2c3381ac2c",
+  "name": "Get Favorites",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/favorites",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/favorites",
+  "description": "Get all of a user’s favorites.",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

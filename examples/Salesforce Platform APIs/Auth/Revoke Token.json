@@ -1,0 +1,38 @@
+{
+  "uuid": "52998f33-2e4c-4ac1-9c01-ab5e15920f80",
+  "name": "Revoke Token",
+  "method": "POST",
+  "path": "/services/oauth2/revoke",
+  "url": "{{url}}{{site}}/services/oauth2/revoke",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/x-www-form-urlencoded",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "form",
+    "raw": "",
+    "form": [
+      {
+        "key": "token",
+        "value": "{{_accessToken}}",
+        "enabled": true,
+        "description": ""
+      }
+    ]
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

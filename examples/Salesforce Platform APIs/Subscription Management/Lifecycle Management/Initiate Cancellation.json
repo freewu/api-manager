@@ -1,0 +1,31 @@
+{
+  "uuid": "d68ccc4e-532c-43ec-97c2-cd19e49a5add",
+  "name": "Initiate Cancellation",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/asset-management/assets/collection/actions/initiate-cancellation",
+  "url": "{{_endpoint}}/services/data/v{{version}}/asset-management/assets/collection/actions/initiate-cancellation",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n  \"assetIds\": {\n    \"assetIdArray\": [\n      \"{{assetID}}\"\n    ]\n  },\n  \"cancellationDate\": \"2023-08-21T00:00:00\",\n  \"cancellationOutputType\": \"order\"\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

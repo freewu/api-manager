@@ -1,0 +1,31 @@
+{
+  "uuid": "0036b516-5754-4741-b8f7-06ceb71dd45a",
+  "name": "Get conversation entries",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/connect/conversation/{conversationIdentifier}/entries",
+  "url": "{{_endpoint}}/services/data/v{{version}}/connect/conversation/:conversationIdentifier/entries",
+  "description": "Gets in-app messaging conversation entries.\nhttps://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resources_conversation_entries.htm",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "conversationIdentifier",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

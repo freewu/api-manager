@@ -1,0 +1,31 @@
+{
+  "uuid": "fffef390-0dea-47a5-ae73-421733e29ea7",
+  "name": "Delete Job",
+  "method": "DELETE",
+  "path": "/services/data/v{{version}}/jobs/ingest/{{_jobId}}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/jobs/ingest/{{_jobId}}",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

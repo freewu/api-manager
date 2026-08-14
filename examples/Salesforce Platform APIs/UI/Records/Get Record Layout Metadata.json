@@ -1,0 +1,56 @@
+{
+  "uuid": "66728802-748b-4fd2-98c8-7d58e6654e79",
+  "name": "Get Record Layout Metadata",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/layout/{SOBJECT_API_NAME}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/layout/:SOBJECT_API_NAME",
+  "description": "Get metadata about page layouts for the specified object type.",
+  "headers": [],
+  "query": [
+    {
+      "key": "formFactor",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "layoutTypes",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "modes",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "recordTypeId",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,38 @@
+{
+  "uuid": "093fe2ad-8f96-44b1-a24f-c1c36dae528d",
+  "name": "Validate Quote API",
+  "method": "PATCH",
+  "path": "/services/apexrest/SBQQ/ServiceRouter",
+  "url": "{{_endpoint}}/services/apexrest/SBQQ/ServiceRouter?loader=QuoteAPI.QuoteValidator",
+  "description": "Validate a CPQ quote and return any validation errors.\nAvailable in: Salesforce CPQ Winter ’19 and later\n\nhttps://developer.salesforce.com/docs/atlas.en-us.cpq_dev_api.meta/cpq_dev_api/cpq_api_validate_quote.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "loader",
+      "value": "QuoteAPI.QuoteValidator",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

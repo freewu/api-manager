@@ -1,0 +1,24 @@
+{
+  "uuid": "53ce70a3-7ba7-46b9-9dc9-9aff5960c627",
+  "name": "Describe event felay feedback",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/sobjects/EventRelayFeedback/describe",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/EventRelayFeedback/describe",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

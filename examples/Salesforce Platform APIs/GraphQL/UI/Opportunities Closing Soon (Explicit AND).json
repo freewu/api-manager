@@ -1,0 +1,31 @@
+{
+  "uuid": "3f1c244e-ea0c-48aa-8c39-f01d9418a83d",
+  "name": "Opportunities Closing Soon (Explicit AND)",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/graphql",
+  "url": "{{_endpoint}}/services/data/v{{version}}/graphql",
+  "description": "",
+  "headers": [
+    {
+      "key": "X-Chatter-Entity-Encoding",
+      "value": "false",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

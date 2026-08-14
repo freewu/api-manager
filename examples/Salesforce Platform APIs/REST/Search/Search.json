@@ -1,0 +1,38 @@
+{
+  "uuid": "3b5ab2c5-026b-4ef2-86f7-a98ccac84ab6",
+  "name": "Search",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/search",
+  "url": "{{_endpoint}}/services/data/v{{version}}/search?q=",
+  "description": "Executes the specified SOSL search. The search string must be URL-encoded.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_search.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "q",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

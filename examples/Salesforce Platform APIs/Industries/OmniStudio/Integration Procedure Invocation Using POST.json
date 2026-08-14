@@ -1,0 +1,37 @@
+{
+  "uuid": "e196469b-bb24-4a93-9aea-fb8410408667",
+  "name": "Integration Procedure Invocation Using POST",
+  "method": "POST",
+  "path": "/services/apexrest/{NAMESPACE}/v1/integrationprocedure/{TYPE_SUBTYPE}/",
+  "url": "{{_endpoint}}/services/apexrest/:NAMESPACE/v1/integrationprocedure/:TYPE_SUBTYPE/",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "NAMESPACE",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "TYPE_SUBTYPE",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,110 @@
+{
+  "uuid": "dfc11d12-c907-45ab-a83d-5176815e8796",
+  "name": "Search for Records Suggested by Autocomplete and Instant Results",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/search/suggestions",
+  "url": "{{_endpoint}}/services/data/v{{version}}/search/suggestions?q=&sobject=",
+  "description": "Returns a list of suggested records whose names match the user’s search string. The suggestions resource provides autocomplete results and instant results for users to navigate directly to likely relevant records, before performing a full search.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_search_suggest_records.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "type",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "fields",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "dynamicFields",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "groupId",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "ignoreUnsupportedSObjects",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "limit",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "networkId",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "topicId",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "useSearchScope",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "where",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "q",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "sobject",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

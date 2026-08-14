@@ -1,0 +1,24 @@
+{
+  "uuid": "ff72c36b-11d3-49e6-ba2d-585399e4a775",
+  "name": "OpenID Connect Discovery Endpoint",
+  "method": "GET",
+  "path": "/.well-known/openid-configuration",
+  "url": "{{url}}{{site}}/.well-known/openid-configuration",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

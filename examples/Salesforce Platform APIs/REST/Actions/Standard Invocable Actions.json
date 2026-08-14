@@ -1,0 +1,31 @@
+{
+  "uuid": "8a498342-107f-4325-bc13-fd82291c7488",
+  "name": "Standard Invocable Actions",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/actions/standard",
+  "url": "{{_endpoint}}/services/data/v{{version}}/actions/standard",
+  "description": "Returns the list of actions that can be statically invoked. You can also get basic information for each type of action.\nThis resource is available in REST API version 32.0 and later.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

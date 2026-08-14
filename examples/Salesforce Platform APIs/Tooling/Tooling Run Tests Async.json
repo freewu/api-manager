@@ -1,0 +1,31 @@
+{
+  "uuid": "5df9ebb8-1a93-4dbf-96df-66b373f730a1",
+  "name": "Tooling Run Tests Async",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/tooling/runTestsAsynchronous",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/runTestsAsynchronous",
+  "description": "Runs one or more methods within one or more Apex classes, using the asynchronous test execution mechanism. In the request body, you can specify test class names and IDs, suite names and IDs, the maximum number of failed tests to allow, and the test level, as comma-separated lists or as an array. You can also indicate whether to opt out of collecting code coverage information during the test run (available in API version 43.0 and later).",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"classNames\": \"comma-separated list of class names\",\n    \"classids\": \"comma-separated list of class IDs\",\n    \"suiteNames\": \"comma-separated list of test suite names\",\n    \"suiteids\": \"comma-separated list of test suite IDs\",\n    \"maxFailedTests\": \"integer value\",\n    \"testLevel\": \"TestLevel enum value\",\n    \"skipCodeCoverage\": \"boolean value\"\n}\n\nor \n\n{\n    \"tests\": [\n        {\n            \"className\": \"YourClassName\",\n            \"testMethods\": [\n                \"testMethod1\",\n                \"testMethod2\",\n                \"testMethod3\"\n            ]\n        }\n    ],\n    \"maxFailedTests\": \"integer value\",\n    \"testLevel\": \"TestLevel enum value\",\n    \"skipCodeCoverage\": \"boolean value\"\n}\n",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,38 @@
+{
+  "uuid": "8737cbf7-3090-40b2-8b44-80347099474c",
+  "name": "Group Invites",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/chatter/groups/group/{GROUP_ID}/invite",
+  "url": "{{_endpoint}}/services/data/v{{version}}/chatter/groups/group/:GROUP_ID/invite",
+  "description": "Invite internal and external users to join a group.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resources_groups_invites.htm#connect_resources_groups_invites",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "GROUP_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n   \"invitees\" : {\n      \"emails\": [\n         \"testemail1@sfdcpostman.com\",\n         \"testemail2@sfdcpostman.com\"\n      ]\n   },\n   \"message\" : \"Join this group to participate in the discussion about your favorite feature.\"\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

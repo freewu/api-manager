@@ -1,0 +1,31 @@
+{
+  "uuid": "67b96cb2-e236-49b9-91dd-d02b984fa5e5",
+  "name": "Get Default Billing Contact",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/query",
+  "url": "{{_endpoint}}/services/data/v{{version}}/query?q=Select Id, Name from Contact Where AccountId='{{defaultAccount}}' LIMIT 1",
+  "description": "",
+  "headers": [],
+  "query": [
+    {
+      "key": "q",
+      "value": "Select Id, Name from Contact Where AccountId='{{defaultAccount}}' LIMIT 1",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

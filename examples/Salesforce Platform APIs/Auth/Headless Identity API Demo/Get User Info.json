@@ -1,0 +1,37 @@
+{
+  "uuid": "8622080d-b2f9-4a9e-9a86-ffbb98144e47",
+  "name": "Get User Info",
+  "method": "GET",
+  "path": "/services/oauth2/userinfo",
+  "url": "{{url}}{{site}}/services/oauth2/userinfo",
+  "description": "This requests uses an access token to get user information from Salesforce using the standard `/userinfo` endpoint.",
+  "headers": [
+    {
+      "key": "Authorization",
+      "value": "Bearer <Token>",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

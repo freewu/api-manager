@@ -1,0 +1,31 @@
+{
+  "uuid": "de56fe73-4594-4769-ba38-5bc1295445f3",
+  "name": "Get event relay",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/tooling/sobjects/EventRelayConfig/{EVENT_RELAY_CONFIG_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/EventRelayConfig/:EVENT_RELAY_CONFIG_ID",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "EVENT_RELAY_CONFIG_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

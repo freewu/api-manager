@@ -1,0 +1,50 @@
+{
+  "uuid": "6dfee96f-e757-4c1d-bac2-c2e4aeb27e15",
+  "name": "Get Default Values to Create a Record",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/record-defaults/create/{SOBJECT_API_NAME}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/record-defaults/create/:SOBJECT_API_NAME",
+  "description": "Get the default values for fields for a new record of a specified object and optional record type. After getting the default values, make a request to POST /ui-api/records to create the record.\nThe response contains the default field values for the Full layout type for a new record of the object type specified in <SOBJECT_API_NAME>.\n\nIt also contains the corresponding layout for create mode. In the Salesforce user interface, an admin with “Customize Application” permission can mark a field as required in a layout. When you’re building UI, to determine which fields to mark as required in a layout for create mode, use the RecordLayoutItem.required property.\n\nThe response contains object metadata for the object specified in <SOBJECT_API_NAME> and for any nested objects. For example, a request to /ui-api/record-defaults/create/Account returns object metadata for Account and User, because the OwnerId field on the Account object contains a reference to the User object.",
+  "headers": [],
+  "query": [
+    {
+      "key": "formFactor",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "optionalFields",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "recordTypeId",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,38 @@
+{
+  "uuid": "235d6104-ebb4-4956-8570-bf56112b7867",
+  "name": "Refresh Sandbox",
+  "method": "PATCH",
+  "path": "/services/data/v{{version}}/tooling/sobjects/SandboxInfo/{SANDBOX_INFO_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/SandboxInfo/:SANDBOX_INFO_ID",
+  "description": "Refreshes a sandbox.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "SANDBOX_INFO_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"LicenseType\": \"DEVELOPER\",\n    \"AutoActivate\": true\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

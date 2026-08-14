@@ -1,0 +1,38 @@
+{
+  "uuid": "0cf977d7-a5a2-4ef0-a529-bb6834da249a",
+  "name": "Parameterized Search",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/parameterizedSearch/",
+  "url": "{{_endpoint}}/services/data/v{{version}}/parameterizedSearch/?q=",
+  "description": "Executes a simple RESTful search using parameters instead of a SOSL clause. Indicate parameters in a URL in the GET method. Or, use POST for more complex JSON searches.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "q",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

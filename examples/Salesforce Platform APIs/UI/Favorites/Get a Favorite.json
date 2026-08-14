@@ -1,0 +1,31 @@
+{
+  "uuid": "5a45d977-799d-4049-94c6-abc2171617f2",
+  "name": "Get a Favorite",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/favorites/{FAVORITE_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/favorites/:FAVORITE_ID",
+  "description": "Get a favorite.",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "FAVORITE_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

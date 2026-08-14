@@ -1,0 +1,31 @@
+{
+  "uuid": "4b880bdf-b04f-4d16-a14f-f78d589765e2",
+  "name": "Successful Create job Query",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/jobs/query",
+  "url": "{{_endpoint}}/services/data/v{{version}}/jobs/query",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n  \"operation\" : \"query\",\n  \"query\" : \"SELECT fields FROM object WHERE filter\",\n  \"contentType\" : \"CSV\",\n  \"columnDelimiter\" : \"BACKQUOTE | CARET | COMMA | PIPE | SEMICOLON | TAB\",\n  \"lineEnding\" : \"CRLF | LF\"\n} ",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

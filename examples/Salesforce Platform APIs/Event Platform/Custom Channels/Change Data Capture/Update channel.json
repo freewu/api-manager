@@ -1,0 +1,31 @@
+{
+  "uuid": "49fdf3a7-9164-46a1-be54-4a7ae3089c97",
+  "name": "Update channel",
+  "method": "PATCH",
+  "path": "/services/data/v{{version}}/tooling/sobjects/PlatformEventChannel/{PLATFORM_EVENT_CHANNEL_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/PlatformEventChannel/:PLATFORM_EVENT_CHANNEL_ID",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "PLATFORM_EVENT_CHANNEL_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"FullName\": \"Account_Channel__chn\",\n    \"Metadata\": {\n        \"channelType\": \"data\",\n        \"label\": \"Account Channel 2\",\n        \"urls\": null\n    }\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

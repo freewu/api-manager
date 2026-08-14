@@ -1,0 +1,31 @@
+{
+  "uuid": "10315099-3b2c-49bd-ab51-c1713cb799a2",
+  "name": "GetProductSellingModels",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/query",
+  "url": "{{_endpoint}}/services/data/v{{version}}/query?q=Select Id, name from ProductSellingModel Where NAME IN ('Evergreen Monthly', 'One-Time', 'Term Monthly') order by Name ASC",
+  "description": "",
+  "headers": [],
+  "query": [
+    {
+      "key": "q",
+      "value": "Select Id, name from ProductSellingModel Where NAME IN ('Evergreen Monthly', 'One-Time', 'Term Monthly') order by Name ASC",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

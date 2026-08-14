@@ -1,0 +1,37 @@
+{
+  "uuid": "a574ffeb-afb8-42d7-8206-f907675ca95a",
+  "name": "Get Apps",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/apps",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/apps?formFactor=Large",
+  "description": "Get metadata for all the apps a user has access to. Metadata for the selected app includes tabs on the app’s navigation bar. Metadata for other apps doesn’t include tabs on the navigation bar.",
+  "headers": [],
+  "query": [
+    {
+      "key": "formFactor",
+      "value": "Large",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "userCustomizations",
+      "value": "true",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

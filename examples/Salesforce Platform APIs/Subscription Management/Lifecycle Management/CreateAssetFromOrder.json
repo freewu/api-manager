@@ -1,0 +1,31 @@
+{
+  "uuid": "749165e6-07a3-47df-8313-7eb8d042b886",
+  "name": "CreateAssetFromOrder",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/actions/standard/createOrUpdateAssetFromOrder",
+  "url": "{{_endpoint}}/services/data/v{{version}}/actions/standard/createOrUpdateAssetFromOrder",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"inputs\": [\n        {\n            \"orderId\": \"{{currentOrder}}\"\n        }\n    ]\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

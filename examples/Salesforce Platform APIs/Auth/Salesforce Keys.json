@@ -1,0 +1,24 @@
+{
+  "uuid": "9d61c9ac-337a-4cf7-89cf-e87fc0237ae4",
+  "name": "Salesforce Keys",
+  "method": "GET",
+  "path": "/id/keys",
+  "url": "{{url}}/id/keys",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,24 @@
+{
+  "uuid": "8835e341-ab54-4920-b5c1-e79a62a30e7a",
+  "name": "Request OpenAPI Schema",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/async/specifications/oas3",
+  "url": "{{_endpoint}}/services/data/v{{version}}/async/specifications/oas3",
+  "description": "Requests an Open API document for the selected SObject REST API resources.",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"resources\": [\n        YOUR_SOBJECT_SELECTORS\n    ]\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

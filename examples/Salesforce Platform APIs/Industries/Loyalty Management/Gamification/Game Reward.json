@@ -1,0 +1,31 @@
+{
+  "uuid": "7c365641-c61d-434e-b267-314dc64c2afc",
+  "name": "Game Reward",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/game/gameparticipantreward/{gameParticipantRewardId}/game-reward",
+  "url": "{{_endpoint}}/services/data/v{{version}}/game/gameparticipantreward/:gameParticipantRewardId/game-reward",
+  "description": "[Game Reward](https://developer.salesforce.com/docs/atlas.en-us.loyalty.meta/loyalty/connect_resources_game_result.htm)\n\nNOTE:\n\nIn the Pre-request. Script Tab, make changes in the variables value accordingly with the real Process Name to invoke.",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "gameParticipantRewardId",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

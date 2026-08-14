@@ -653,11 +653,22 @@ fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String> {
 
 // ==================== Postman Collection 导入 ====================
 
+/// Postman 导入结果：folder 为新建分组路径，env/vars 为导入的环境变量信息
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostmanImportResult {
+    pub folder: String,
+    /// 变量合并到的环境变量集名称（未导入变量时为空串）
+    pub env: String,
+    /// 导入的变量数量
+    pub vars: usize,
+}
+
 #[tauri::command]
 fn import_postman(
     app: AppHandle,
     state: State<'_, WorkspaceState>,
-) -> Result<Option<String>, String> {
+) -> Result<Option<PostmanImportResult>, String> {
     use tauri_plugin_dialog::DialogExt;
     let picked = app
         .dialog()
@@ -669,12 +680,13 @@ fn import_postman(
     };
     let path = path.into_path().map_err(|e| e.to_string())?;
     let root = workspace_root(&state)?;
-    let folder = import_postman_file(&root, &path)?;
-    Ok(Some(folder))
+    let result = import_postman_file(&root, &path)?;
+    Ok(Some(result))
 }
 
-/// 解析 Postman Collection 文件，在工作区根新建同名分组并导入全部接口
-fn import_postman_file(root: &Path, file: &Path) -> Result<String, String> {
+/// 解析 Postman Collection 文件，在工作区根新建同名分组并导入全部接口；
+/// 同时把集合级 `variable` 合并到工作区环境变量（__envs.json）
+fn import_postman_file(root: &Path, file: &Path) -> Result<PostmanImportResult, String> {
     let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
     let json: Value =
         serde_json::from_str(&content).map_err(|e| format!("解析 JSON 失败: {e}"))?;
@@ -715,7 +727,97 @@ fn import_postman_file(root: &Path, file: &Path) -> Result<String, String> {
         .cloned()
         .unwrap_or_default();
     import_postman_items(&folder, &items)?;
-    Ok(folder.to_string_lossy().to_string())
+    // 集合级变量 -> 环境变量集（同名合并，否则新建；无激活环境时自动激活）
+    let mut env = String::new();
+    let mut vars = 0usize;
+    if let Some(arr) = json.get("variable").and_then(|v| v.as_array()) {
+        let env_vars = postman_variables_to_env(arr);
+        if !env_vars.is_empty() {
+            vars = env_vars.len();
+            env = coll_name.clone();
+            merge_postman_env(root, &env, env_vars)?;
+        }
+    }
+    Ok(PostmanImportResult {
+        folder: folder.to_string_lossy().to_string(),
+        env,
+        vars,
+    })
+}
+
+/// 将 Postman variable 数组（{key, value, type, description}）转换为应用环境变量
+fn postman_variables_to_env(vars: &[Value]) -> Vec<EnvVariable> {
+    vars.iter()
+        .filter_map(|v| {
+            let key = v
+                .get("key")
+                .and_then(|k| k.as_str())
+                .unwrap_or("")
+                .trim()
+                .to_string();
+            if key.is_empty() {
+                return None;
+            }
+            let value = match v.get("value") {
+                Some(Value::String(s)) => s.clone(),
+                Some(Value::Number(n)) => n.to_string(),
+                Some(Value::Bool(b)) => b.to_string(),
+                Some(Value::Null) | None => String::new(),
+                Some(other) => other.to_string(),
+            };
+            let description = match v.get("description") {
+                Some(Value::String(s)) => s.clone(),
+                // Postman 结构化描述：{ "content": "...", "type": "text/plain" }
+                Some(Value::Object(o)) => o
+                    .get("content")
+                    .and_then(|c| c.as_str())
+                    .unwrap_or("")
+                    .to_string(),
+                _ => String::new(),
+            };
+            Some(EnvVariable {
+                key,
+                value,
+                default_value: String::new(),
+                description,
+                enabled: !v.get("disabled").and_then(|d| d.as_bool()).unwrap_or(false),
+            })
+        })
+        .collect()
+}
+
+/// 把导入的变量合并进工作区 __envs.json：
+/// 同名环境变量集存在则按 key 合并，否则新建；无激活环境时自动激活该集
+fn merge_postman_env(root: &Path, env_name: &str, variables: Vec<EnvVariable>) -> Result<(), String> {
+    if variables.is_empty() {
+        return Ok(());
+    }
+    let mut store = read_env_file(root);
+    if let Some(env) = store.environments.iter_mut().find(|e| e.name == env_name) {
+        for v in variables {
+            match env.variables.iter_mut().find(|x| x.key == v.key) {
+                Some(existing) => {
+                    if !v.value.is_empty() {
+                        existing.value = v.value;
+                    }
+                    if !v.description.is_empty() {
+                        existing.description = v.description;
+                    }
+                    existing.enabled = true;
+                }
+                None => env.variables.push(v),
+            }
+        }
+    } else {
+        store.environments.push(Environment {
+            name: env_name.to_string(),
+            variables,
+        });
+    }
+    if store.active.is_empty() {
+        store.active = env_name.to_string();
+    }
+    write_pretty(&root.join(ENV_FILE), &store)
 }
 
 /// 递归导入 item 列表：带 request 的生成接口文件，带 item 的生成子分组
@@ -1831,6 +1933,11 @@ mod tests {
             &coll,
             r#"{
                 "info": { "name": "示例集合" },
+                "variable": [
+                    { "key": "baseUrl", "value": "https://api.example.com", "type": "string", "description": "接口基地址" },
+                    { "key": "token", "value": "dev-token-123456", "type": "string" },
+                    { "key": "timeout", "value": 30, "type": "number", "description": { "content": "超时秒数", "type": "text/plain" } }
+                ],
                 "item": [
                     {
                         "name": "获取用户",
@@ -1860,8 +1967,25 @@ mod tests {
             }"#,
         )
         .unwrap();
-        let folder = import_postman_file(&root, &coll).unwrap();
-        assert!(folder.ends_with("示例集合"));
+        let result = import_postman_file(&root, &coll).unwrap();
+        assert!(result.folder.ends_with("示例集合"));
+        // 集合变量 -> 环境变量集
+        assert_eq!(result.env, "示例集合");
+        assert_eq!(result.vars, 3);
+        let env_store: EnvStore =
+            serde_json::from_str(&fs::read_to_string(root.join("__envs.json")).unwrap()).unwrap();
+        assert_eq!(env_store.active, "示例集合");
+        assert_eq!(env_store.environments.len(), 1);
+        let env = &env_store.environments[0];
+        assert_eq!(env.name, "示例集合");
+        assert_eq!(env.variables.len(), 3);
+        let find = |k: &str| env.variables.iter().find(|v| v.key == k).unwrap();
+        assert_eq!(find("baseUrl").value, "https://api.example.com");
+        assert_eq!(find("baseUrl").description, "接口基地址");
+        assert_eq!(find("token").value, "dev-token-123456");
+        // 数字 value 转字符串、结构化 description 取 content
+        assert_eq!(find("timeout").value, "30");
+        assert_eq!(find("timeout").description, "超时秒数");
         // 顶层接口 + 子分组 + 子接口
         assert!(root.join("示例集合/获取用户.json").exists());
         assert!(root.join("示例集合/订单/创建订单.json").exists());
@@ -1884,6 +2008,12 @@ mod tests {
         .unwrap();
         assert_eq!(api2.method, "POST");
         assert_eq!(api2.body.mode, "json");
+        // 重复导入同一集合：变量按 key 合并，不产生重复集
+        import_postman_file(&root, &coll).unwrap();
+        let env_store2: EnvStore =
+            serde_json::from_str(&fs::read_to_string(root.join("__envs.json")).unwrap()).unwrap();
+        assert_eq!(env_store2.environments.len(), 1);
+        assert_eq!(env_store2.environments[0].variables.len(), 3);
         let _ = fs::remove_dir_all(&root);
     }
 

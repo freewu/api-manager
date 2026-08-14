@@ -1,0 +1,38 @@
+{
+  "uuid": "e83bd27e-b18d-41ab-a8d2-c855fd169d26",
+  "name": "Product Schedules",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/sobjects/OpportunityLineItem/{OPPORTUNITY_LINE_ITEM_ID}/OpportunityLineItemSchedules",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/OpportunityLineItem/:OPPORTUNITY_LINE_ITEM_ID/OpportunityLineItemSchedules",
+  "description": "Work with revenue and quantity schedules for opportunity products. Establish or reestablish a product schedule with multiple installments for an opportunity product. Delete all installments in a schedule.\nThis resource is available in REST API version 43.0 and later.\n\nIn API version 46.0 and later, established and re-established schedules support custom fields, validation rules, and Apex triggers. Deleting all schedules now also fires delete triggers.\nhttps://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_opportunitylineitemschedules.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "OPPORTUNITY_LINE_ITEM_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

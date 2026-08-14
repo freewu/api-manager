@@ -1,0 +1,43 @@
+{
+  "uuid": "d67cc859-8432-4c47-bb92-8e7213a0326d",
+  "name": "SOAP undelete",
+  "method": "POST",
+  "path": "/services/Soap/c/{{version}}",
+  "url": "{{url}}{{site}}/services/Soap/c/{{version}}",
+  "description": "Undeletes records from the Recycle Bin.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "text/xml; charset=UTF-8",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Accept",
+      "value": "text/xml",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "SOAPAction",
+      "value": "undelete",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:urn=\"urn:enterprise.soap.sforce.com\">\n  <soapenv:Header>\n     <urn:SessionHeader>\n        <urn:sessionId>{{_accessToken}}</urn:sessionId>\n     </urn:SessionHeader>\n  </soapenv:Header>\n  <soapenv:Body>\n     <urn:undelete>\n        <urn:ids></urn:ids>\n     </urn:undelete>\n  </soapenv:Body>\n</soapenv:Envelope>",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,38 @@
+{
+  "uuid": "40ddf882-51dd-4071-b019-0e66a1f7eb49",
+  "name": "Post Tooling SObject",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/tooling/sobjects/{SOBJECT_API_NAME}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/:SOBJECT_API_NAME",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n\t\"Name\":\"test\"\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

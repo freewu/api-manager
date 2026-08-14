@@ -1,0 +1,31 @@
+{
+  "uuid": "70c62f97-4f0b-4cb1-8a31-a598785b04bb",
+  "name": "Update Account",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/graphql",
+  "url": "{{_endpoint}}/services/data/v{{version}}/graphql",
+  "description": "",
+  "headers": [
+    {
+      "key": "X-Chatter-Entity-Encoding",
+      "value": "false",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

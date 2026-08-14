@@ -280,13 +280,19 @@ export default function App() {
     }
   };
 
-  /** 导入 Postman Collection：自动新建分组 */
+  /** 导入 Postman Collection：自动新建分组，并把集合变量合并到环境变量 */
   const handleImportPostman = async () => {
     try {
-      const folder = await importPostman();
-      if (!folder) return; // 用户取消
+      const result = await importPostman();
+      if (!result) return; // 用户取消
       await loadAll(workspace!);
-      showToast("已导入 Postman Collection");
+      if (result.vars > 0) {
+        showToast(
+          `已导入 Postman Collection，${result.vars} 个变量已合并到环境变量集「${result.env}」`
+        );
+      } else {
+        showToast("已导入 Postman Collection");
+      }
     } catch (e) {
       showToast("导入失败: " + e);
     }

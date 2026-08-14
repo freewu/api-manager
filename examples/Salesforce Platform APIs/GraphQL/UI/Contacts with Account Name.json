@@ -1,0 +1,31 @@
+{
+  "uuid": "bcc9f576-3556-4ee5-bdab-96d42b70964d",
+  "name": "Contacts with Account Name",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/graphql",
+  "url": "{{_endpoint}}/services/data/v{{version}}/graphql",
+  "description": "",
+  "headers": [
+    {
+      "key": "X-Chatter-Entity-Encoding",
+      "value": "false",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

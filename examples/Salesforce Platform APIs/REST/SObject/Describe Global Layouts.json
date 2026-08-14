@@ -1,0 +1,31 @@
+{
+  "uuid": "ea08cb79-4564-478e-b6bf-6d12b4a0a9c8",
+  "name": "Describe Global Layouts",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/sobjects/Global/describe/layouts/",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/Global/describe/layouts/",
+  "description": "Returns a list of layouts and descriptions. The list of fields and the layout name are returned.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

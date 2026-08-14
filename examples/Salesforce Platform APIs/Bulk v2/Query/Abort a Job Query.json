@@ -1,0 +1,31 @@
+{
+  "uuid": "50784627-abd5-4d0a-b087-39341d64e786",
+  "name": "Abort a Job Query",
+  "method": "PATCH",
+  "path": "/services/data/v{{version}}/jobs/query/{{_jobId}}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/jobs/query/{{_jobId}}",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n\t\"state\":\"Aborted\"\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,50 @@
+{
+  "uuid": "6a3cb4de-04e3-489d-a7b7-d41af515c6f7",
+  "name": "Change event relay state",
+  "method": "PATCH",
+  "path": "/services/data/v{{version}}/tooling/sobjects/EventRelayConfig/{EVENT_RELAY_CONFIG_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/EventRelayConfig/:EVENT_RELAY_CONFIG_ID",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "SOAPAction",
+      "value": "\"\"",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Authorization",
+      "value": "Bearer {{_accessToken}}",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "EVENT_RELAY_CONFIG_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"Metadata\": {\n        \"state\": \"RUN\"\n    }\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

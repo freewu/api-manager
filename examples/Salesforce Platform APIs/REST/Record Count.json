@@ -1,0 +1,38 @@
+{
+  "uuid": "9673ed36-b4ed-475c-aec6-038300df438a",
+  "name": "Record Count",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/limits/recordCount",
+  "url": "{{_endpoint}}/services/data/v{{version}}/limits/recordCount?sObjects=Account,Contact,Lead",
+  "description": "Lists information about object record counts in your organization.\nThis resource is available in REST API version 40.0 and later for API users with the “View Setup and Configuration” permission. The returned record count is approximate, and does not include the following types of records:\n\nDeleted records in the recycle bin.\nArchived records.\nhttps://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_record_count.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "sObjects",
+      "value": "Account,Contact,Lead",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

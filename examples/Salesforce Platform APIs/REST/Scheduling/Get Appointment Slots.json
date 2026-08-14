@@ -1,0 +1,31 @@
+{
+  "uuid": "62807b38-8e16-44bc-9ab2-91898d67e211",
+  "name": "Get Appointment Slots",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/scheduling/getAppointmentSlots",
+  "url": "{{_endpoint}}/services/data/v{{version}}/scheduling/getAppointmentSlots",
+  "description": "Returns a list of available appointment time slots for a resource based on given work type group and territories.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/requests_ls_getappointmentslots.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n\t\"startTime\": \"string\",\n\t\"endTime\": \"string\",\n\t\"workTypeGroupId\": \"string\",\n\t\"workType\": \"Work Type\",\n\t\"accountId\": \"string\",\n\t\"territoryIds\": \"string[]\",\n\t\"requiredResourceIds\": \"string[]\",\n\t\"schedulingPolicyId\": \"string\",\n\t\"allowConcurrentScheduling\": \"boolean\",\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

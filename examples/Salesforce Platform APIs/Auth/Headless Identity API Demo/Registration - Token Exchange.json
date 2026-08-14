@@ -1,0 +1,49 @@
+{
+  "uuid": "d2e93fbc-d3ee-43f0-af5a-e124238f8a33",
+  "name": "Registration - Token Exchange",
+  "method": "POST",
+  "path": "/services/oauth2/token",
+  "url": "{{url}}{{site}}/services/oauth2/token",
+  "description": "This exchanges the auth code returned in the Authorize Request for an access token and refresh token. This follows the standard Auth Code flow/Webserver Code Flow pattern. The Code is the return form the Authorization call.",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "form",
+    "raw": "",
+    "form": [
+      {
+        "key": "code",
+        "value": "<code>",
+        "enabled": true,
+        "description": ""
+      },
+      {
+        "key": "grant_type",
+        "value": "authorization_code",
+        "enabled": true,
+        "description": ""
+      },
+      {
+        "key": "client_id",
+        "value": "{{clientId}}",
+        "enabled": true,
+        "description": ""
+      },
+      {
+        "key": "redirect_uri",
+        "value": "{{redirectUrl}}",
+        "enabled": true,
+        "description": ""
+      }
+    ]
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

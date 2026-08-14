@@ -1,0 +1,24 @@
+{
+  "uuid": "ac874923-044f-419c-b5c0-5b9751097c48",
+  "name": "News Feed Elements",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/chatter/feeds/news/me/feed-elements",
+  "url": "{{_endpoint}}/services/data/v{{version}}/chatter/feeds/news/me/feed-elements",
+  "description": "All feed elements from all groups the context user either owns or is a member of, as well as all files, records, and users the context user follows. Use this resource to get information about feed elements and to post feed elements.\n\nFor information about posting a feed element, see Feed Elements, Post and Search.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resource_feeds_news.htm#cc_news_feed_elements",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

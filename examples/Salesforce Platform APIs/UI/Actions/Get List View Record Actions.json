@@ -1,0 +1,31 @@
+{
+  "uuid": "0168ebe9-e18d-402c-8de1-e86861880d24",
+  "name": "Get List View Record Actions",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/actions/list-view-record/{RECORD_IDS}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/actions/list-view-record/:RECORD_IDS",
+  "description": "Get the record actions on list views.",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "RECORD_IDS",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

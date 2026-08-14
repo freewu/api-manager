@@ -1,0 +1,24 @@
+{
+  "uuid": "5b944ac3-4aff-4fd5-869c-aca185fe98d4",
+  "name": "Create managed event subscription",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/tooling/sobjects/ManagedEventSubscription",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/ManagedEventSubscription",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"FullName\": \"Managed_Sub_OpportunityChangeEvent\",\n    \"Metadata\": {\n        \"label\": \"Managed Sub OpportunityChangeEvent\",\n        \"topicName\": \"/data/OpportunityChangeEvent\",\n        \"defaultReplay\": \"LATEST\",\n        \"state\": \"RUN\",\n        \"errorRecoveryReplay\": \"LATEST\"\n    }\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

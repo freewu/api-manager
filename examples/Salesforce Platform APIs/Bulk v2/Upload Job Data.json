@@ -1,0 +1,31 @@
+{
+  "uuid": "406eb9c1-7bc0-44de-a2d6-88e87ec31a85",
+  "name": "Upload Job Data",
+  "method": "PUT",
+  "path": "/services/data/v{{version}}/jobs/ingest/{{_jobId}}/batches",
+  "url": "{{_endpoint}}/services/data/v{{version}}/jobs/ingest/{{_jobId}}/batches",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "text/csv",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}
