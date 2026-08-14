@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TreeNode } from "../types";
 
 interface Props {
@@ -10,6 +10,12 @@ interface Props {
   onRename: (node: TreeNode) => void;
   onDelete: (node: TreeNode) => void;
   onEditInfo: (node: TreeNode) => void;
+}
+
+interface CtxMenu {
+  x: number;
+  y: number;
+  node: TreeNode;
 }
 
 function methodClass(method?: string) {
@@ -26,8 +32,14 @@ function NodeRow({
   onRename,
   onDelete,
   onEditInfo,
+  onFolderContextMenu,
   filter,
-}: Props & { node: TreeNode; depth: number; filter: string }) {
+}: Props & {
+  node: TreeNode;
+  depth: number;
+  onFolderContextMenu: (e: React.MouseEvent, node: TreeNode) => void;
+  filter: string;
+}) {
   const isFolder = node.kind === "folder";
   const [open, setOpen] = useState(node.collapsed !== true);
 
@@ -39,9 +51,10 @@ function NodeRow({
   const childrenMatch = useMemo(() => {
     if (!isFolder || !node.children) return false;
     if (filter) {
-      return node.children.some((c) =>
-        c.name.toLowerCase().includes(filter) ||
-        (c.endpoint || "").toLowerCase().includes(filter)
+      return node.children.some(
+        (c) =>
+          c.name.toLowerCase().includes(filter) ||
+          (c.endpoint || "").toLowerCase().includes(filter)
       );
     }
     return false;
@@ -60,6 +73,13 @@ function NodeRow({
         onClick={() => {
           if (isFolder) setOpen(!open);
           else onSelect(node);
+        }}
+        onContextMenu={(e) => {
+          if (isFolder) {
+            e.preventDefault();
+            e.stopPropagation();
+            onFolderContextMenu(e, node);
+          }
         }}
         title={isFolder ? node.description || node.name : `${node.method} ${node.endpoint}`}
       >
@@ -124,6 +144,7 @@ function NodeRow({
               onRename={onRename}
               onDelete={onDelete}
               onEditInfo={onEditInfo}
+              onFolderContextMenu={onFolderContextMenu}
               filter={filter}
               tree={null}
             />
@@ -144,8 +165,32 @@ function NodeRow({
 }
 
 export function Sidebar(props: Props) {
-  const { tree, onNewApi, onNewFolder } = props;
+  const { tree, onNewApi, onNewFolder, onEditInfo, onDelete } = props;
   const [filter, setFilter] = useState("");
+  const [menu, setMenu] = useState<CtxMenu | null>(null);
+
+  // 右键菜单：点击任意处 / Esc / 滚动时关闭
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menu]);
+
+  const openMenu = (e: React.MouseEvent, node: TreeNode) => {
+    setMenu({
+      x: Math.min(e.clientX, window.innerWidth - 190),
+      y: Math.min(e.clientY, window.innerHeight - 160),
+      node,
+    });
+  };
 
   return (
     <div className="sidebar">
@@ -172,6 +217,7 @@ export function Sidebar(props: Props) {
             onRename={props.onRename}
             onDelete={props.onDelete}
             onEditInfo={props.onEditInfo}
+            onFolderContextMenu={openMenu}
             filter={filter.trim().toLowerCase()}
             tree={null}
           />
@@ -186,6 +232,45 @@ export function Sidebar(props: Props) {
           ＋ 新建分组
         </button>
       </div>
+
+      {menu && (
+        <div className="node-ctx-menu" style={{ left: menu.x, top: menu.y }}>
+          <button
+            onClick={() => {
+              onNewFolder(menu.node.path);
+              setMenu(null);
+            }}
+          >
+            📁 新增目录
+          </button>
+          <button
+            onClick={() => {
+              onNewApi(menu.node.path);
+              setMenu(null);
+            }}
+          >
+            🌐 新增接口
+          </button>
+          <div className="node-ctx-sep" />
+          <button
+            onClick={() => {
+              onEditInfo(menu.node);
+              setMenu(null);
+            }}
+          >
+            ✎ 编辑目录信息
+          </button>
+          <button
+            className="danger"
+            onClick={() => {
+              onDelete(menu.node);
+              setMenu(null);
+            }}
+          >
+            🗑 删除
+          </button>
+        </div>
+      )}
     </div>
   );
 }

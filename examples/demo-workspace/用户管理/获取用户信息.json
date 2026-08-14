@@ -1,6 +1,6 @@
 {
   "name": "获取用户信息",
-  "method": "GET",
+  "method": "POST",
   "path": "/api/users/{id}",
   "url": "",
   "description": "根据用户 ID 获取用户详细信息",

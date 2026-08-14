@@ -149,6 +149,20 @@ export default function App() {
     setTree(t);
   }
 
+  // 递归更新树中指定路径节点的 method（修改 HTTP 方法时即时刷新左侧徽标）
+  function patchNodeMethod(node: TreeNode, path: string, method: string): TreeNode {
+    if (node.path === path) return { ...node, method };
+    if (node.children) {
+      return { ...node, children: node.children.map((c) => patchNodeMethod(c, path, method)) };
+    }
+    return node;
+  }
+
+  useEffect(() => {
+    if (!api || !selectedPath) return;
+    setTree((t) => (t ? patchNodeMethod(t, selectedPath, api.method) : t));
+  }, [selectedPath, api?.method]);
+
   const selectNode = useCallback(
     async (node: TreeNode) => {
       if (dirty && api) {

@@ -1199,7 +1199,8 @@ body {
 }
 
 /* 右键菜单（编辑 / 复制 / 删除） */
-.env-ctx-menu {
+.env-ctx-menu,
+.node-ctx-menu {
   position: fixed;
   z-index: 70;
   min-width: 150px;
@@ -1209,7 +1210,11 @@ body {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   padding: 4px;
 }
-.env-ctx-menu button {
+.node-ctx-menu {
+  min-width: 170px;
+}
+.env-ctx-menu button,
+.node-ctx-menu button {
   display: flex;
   width: 100%;
   align-items: center;
@@ -1225,15 +1230,23 @@ body {
   font-family: inherit;
   white-space: nowrap;
 }
-.env-ctx-menu button:hover {
+.env-ctx-menu button:hover,
+.node-ctx-menu button:hover {
   background: rgba(46, 89, 167, 0.15);
   color: var(--accent);
 }
-.env-ctx-menu button.danger {
+.env-ctx-menu button.danger,
+.node-ctx-menu button.danger {
   color: var(--danger, #e05d5d);
 }
-.env-ctx-menu button.danger:hover {
+.env-ctx-menu button.danger:hover,
+.node-ctx-menu button.danger:hover {
   background: rgba(224, 93, 93, 0.12);
+}
+.node-ctx-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 6px;
 }
 
 .env-empty-block {

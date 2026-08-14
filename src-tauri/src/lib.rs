@@ -334,6 +334,7 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
             }
         } else if path.extension().map(|e| e == "json").unwrap_or(false)
             && file_name != INFO_FILE
+            && file_name != ENV_FILE
         {
             apis.push(build_api_node(&path));
         }
