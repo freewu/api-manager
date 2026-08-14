@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { EnvStore } from "../types";
 import { EnvValueModal } from "./EnvValueModal";
 import { Modal } from "./Modal";
@@ -9,7 +9,13 @@ interface Props {
   onSave: (envs: EnvStore) => void;
 }
 
-/** 第一个弹出框：环境变量集管理（新增 / 复制 / 编辑 / 删除 / 拖动排序） */
+interface CtxMenu {
+  x: number;
+  y: number;
+  i: number;
+}
+
+/** 环境变量集管理：列表 + 右键菜单(编辑/复制/删除) + 拖动排序；当前环境由工具栏「环境」下拉切换 */
 export function EnvModal({ envs, onClose, onSave }: Props) {
   const [draft, setDraft] = useState<EnvStore>(() => ({
     active: envs.active,
@@ -19,18 +25,32 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
     })),
   }));
   const [idx, setIdx] = useState(
-    Math.max(
-      0,
-      envs.environments.findIndex((e) => e.name === envs.active)
-    )
+    Math.max(0, envs.environments.findIndex((e) => e.name === envs.active))
   );
   const [editing, setEditing] = useState(false);
   const [nameBackup, setNameBackup] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
   const [valueModal, setValueModal] = useState(false);
+  const [menu, setMenu] = useState<CtxMenu | null>(null);
 
   const env = draft.environments[idx];
+
+  // 右键菜单：点击任意处 / Esc / 滚动时关闭
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menu]);
+
   const setEnv = (patch: Partial<(typeof draft.environments)[number]>) => {
     setDraft((d) => {
       const next = d.environments.map((e, i) => (i === idx ? { ...e, ...patch } : e));
@@ -46,7 +66,7 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
     return `${base} (${i})`;
   };
 
-  // ---- 环境变量集：新增 / 复制 / 编辑 / 删除 ----
+  // ---- 新增 ----
 
   const addEnv = () => {
     const name = uniqueName(`环境 ${draft.environments.length + 1}`);
@@ -59,24 +79,29 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
     setNameBackup(name);
   };
 
-  const copyEnv = () => {
-    if (!env) return;
-    const base = env.name.replace(/\s*\(副本\)\s*$/, "").trim() || "环境";
+  // ---- 复制 / 编辑 / 删除（右键菜单，作用于目标行 i） ----
+
+  const copyEnvAt = (i: number) => {
+    const src = draft.environments[i];
+    if (!src) return;
+    const base = src.name.replace(/\s*\(副本\)\s*$/, "").trim() || "环境";
     const name = uniqueName(`${base} (副本)`);
     setDraft((d) => ({
       ...d,
       environments: [
         ...d.environments,
-        { ...env, name, variables: env.variables.map((v) => ({ ...v })) },
+        { ...src, name, variables: src.variables.map((v) => ({ ...v })) },
       ],
     }));
     setIdx(draft.environments.length);
     setEditing(false);
   };
 
-  const startEdit = () => {
-    if (!env) return;
-    setNameBackup(env.name);
+  const startEditAt = (i: number) => {
+    const t = draft.environments[i];
+    if (!t) return;
+    setNameBackup(t.name);
+    setIdx(i);
     setEditing(true);
   };
 
@@ -89,20 +114,33 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
     setEditing(false);
   };
 
-  const removeEnv = () => {
-    if (!env) return;
-    const removed = env.name;
-    const nextIdx = Math.min(idx, draft.environments.length - 2);
+  const removeEnvAt = (i: number) => {
+    const removed = draft.environments[i];
+    if (!removed) return;
     setDraft((d) => {
-      const envs2 = d.environments.filter((_, i) => i !== idx);
+      const envs2 = d.environments.filter((_, x) => x !== i);
       return {
         ...d,
-        active: d.active === removed ? "" : d.active,
+        active: d.active === removed.name ? "" : d.active,
         environments: envs2,
       };
     });
-    setIdx(nextIdx);
+    setIdx(Math.max(0, Math.min(i, draft.environments.length - 2)));
     setEditing(false);
+  };
+
+  // ---- 右键菜单打开 ----
+
+  const openMenu = (e: React.MouseEvent, i: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIdx(i);
+    setEditing(false);
+    setMenu({
+      x: Math.min(e.clientX, window.innerWidth - 180),
+      y: Math.min(e.clientY, window.innerHeight - 130),
+      i,
+    });
   };
 
   // ---- 拖动排序（HTML5 DnD） ----
@@ -110,6 +148,7 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
   const onDragStart = (e: React.DragEvent, i: number) => {
     setDragIdx(i);
     setEditing(false);
+    setMenu(null);
     try {
       e.dataTransfer.setData("text/plain", String(i));
       e.dataTransfer.effectAllowed = "move";
@@ -148,8 +187,6 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
     setOverIdx(null);
   };
 
-  const setActive = (name: string) => setDraft((d) => ({ ...d, active: name }));
-
   const save = () => {
     const cleaned = {
       active: draft.active,
@@ -184,7 +221,9 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
         <div className="env-manager env-set-manager">
           <div className="section-title env-section">
             环境变量集
-            <span className="help">新增 / 复制 / 编辑 / 删除，拖动 ⋮⋮ 调整顺序</span>
+            <span className="help">
+              拖动 ⋮⋮ 调整顺序；右键集名称可 编辑 / 复制 / 删除
+            </span>
           </div>
 
           <div className="env-set-list">
@@ -201,7 +240,8 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
                   setIdx(i);
                   setEditing(false);
                 }}
-                title={draft.active === e.name ? "当前环境，可拖动排序" : "可拖动排序"}
+                onContextMenu={(ev) => openMenu(ev, i)}
+                title={draft.active === e.name ? "当前环境 · 右键菜单" : "右键菜单"}
               >
                 <span className="env-drag-handle" title="拖动排序">⋮⋮</span>
                 {editing && i === idx ? (
@@ -243,19 +283,10 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
             <button className="btn small" onClick={addEnv} title="新增环境变量集">
               + 新增
             </button>
-            <button className="btn small" onClick={copyEnv} disabled={!env} title="复制当前环境变量集（含所有变量值）">
-              ⧉ 复制
-            </button>
-            <button className="btn small" onClick={startEdit} disabled={!env} title="重命名当前环境变量集">
-              ✎ 编辑
-            </button>
-            <button className="btn small danger" onClick={removeEnv} disabled={!env} title="删除当前环境变量集">
-              🗑 删除
-            </button>
             <span className="env-set-actions-spacer" />
             <button
               className="btn primary"
-              disabled={draft.environments.length === 0}
+              disabled={!env}
               onClick={() => setValueModal(true)}
               title={env ? `管理「${env.name}」的变量值` : "请先选择环境变量集"}
             >
@@ -263,25 +294,8 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
             </button>
           </div>
 
-          {env && (
-            <div className="env-meta-row">
-              <label className="meta-item" style={{ cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={draft.active === env.name}
-                  onChange={(e) => setActive(e.target.checked ? env.name : "")}
-                  style={{ width: "auto" }}
-                />
-                设为当前环境
-              </label>
-              <span style={{ color: "var(--text-faint)", fontSize: 11 }}>
-                当前选中：{env.name}
-              </span>
-            </div>
-          )}
-
-          <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 8 }}>
-            环境配置保存在工作区根目录的 <code>__envs.json</code> 文件中，可随目录一起纳入 Git 管理。
+          <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 10 }}>
+            环境配置保存在工作区根目录 <code>__envs.json</code>；当前环境可在工具栏「环境」下拉框切换。
           </div>
         </div>
       </Modal>
@@ -294,6 +308,36 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
           onClose={() => setValueModal(false)}
           maskClassName="modal-mask-top"
         />
+      )}
+
+      {menu && (
+        <div className="env-ctx-menu" style={{ left: menu.x, top: menu.y }}>
+          <button
+            onClick={() => {
+              startEditAt(menu.i);
+              setMenu(null);
+            }}
+          >
+            ✎ 编辑
+          </button>
+          <button
+            onClick={() => {
+              copyEnvAt(menu.i);
+              setMenu(null);
+            }}
+          >
+            ⧉ 复制
+          </button>
+          <button
+            className="danger"
+            onClick={() => {
+              removeEnvAt(menu.i);
+              setMenu(null);
+            }}
+          >
+            🗑 删除
+          </button>
+        </div>
       )}
     </>
   );
