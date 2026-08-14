@@ -381,6 +381,19 @@ export default function App() {
       for (const p of api.params.filter((x) => x.enabled && x.key)) {
         url = url.replaceAll(`{${p.key}}`, encodeURIComponent(sub(p.value)));
       }
+      // URL 校验：空地址 / 缺少协议前缀 / 存在未替换的 {{变量}}
+      if (!url.trim()) {
+        throw new Error("请求 URL 为空，请填写完整地址或设置 Base URL");
+      }
+      if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(url)) {
+        url = "http://" + url;
+      }
+      const unresolved = [...url.matchAll(/\{\{\s*([^{}]+?)\s*\}\}/g)].map((m) => m[0]);
+      if (unresolved.length > 0) {
+        throw new Error(
+          `URL 中存在未替换的环境变量: ${unresolved.join("、")}（请检查激活的环境变量，或直接修改 URL）`
+        );
+      }
       // 拼接 query
       const qs = api.query
         .filter((q) => q.enabled && q.key)

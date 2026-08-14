@@ -1538,6 +1538,9 @@ async fn send_request(req: HttpRequestData) -> Result<HttpResult, String> {
                 "请求超时".to_string()
             } else if e.is_connect() {
                 format!("连接失败: {e}")
+            } else if e.is_builder() {
+                // URL 无法解析为合法地址（缺少 http(s):// 前缀，或包含未替换的 {{变量}}）
+                format!("URL 格式不正确: {}（请检查是否缺少 http:// 前缀或存在未替换的 {{变量}}）", req.url)
             } else {
                 e.to_string()
             };
@@ -2192,6 +2195,27 @@ mod tests {
         assert!(res.headers.iter().any(|(k, v)| k == "x-test" && v == "yes"));
         stop.store(true, std::sync::atomic::Ordering::Relaxed);
         handle.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_send_request_bad_url() {
+        // 未替换的 {{变量}} 会产生 reqwest builder error，应给出中文提示而不是裸的 builder error
+        for url in ["http://{{host}}:8080/api", "127.0.0.1:8080/api"] {
+            let req = HttpRequestData {
+                method: "GET".into(),
+                url: url.to_string(),
+                headers: vec![],
+                body: None,
+                timeout_ms: 3000,
+            };
+            let res = send_request(req).await.unwrap();
+            assert!(!res.ok, "url [{url}] 应失败");
+            let err = res.error.unwrap_or_default();
+            assert!(
+                err.contains("URL 格式不正确") && !err.starts_with("builder"),
+                "url [{url}] 错误信息不友好: {err}"
+            );
+        }
     }
 
     #[tokio::test]
