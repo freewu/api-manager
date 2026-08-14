@@ -33,6 +33,7 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
   const [overIdx, setOverIdx] = useState<number | null>(null);
   const [valueModal, setValueModal] = useState(false);
   const [menu, setMenu] = useState<CtxMenu | null>(null);
+  const [confirmDel, setConfirmDel] = useState<number | null>(null);
 
   const env = draft.environments[idx];
 
@@ -117,9 +118,6 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
   const removeEnvAt = (i: number) => {
     const removed = draft.environments[i];
     if (!removed) return;
-    if (!window.confirm(`确定删除环境变量集「${removed.name}」？删除后不可恢复。`)) {
-      return;
-    }
     setDraft((d) => {
       const envs2 = d.environments.filter((_, x) => x !== i);
       return {
@@ -210,7 +208,7 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
       <Modal
         title="环境变量集管理"
         onClose={onClose}
-        className="modal-wide"
+        className="modal-xwide"
         footer={
           <>
             <button className="btn" onClick={onClose}>
@@ -226,7 +224,7 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
           <div className="section-title env-section">
             环境变量集
             <span className="help">
-              拖动 ⋮⋮ 调整顺序；右键集名称可 编辑 / 复制 / 删除
+              拖动 ⋮⋮ 调整顺序；右键 编辑 / 复制 / 删除；双击 管理变量值
             </span>
           </div>
 
@@ -244,8 +242,14 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
                   setIdx(i);
                   setEditing(false);
                 }}
+                onDoubleClick={() => {
+                  if (editing && i === idx) return;
+                  setIdx(i);
+                  setEditing(false);
+                  setValueModal(true);
+                }}
                 onContextMenu={(ev) => openMenu(ev, i)}
-                title={draft.active === e.name ? "当前环境 · 右键菜单" : "右键菜单"}
+                title={draft.active === e.name ? "当前环境 · 右键菜单 · 双击管理变量值" : "右键菜单 · 双击管理变量值"}
               >
                 <span className="env-drag-handle" title="拖动排序">⋮⋮</span>
                 {editing && i === idx ? (
@@ -335,13 +339,44 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
           <button
             className="danger"
             onClick={() => {
-              removeEnvAt(menu.i);
+              setConfirmDel(menu.i);
               setMenu(null);
             }}
           >
             🗑 删除
           </button>
         </div>
+      )}
+
+      {confirmDel !== null && draft.environments[confirmDel] && (
+        <Modal
+          title="删除环境变量集"
+          onClose={() => setConfirmDel(null)}
+          maskClassName="modal-mask-top"
+          footer={
+            <>
+              <button className="btn" onClick={() => setConfirmDel(null)}>
+                取消
+              </button>
+              <button
+                className="btn danger"
+                onClick={() => {
+                  removeEnvAt(confirmDel);
+                  setConfirmDel(null);
+                }}
+              >
+                删除
+              </button>
+            </>
+          }
+        >
+          <div style={{ fontSize: 13, color: "var(--text)" }}>
+            确定删除环境变量集「<b>{draft.environments[confirmDel].name}</b>」？
+            <div style={{ color: "var(--text-faint)", fontSize: 12, marginTop: 6 }}>
+              删除后不可恢复。
+            </div>
+          </div>
+        </Modal>
       )}
     </>
   );

@@ -1,5 +1,5 @@
 {
-  "active": "开发环境",
+  "active": "生产环境 (副本)",
   "environments": [
     {
       "name": "开发环境",

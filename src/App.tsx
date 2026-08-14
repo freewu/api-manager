@@ -24,12 +24,14 @@ import {
 } from "./commands";
 import { Editor } from "./components/Editor";
 import { EnvModal } from "./components/EnvModal";
+import { EnvValueModal } from "./components/EnvValueModal";
 import { Modal } from "./components/Modal";
 import { Response } from "./components/Response";
 import { Sidebar } from "./components/Sidebar";
 import {
   ApiFile,
   EnvStore,
+  EnvVariable,
   HttpRequestData,
   HttpResult,
   InfoJson,
@@ -76,6 +78,7 @@ export default function App() {
   const [mockPort, setMockPort] = useState(5050);
   const [envs, setEnvs] = useState<EnvStore>(emptyEnv());
   const [envModal, setEnvModal] = useState(false);
+  const [envValue, setEnvValue] = useState(false);
   const toastTimer = useRef<number | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -297,6 +300,30 @@ export default function App() {
     }
   };
 
+  // 主页面直接编辑当前环境集的变量值
+  const activeEnv = envs.environments.find((e) => e.name === envs.active);
+  const handleSaveEnvValues = async (variables: EnvVariable[]) => {
+    if (!activeEnv) return;
+    const next: EnvStore = {
+      ...envs,
+      environments: envs.environments.map((e) =>
+        e.name === activeEnv.name ? { ...e, variables } : e
+      ),
+    };
+    setEnvs(next);
+    try {
+      await saveEnv(next);
+      updateTrayEnv(next.active || "").catch(() => {});
+      if (mock.running) {
+        setMock(await mockReload());
+      }
+      showToast(`环境变量已保存：${activeEnv.name}`);
+    } catch (e) {
+      showToast("保存环境变量失败: " + e);
+    }
+    setEnvValue(false);
+  };
+
   // ---------- 弹窗操作 ----------
   const openModal = (type: ModalState["type"], parent = "", target?: TreeNode) => {
     setModalText(target?.name || (type === "newApi" ? "未命名接口" : type === "newFolder" ? "新分组" : ""));
@@ -469,6 +496,14 @@ export default function App() {
               </option>
             ))}
           </select>
+          <button
+            className="btn"
+            disabled={!activeEnv}
+            title={activeEnv ? `查看 / 管理当前环境「${activeEnv.name}」的变量值` : "请先在工具栏选择环境"}
+            onClick={() => setEnvValue(true)}
+          >
+            📋
+          </button>
           <button className="btn" title="管理环境变量" onClick={() => setEnvModal(true)}>
             🌐
           </button>
@@ -543,6 +578,16 @@ export default function App() {
           envs={envs}
           onClose={() => setEnvModal(false)}
           onSave={handleSaveEnv}
+        />
+      )}
+
+      {envValue && activeEnv && (
+        <EnvValueModal
+          name={activeEnv.name}
+          variables={activeEnv.variables}
+          onSave={handleSaveEnvValues}
+          onClose={() => setEnvValue(false)}
+          maskClassName="modal-mask-top"
         />
       )}
 
