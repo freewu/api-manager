@@ -595,6 +595,9 @@ body {
   background: var(--bg-hover);
   color: var(--text);
 }
+.sidebar-footer .import-btn {
+  margin-left: auto;
+}
 
 /* ============ 主内容 ============ */
 .content {

@@ -768,9 +768,6 @@ export default function App() {
         <button className="btn" onClick={async () => { await reloadTree(); showToast("已刷新"); }}>
           🔄
         </button>
-        <button className="btn" onClick={() => void handleImportPostman()} title="导入 Postman Collection（自动新建分组）">
-          ⬇️ 导入
-        </button>
       </div>
 
       <div className="main">
@@ -789,6 +786,7 @@ export default function App() {
           onVersions={openVersions}
           onStats={setStatsNode}
           onOpenSettings={() => setSettingsOpen(true)}
+          onImportPostman={() => void handleImportPostman()}
           onMove={handleMove}
           enableVersion={settings.enableVersion}
           historyRecords={history.records}
