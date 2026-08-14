@@ -13,9 +13,11 @@ interface Props {
   enableVersion: boolean;
   sending: boolean;
   style?: React.CSSProperties;
+  /** 失焦后自动保存（接口说明 textarea blur 时触发） */
+  onCommit?: () => void;
 }
 
-export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style }: Props) {
+export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit }: Props) {
   const [tab, setTab] = useState<Tab>("params");
   const effectiveUrl = api.url || (baseUrl + api.path);
 
@@ -228,34 +230,17 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
 
         {tab === "desc" && (
           <div>
-            <div className="meta-row">
-              <label className="meta-item">
-                接口名称
-                <input
-                  value={api.name}
-                  onChange={(e) => set({ name: e.target.value })}
-                  spellCheck={false}
-                />
-              </label>
-              <label className="meta-item">
-                路径
-                <input
-                  value={api.path}
-                  onChange={(e) => set({ path: e.target.value })}
-                  spellCheck={false}
-                />
-              </label>
-            </div>
             <div className="section-title">接口说明</div>
             <textarea
               className="desc-area"
               value={api.description}
               placeholder="描述该接口的用途、参数、返回值等"
               onChange={(e) => set({ description: e.target.value })}
+              onBlur={onCommit}
               spellCheck={false}
             />
             <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 8 }}>
-              提示：请求时 URL 使用 <b>baseUrl + 路径</b>；若填写了完整 URL 则优先使用。修改 URL 输入框会自动同步 path / url。
+              提示：接口名称 / 路径可在左侧右键「重命名」或顶部 URL 输入框中修改；说明文字失焦后自动保存。
             </div>
           </div>
         )}

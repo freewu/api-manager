@@ -338,27 +338,37 @@ export default function App() {
     document.body.style.userSelect = "none";
   };
 
-  /** 编辑器 / 响应上下分栏拖动调整高度 */
+  /** 编辑器 / 响应上下分栏拖动调整高度（拖动中直接操作 DOM + rAF 合并帧，避免每个 mousemove 触发 React 重渲染而卡顿） */
   const startVResize = (e: React.MouseEvent) => {
     e.preventDefault();
     const startY = e.clientY;
     const contentEl = (e.currentTarget as HTMLElement).parentElement as HTMLElement;
     const contentH = contentEl.clientHeight;
+    const editorEl = contentEl.querySelector<HTMLElement>(".editor");
     // 预留分隔条 + 响应面板最小高度
     const maxRatio = Math.max(0.2, (contentH - 165) / contentH);
+    let lastY = startY;
+    let raf = 0;
     const onMove = (ev: MouseEvent) => {
-      const ratio = Math.min(
-        maxRatio,
-        Math.max(0.2, (contentH * editorRatioRef.current + (ev.clientY - startY)) / contentH)
-      );
-      editorRatioRef.current = ratio;
-      setEditorRatio(ratio);
+      lastY = ev.clientY;
+      if (raf) return; // 已有一帧待执行，丢弃中间事件
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const ratio = Math.min(
+          maxRatio,
+          Math.max(0.2, (contentH * editorRatioRef.current + (lastY - startY)) / contentH)
+        );
+        editorRatioRef.current = ratio;
+        if (editorEl) editorEl.style.height = `${ratio * 100}%`;
+      });
     };
     const onUp = () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      if (raf) cancelAnimationFrame(raf);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      setEditorRatio(editorRatioRef.current);
       localStorage.setItem("editor-ratio", String(editorRatioRef.current));
     };
     window.addEventListener("mousemove", onMove);
@@ -453,6 +463,18 @@ export default function App() {
       setSending(false);
     }
   };
+
+  // 接口说明失焦后自动保存
+  const handleAutoSave = useCallback(async () => {
+    if (!dirty || !api || !selectedPath) return;
+    try {
+      await saveApi(selectedPath, api);
+      setDirty(false);
+      showToast("已保存");
+    } catch (e) {
+      showToast("保存失败: " + e);
+    }
+  }, [dirty, api, selectedPath, showToast]);
 
   // 保存接口新版本 -> 工作区 .version/<uuid>/<名称>.<版本号>.json
   const handleSaveVersion = async () => {
@@ -838,6 +860,7 @@ export default function App() {
                 onSaveVersion={handleSaveVersion}
                 enableVersion={settings.enableVersion}
                 sending={sending}
+                onCommit={handleAutoSave}
               />
               <div
                 className="v-resizer"
