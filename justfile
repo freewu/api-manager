@@ -49,10 +49,10 @@ test: tsc ui
 
 # ========== 打包 ==========
 
-# 构建 release 可执行文件（快速，不含安装程序）
+# 构建 release 可执行文件（快速，不含安装程序；启用 custom-protocol 内嵌前端资源）
 exe:
     npm run build
-    cd src-tauri && cargo build --release
+    cd src-tauri && cargo build --release --features custom-protocol
 
 # 完整打包：release exe + NSIS / MSI 安装程序（可选，需要安装包时使用）
 build:
@@ -61,7 +61,7 @@ build:
 # 打包并复制到 ./release：仅单体可执行文件（无需安装，拷走即用）
 release:
     npm run build
-    cd src-tauri && cargo build --release
+    cd src-tauri && cargo build --release --features custom-protocol
     @just release-collect
 
 # 将单体可执行文件收集到 ./release（Windows）
