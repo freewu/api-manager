@@ -93,6 +93,11 @@ export default function App() {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [demoCreate, setDemoCreate] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = Number(localStorage.getItem("sidebar-width"));
+    return saved >= 200 && saved <= 640 ? saved : 310;
+  });
+  const sidebarWidthRef = useRef(sidebarWidth);
   const toastTimer = useRef<number | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -283,6 +288,29 @@ export default function App() {
     } catch (e) {
       showToast("导入失败: " + e);
     }
+  };
+
+  /** 左右分栏拖动调整宽度 */
+  const startResize = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = sidebarWidthRef.current;
+    const onMove = (ev: MouseEvent) => {
+      const w = Math.min(640, Math.max(200, startW + ev.clientX - startX));
+      sidebarWidthRef.current = w;
+      setSidebarWidth(w);
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      localStorage.setItem("sidebar-width", String(sidebarWidthRef.current));
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
   };
 
   const handleSend = async () => {
@@ -614,13 +642,6 @@ export default function App() {
         <div className="workspace-chip" title="点击更换工作目录" onClick={handlePickWorkspace}>
           📁 {workspace}
         </div>
-        <button
-          className="btn"
-          onClick={() => void handleImportPostman()}
-          title="导入 Postman Collection 文件（自动新建分组）"
-        >
-          📥 导入 Postman
-        </button>
         <div className="toolbar-spacer" />
         <div className="env-box">
           <span style={{ fontSize: 12, color: "var(--text-dim)" }}>环境</span>
@@ -665,6 +686,7 @@ export default function App() {
 
       <div className="main">
         <Sidebar
+          width={sidebarWidth}
           tree={tree}
           selectedPath={selectedPath}
           onSelect={selectNode}
@@ -675,8 +697,19 @@ export default function App() {
           onEditInfo={(node) => openInfoModal(node)}
           onVersions={openVersions}
           onOpenSettings={() => setSettingsOpen(true)}
+          onImportPostman={() => void handleImportPostman()}
           onMove={handleMove}
           enableVersion={settings.enableVersion}
+        />
+        <div
+          className="resizer"
+          onMouseDown={startResize}
+          onDoubleClick={() => {
+            setSidebarWidth(310);
+            sidebarWidthRef.current = 310;
+            localStorage.setItem("sidebar-width", "310");
+          }}
+          title="拖动调整侧边栏宽度，双击还原"
         />
 
         <div

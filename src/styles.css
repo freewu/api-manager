@@ -329,11 +329,29 @@ body {
 /* ============ 侧边栏 ============ */
 .sidebar {
   width: 310px;
-  min-width: 310px;
+  min-width: 200px;
+  max-width: 640px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border);
+}
+
+/* 侧边栏与内容区分隔条：可拖动调整宽度 */
+.resizer {
+  width: 5px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  z-index: 5;
+  transition: background 0.15s;
+}
+.resizer:hover,
+.resizer.active {
+  background: var(--accent);
+  opacity: 0.55;
 }
 
 .sidebar-header {
