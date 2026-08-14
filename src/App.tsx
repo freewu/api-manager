@@ -119,9 +119,21 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 应用显示模式（dark / light）
+  // 应用显示模式（深色 / 浅色 / 跟随系统）
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", settings.displayMode);
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      const mode =
+        settings.displayMode === "system"
+          ? mq.matches
+            ? "dark"
+            : "light"
+          : settings.displayMode;
+      document.documentElement.setAttribute("data-theme", mode);
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
   }, [settings.displayMode]);
 
   // 托盘菜单点击「环境变量」-> 打开环境变量编辑器

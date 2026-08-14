@@ -440,7 +440,7 @@ fn ensure_inside_workspace(root: &Path, target: &Path) -> Result<(), String> {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AppSettings {
-    /// "dark" | "light"
+    /// "dark" | "light" | "system"（跟随系统）
     pub display_mode: String,
     /// 是否启用接口版本管理（主页面显示「保存」与「查看版本信息」）
     pub enable_version: bool,
@@ -451,7 +451,7 @@ pub struct AppSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            display_mode: "dark".into(),
+            display_mode: "system".into(),
             enable_version: true,
             enable_mock: true,
         }

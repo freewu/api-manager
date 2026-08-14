@@ -95,13 +95,13 @@ export interface VersionInfo {
 }
 
 export interface AppSettings {
-  displayMode: string; // "dark" | "light"
+  displayMode: string; // "dark" | "light" | "system"
   enableVersion: boolean;
   enableMock: boolean;
 }
 
 export const defaultSettings = (): AppSettings => ({
-  displayMode: "dark",
+  displayMode: "system",
   enableVersion: true,
   enableMock: true,
 });
