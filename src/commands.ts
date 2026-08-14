@@ -61,6 +61,10 @@ export function saveEnv(data: EnvStore): Promise<void> {
   return invoke<void>("save_envs", { data });
 }
 
+export function updateTrayEnv(name: string): Promise<void> {
+  return invoke<void>("update_tray_env", { name });
+}
+
 export function sendRequest(req: HttpRequestData): Promise<HttpResult> {
   return invoke<HttpResult>("send_request", { req });
 }

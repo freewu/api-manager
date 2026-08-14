@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import {
   createApi,
   createFolder,
@@ -19,6 +20,7 @@ import {
   saveEnv,
   saveInfo,
   sendRequest,
+  updateTrayEnv,
 } from "./commands";
 import { Editor } from "./components/Editor";
 import { EnvModal } from "./components/EnvModal";
@@ -100,11 +102,22 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 托盘菜单点击「环境变量」-> 打开环境变量编辑器
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      unlisten = await listen("open-env-editor", () => setEnvModal(true));
+    })();
+    return () => unlisten?.();
+  }, []);
+
   async function loadAll(ws: string) {
     const [t, info, e] = await Promise.all([readTree(), readInfo(ws), readEnv()]);
     setTree(t);
     setRootInfo(info || {});
-    setEnvs(e || emptyEnv());
+    const envData = e || emptyEnv();
+    setEnvs(envData);
+    updateTrayEnv(envData.active || "").catch(() => {});
     if (info?.mockPort) setMockPort(info.mockPort);
     // 自动选中第一个接口
     const first = findFirstApi(t);
@@ -255,6 +268,7 @@ export default function App() {
   const handleEnvSwitch = async (active: string) => {
     const next = { ...envs, active };
     setEnvs(next);
+    updateTrayEnv(active || "").catch(() => {});
     try {
       await saveEnv(next);
       if (mock.running) {
@@ -271,6 +285,7 @@ export default function App() {
     try {
       await saveEnv(data);
       setEnvs(data);
+      updateTrayEnv(data.active || "").catch(() => {});
       setEnvModal(false);
       if (mock.running) {
         const m = await mockReload();

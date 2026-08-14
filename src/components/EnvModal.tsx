@@ -117,6 +117,9 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
   const removeEnvAt = (i: number) => {
     const removed = draft.environments[i];
     if (!removed) return;
+    if (!window.confirm(`确定删除环境变量集「${removed.name}」？删除后不可恢复。`)) {
+      return;
+    }
     setDraft((d) => {
       const envs2 = d.environments.filter((_, x) => x !== i);
       return {
@@ -207,6 +210,7 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
       <Modal
         title="环境变量集管理"
         onClose={onClose}
+        className="modal-wide"
         footer={
           <>
             <button className="btn" onClick={onClose}>

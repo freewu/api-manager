@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 pub const INFO_FILE: &str = "__info.json";
 pub const ENV_FILE: &str = "__envs.json";
@@ -36,6 +36,8 @@ pub struct MockRunState {
 pub struct TrayState {
     /// 托盘菜单中“启动/停止 Mock”菜单项，用于动态更新文字
     pub mock_item: Mutex<Option<tauri::menu::MenuItem<tauri::Wry>>>,
+    /// 托盘菜单中“环境变量”菜单项，显示当前环境名，点击可打开编辑器
+    pub env_item: Mutex<Option<tauri::menu::MenuItem<tauri::Wry>>>,
     /// 是否正在退出（退出时不拦截窗口关闭）
     pub exiting: AtomicBool,
 }
@@ -828,6 +830,50 @@ fn hide_main_window(app: &AppHandle) {
     }
 }
 
+/// 当前激活环境名（从工作区 __envs.json 读取）
+fn active_env_name(app: &AppHandle) -> String {
+    let root = app
+        .state::<WorkspaceState>()
+        .root
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
+    match root {
+        Some(r) => read_env_file(&r).active,
+        None => String::new(),
+    }
+}
+
+/// 更新托盘菜单中的环境变量菜单项文字
+pub fn update_tray_env_item(app: &AppHandle) {
+    let name = active_env_name(app);
+    let text = if name.trim().is_empty() {
+        "环境：未设置（点击编辑）".to_string()
+    } else {
+        format!("环境：{}（点击编辑）", name.trim())
+    };
+    let state = app.state::<TrayState>();
+    let guard = state.env_item.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(item) = guard.as_ref() {
+        let _ = item.set_text(&text);
+    }
+}
+
+/// 前端保存/切换环境后同步托盘文字
+#[tauri::command]
+fn update_tray_env(app: AppHandle, name: String) {
+    let text = if name.trim().is_empty() {
+        "环境：未设置（点击编辑）".to_string()
+    } else {
+        format!("环境：{}（点击编辑）", name.trim())
+    };
+    let state = app.state::<TrayState>();
+    let guard = state.env_item.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(item) = guard.as_ref() {
+        let _ = item.set_text(&text);
+    }
+}
+
 /// 更新托盘菜单中 Mock 菜单项文字
 pub fn update_tray_mock_item(app: &AppHandle) {
     let state = app.state::<TrayState>();
@@ -880,11 +926,14 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
 
     app.manage(TrayState {
         mock_item: Mutex::new(None),
+        env_item: Mutex::new(None),
         exiting: AtomicBool::new(false),
     });
 
     let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
     let hide = MenuItem::with_id(app, "hide", "隐藏窗口", true, None::<&str>)?;
+    let env_item =
+        MenuItem::with_id(app, "edit_env", "环境：未设置（点击编辑）", true, None::<&str>)?;
     let toggle_mock =
         MenuItem::with_id(app, "toggle_mock", "启动 Mock 服务", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
@@ -894,6 +943,8 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
             &show,
             &hide,
             &PredefinedMenuItem::separator(app)?,
+            &env_item,
+            &PredefinedMenuItem::separator(app)?,
             &toggle_mock,
             &PredefinedMenuItem::separator(app)?,
             &quit,
@@ -901,6 +952,9 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     )?;
 
     *app.state::<TrayState>().mock_item.lock().unwrap() = Some(toggle_mock.clone());
+    *app.state::<TrayState>().env_item.lock().unwrap() = Some(env_item.clone());
+    // 用当前工作区的环境名刷新托盘文字
+    update_tray_env_item(app.handle());
 
     TrayIconBuilder::with_id("main")
         .icon(app.default_window_icon().expect("缺少默认应用图标").clone())
@@ -910,6 +964,11 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id().as_ref() {
             "show" => show_main_window(app),
             "hide" => hide_main_window(app),
+            "edit_env" => {
+                // 显示窗口并通知前端打开环境变量编辑器
+                show_main_window(app);
+                let _ = app.emit("open-env-editor", ());
+            }
             "toggle_mock" => tray_toggle_mock(app),
             "quit" => {
                 app.state::<TrayState>()
@@ -974,6 +1033,7 @@ pub fn run() {
             save_info,
             read_envs,
             save_envs,
+            update_tray_env,
             get_app_version,
             send_request,
             mock_start,

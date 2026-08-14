@@ -930,7 +930,7 @@ body {
   animation: modal-in 0.16s ease;
 }
 .modal-wide {
-  width: 680px;
+  width: 760px;
 }
 /* 叠在上层的弹窗（如环境变量值管理） */
 .modal-mask-top {
