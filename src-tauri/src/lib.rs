@@ -435,6 +435,58 @@ fn ensure_inside_workspace(root: &Path, target: &Path) -> Result<(), String> {
     }
 }
 
+// ==================== 应用设置 ====================
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct AppSettings {
+    /// "dark" | "light"
+    pub display_mode: String,
+    /// 是否启用接口版本管理（主页面显示「保存」与「查看版本信息」）
+    pub enable_version: bool,
+    /// 是否启用 Mock 功能（主页面显示 Mock 开关）
+    pub enable_mock: bool,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            display_mode: "dark".into(),
+            enable_version: true,
+            enable_mock: true,
+        }
+    }
+}
+
+fn settings_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| format!("获取配置目录失败: {e}"))?;
+    Ok(dir.join("settings.json"))
+}
+
+#[tauri::command]
+fn load_settings(app: AppHandle) -> Result<AppSettings, String> {
+    let p = settings_path(&app)?;
+    if let Ok(content) = fs::read_to_string(&p) {
+        if let Ok(s) = serde_json::from_str::<AppSettings>(&content) {
+            return Ok(s);
+        }
+    }
+    Ok(AppSettings::default())
+}
+
+#[tauri::command]
+fn save_settings(app: AppHandle, settings: AppSettings) -> Result<(), String> {
+    let p = settings_path(&app)?;
+    if let Some(parent) = p.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("创建配置目录失败: {e}"))?;
+    }
+    write_pretty(&p, &settings)?;
+    Ok(())
+}
+
 // ==================== 工作区命令 ====================
 
 #[tauri::command]
@@ -1168,6 +1220,8 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            load_settings,
+            save_settings,
             get_workspace,
             pick_workspace,
             read_tree,

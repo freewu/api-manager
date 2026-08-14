@@ -94,6 +94,18 @@ export interface VersionInfo {
   endpoint?: string;
 }
 
+export interface AppSettings {
+  displayMode: string; // "dark" | "light"
+  enableVersion: boolean;
+  enableMock: boolean;
+}
+
+export const defaultSettings = (): AppSettings => ({
+  displayMode: "dark",
+  enableVersion: true,
+  enableMock: true,
+});
+
 export interface HttpRequestData {
   method: string;
   url: string;

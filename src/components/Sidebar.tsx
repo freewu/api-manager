@@ -11,6 +11,8 @@ interface Props {
   onDelete: (node: TreeNode) => void;
   onEditInfo: (node: TreeNode) => void;
   onVersions: (node: TreeNode) => void;
+  onOpenSettings?: () => void;
+  enableVersion: boolean;
 }
 
 interface CtxMenu {
@@ -34,6 +36,7 @@ function NodeRow({
   onDelete,
   onEditInfo,
   onVersions,
+  enableVersion,
   onContextMenu,
   filter,
 }: Props & {
@@ -150,6 +153,7 @@ function NodeRow({
               onDelete={onDelete}
               onEditInfo={onEditInfo}
               onVersions={onVersions}
+              enableVersion={enableVersion}
               onContextMenu={onContextMenu}
               filter={filter}
               tree={null}
@@ -171,7 +175,7 @@ function NodeRow({
 }
 
 export function Sidebar(props: Props) {
-  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions } = props;
+  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions, onOpenSettings, enableVersion } = props;
   const [filter, setFilter] = useState("");
   const [menu, setMenu] = useState<CtxMenu | null>(null);
   const [bgMenu, setBgMenu] = useState<{ x: number; y: number } | null>(null);
@@ -241,6 +245,7 @@ export function Sidebar(props: Props) {
                 onDelete={onDelete}
                 onEditInfo={onEditInfo}
                 onVersions={onVersions}
+                enableVersion={enableVersion}
                 onContextMenu={openMenu}
                 filter={filter.trim().toLowerCase()}
                 tree={null}
@@ -260,11 +265,8 @@ export function Sidebar(props: Props) {
         {!tree && <div className="tree-root">暂无数据</div>}
       </div>
       <div className="sidebar-footer">
-        <button className="btn small" onClick={() => onNewApi("")}>
-          ＋ 新建接口
-        </button>
-        <button className="btn small" onClick={() => onNewFolder("")}>
-          ＋ 新建分组
+        <button className="btn small" onClick={onOpenSettings} title="设置">
+          ⚙ 设置
         </button>
       </div>
 
@@ -317,14 +319,16 @@ export function Sidebar(props: Props) {
               >
                 ✎ 修改
               </button>
-              <button
-                onClick={() => {
-                  onVersions(menu.node);
-                  setMenu(null);
-                }}
-              >
-                📑 查看版本信息
-              </button>
+              {enableVersion && (
+                <button
+                  onClick={() => {
+                    onVersions(menu.node);
+                    setMenu(null);
+                  }}
+                >
+                  📑 查看版本信息
+                </button>
+              )}
               <div className="node-ctx-sep" />
               <button
                 className="danger"

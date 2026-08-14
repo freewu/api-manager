@@ -7,6 +7,7 @@ import {
   getAppVersion,
   getWorkspace,
   listVersions,
+  loadSettings,
   mockReload,
   mockStart,
   mockStatus,
@@ -21,6 +22,7 @@ import {
   saveApiVersion,
   saveEnv,
   saveInfo,
+  saveSettings,
   sendRequest,
   updateTrayEnv,
 } from "./commands";
@@ -29,10 +31,12 @@ import { EnvModal } from "./components/EnvModal";
 import { EnvValueModal } from "./components/EnvValueModal";
 import { Modal } from "./components/Modal";
 import { Response } from "./components/Response";
+import { SettingsModal } from "./components/SettingsModal";
 import { Sidebar } from "./components/Sidebar";
 import { VersionModal } from "./components/VersionModal";
 import {
   ApiFile,
+  AppSettings,
   EnvStore,
   EnvVariable,
   HttpRequestData,
@@ -41,6 +45,7 @@ import {
   MockStatus,
   TreeNode,
   VersionInfo,
+  defaultSettings,
   emptyEnv,
 } from "./types";
 
@@ -85,6 +90,8 @@ export default function App() {
   const [envValue, setEnvValue] = useState(false);
   const [versionModal, setVersionModal] = useState<{ api: ApiFile; versions: VersionInfo[] } | null>(null);
   const [emptyMenu, setEmptyMenu] = useState<{ x: number; y: number } | null>(null);
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings());
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const toastTimer = useRef<number | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -107,9 +114,15 @@ export default function App() {
         await loadAll(ws);
       }
     })();
+    loadSettings().then(setSettings).catch(() => {});
     mockStatus().then(setMock).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 应用显示模式（dark / light）
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", settings.displayMode);
+  }, [settings.displayMode]);
 
   // 托盘菜单点击「环境变量」-> 打开环境变量编辑器
   useEffect(() => {
@@ -268,22 +281,6 @@ export default function App() {
       setResponse({ ok: false, status: 0, statusText: "", headers: [], body: "", timeMs: 0, size: 0, url: "", error: String(e) });
     } finally {
       setSending(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!api || !selectedPath) return;
-    try {
-      await saveApi(selectedPath, api);
-      setDirty(false);
-      showToast("已保存");
-      await reloadTree();
-      if (mock.running) {
-        const m = await mockReload();
-        setMock(m);
-      }
-    } catch (e) {
-      showToast("保存失败: " + e);
     }
   };
 
@@ -501,6 +498,18 @@ export default function App() {
     }
   };
 
+  // 保存设置
+  const handleSaveSettings = async (s: AppSettings) => {
+    setSettings(s);
+    setSettingsOpen(false);
+    try {
+      await saveSettings(s);
+      showToast("设置已保存");
+    } catch (e) {
+      showToast("保存设置失败: " + e);
+    }
+  };
+
   const baseUrl = rootInfo.baseUrl || "";
 
   // ---------- 渲染 ----------
@@ -575,12 +584,8 @@ export default function App() {
             🌐
           </button>
         </div>
-        {api && (
-          <button className="btn" onClick={handleSave} disabled={!dirty} title={dirty ? "保存当前接口" : "无修改"}>
-            💾 保存{dirty ? " *" : ""}
-          </button>
-        )}
-        <div className="mock-box">
+        {settings.enableMock && (
+          <div className="mock-box">
           <span style={{ fontSize: 12, color: "var(--text-dim)" }}>Mock</span>
           <input
             className="mock-port-input"
@@ -593,7 +598,8 @@ export default function App() {
           <span className="mock-status">
             {mock.running ? `运行中 ${mock.routeCount} 条路由` : "未运行"}
           </span>
-        </div>
+          </div>
+        )}
         <button className="btn" onClick={async () => { await reloadTree(); showToast("已刷新"); }}>
           🔄
         </button>
@@ -613,6 +619,8 @@ export default function App() {
           onDelete={(node) => openModal("delete", "", node)}
           onEditInfo={(node) => openInfoModal(node)}
           onVersions={openVersions}
+          onOpenSettings={() => setSettingsOpen(true)}
+          enableVersion={settings.enableVersion}
         />
 
         <div className="content">
@@ -627,6 +635,7 @@ export default function App() {
                 }}
                 onSend={handleSend}
                 onSaveVersion={handleSaveVersion}
+                enableVersion={settings.enableVersion}
                 sending={sending}
               />
               <Response result={response} sending={sending} />
@@ -677,6 +686,14 @@ export default function App() {
           api={versionModal.api}
           versions={versionModal.versions}
           onClose={() => setVersionModal(null)}
+        />
+      )}
+
+      {settingsOpen && (
+        <SettingsModal
+          settings={settings}
+          onClose={() => setSettingsOpen(false)}
+          onSave={handleSaveSettings}
         />
       )}
 

@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   ApiFile,
+  AppSettings,
   EnvStore,
   HttpRequestData,
   HttpResult,
@@ -40,6 +41,14 @@ export function listVersions(uuid: string): Promise<VersionInfo[]> {
 
 export function readApiVersion(path: string): Promise<string> {
   return invoke<string>("read_api_version", { path });
+}
+
+export function loadSettings(): Promise<AppSettings> {
+  return invoke<AppSettings>("load_settings");
+}
+
+export function saveSettings(settings: AppSettings): Promise<void> {
+  return invoke<void>("save_settings", { settings });
 }
 
 export function createApi(dir: string, name: string): Promise<string> {

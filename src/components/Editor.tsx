@@ -10,10 +10,11 @@ interface Props {
   onChange: (api: ApiFile) => void;
   onSend: () => void;
   onSaveVersion: () => void;
+  enableVersion: boolean;
   sending: boolean;
 }
 
-export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, sending }: Props) {
+export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending }: Props) {
   const [tab, setTab] = useState<Tab>("params");
   const effectiveUrl = api.url || (baseUrl + api.path);
 
@@ -62,13 +63,15 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, sending 
         <button className="send-btn" onClick={onSend} disabled={sending}>
           {sending ? "发送中…" : "发送"}
         </button>
-        <button
-          className="save-btn"
-          onClick={onSaveVersion}
-          title="将当前接口内容保存为新版本（.version/<uuid>/<名称>.<版本号>.json）"
-        >
-          💾 保存
-        </button>
+        {enableVersion && (
+          <button
+            className="save-btn"
+            onClick={onSaveVersion}
+            title="将当前接口内容保存为新版本（.version/<uuid>/<名称>.<版本号>.json）"
+          >
+            💾 保存
+          </button>
+        )}
       </div>
 
       <div className="tabs">
