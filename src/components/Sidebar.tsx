@@ -12,6 +12,7 @@ interface Props {
   onEditInfo: (node: TreeNode) => void;
   onVersions: (node: TreeNode) => void;
   onOpenSettings?: () => void;
+  onMove: (srcPath: string, dstDir: string) => Promise<void>;
   enableVersion: boolean;
 }
 
@@ -23,6 +24,20 @@ interface CtxMenu {
 
 function methodClass(method?: string) {
   return `method-${(method || "get").toLowerCase()}`;
+}
+
+// 取父目录（Windows 路径兼容）
+function parentDir(p: string): string {
+  const i = Math.max(p.lastIndexOf("/"), p.lastIndexOf("\\"));
+  return i > 0 ? p.slice(0, i) : "";
+}
+
+// 拖拽落点有效性：非自身、非自身子目录、非原地
+function validDrop(dragSrc: string, dst: string): boolean {
+  if (!dst || dst === dragSrc) return false;
+  if (parentDir(dragSrc) === dst) return false; // 已在目标目录
+  if (dst.startsWith(dragSrc + "/") || dst.startsWith(dragSrc + "\\")) return false; // 子目录
+  return true;
 }
 
 function NodeRow({
@@ -39,11 +54,25 @@ function NodeRow({
   enableVersion,
   onContextMenu,
   filter,
-}: Props & {
+  dragSrc,
+  dragOver,
+  onDragStart,
+  onDragEnd,
+  onDragOverTarget,
+  onDragLeaveTarget,
+  onDropTarget,
+}: Omit<Props, "onMove"> & {
   node: TreeNode;
   depth: number;
   onContextMenu: (e: React.MouseEvent, node: TreeNode) => void;
   filter: string;
+  dragSrc: string | null;
+  dragOver: string | null;
+  onDragStart: (path: string) => void;
+  onDragEnd: () => void;
+  onDragOverTarget: (dst: string) => void;
+  onDragLeaveTarget: (dst: string) => void;
+  onDropTarget: (dst: string) => void;
 }) {
   const isFolder = node.kind === "folder";
   const [open, setOpen] = useState(node.collapsed !== true);
@@ -69,12 +98,42 @@ function NodeRow({
 
   const selected = selectedPath === node.path;
   const indent = depth * 14 + 6;
+  // 文件夹行是拖拽落点；接口行的落点是其所在目录
+  const dropTarget = isFolder ? node.path : parentDir(node.path);
+  const canDrop = !!dragSrc && validDrop(dragSrc, dropTarget);
 
   return (
     <div>
       <div
-        className={`node ${selected ? "selected" : ""}`}
+        className={`node ${selected ? "selected" : ""} ${canDrop && dragOver === dropTarget ? "drag-over" : ""} ${isFolder ? "folder-node" : ""}`}
         style={{ paddingLeft: indent }}
+        draggable={true}
+        onDragStart={(e) => {
+          e.stopPropagation();
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", node.path);
+          onDragStart(node.path);
+        }}
+        onDragEnd={(e) => {
+          e.stopPropagation();
+          onDragEnd();
+        }}
+        onDragOver={(e) => {
+          if (!canDrop) return;
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = "move";
+          onDragOverTarget(dropTarget);
+        }}
+        onDragLeave={(e) => {
+          e.stopPropagation();
+          onDragLeaveTarget(dropTarget);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onDropTarget(dropTarget);
+        }}
         onClick={() => {
           if (isFolder) setOpen(!open);
           else onSelect(node);
@@ -84,7 +143,13 @@ function NodeRow({
           e.stopPropagation();
           onContextMenu(e, node);
         }}
-        title={isFolder ? node.description || node.name : `${node.method} ${node.endpoint}`}
+        title={
+          canDrop
+            ? "拖放到此处移动"
+            : isFolder
+              ? node.description || node.name
+              : `${node.method} ${node.endpoint}`
+        }
       >
         {isFolder ? (
           <span className={`caret ${open ? "open" : ""}`}>▶</span>
@@ -157,6 +222,13 @@ function NodeRow({
               onContextMenu={onContextMenu}
               filter={filter}
               tree={null}
+              dragSrc={dragSrc}
+              dragOver={dragOver}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+              onDragOverTarget={onDragOverTarget}
+              onDragLeaveTarget={onDragLeaveTarget}
+              onDropTarget={onDropTarget}
             />
           ))}
           {!filter && (
@@ -179,6 +251,24 @@ export function Sidebar(props: Props) {
   const [filter, setFilter] = useState("");
   const [menu, setMenu] = useState<CtxMenu | null>(null);
   const [bgMenu, setBgMenu] = useState<{ x: number; y: number } | null>(null);
+  const [dragSrc, setDragSrc] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
+
+  const handleDragStart = (path: string) => setDragSrc(path);
+  const handleDragEnd = () => {
+    setDragSrc(null);
+    setDragOver(null);
+  };
+  const handleDragOverTarget = (dst: string) => setDragOver(dst);
+  const handleDragLeaveTarget = (dst: string) =>
+    setDragOver((prev) => (prev === dst ? null : prev));
+  const handleDropTarget = async (dst: string) => {
+    if (!dragSrc) return;
+    const src = dragSrc;
+    setDragSrc(null);
+    setDragOver(null);
+    await props.onMove(src, dst);
+  };
 
   // 右键菜单：点击任意处 / Esc / 滚动时关闭
   useEffect(() => {
@@ -220,7 +310,7 @@ export function Sidebar(props: Props) {
         </div>
       </div>
       <div
-        className="tree"
+        className={`tree ${dragOver === "__root__" ? "drag-over-root" : ""}`}
         onContextMenu={(e) => {
           // 空白处右键：新建接口 / 新建分组（节点行上的右键会 stopPropagation）
           e.preventDefault();
@@ -228,6 +318,21 @@ export function Sidebar(props: Props) {
             x: Math.min(e.clientX, window.innerWidth - 190),
             y: Math.min(e.clientY, window.innerHeight - 160),
           });
+        }}
+        onDragOver={(e) => {
+          if (!dragSrc || parentDir(dragSrc) === "") return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          setDragOver("__root__");
+        }}
+        onDragLeave={() => setDragOver((prev) => (prev === "__root__" ? null : prev))}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (!dragSrc || parentDir(dragSrc) === "") return;
+          const src = dragSrc;
+          setDragSrc(null);
+          setDragOver(null);
+          void props.onMove(src, "");
         }}
       >
         {tree && tree.children && (
@@ -249,6 +354,13 @@ export function Sidebar(props: Props) {
                 onContextMenu={openMenu}
                 filter={filter.trim().toLowerCase()}
                 tree={null}
+                dragSrc={dragSrc}
+                dragOver={dragOver}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragOverTarget={handleDragOverTarget}
+                onDragLeaveTarget={handleDragLeaveTarget}
+                onDropTarget={handleDropTarget}
               />
             ))}
             {!filter.trim() && (

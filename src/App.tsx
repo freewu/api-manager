@@ -18,6 +18,7 @@ import {
   readInfo,
   readTree,
   renameEntry,
+  moveEntry,
   saveApi,
   saveApiVersion,
   saveEnv,
@@ -491,15 +492,29 @@ export default function App() {
     }
   };
 
-  // 保存设置
+  // 设置即时生效：每次修改直接持久化，无需点保存
   const handleSaveSettings = async (s: AppSettings) => {
     setSettings(s);
-    setSettingsOpen(false);
     try {
       await saveSettings(s);
-      showToast("设置已保存");
     } catch (e) {
       showToast("保存设置失败: " + e);
+    }
+  };
+
+  // 拖拽移动接口/目录到其他目录
+  const handleMove = async (srcPath: string, dstDir: string) => {
+    try {
+      const newPath = await moveEntry(srcPath, dstDir);
+      await reloadTree();
+      setSelectedPath((prev) => {
+        if (prev === srcPath) return newPath;
+        if (prev && prev.startsWith(srcPath + "/")) return null; // 目录被移动，内部选中项路径已失效
+        return prev;
+      });
+      showToast("已移动");
+    } catch (e) {
+      showToast("移动失败: " + e);
     }
   };
 
@@ -603,6 +618,7 @@ export default function App() {
           onEditInfo={(node) => openInfoModal(node)}
           onVersions={openVersions}
           onOpenSettings={() => setSettingsOpen(true)}
+          onMove={handleMove}
           enableVersion={settings.enableVersion}
         />
 

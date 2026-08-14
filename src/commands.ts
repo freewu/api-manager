@@ -67,6 +67,10 @@ export function deleteEntry(path: string): Promise<void> {
   return invoke<void>("delete_entry", { path });
 }
 
+export function moveEntry(src: string, dstDir: string): Promise<string> {
+  return invoke<string>("move_entry", { src, dstDir });
+}
+
 export function readInfo(path: string): Promise<InfoJson> {
   return invoke<InfoJson>("read_info", { path });
 }

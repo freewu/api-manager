@@ -25,8 +25,9 @@ function Switch({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 export function SettingsModal({ settings, onClose, onSave }: Props) {
-  const [draft, setDraft] = useState<AppSettings>({ ...settings });
   const [tab, setTab] = useState<"appearance" | "features">("appearance");
+
+  const patch = (p: Partial<AppSettings>) => onSave({ ...settings, ...p });
 
   return (
     <Modal
@@ -34,14 +35,7 @@ export function SettingsModal({ settings, onClose, onSave }: Props) {
       onClose={onClose}
       className="modal-settings"
       footer={
-        <>
-          <button className="btn" onClick={onClose}>
-            取消
-          </button>
-          <button className="btn primary" onClick={() => onSave(draft)}>
-            保存
-          </button>
-        </>
+        <span className="settings-auto-hint">⚡ 修改即时生效，无需保存</span>
       }
     >
       <div className="settings-layout">
@@ -70,13 +64,13 @@ export function SettingsModal({ settings, onClose, onSave }: Props) {
                   {MODES.map((m) => (
                     <label
                       key={m.value}
-                      className={`settings-option ${draft.displayMode === m.value ? "active" : ""}`}
+                      className={`settings-option ${settings.displayMode === m.value ? "active" : ""}`}
                     >
                       <input
                         type="radio"
                         name="displayMode"
-                        checked={draft.displayMode === m.value}
-                        onChange={() => setDraft({ ...draft, displayMode: m.value })}
+                        checked={settings.displayMode === m.value}
+                        onChange={() => patch({ displayMode: m.value })}
                       />
                       {m.label}
                     </label>
@@ -85,6 +79,24 @@ export function SettingsModal({ settings, onClose, onSave }: Props) {
               </div>
               <div className="settings-desc">
                 深色 / 浅色 / 跟随系统（Windows 主题自动切换）
+              </div>
+
+              <div className="settings-preview">
+                <div className="settings-preview-title">预览</div>
+                <div className="settings-preview-row">
+                  <span className="preview-dot preview-dot-folder">📁</span>
+                  <span className="preview-text">用户管理</span>
+                </div>
+                <div className="settings-preview-row">
+                  <span className="preview-dot preview-dot-api">🌐</span>
+                  <span className="preview-text">创建用户</span>
+                  <span className="preview-method">GET</span>
+                </div>
+                <div className="settings-preview-row">
+                  <span className="preview-dot preview-dot-api">🌐</span>
+                  <span className="preview-text">获取订单列表</span>
+                  <span className="preview-method">POST</span>
+                </div>
               </div>
             </>
           )}
@@ -96,8 +108,8 @@ export function SettingsModal({ settings, onClose, onSave }: Props) {
                 <div className="settings-feature-head">
                   <span className="settings-feature-name">接口版本管理</span>
                   <Switch
-                    checked={draft.enableVersion}
-                    onChange={(v) => setDraft({ ...draft, enableVersion: v })}
+                    checked={settings.enableVersion}
+                    onChange={(v) => patch({ enableVersion: v })}
                   />
                 </div>
                 <div className="settings-feature-desc">
@@ -108,8 +120,8 @@ export function SettingsModal({ settings, onClose, onSave }: Props) {
                 <div className="settings-feature-head">
                   <span className="settings-feature-name">Mock 服务</span>
                   <Switch
-                    checked={draft.enableMock}
-                    onChange={(v) => setDraft({ ...draft, enableMock: v })}
+                    checked={settings.enableMock}
+                    onChange={(v) => patch({ enableMock: v })}
                   />
                 </div>
                 <div className="settings-feature-desc">
@@ -122,13 +134,21 @@ export function SettingsModal({ settings, onClose, onSave }: Props) {
                     type="number"
                     min={1}
                     max={65535}
-                    value={draft.mockPort || 5050}
+                    value={settings.mockPort || 5050}
                     onChange={(e) =>
-                      setDraft({ ...draft, mockPort: Number(e.target.value.replace(/\D/g, "")) || 0 })
+                      patch({
+                        mockPort: Number(e.target.value.replace(/\D/g, "")) || 0,
+                      })
                     }
                   />
                   <span className="settings-desc-inline">默认 5050</span>
                 </div>
+              </div>
+
+              <div className="settings-about">
+                <div className="settings-about-title">关于</div>
+                <div className="settings-about-item">API Manager 接口管理工具</div>
+                <div className="settings-about-item">接口、目录与 Mock 数据保存在本地工作区</div>
               </div>
             </>
           )}

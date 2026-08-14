@@ -814,6 +814,61 @@ fn delete_entry(state: State<'_, WorkspaceState>, path: String) -> Result<(), St
     }
 }
 
+/// 移动接口/目录到目标目录（跨目录拖拽）。目录不能移入自身或其子目录。
+#[tauri::command]
+fn move_entry(
+    state: State<'_, WorkspaceState>,
+    src: String,
+    dst_dir: String,
+) -> Result<String, String> {
+    let root = workspace_root(&state)?;
+    move_entry_inner(&root, &src, &dst_dir)
+}
+
+fn move_entry_inner(root: &Path, src: &str, dst_dir: &str) -> Result<String, String> {
+    let src_path = PathBuf::from(src);
+    let dst_path = if dst_dir.trim().is_empty() {
+        root.to_path_buf()
+    } else {
+        PathBuf::from(dst_dir)
+    };
+    if !dst_path.starts_with(root) {
+        return Err("目标位置不在工作区内".into());
+    }
+    if !src_path.starts_with(root) || src_path == root {
+        return Err("路径不在工作区内".into());
+    }
+    if src_path == dst_path {
+        return Ok(src_path.to_string_lossy().to_string());
+    }
+    // 目录不能移入自身或其子目录
+    if src_path.is_dir() && dst_path.starts_with(&src_path) {
+        return Err("不能将目录移动到自身或其子目录".into());
+    }
+    fs::create_dir_all(&dst_path).map_err(|e| format!("创建目标目录失败: {e}"))?;
+    // 目标位置重名时自动加序号（如 "xxx (2)"），文件内容/显示名保持不变
+    let (base, ext) = if src_path.is_dir() {
+        let name = src_path
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        (name, String::new())
+    } else {
+        let stem = src_path
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let ext = src_path
+            .extension()
+            .map(|e| format!(".{}", e.to_string_lossy()))
+            .unwrap_or_else(|| ".json".into());
+        (stem, ext)
+    };
+    let target = unique_path(&dst_path, &base, &ext);
+    fs::rename(&src_path, &target).map_err(|e| format!("移动失败: {e}"))?;
+    Ok(target.to_string_lossy().to_string())
+}
+
 #[tauri::command]
 fn read_info(state: State<'_, WorkspaceState>, path: String) -> Result<InfoJson, String> {
     let root = workspace_root(&state)?;
@@ -1236,6 +1291,7 @@ pub fn run() {
             create_api,
             create_folder,
             rename_entry,
+            move_entry,
             delete_entry,
             read_info,
             save_info,
@@ -1429,5 +1485,41 @@ mod tests {
         assert_eq!(next_version(&dir, "x"), 4);
         assert_eq!(next_version(&dir, "y"), 1);
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_move_entry() {
+        // 移动接口文件与目录到目标目录；重名时自动加序号；禁止移入自身子目录
+        let root = std::env::temp_dir().join(format!("move-test-{}", std::process::id()));
+        let a = root.join("a");
+        let b = root.join("b");
+        fs::create_dir_all(&a).unwrap();
+        fs::create_dir_all(&b).unwrap();
+        fs::create_dir_all(&a.join("sub")).unwrap();
+        fs::write(a.join("api.json"), "{}").unwrap();
+        fs::write(a.join("sub").join("deep.json"), "{}").unwrap();
+
+        // 接口移入 b
+        let new_path = move_entry_inner(
+            &root,
+            &a.join("api.json").to_string_lossy(),
+            &b.to_string_lossy(),
+        )
+        .unwrap();
+        assert_eq!(new_path, b.join("api.json").to_string_lossy());
+        assert!(b.join("api.json").exists());
+
+        // 目录 sub 移入 b（含内部文件）
+        let new_path = move_entry_inner(&root, &a.join("sub").to_string_lossy(), &b.to_string_lossy())
+            .unwrap();
+        assert!(b.join("sub").join("deep.json").exists());
+        assert_eq!(new_path, b.join("sub").to_string_lossy());
+
+        // 目录不能移入自身子目录
+        let err = move_entry_inner(&root, &b.to_string_lossy(), &b.join("sub").to_string_lossy())
+            .unwrap_err();
+        assert!(err.contains("子目录"));
+
+        let _ = fs::remove_dir_all(&root);
     }
 }
