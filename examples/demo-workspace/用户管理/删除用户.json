@@ -1,8 +1,9 @@
 {
+  "uuid": "ac9bf475-8ad6-4c82-a2f9-9ce994529044",
   "name": "删除用户",
   "method": "DELETE",
   "path": "/api/users/{id}",
-  "url": "",
+  "url": "{{url}}/api/users/{id}",
   "description": "删除指定用户",
   "headers": [],
   "query": [],

@@ -1,8 +1,9 @@
 {
+  "uuid": "921f2b0c-1076-4444-96f1-492781f1fb35",
   "name": "获取用户信息",
   "method": "POST",
   "path": "/api/users/{id}",
-  "url": "",
+  "url": "{{url}}/api/users/{id}",
   "description": "根据用户 ID 获取用户详细信息",
   "headers": [
     {

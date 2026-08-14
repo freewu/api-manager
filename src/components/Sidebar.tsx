@@ -223,7 +223,7 @@ function NodeRow({
           )}
           <button
             className="node-action"
-            title={isFolder ? "编辑分组信息" : "重命名"}
+            title={isFolder ? "编辑分组" : "重命名"}
             onClick={(e) => {
               e.stopPropagation();
               if (isFolder) onEditInfo(node);
@@ -486,7 +486,7 @@ export function Sidebar(props: Props) {
                   setMenu(null);
                 }}
               >
-                📁 新增目录
+                📁 新增分组
               </button>
               <button
                 onClick={() => {
@@ -511,7 +511,7 @@ export function Sidebar(props: Props) {
                   setMenu(null);
                 }}
               >
-                ✎ 编辑目录信息
+                ✎ 编辑分组
               </button>
               <button
                 className="danger"

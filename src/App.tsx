@@ -342,6 +342,7 @@ export default function App() {
   const startVResize = (e: React.MouseEvent) => {
     e.preventDefault();
     const startY = e.clientY;
+    const startRatio = editorRatioRef.current; // 拖动开始时的比例（基线，避免累计放大导致闪跳）
     const contentEl = (e.currentTarget as HTMLElement).parentElement as HTMLElement;
     const contentH = contentEl.clientHeight;
     const editorEl = contentEl.querySelector<HTMLElement>(".editor");
@@ -356,7 +357,7 @@ export default function App() {
         raf = 0;
         const ratio = Math.min(
           maxRatio,
-          Math.max(0.2, (contentH * editorRatioRef.current + (lastY - startY)) / contentH)
+          Math.max(0.2, startRatio + (lastY - startY) / contentH)
         );
         editorRatioRef.current = ratio;
         if (editorEl) editorEl.style.height = `${ratio * 100}%`;
@@ -910,7 +911,7 @@ export default function App() {
               setEmptyMenu(null);
             }}
           >
-            📁 新增目录
+            📁 新增分组
           </button>
         </div>
       )}

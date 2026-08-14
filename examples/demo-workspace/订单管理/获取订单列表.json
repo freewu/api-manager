@@ -1,8 +1,9 @@
 {
+  "uuid": "8244bc6c-4b28-464a-9c45-7962d9d2f5b1",
   "name": "获取订单列表",
   "method": "GET",
   "path": "/api/orders",
-  "url": "",
+  "url": "{{url}}/api/orders",
   "description": "分页查询订单列表",
   "headers": [],
   "query": [
