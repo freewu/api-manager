@@ -446,6 +446,8 @@ pub struct AppSettings {
     pub enable_version: bool,
     /// 是否启用 Mock 功能（主页面显示 Mock 开关）
     pub enable_mock: bool,
+    /// Mock 服务默认端口
+    pub mock_port: u32,
 }
 
 impl Default for AppSettings {
@@ -454,6 +456,7 @@ impl Default for AppSettings {
             display_mode: "system".into(),
             enable_version: true,
             enable_mock: true,
+            mock_port: 5050,
         }
     }
 }

@@ -58,15 +58,11 @@ interface ModalState {
 interface InfoForm {
   name: string;
   description: string;
-  baseUrl: string;
-  mockPort: number;
 }
 
 const emptyInfoForm = (): InfoForm => ({
   name: "",
   description: "",
-  baseUrl: "",
-  mockPort: 5050,
 });
 
 export default function App() {
@@ -84,7 +80,6 @@ export default function App() {
   const [infoForm, setInfoForm] = useState<InfoForm>(emptyInfoForm());
   const [toast, setToast] = useState<string | null>(null);
   const [version, setVersion] = useState("");
-  const [mockPort, setMockPort] = useState(5050);
   const [envs, setEnvs] = useState<EnvStore>(emptyEnv());
   const [envModal, setEnvModal] = useState(false);
   const [envValue, setEnvValue] = useState(false);
@@ -165,7 +160,6 @@ export default function App() {
     const envData = e || emptyEnv();
     setEnvs(envData);
     updateTrayEnv(envData.active || "").catch(() => {});
-    if (info?.mockPort) setMockPort(info.mockPort);
     // 自动选中第一个接口
     const first = findFirstApi(t);
     if (first) {
@@ -322,10 +316,9 @@ export default function App() {
         setMock(await mockStop());
         showToast("Mock 服务已停止");
       } else {
-        const port = mockPort || 5050;
+        const port = settings.mockPort || 5050;
         setMock(await mockStart(port));
         showToast(`Mock 服务已启动: http://127.0.0.1:${port}`);
-        setRootInfo({ ...rootInfo, mockPort: port });
       }
     } catch (e) {
       showToast("Mock 操作失败: " + e);
@@ -394,17 +387,14 @@ export default function App() {
     setModal({ type, parent, target });
   };
 
-  const openInfoModal = async (target?: TreeNode) => {
-    const path = target ? target.path : workspace!;
+  const openInfoModal = async (target: TreeNode) => {
     try {
-      const info = await readInfo(path);
+      const info = await readInfo(target.path);
       setInfoForm({
-        name: info.name || (target ? target.name : ""),
+        name: info.name || target.name,
         description: info.description || "",
-        baseUrl: info.baseUrl || "",
-        mockPort: info.mockPort || 5050,
       });
-      setModal({ type: "info", parent: path, target });
+      setModal({ type: "info", parent: target.path, target });
     } catch (e) {
       showToast("读取信息失败: " + e);
     }
@@ -477,20 +467,11 @@ export default function App() {
   const doSaveInfo = async () => {
     if (!modal) return;
     try {
-      const isRoot = !modal.target;
       await saveInfo(modal.parent, {
         name: infoForm.name.trim() || undefined,
         description: infoForm.description,
-        ...(isRoot
-          ? { baseUrl: infoForm.baseUrl.trim() || undefined, mockPort: infoForm.mockPort }
-          : {}),
       });
       setModal(null);
-      if (isRoot) {
-        const info = await readInfo(workspace!);
-        setRootInfo(info || {});
-        if (info?.mockPort) setMockPort(info.mockPort);
-      }
       await reloadTree();
       showToast("已保存");
     } catch (e) {
@@ -598,25 +579,15 @@ export default function App() {
         </div>
         {settings.enableMock && (
           <div className="mock-box">
-          <span style={{ fontSize: 12, color: "var(--text-dim)" }}>Mock</span>
-          <input
-            className="mock-port-input"
-            value={mockPort}
-            onChange={(e) => setMockPort(Number(e.target.value.replace(/\D/g, "")) || 0)}
-            disabled={mock.running}
-            title="Mock 服务端口"
-          />
-          <button className={`switch ${mock.running ? "on" : ""}`} onClick={toggleMock} title="启动/停止 Mock 服务" />
-          <span className="mock-status">
-            {mock.running ? `运行中 ${mock.routeCount} 条路由` : "未运行"}
-          </span>
+            <span style={{ fontSize: 12, color: "var(--text-dim)" }}>Mock · {settings.mockPort}</span>
+            <button className={`switch ${mock.running ? "on" : ""}`} onClick={toggleMock} title={`启动/停止 Mock 服务（端口 ${settings.mockPort}，可在设置中修改）`} />
+            <span className="mock-status">
+              {mock.running ? `运行中 ${mock.routeCount} 条路由` : "未运行"}
+            </span>
           </div>
         )}
         <button className="btn" onClick={async () => { await reloadTree(); showToast("已刷新"); }}>
           🔄
-        </button>
-        <button className="btn" title="集合设置" onClick={() => openInfoModal()}>
-          ⚙ 集合设置
         </button>
       </div>
 
@@ -823,9 +794,9 @@ export default function App() {
           </div>
         </Modal>
       )}
-      {modal?.type === "info" && (
+      {modal?.type === "info" && modal.target && (
         <Modal
-          title={modal.target ? `分组信息 - ${modal.target.name}` : "集合设置"}
+          title={`分组信息 - ${modal.target.name}`}
           onClose={() => setModal(null)}
           footer={
             <>
@@ -848,32 +819,9 @@ export default function App() {
             <textarea
               value={infoForm.description}
               onChange={(e) => setInfoForm({ ...infoForm, description: e.target.value })}
-              placeholder="描述该分组/集合的用途"
+              placeholder="描述该分组的用途"
             />
           </label>
-          {!modal.target && (
-            <>
-              <label>
-                Base URL（接口请求前缀）
-                <input
-                  value={infoForm.baseUrl}
-                  onChange={(e) => setInfoForm({ ...infoForm, baseUrl: e.target.value })}
-                  placeholder="https://api.example.com"
-                  spellCheck={false}
-                />
-              </label>
-              <label>
-                Mock 服务端口
-                <input
-                  type="number"
-                  value={infoForm.mockPort}
-                  onChange={(e) =>
-                    setInfoForm({ ...infoForm, mockPort: Number(e.target.value) || 5050 })
-                  }
-                />
-              </label>
-            </>
-          )}
         </Modal>
       )}
     </div>

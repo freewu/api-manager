@@ -98,12 +98,14 @@ export interface AppSettings {
   displayMode: string; // "dark" | "light" | "system"
   enableVersion: boolean;
   enableMock: boolean;
+  mockPort: number;
 }
 
 export const defaultSettings = (): AppSettings => ({
   displayMode: "system",
   enableVersion: true,
   enableMock: true,
+  mockPort: 5050,
 });
 
 export interface HttpRequestData {

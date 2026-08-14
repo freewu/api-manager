@@ -1132,6 +1132,29 @@ body {
   font-size: 11px;
   color: var(--text-faint);
 }
+.settings-port-row {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+.settings-port-input {
+  width: 110px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  outline: none;
+}
+.settings-port-input:focus {
+  border-color: var(--accent);
+}
+.settings-desc-inline {
+  font-size: 11px;
+  color: var(--text-faint);
+}
 .modal-version {
   width: 920px;
   max-width: 94vw;

@@ -115,6 +115,20 @@ export function SettingsModal({ settings, onClose, onSave }: Props) {
                 <div className="settings-feature-desc">
                   在主页面显示 Mock 开关与端口
                 </div>
+                <div className="settings-row settings-port-row">
+                  <span className="settings-label">Mock 端口</span>
+                  <input
+                    className="settings-port-input"
+                    type="number"
+                    min={1}
+                    max={65535}
+                    value={draft.mockPort || 5050}
+                    onChange={(e) =>
+                      setDraft({ ...draft, mockPort: Number(e.target.value.replace(/\D/g, "")) || 0 })
+                    }
+                  />
+                  <span className="settings-desc-inline">默认 5050</span>
+                </div>
               </div>
             </>
           )}
