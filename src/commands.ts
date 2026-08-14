@@ -19,6 +19,14 @@ export function pickWorkspace(): Promise<string | null> {
   return invoke<string | null>("pick_workspace");
 }
 
+export function workspaceIsEmpty(): Promise<boolean> {
+  return invoke<boolean>("workspace_is_empty");
+}
+
+export function createDemo(): Promise<void> {
+  return invoke<void>("create_demo");
+}
+
 export function readTree(): Promise<TreeNode> {
   return invoke<TreeNode>("read_tree");
 }

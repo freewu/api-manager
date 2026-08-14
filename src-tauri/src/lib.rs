@@ -530,6 +530,117 @@ fn pick_workspace(app: AppHandle, state: State<'_, WorkspaceState>) -> Result<Op
     }
 }
 
+/// 工作区是否为空（仅含自动生成的 __info.json / __envs.json 也算空）
+fn is_workspace_empty(root: &Path) -> Result<bool, String> {
+    let mut count = 0;
+    for entry in fs::read_dir(root).map_err(|e| format!("读取目录失败: {e}"))? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let name = entry.file_name().to_string_lossy().to_string();
+        if name == INFO_FILE || name == ENV_FILE {
+            continue;
+        }
+        count += 1;
+    }
+    Ok(count == 0)
+}
+
+#[tauri::command]
+fn workspace_is_empty(state: State<'_, WorkspaceState>) -> Result<bool, String> {
+    let root = workspace_root(&state)?;
+    is_workspace_empty(&root)
+}
+
+/// 在空工作区中生成演示案例（示例分组 + 接口 + 环境变量）
+#[tauri::command]
+fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String> {
+    let root = workspace_root(&state)?;
+    if !is_workspace_empty(&root)? {
+        return Err("工作区非空，不生成演示案例".into());
+    }
+    let api_file = |name: &str, method: &str, path: &str, description: &str| {
+        serde_json::json!({
+            "uuid": uuid::Uuid::new_v4().to_string(),
+            "name": name,
+            "method": method,
+            "path": path,
+            "url": "",
+            "description": description,
+            "headers": [],
+            "query": [],
+            "params": [],
+            "body": { "mode": "none", "raw": "", "form": [] },
+            "mock": { "enabled": false, "status": 200, "headers": [], "delay": 0, "body": "" },
+            "examples": []
+        })
+    };
+    let write = |dir: &str, file: &str, value: &serde_json::Value| -> Result<(), String> {
+        let dir_path = if dir.is_empty() {
+            root.clone()
+        } else {
+            root.join(dir)
+        };
+        fs::create_dir_all(&dir_path).map_err(|e| format!("创建目录失败: {e}"))?;
+        write_pretty(&dir_path.join(file), value)
+    };
+
+    // 根信息 + 环境变量
+    write("", INFO_FILE, &serde_json::json!({
+        "name": "演示 API 集合",
+        "description": "这是一个示例工作区，展示了 API Manager 的目录组织方式",
+        "baseUrl": "{{baseUrl}}",
+        "mockPort": 5050
+    }))?;
+    write("", ENV_FILE, &serde_json::json!({
+        "active": "开发环境",
+        "environments": [
+            {
+                "name": "开发环境",
+                "variables": [
+                    { "key": "baseUrl", "value": "http://127.0.0.1:5050", "defaultValue": "https://api.example.com", "description": "接口服务地址", "enabled": true },
+                    { "key": "token", "value": "dev-token-123456", "defaultValue": "demo-token", "description": "鉴权令牌", "enabled": true }
+                ]
+            },
+            {
+                "name": "生产环境",
+                "variables": [
+                    { "key": "baseUrl", "value": "https://api.example.com", "defaultValue": "https://api.example.com", "description": "接口服务地址", "enabled": true },
+                    { "key": "token", "value": "prod-token-abcdef", "defaultValue": "demo-token", "description": "鉴权令牌", "enabled": true }
+                ]
+            }
+        ]
+    }))?;
+
+    // 用户管理分组
+    write("用户管理", INFO_FILE, &serde_json::json!({ "name": "用户管理", "description": "用户相关接口" }))?;
+    let mut create_user = api_file("创建用户", "POST", "/api/users", "创建一个新用户");
+    create_user["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "application/json", "enabled": true, "description": "" }]);
+    create_user["body"] = serde_json::json!({ "mode": "json", "raw": "{\n  \"name\": \"张三\",\n  \"email\": \"zhangsan@example.com\",\n  \"role\": \"user\"\n}", "form": [] });
+    create_user["mock"] = serde_json::json!({ "enabled": true, "status": 201, "headers": [], "delay": 0, "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"id\": 1001,\n    \"name\": \"张三\",\n    \"email\": \"zhangsan@example.com\"\n  },\n  \"message\": \"创建成功\"\n}" });
+    write("用户管理", "创建用户.json", &create_user)?;
+
+    let mut get_user = api_file("获取用户信息", "GET", "/api/users/{id}", "查询单个用户信息");
+    get_user["params"] = serde_json::json!([{ "key": "id", "value": "1", "enabled": true, "description": "用户ID" }]);
+    get_user["mock"] = serde_json::json!({ "enabled": true, "status": 200, "headers": [], "delay": 0, "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"张三\",\n    \"email\": \"zhangsan@example.com\"\n  },\n  \"message\": \"成功\"\n}" });
+    write("用户管理", "获取用户信息.json", &get_user)?;
+
+    let mut del_user = api_file("删除用户", "DELETE", "/api/users/{id}", "删除指定用户");
+    del_user["params"] = serde_json::json!([{ "key": "id", "value": "1", "enabled": true, "description": "用户ID" }]);
+    del_user["mock"] = serde_json::json!({ "enabled": true, "status": 200, "headers": [], "delay": 0, "body": "{\n  \"code\": 0,\n  \"message\": \"删除成功\"\n}" });
+    write("用户管理", "删除用户.json", &del_user)?;
+
+    // 订单管理分组
+    write("订单管理", INFO_FILE, &serde_json::json!({ "name": "订单管理", "description": "订单相关接口" }))?;
+    let mut list_orders = api_file("获取订单列表", "GET", "/api/orders", "分页查询订单列表");
+    list_orders["query"] = serde_json::json!([
+        { "key": "page", "value": "1", "enabled": true, "description": "页码" },
+        { "key": "pageSize", "value": "10", "enabled": true, "description": "每页数量" }
+    ]);
+    list_orders["mock"] = serde_json::json!({ "enabled": true, "status": 200, "headers": [], "delay": 0, "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"list\": [\n      { \"id\": 1001, \"no\": \"SO20240101001\", \"amount\": 99.5 },\n      { \"id\": 1002, \"no\": \"SO20240101002\", \"amount\": 199.0 }\n    ],\n    \"total\": 2\n  },\n  \"message\": \"成功\"\n}" });
+    write("订单管理", "获取订单列表.json", &list_orders)?;
+
+    Ok(())
+}
+
 #[tauri::command]
 fn read_tree(state: State<'_, WorkspaceState>) -> Result<TreeNode, String> {
     let root = workspace_root(&state)?;
@@ -1283,6 +1394,8 @@ pub fn run() {
             save_settings,
             get_workspace,
             pick_workspace,
+            workspace_is_empty,
+            create_demo,
             read_tree,
             read_api,
             save_api,

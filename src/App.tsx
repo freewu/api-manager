@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   createApi,
+  createDemo,
   createFolder,
   deleteEntry,
   getAppVersion,
@@ -26,6 +28,7 @@ import {
   saveSettings,
   sendRequest,
   updateTrayEnv,
+  workspaceIsEmpty,
 } from "./commands";
 import { Editor } from "./components/Editor";
 import { EnvModal } from "./components/EnvModal";
@@ -51,7 +54,7 @@ import {
 } from "./types";
 
 interface ModalState {
-  type: "newApi" | "newFolder" | "rename" | "delete" | "info";
+  type: "newApi" | "newFolder" | "rename" | "delete" | "info" | "demo";
   parent: string;
   target?: TreeNode;
 }
@@ -88,6 +91,7 @@ export default function App() {
   const [emptyMenu, setEmptyMenu] = useState<{ x: number; y: number } | null>(null);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [demoCreate, setDemoCreate] = useState(true);
   const toastTimer = useRef<number | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -114,6 +118,14 @@ export default function App() {
     mockStatus().then(setMock).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 窗口标题带上版本号
+  useEffect(() => {
+    if (!version) return;
+    const title = `API Manager v${version}`;
+    document.title = title;
+    getCurrentWindow().setTitle(title).catch(() => {});
+  }, [version]);
 
   // 应用显示模式（深色 / 浅色 / 跟随系统）
   useEffect(() => {
@@ -229,10 +241,34 @@ export default function App() {
       if (!ws) return;
       setWorkspace(ws);
       setResponse(null);
-      await loadAll(ws);
-      showToast("已打开工作区");
+      if (await workspaceIsEmpty()) {
+        // 空目录：询问是否生成演示案例
+        setDemoCreate(true);
+        setModal({ type: "demo", parent: ws });
+      } else {
+        await loadAll(ws);
+        showToast("已打开工作区");
+      }
     } catch (e) {
       showToast("打开失败: " + e);
+    }
+  };
+
+  /** 空目录选择后的收尾：按参数生成演示案例并加载 */
+  const closeDemoModal = async (create: boolean) => {
+    const ws = modal?.parent || workspace;
+    setModal(null);
+    if (ws) {
+      if (create) {
+        try {
+          await createDemo();
+          showToast("已生成演示案例");
+        } catch (e) {
+          showToast("生成演示案例失败: " + e);
+        }
+      }
+      await loadAll(ws);
+      if (!create) showToast("已打开工作区");
     }
   };
 
@@ -817,6 +853,34 @@ export default function App() {
             确定要删除 <b style={{ color: "var(--text)" }}>{modal.target.name}</b> 吗？
             {modal.target.kind === "folder" && <div style={{ marginTop: 6 }}>将连同其下所有接口一并删除，此操作不可恢复！</div>}
           </div>
+        </Modal>
+      )}
+      {modal?.type === "demo" && (
+        <Modal
+          title="生成演示案例"
+          onClose={() => void closeDemoModal(false)}
+          footer={
+            <>
+              <button className="btn" onClick={() => void closeDemoModal(false)}>
+                不生成
+              </button>
+              <button className="btn primary" onClick={() => void closeDemoModal(demoCreate)}>
+                确定
+              </button>
+            </>
+          }
+        >
+          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.7 }}>
+            检测到所选工作目录为空。可以自动生成几个演示接口和环境变量，方便快速体验。
+          </div>
+          <label className="demo-check">
+            <input
+              type="checkbox"
+              checked={demoCreate}
+              onChange={(e) => setDemoCreate(e.target.checked)}
+            />
+            生成演示案例（用户管理 / 订单管理 分组 + 开发 / 生产环境）
+          </label>
         </Modal>
       )}
       {modal?.type === "info" && modal.target && (
