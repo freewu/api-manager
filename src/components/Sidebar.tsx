@@ -72,7 +72,7 @@ function NodeRow({
   onDragEnd: () => void;
   onDragOverTarget: (dst: string) => void;
   onDragLeaveTarget: (dst: string) => void;
-  onDropTarget: (dst: string) => void;
+  onDropTarget: (src: string, dst: string) => void;
 }) {
   const isFolder = node.kind === "folder";
   const [open, setOpen] = useState(node.collapsed !== true);
@@ -119,11 +119,11 @@ function NodeRow({
           onDragEnd();
         }}
         onDragOver={(e) => {
-          if (!canDrop) return;
+          // 始终允许放置，避免出现禁止图标；有效性在 drop 时校验
           e.preventDefault();
           e.stopPropagation();
           e.dataTransfer.dropEffect = "move";
-          onDragOverTarget(dropTarget);
+          if (canDrop) onDragOverTarget(dropTarget);
         }}
         onDragLeave={(e) => {
           e.stopPropagation();
@@ -135,7 +135,8 @@ function NodeRow({
         onDrop={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          onDropTarget(dropTarget);
+          const src = e.dataTransfer.getData("text/plain") || dragSrc;
+          if (src) onDropTarget(src, dropTarget);
         }}
         onClick={() => {
           if (isFolder) setOpen(!open);
@@ -265,11 +266,10 @@ export function Sidebar(props: Props) {
   const handleDragOverTarget = (dst: string) => setDragOver(dst);
   const handleDragLeaveTarget = (dst: string) =>
     setDragOver((prev) => (prev === dst ? null : prev));
-  const handleDropTarget = async (dst: string) => {
-    if (!dragSrc) return;
-    const src = dragSrc;
+  const handleDropTarget = async (src: string, dst: string) => {
     setDragSrc(null);
     setDragOver(null);
+    if (!validDrop(src, dst)) return; // 无效落点（自身/子目录/原地）：忽略
     await props.onMove(src, dst);
   };
 
@@ -323,19 +323,16 @@ export function Sidebar(props: Props) {
           });
         }}
         onDragOver={(e) => {
-          if (!dragSrc || parentDir(dragSrc) === "") return;
+          // 始终允许放置到根目录，避免禁止图标
           e.preventDefault();
           e.dataTransfer.dropEffect = "move";
-          setDragOver("__root__");
+          if (dragSrc && parentDir(dragSrc) !== "") setDragOver("__root__");
         }}
         onDragLeave={() => setDragOver((prev) => (prev === "__root__" ? null : prev))}
         onDrop={(e) => {
           e.preventDefault();
-          if (!dragSrc || parentDir(dragSrc) === "") return;
-          const src = dragSrc;
-          setDragSrc(null);
-          setDragOver(null);
-          void props.onMove(src, "");
+          const src = e.dataTransfer.getData("text/plain") || dragSrc;
+          if (src) void props.onMove(src, "");
         }}
       >
         {tree && tree.children && (
