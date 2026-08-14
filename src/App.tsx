@@ -622,7 +622,15 @@ export default function App() {
           enableVersion={settings.enableVersion}
         />
 
-        <div className="content">
+        <div
+          className="content"
+          onContextMenu={(e) => {
+            // 右侧区域禁止右键（输入框/文本域保留原生菜单以便粘贴）
+            const t = e.target as HTMLElement;
+            if (t.tagName === "INPUT" || t.tagName === "TEXTAREA") return;
+            e.preventDefault();
+          }}
+        >
           {api ? (
             <>
               <Editor

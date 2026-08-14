@@ -1021,28 +1021,40 @@ body {
 .view-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-bottom: 8px;
 }
-.view-chip {
-  padding: 3px 10px;
+.view-select {
+  padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 11px;
-  font-family: var(--font-mono);
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-}
-.view-chip:hover {
-  border-color: var(--border-light);
+  border-radius: var(--radius);
+  background: var(--bg-input);
   color: var(--text);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  outline: none;
 }
-.view-chip.active {
+.view-select:focus {
   border-color: var(--accent);
-  background: rgba(88, 166, 255, 0.12);
+}
+.view-copy {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.view-copy:hover {
+  border-color: var(--accent);
   color: var(--accent);
-  font-weight: 600;
+}
+.view-copy.ok {
+  border-color: #2ea86f;
+  color: #2ea86f;
 }
 .view-ct {
   margin-left: auto;

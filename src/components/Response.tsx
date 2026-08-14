@@ -6,8 +6,15 @@ interface Props {
   sending: boolean;
 }
 
-type View = "raw" | "html" | "json" | "xml";
-const VIEWS: View[] = ["raw", "html", "json", "xml"];
+type View = "auto" | "raw" | "html" | "xml" | "json" | "text";
+const VIEWS: { value: View; label: string }[] = [
+  { value: "raw", label: "RAW" },
+  { value: "html", label: "HTML" },
+  { value: "xml", label: "XML" },
+  { value: "json", label: "JSON" },
+  { value: "text", label: "TEXT" },
+  { value: "auto", label: "自动" },
+];
 
 function statusClass(status: number) {
   if (status >= 200 && status < 300) return "status-2xx";
@@ -67,37 +74,73 @@ export function highlightMarkup(text: string): string {
   );
 }
 
-/** 根据 Content-Type 与内容自动判断默认视图 */
+/** 根据 Content-Type 与内容自动判断实际视图 */
 function detectView(body: string, contentType: string | undefined): View {
   const ct = (contentType || "").toLowerCase();
   if (ct.includes("json") || ct.includes("javascript")) return "json";
   if (ct.includes("html")) return "html";
   if (ct.includes("xml")) return "xml";
   const t = body.trim();
-  if (!t) return "raw";
+  if (!t) return "text";
   if (t.startsWith("{") || t.startsWith("[")) return "json";
   if (t.startsWith("<")) return /<!doctype|<html|<head|<body/i.test(t) ? "html" : "xml";
-  return "raw";
+  return "text";
+}
+
+function prettyJson(text: string): string {
+  try {
+    return JSON.stringify(JSON.parse(text), null, 2);
+  } catch {
+    return text;
+  }
+}
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
 }
 
 export function Response({ result, sending }: Props) {
   const [tab, setTab] = useState<"body" | "headers">("body");
-  const [view, setView] = useState<View>("raw");
+  const [view, setView] = useState<View>("auto");
+  const [copied, setCopied] = useState(false);
 
   const contentType = useMemo(
     () => result?.headers.find(([k]) => k.toLowerCase() === "content-type")?.[1],
     [result]
   );
 
-  // 新响应到达时自动选择视图
+  // 新响应到达时回到自动选择
   useEffect(() => {
-    if (result) setView(detectView(result.body, contentType));
-  }, [result, contentType]);
+    setView("auto");
+  }, [result]);
+
+  const actualView: View = useMemo(() => {
+    if (!result) return "text";
+    return view === "auto" ? detectView(result.body, contentType) : view;
+  }, [result, view, contentType]);
 
   const bodyEl = useMemo(() => {
     if (!result) return null;
-    switch (view) {
+    switch (actualView) {
       case "raw":
+      case "text":
         return <div className="json-view raw-view">{result.body || ""}</div>;
       case "html":
       case "xml":
@@ -109,10 +152,25 @@ export function Response({ result, sending }: Props) {
         );
       case "json":
         return (
-          <div className="json-view" dangerouslySetInnerHTML={{ __html: highlightJson(result.body) }} />
+          <div
+            className="json-view"
+            dangerouslySetInnerHTML={{ __html: highlightJson(prettyJson(result.body)) }}
+          />
         );
+      case "auto":
+        return null;
     }
-  }, [result, view]);
+  }, [result, actualView]);
+
+  const handleCopy = async () => {
+    if (!result) return;
+    const text = actualView === "json" ? prettyJson(result.body) : result.body;
+    const ok = await copyText(text);
+    if (ok) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    }
+  };
 
   if (sending && !result) {
     return (
@@ -191,15 +249,26 @@ export function Response({ result, sending }: Props) {
               <>
                 {result.body !== "" && (
                   <div className="view-bar">
-                    {VIEWS.map((v) => (
-                      <div
-                        key={v}
-                        className={`view-chip ${view === v ? "active" : ""}`}
-                        onClick={() => setView(v)}
-                      >
-                        {v.toUpperCase()}
-                      </div>
-                    ))}
+                    <select
+                      className="view-select"
+                      value={view}
+                      onChange={(e) => setView(e.target.value as View)}
+                      title="响应体显示格式"
+                    >
+                      {VIEWS.map((v) => (
+                        <option key={v.value} value={v.value}>
+                          {v.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className={`view-copy ${copied ? "ok" : ""}`}
+                      onClick={() => void handleCopy()}
+                      title="复制响应结果"
+                    >
+                      {copied ? "✓ 已复制" : "📋 复制"}
+                    </button>
                     {contentType && (
                       <span className="view-ct" title="响应 Content-Type">
                         {contentType.split(";")[0]}
