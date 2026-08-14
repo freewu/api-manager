@@ -35,7 +35,9 @@ import {
 import { Editor } from "./components/Editor";
 import { EnvModal } from "./components/EnvModal";
 import { EnvValueModal } from "./components/EnvValueModal";
-import { HistoryModal } from "./components/HistoryModal";
+import { HistoryDetail } from "./components/HistoryDetail";
+import { AppView } from "./components/Sidebar";
+import { useHistory } from "./hooks/useHistory";
 import { Modal } from "./components/Modal";
 import { Response } from "./components/Response";
 import { SettingsModal } from "./components/SettingsModal";
@@ -96,7 +98,12 @@ export default function App() {
   const [emptyMenu, setEmptyMenu] = useState<{ x: number; y: number } | null>(null);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [view, setView] = useState<AppView>("api");
+  const history = useHistory();
+  const switchView = (v: AppView) => {
+    setView(v);
+    if (v === "history" && !history.loaded) history.reload();
+  };
   const [demoCreate, setDemoCreate] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = Number(localStorage.getItem("sidebar-width"));
@@ -767,6 +774,8 @@ export default function App() {
           width={sidebarWidth}
           tree={tree}
           selectedPath={selectedPath}
+          view={view}
+          onSwitchView={switchView}
           onSelect={selectNode}
           onNewApi={(parent) => openModal("newApi", parent)}
           onNewFolder={(parent) => openModal("newFolder", parent)}
@@ -777,9 +786,18 @@ export default function App() {
           onStats={setStatsNode}
           onOpenSettings={() => setSettingsOpen(true)}
           onImportPostman={() => void handleImportPostman()}
-          onOpenHistory={() => setHistoryOpen(true)}
           onMove={handleMove}
           enableVersion={settings.enableVersion}
+          historyRecords={history.records}
+          historyDays={history.days}
+          historyLoading={history.loading}
+          historyHasMore={history.hasMore}
+          historySelected={history.selectedId}
+          historyTotal={history.totalCount}
+          onHistorySelect={(id) => void history.select(id)}
+          onHistoryLoadMore={() => void history.loadPage(history.offset)}
+          onHistoryReload={history.reload}
+          onHistoryClear={() => void history.clearAll()}
         />
         <div
           className="resizer"
@@ -801,7 +819,11 @@ export default function App() {
             e.preventDefault();
           }}
         >
-          {api ? (
+          {view === "history" ? (
+            <div className="history-view-content">
+              <HistoryDetail detail={history.detail} loading={history.detailLoading} />
+            </div>
+          ) : api ? (
             <>
               <Editor
                 style={{ height: `${editorRatio * 100}%` }}
@@ -878,8 +900,6 @@ export default function App() {
       )}
 
       {statsNode && <StatsModal node={statsNode} onClose={() => setStatsNode(null)} />}
-
-      {historyOpen && <HistoryModal onClose={() => setHistoryOpen(false)} />}
 
       {settingsOpen && (
         <SettingsModal

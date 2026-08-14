@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { TreeNode } from "../types";
+import { HistoryDay, HistorySummary } from "../commands";
+import { HistoryList } from "./HistoryList";
+
+export type AppView = "api" | "history";
 
 interface Props {
   width?: number;
   tree: TreeNode | null;
   selectedPath: string | null;
+  view: AppView;
+  onSwitchView: (v: AppView) => void;
   onSelect: (node: TreeNode) => void;
   onNewApi: (parent: string) => void;
   onNewFolder: (parent: string) => void;
@@ -14,10 +20,20 @@ interface Props {
   onVersions: (node: TreeNode) => void;
   onStats?: (node: TreeNode) => void;
   onOpenSettings?: () => void;
-  onOpenHistory?: () => void;
   onImportPostman?: () => void;
   onMove: (srcPath: string, dstDir: string) => Promise<void>;
   enableVersion: boolean;
+  // 请求历史列表数据（由 App 通过 useHistory 提供）
+  historyRecords: HistorySummary[];
+  historyDays: HistoryDay[];
+  historyLoading: boolean;
+  historyHasMore: boolean;
+  historySelected: string | null;
+  historyTotal: number;
+  onHistorySelect: (id: string) => void;
+  onHistoryLoadMore: () => void;
+  onHistoryReload: () => void;
+  onHistoryClear: () => void;
 }
 
 interface CtxMenu {
@@ -66,9 +82,20 @@ function NodeRow({
   onDragOverTarget,
   onDragLeaveTarget,
   onDropTarget,
-}: Omit<Props, "onMove"> & {
+}: {
   node: TreeNode;
   depth: number;
+  selectedPath: string | null;
+  onSelect: (node: TreeNode) => void;
+  onNewApi: (parent: string) => void;
+  onNewFolder: (parent: string) => void;
+  onRename: (node: TreeNode) => void;
+  onDelete: (node: TreeNode) => void;
+  onEditInfo: (node: TreeNode) => void;
+  onVersions: (node: TreeNode) => void;
+  onStats?: (node: TreeNode) => void;
+  enableVersion: boolean;
+  tree: null;
   onContextMenu: (e: React.MouseEvent, node: TreeNode) => void;
   filter: string;
   dragSrc: string | null;
@@ -262,7 +289,7 @@ function NodeRow({
 }
 
 export function Sidebar(props: Props) {
-  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions, onStats, onOpenSettings, onOpenHistory, onImportPostman, enableVersion } = props;
+  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions, onStats, onOpenSettings, view, onSwitchView, onImportPostman, enableVersion } = props;
   const [filter, setFilter] = useState("");
   const [menu, setMenu] = useState<CtxMenu | null>(null);
   const [bgMenu, setBgMenu] = useState<{ x: number; y: number } | null>(null);
@@ -313,18 +340,35 @@ export function Sidebar(props: Props) {
   return (
     <div className="sidebar" style={{ width: props.width ?? 310 }}>
       <div className="sidebar-header">
-        <div className="search-box">
-          <span className="icon">🔍</span>
-          <input
-            placeholder="搜索接口 / 路径"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            spellCheck={false}
-          />
-        </div>
+        {view === "api" ? (
+          <div className="search-box">
+            <span className="icon">🔍</span>
+            <input
+              placeholder="搜索接口 / 路径"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              spellCheck={false}
+            />
+          </div>
+        ) : (
+          <div className="history-side-header">
+            <span className="history-side-title">请求历史</span>
+            <button
+              className="icon-btn"
+              onClick={() => onSwitchView("api")}
+              title="返回接口管理"
+              aria-label="返回接口管理"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0 4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
       <div
         className={`tree ${dragOver === "__root__" ? "drag-over-root" : ""}`}
+        style={{ display: view === "history" ? "none" : undefined }}
         onContextMenu={(e) => {
           // 空白处右键：新建接口 / 新建分组（节点行上的右键会 stopPropagation）
           e.preventDefault();
@@ -388,6 +432,20 @@ export function Sidebar(props: Props) {
         )}
         {!tree && <div className="tree-root">暂无数据</div>}
       </div>
+      {view === "history" && (
+        <HistoryList
+          records={props.historyRecords}
+          days={props.historyDays}
+          loading={props.historyLoading}
+          hasMore={props.historyHasMore}
+          selectedId={props.historySelected}
+          totalCount={props.historyTotal}
+          onSelect={props.onHistorySelect}
+          onLoadMore={props.onHistoryLoadMore}
+          onReload={props.onHistoryReload}
+          onClear={props.onHistoryClear}
+        />
+      )}
       <div className="sidebar-footer">
         {onImportPostman && (
           <button
@@ -401,7 +459,12 @@ export function Sidebar(props: Props) {
             </svg>
           </button>
         )}
-        <button className="icon-btn" onClick={onOpenHistory} title="请求历史" aria-label="请求历史">
+        <button
+          className={`icon-btn ${view === "history" ? "active" : ""}`}
+          onClick={() => onSwitchView(view === "history" ? "api" : "history")}
+          title={view === "history" ? "返回接口管理" : "请求历史"}
+          aria-label="请求历史"
+        >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
             <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
           </svg>
