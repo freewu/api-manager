@@ -100,9 +100,9 @@
 ```bash
 just dev         # 开发模式运行（前端热更新 + Rust dev）
 just test        # 运行全部测试（Rust 单测 + 前端类型检查 + 前端构建）
-just build       # 完整打包：exe + NSIS / MSI 安装程序
-just release     # 打包并收集到 ./release/ 目录（exe + NSIS + MSI，自动清理旧产物）
-just exe         # 仅构建 release 可执行文件（快速）
+just build       # 完整打包：exe + NSIS / MSI 安装程序（可选）
+just release     # 仅生成单体可执行文件并收集到 ./release/（无需安装，拷走即用）
+just exe         # 仅构建 release 可执行文件（快速，release 的构建部分）
 just tsc         # 前端类型检查
 just check       # Rust 编译检查
 just icon        # 重新生成应用图标（群青主题）
@@ -118,9 +118,8 @@ just             # 列出全部命令
 
 ### 构建产物
 
-- `src-tauri/target/release/api-manager.exe` — 可执行文件
-- `src-tauri/target/release/bundle/nsis/API Manager_0.1.0_x64-setup.exe` — 安装包
-- `src-tauri/target/release/bundle/msi/API Manager_0.1.0_x64_en-US.msi` — MSI
+- `just release` 产物：`release/api-manager.exe` — 单体可执行文件，无需安装，拷到任意 Windows 机器直接运行（Win10/11 自带 WebView2 运行时）
+- `just build`（可选）产物：`src-tauri/target/release/bundle/nsis/API Manager_0.1.0_x64-setup.exe` — NSIS 安装包；`bundle/msi/API Manager_0.1.0_x64_en-US.msi` — MSI
 
 ### 运行测试
 
