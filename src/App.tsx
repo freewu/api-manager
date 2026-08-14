@@ -38,6 +38,7 @@ import { Modal } from "./components/Modal";
 import { Response } from "./components/Response";
 import { SettingsModal } from "./components/SettingsModal";
 import { Sidebar } from "./components/Sidebar";
+import { StatsModal } from "./components/StatsModal";
 import { VersionModal } from "./components/VersionModal";
 import {
   ApiFile,
@@ -89,6 +90,7 @@ export default function App() {
   const [envModal, setEnvModal] = useState(false);
   const [envValue, setEnvValue] = useState(false);
   const [versionModal, setVersionModal] = useState<{ api: ApiFile; versions: VersionInfo[] } | null>(null);
+  const [statsNode, setStatsNode] = useState<TreeNode | null>(null);
   const [emptyMenu, setEmptyMenu] = useState<{ x: number; y: number } | null>(null);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -696,6 +698,7 @@ export default function App() {
           onDelete={(node) => openModal("delete", "", node)}
           onEditInfo={(node) => openInfoModal(node)}
           onVersions={openVersions}
+          onStats={setStatsNode}
           onOpenSettings={() => setSettingsOpen(true)}
           onImportPostman={() => void handleImportPostman()}
           onMove={handleMove}
@@ -785,6 +788,8 @@ export default function App() {
           onClose={() => setVersionModal(null)}
         />
       )}
+
+      {statsNode && <StatsModal node={statsNode} onClose={() => setStatsNode(null)} />}
 
       {settingsOpen && (
         <SettingsModal

@@ -82,6 +82,7 @@ export interface TreeNode {
   mockEnabled?: boolean;
   description?: string;
   collapsed?: boolean;
+  apiCount?: number;
   children?: TreeNode[];
 }
 

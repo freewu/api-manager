@@ -169,6 +169,9 @@ pub struct TreeNode {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub collapsed: Option<bool>,
+    /// 该分组下接口总数（含子分组），前端用于显示数量角标
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_count: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub children: Option<Vec<TreeNode>>,
 }
@@ -361,6 +364,11 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
     folders.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.name.cmp(&b.1.name)));
     apis.sort_by(|a, b| a.name.cmp(&b.name));
     let mut children = folders.into_iter().map(|(_, n)| n).collect::<Vec<_>>();
+    let api_count = children
+        .iter()
+        .map(|c| c.api_count.unwrap_or(0))
+        .sum::<u32>()
+        + apis.len() as u32;
     children.extend(apis);
 
     Ok(TreeNode {
@@ -372,6 +380,7 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
         mock_enabled: None,
         description: Some(info.description),
         collapsed: info.collapsed,
+        api_count: Some(api_count),
         children: Some(children),
     })
 }
@@ -411,6 +420,7 @@ fn build_api_node(path: &Path) -> TreeNode {
         mock_enabled,
         description: None,
         collapsed: None,
+        api_count: None,
         children: None,
     }
 }

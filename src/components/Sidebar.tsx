@@ -12,6 +12,7 @@ interface Props {
   onDelete: (node: TreeNode) => void;
   onEditInfo: (node: TreeNode) => void;
   onVersions: (node: TreeNode) => void;
+  onStats?: (node: TreeNode) => void;
   onOpenSettings?: () => void;
   onImportPostman?: () => void;
   onMove: (srcPath: string, dstDir: string) => Promise<void>;
@@ -53,6 +54,7 @@ function NodeRow({
   onDelete,
   onEditInfo,
   onVersions,
+  onStats,
   enableVersion,
   onContextMenu,
   filter,
@@ -164,6 +166,11 @@ function NodeRow({
         )}
         <span className="node-icon">{isFolder ? "📁" : "🌐"}</span>
         <span className="node-name">{node.name}</span>
+        {isFolder && !!node.apiCount && (
+          <span className="node-count" title={`${node.apiCount} 个接口`}>
+            {node.apiCount}
+          </span>
+        )}
         {!isFolder && node.endpoint && (
           <span className="node-endpoint" title={node.endpoint}>
             {node.endpoint}
@@ -224,6 +231,7 @@ function NodeRow({
               onDelete={onDelete}
               onEditInfo={onEditInfo}
               onVersions={onVersions}
+              onStats={onStats}
               enableVersion={enableVersion}
               onContextMenu={onContextMenu}
               filter={filter}
@@ -253,7 +261,7 @@ function NodeRow({
 }
 
 export function Sidebar(props: Props) {
-  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions, onOpenSettings, onImportPostman, enableVersion } = props;
+  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions, onStats, onOpenSettings, onImportPostman, enableVersion } = props;
   const [filter, setFilter] = useState("");
   const [menu, setMenu] = useState<CtxMenu | null>(null);
   const [bgMenu, setBgMenu] = useState<{ x: number; y: number } | null>(null);
@@ -352,6 +360,7 @@ export function Sidebar(props: Props) {
                 onDelete={onDelete}
                 onEditInfo={onEditInfo}
                 onVersions={onVersions}
+                onStats={props.onStats}
                 enableVersion={enableVersion}
                 onContextMenu={openMenu}
                 filter={filter.trim().toLowerCase()}
@@ -419,6 +428,14 @@ export function Sidebar(props: Props) {
                 🌐 新增接口
               </button>
               <div className="node-ctx-sep" />
+              <button
+                onClick={() => {
+                  onStats?.(menu.node);
+                  setMenu(null);
+                }}
+              >
+                📊 统计
+              </button>
               <button
                 onClick={() => {
                   onEditInfo(menu.node);
