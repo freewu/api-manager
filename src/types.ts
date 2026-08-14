@@ -49,6 +49,7 @@ export interface InfoJson {
 export interface EnvVariable {
   key: string;
   value: string;
+  description: string;
   enabled: boolean;
 }
 
@@ -67,7 +68,7 @@ export function emptyEnv(): EnvStore {
 }
 
 export function emptyEnvVariable(): EnvVariable {
-  return { key: "", value: "", enabled: true };
+  return { key: "", value: "", description: "", enabled: true };
 }
 
 export interface TreeNode {

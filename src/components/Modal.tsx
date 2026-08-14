@@ -5,12 +5,13 @@ interface ModalProps {
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  className?: string;
 }
 
-export function Modal({ title, onClose, children, footer }: ModalProps) {
+export function Modal({ title, onClose, children, footer, className }: ModalProps) {
   return (
     <div className="modal-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
+      <div className={`modal${className ? " " + className : ""}`}>
         <div className="modal-head">
           <span>{title}</span>
           <button className="modal-close" onClick={onClose}>

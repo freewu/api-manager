@@ -929,6 +929,9 @@ body {
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
   animation: modal-in 0.16s ease;
 }
+.modal-wide {
+  width: 680px;
+}
 @keyframes modal-in {
   from {
     opacity: 0;
@@ -1082,7 +1085,18 @@ body {
 .env-manager {
   display: flex;
   flex-direction: column;
-  min-width: 520px;
+  min-width: 560px;
+}
+
+.env-section {
+  margin-top: 0;
+}
+
+.env-set-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .env-tabs {
@@ -1090,7 +1104,64 @@ body {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.env-set-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.env-empty-hint {
+  color: var(--text-faint);
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.env-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 2px;
+}
+
+.env-name-input {
+  background: var(--bg-input);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 12.5px;
+  outline: none;
+  width: 240px;
+  font-family: inherit;
+}
+
+.env-name-label {
+  font-size: 12.5px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.env-empty-block {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  color: var(--text-faint);
+  font-size: 12px;
+  padding: 18px 12px;
+  text-align: center;
+}
+
+.env-var-table td:nth-child(4) input {
+  font-family: var(--font-base);
+}
+
+.env-var-table td:nth-child(2) input,
+.env-var-table td:nth-child(3) input {
+  font-family: var(--font-mono);
 }
 .env-tab {
   padding: 4px 12px;

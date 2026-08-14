@@ -216,6 +216,8 @@ pub struct MockStatus {
 pub struct EnvVariable {
     pub key: String,
     pub value: String,
+    #[serde(default)]
+    pub description: String,
     #[serde(default = "default_true")]
     pub enabled: bool,
 }
@@ -1085,6 +1087,7 @@ mod tests {
                     variables: vec![EnvVariable {
                         key: "k".into(),
                         value: "v".into(),
+                        description: "".into(),
                         enabled: true,
                     }],
                 },
