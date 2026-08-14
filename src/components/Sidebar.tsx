@@ -32,12 +32,12 @@ function NodeRow({
   onRename,
   onDelete,
   onEditInfo,
-  onFolderContextMenu,
+  onContextMenu,
   filter,
 }: Props & {
   node: TreeNode;
   depth: number;
-  onFolderContextMenu: (e: React.MouseEvent, node: TreeNode) => void;
+  onContextMenu: (e: React.MouseEvent, node: TreeNode) => void;
   filter: string;
 }) {
   const isFolder = node.kind === "folder";
@@ -75,11 +75,9 @@ function NodeRow({
           else onSelect(node);
         }}
         onContextMenu={(e) => {
-          if (isFolder) {
-            e.preventDefault();
-            e.stopPropagation();
-            onFolderContextMenu(e, node);
-          }
+          e.preventDefault();
+          e.stopPropagation();
+          onContextMenu(e, node);
         }}
         title={isFolder ? node.description || node.name : `${node.method} ${node.endpoint}`}
       >
@@ -144,7 +142,7 @@ function NodeRow({
               onRename={onRename}
               onDelete={onDelete}
               onEditInfo={onEditInfo}
-              onFolderContextMenu={onFolderContextMenu}
+              onContextMenu={onContextMenu}
               filter={filter}
               tree={null}
             />
@@ -165,7 +163,7 @@ function NodeRow({
 }
 
 export function Sidebar(props: Props) {
-  const { tree, onNewApi, onNewFolder, onEditInfo, onDelete } = props;
+  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete } = props;
   const [filter, setFilter] = useState("");
   const [menu, setMenu] = useState<CtxMenu | null>(null);
 
@@ -206,21 +204,35 @@ export function Sidebar(props: Props) {
         </div>
       </div>
       <div className="tree">
-        {tree && (
-          <NodeRow
-            node={tree}
-            depth={0}
-            selectedPath={props.selectedPath}
-            onSelect={props.onSelect}
-            onNewApi={onNewApi}
-            onNewFolder={onNewFolder}
-            onRename={props.onRename}
-            onDelete={props.onDelete}
-            onEditInfo={props.onEditInfo}
-            onFolderContextMenu={openMenu}
-            filter={filter.trim().toLowerCase()}
-            tree={null}
-          />
+        {tree && tree.children && (
+          <div>
+            {tree.children.map((child, i) => (
+              <NodeRow
+                key={child.path + i}
+                node={child}
+                depth={0}
+                selectedPath={props.selectedPath}
+                onSelect={props.onSelect}
+                onNewApi={onNewApi}
+                onNewFolder={onNewFolder}
+                onRename={onRename}
+                onDelete={onDelete}
+                onEditInfo={onEditInfo}
+                onContextMenu={openMenu}
+                filter={filter.trim().toLowerCase()}
+                tree={null}
+              />
+            ))}
+            {!filter.trim() && (
+              <div
+                className="node"
+                style={{ paddingLeft: 10, color: "var(--text-faint)", fontSize: 12 }}
+                onClick={() => onNewFolder("")}
+              >
+                ＋ 新建分组
+              </div>
+            )}
+          </div>
         )}
         {!tree && <div className="tree-root">暂无数据</div>}
       </div>
@@ -235,40 +247,64 @@ export function Sidebar(props: Props) {
 
       {menu && (
         <div className="node-ctx-menu" style={{ left: menu.x, top: menu.y }}>
-          <button
-            onClick={() => {
-              onNewFolder(menu.node.path);
-              setMenu(null);
-            }}
-          >
-            📁 新增目录
-          </button>
-          <button
-            onClick={() => {
-              onNewApi(menu.node.path);
-              setMenu(null);
-            }}
-          >
-            🌐 新增接口
-          </button>
-          <div className="node-ctx-sep" />
-          <button
-            onClick={() => {
-              onEditInfo(menu.node);
-              setMenu(null);
-            }}
-          >
-            ✎ 编辑目录信息
-          </button>
-          <button
-            className="danger"
-            onClick={() => {
-              onDelete(menu.node);
-              setMenu(null);
-            }}
-          >
-            🗑 删除
-          </button>
+          {menu.node.kind === "folder" ? (
+            <>
+              <button
+                onClick={() => {
+                  onNewFolder(menu.node.path);
+                  setMenu(null);
+                }}
+              >
+                📁 新增目录
+              </button>
+              <button
+                onClick={() => {
+                  onNewApi(menu.node.path);
+                  setMenu(null);
+                }}
+              >
+                🌐 新增接口
+              </button>
+              <div className="node-ctx-sep" />
+              <button
+                onClick={() => {
+                  onEditInfo(menu.node);
+                  setMenu(null);
+                }}
+              >
+                ✎ 编辑目录信息
+              </button>
+              <button
+                className="danger"
+                onClick={() => {
+                  onDelete(menu.node);
+                  setMenu(null);
+                }}
+              >
+                🗑 删除
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  onRename(menu.node);
+                  setMenu(null);
+                }}
+              >
+                ✎ 修改
+              </button>
+              <button
+                className="danger"
+                onClick={() => {
+                  onDelete(menu.node);
+                  setMenu(null);
+                }}
+              >
+                🗑 删除
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

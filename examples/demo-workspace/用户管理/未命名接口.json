@@ -1,0 +1,37 @@
+{
+  "name": "未命名接口",
+  "method": "POST",
+  "path": "/",
+  "url": "",
+  "description": "",
+  "headers": [
+    {
+      "key": "",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "form",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}
