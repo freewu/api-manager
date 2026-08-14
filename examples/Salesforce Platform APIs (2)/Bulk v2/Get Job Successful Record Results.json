@@ -1,0 +1,31 @@
+{
+  "uuid": "a609eadb-9638-4ab2-8146-7dd12424da87",
+  "name": "Get Job Successful Record Results",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/jobs/ingest/{{_jobId}}/successfulResults",
+  "url": "{{_endpoint}}/services/data/v{{version}}/jobs/ingest/{{_jobId}}/successfulResults",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

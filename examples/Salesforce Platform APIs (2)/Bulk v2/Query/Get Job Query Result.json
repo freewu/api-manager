@@ -1,0 +1,50 @@
+{
+  "uuid": "97316640-6090-41f9-98ae-c190e7173040",
+  "name": "Get Job Query Result",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/jobs/query/{{_jobId}}/results",
+  "url": "{{_endpoint}}/services/data/v{{version}}/jobs/query/{{_jobId}}/results",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Accept",
+      "value": "test/csv",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "locator",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "maxRecords",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,31 @@
+{
+  "uuid": "90fc258a-0b4a-4e4f-9ea1-a125523aa29e",
+  "name": "Initiate Renewal",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/asset-management/assets/collection/actions/initiate-renewal",
+  "url": "{{_endpoint}}/services/data/v{{version}}/asset-management/assets/collection/actions/initiate-renewal",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n  \"assetIds\": {\n    \"assetIdArray\": [\n      \"{{assetID}}\"\n    ]\n  }\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

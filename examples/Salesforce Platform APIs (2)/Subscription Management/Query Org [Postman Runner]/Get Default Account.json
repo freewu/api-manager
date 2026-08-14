@@ -1,0 +1,31 @@
+{
+  "uuid": "260a86fb-0f8e-4b72-9f91-2f84e709dcea",
+  "name": "Get Default Account",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/query",
+  "url": "{{_endpoint}}/services/data/v{{version}}/query?q=Select Id, Name from Account Where name='SmartBytes'",
+  "description": "",
+  "headers": [],
+  "query": [
+    {
+      "key": "q",
+      "value": "Select Id, Name from Account Where name='SmartBytes'",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

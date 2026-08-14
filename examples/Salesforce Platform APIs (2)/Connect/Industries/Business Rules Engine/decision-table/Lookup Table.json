@@ -1,0 +1,31 @@
+{
+  "uuid": "ec2cdbb5-6200-465c-b2c0-12061b11be39",
+  "name": "Lookup Table",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/connect/business-rules/decision-table/{decisionTableId}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/connect/business-rules/decision-table/:decisionTableId",
+  "description": "# Decision Table (Lookup Table)\n\nPerforms a lookup on a decision table.Resource\n\n```\n/connect/business-rules/decision-table/${decisionTableId}\n\n ```\n\nResource Example\n\n```\nhttps://yourInstance.salesforce.com/services/data/v55.0/connect\n/decision-table/0lDB0000000TNQzMAO\n\n ```\n\nAvailable version\n\n55.0\n\nRequires Chatter\n\nNo\n\nHTTP methods\n\nPOST\n\nRequest body for POST\n\nJSON example\n\n```\n{\n   \"conditions\" : {\n      \"conditionsList\" : [\n         {\n            \"fieldName\": \"state__c\",\n            \"value\": \"MH\"\n         },\n         {\n            \"fieldName\": \"validity__c\",\n            \"value\": 30\n         }\n      ]\n   }\n}\n\n ```\n\nProperties\n\n| Name | Type | Description | Required or Optional | Available Version |\n| --- | --- | --- | --- | --- |\n| conditions | [Decision Table Condition](https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/connect_requests_decision_table_condition.htm)\\[\\] | The list of decision table conditions on which the decision table executes and provides outcomes. | Required | 55.0 |\n| datasetLinkName | String | The API name of the dataset link provided as an input for the decision table execution. | Optional | 55.0 |\n\nResponse body for POST\n\n[Decision Table Outcome](https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/connect_responses_decision_table_outcome.htm)\n\n# Decision Table Outcome\n\nOutput representation of the decision table execution.JSON example\n\n```\n{\n  \"errorCode\" : null,\n  \"errorMessage\" : null,\n  \"outcomeList\" : [ {\n    \"values\" : {\n      \"amount__c\" : \"399\",\n      \"Name\" : \"MH 005\"\n    }\n  }, {\n    \"values\" : {\n      \"amount__c\" : \"499\",\n      \"Name\" : \"MH 006\"\n    }\n  }, {\n    \"values\" : {\n      \"amount__c\" : \"379\",\n      \"Name\" : \"MH 007\"\n    }\n  }, {\n    \"values\" : {\n      \"amount__c\" : \"1498\",\n      \"Name\" : \"MH 008\"\n    }\n  }, {\n    \"values\" : {\n      \"amount__c\" : \"98\",\n      \"Name\" : \"MH 009\"\n    }\n  }, {\n    \"values\" : {\n      \"amount__c\" : \"251\",\n      \"Name\" : \"MH 010\"\n    }\n  } ],\n  \"outcomeType\" : \"Multiple Matches\",\n  \"successStatus\" : true\n}\n\n ```\n\n| Property Name | Type | Description | Filter Group and Version | Available Version |\n| --- | --- | --- | --- | --- |\n| errorCode | Integer | The error code if transaction fails for any reason. | Small, 55.0 | 55.0 |\n| errorMessage | String | The error message if transaction fails for any reason. | Small, 55.0 | 55.0 |\n| outcomeList | [Decision Table Outcome Item](https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/connect_responses_decision_table_outcome_item.htm)\\[\\] | Outcome list that stores two or more outcomes provided by the decision table. | Small, 55.0 | 55.0 |\n| outcomeType | String | The outcome type after the request is successful. | Small, 55.0 | 55.0 |\n| successStatus | Boolean | Indicates the status of the decision table execution. | Small, 55.0 | 55.0 |",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "decisionTableId",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"conditions\": {\n        \"conditionsList\": [\n            {\n                \"fieldName\": \"IsDeleted\",\n                \"value\": true\n            }\n        ]\n    }\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

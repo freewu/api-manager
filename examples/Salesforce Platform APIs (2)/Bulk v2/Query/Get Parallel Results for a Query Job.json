@@ -1,0 +1,37 @@
+{
+  "uuid": "052199a6-73b9-4a85-ae67-d708eb83f1eb",
+  "name": "Get Parallel Results for a Query Job",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/jobs/query/{{_jobId}}/resultPages",
+  "url": "{{_endpoint}}/services/data/v{{version}}/jobs/query/{{_jobId}}/resultPages",
+  "description": "Retrieves a set of up to 5 job results pages for parallel download.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Accept",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,74 @@
+{
+  "uuid": "878605d3-9bd7-4b12-bcee-f6feb23641f3",
+  "name": "Get List View Records by ID",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/list-records/{LIST_VIEW_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/list-records/:LIST_VIEW_ID",
+  "description": "Get record data for a list view by list view ID using URL parameters.",
+  "headers": [],
+  "query": [
+    {
+      "key": "fields",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "optionalFields",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "pageSize",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "pageToken",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "searchTerm",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "sortBy",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "where",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "LIST_VIEW_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,31 @@
+{
+  "uuid": "87089574-33bf-4754-b810-93002676e1c9",
+  "name": "List event relay feedback items",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/query/",
+  "url": "{{_endpoint}}/services/data/v{{version}}/query/?q=SELECT FIELDS(ALL) FROM EventRelayFeedback LIMIT 200",
+  "description": "",
+  "headers": [],
+  "query": [
+    {
+      "key": "q",
+      "value": "SELECT FIELDS(ALL) FROM EventRelayFeedback LIMIT 200",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

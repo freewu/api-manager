@@ -1,0 +1,31 @@
+{
+  "uuid": "9511ca50-ec2c-4aec-af5e-d1764e5a9a24",
+  "name": "Get event relay feedback",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/sobjects/EventRelayFeedback/{EVENT_RELAY_FEEDBACK_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/EventRelayFeedback/:EVENT_RELAY_FEEDBACK_ID",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "EVENT_RELAY_FEEDBACK_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

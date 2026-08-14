@@ -1,0 +1,68 @@
+{
+  "uuid": "e4168933-851a-4f34-a519-8674e324cf1f",
+  "name": "Registration - Authorize",
+  "method": "POST",
+  "path": "/services/oauth2/authorize",
+  "url": "{{url}}{{site}}/services/oauth2/authorize",
+  "description": "After you send your registration data to initialize, this request allows you to process that registration data, and as a part of this request you also verify the users email or sms number. The request itself is a authorization call for the Code and Credential flow. It includes 3 specific headers: `Auth-Request-Type` which is set to `user-registration`, `Auth-Verification-Type` which is set to email or sms, and an Authorization Basic header, which is the base 64 encoded result of `identifier:otp` where `identifier` is the value returned in your initialize registration call, and `otp` is the value sent to the end user via email or sms.\n\nThe response from this API is the Auth Code, which is then exchanged for the Access Token.",
+  "headers": [
+    {
+      "key": "Auth-Request-Type",
+      "value": "user-registration",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Auth-Verification-Type",
+      "value": "email",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Authorization",
+      "value": "Basic <base64Encoded identifier:otp>",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "form",
+    "raw": "",
+    "form": [
+      {
+        "key": "response_type",
+        "value": "code_credentials",
+        "enabled": true,
+        "description": ""
+      },
+      {
+        "key": "client_id",
+        "value": "{{clientId}}",
+        "enabled": true,
+        "description": ""
+      },
+      {
+        "key": "redirect_uri",
+        "value": "{{redirectUrl}}",
+        "enabled": true,
+        "description": ""
+      },
+      {
+        "key": "scope",
+        "value": "",
+        "enabled": true,
+        "description": ""
+      }
+    ]
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

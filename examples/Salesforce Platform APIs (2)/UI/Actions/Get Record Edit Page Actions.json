@@ -1,0 +1,31 @@
+{
+  "uuid": "8b5871af-ac85-45ba-8ccb-ad2997b987d2",
+  "name": "Get Record Edit Page Actions",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/actions/record/{RECORD_ID}/record-edit",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/actions/record/:RECORD_ID/record-edit",
+  "description": "Get the actions on record detail pages.",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "RECORD_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

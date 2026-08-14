@@ -1,0 +1,24 @@
+{
+  "uuid": "14b97bd1-7c97-4afc-beaf-23153807f48d",
+  "name": "Get Latest Release Version",
+  "method": "GET",
+  "path": "/services/data/",
+  "url": "{{_endpoint}}/services/data/",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

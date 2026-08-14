@@ -1,0 +1,38 @@
+{
+  "uuid": "c37c3096-3f65-4d93-9f87-55c9d6fa7fcd",
+  "name": "List Sandboxes",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/tooling/query/",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/query/?q=SELECT Id, SandboxName, LicenseType, AutoActivate FROM SandboxInfo",
+  "description": "Lists all sandboxes.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "q",
+      "value": "SELECT Id, SandboxName, LicenseType, AutoActivate FROM SandboxInfo",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,56 @@
+{
+  "uuid": "00ad5782-09c8-41ef-8c0b-7b58e068f171",
+  "name": "SObject Rich Text Image Retrieve",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/sobjects/{SOBJECT_API_NAME}/{RECORD_ID}/richTextImageFields/{FIELD_NAME}/{CONTENT_REFERENCE_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/:SOBJECT_API_NAME/:RECORD_ID/richTextImageFields/:FIELD_NAME/:CONTENT_REFERENCE_ID",
+  "description": "Retrieves the specified image data from a specific rich text area field in a given record.\ncontentReferenceId\tThe reference ID that uniquely identifies an image within a rich text area field.\nYou can obtain the reference by retrieving information for the object. The description will show the contents of the rich text area field",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "RECORD_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "FIELD_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "CONTENT_REFERENCE_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -12,9 +12,10 @@ interface Props {
   onSaveVersion: () => void;
   enableVersion: boolean;
   sending: boolean;
+  style?: React.CSSProperties;
 }
 
-export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending }: Props) {
+export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style }: Props) {
   const [tab, setTab] = useState<Tab>("params");
   const effectiveUrl = api.url || (baseUrl + api.path);
 
@@ -27,7 +28,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   const enabledCount = (rows: KeyValue[]) => rows.filter((r) => r.enabled && r.key).length;
 
   return (
-    <div className="editor">
+    <div className="editor" style={style}>
       <div className="editor-head">
         <select
           className="method-select"

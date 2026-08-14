@@ -1,0 +1,38 @@
+{
+  "uuid": "b378af3f-3239-4741-a9bb-35ae1ab4d9a1",
+  "name": "Group Members",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/chatter/groups/{GROUP_ID}/members",
+  "url": "{{_endpoint}}/services/data/v{{version}}/chatter/groups/:GROUP_ID/members?userId=<USER1_ID>",
+  "description": "Members of a specified group. Get the members and add a member to a group. To add a member, the context user must be the group owner or moderator.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resources_groups_GroupMembers.htm",
+  "headers": [],
+  "query": [
+    {
+      "key": "userId",
+      "value": "<USER1_ID>",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "GROUP_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

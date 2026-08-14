@@ -1,0 +1,31 @@
+{
+  "uuid": "5a351832-dae5-4ee5-97d6-e2741eab8fe2",
+  "name": "Get Products",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/query",
+  "url": "{{_endpoint}}/services/data/v{{version}}/query?q=Select Name, Id from Product2 Where NAME IN ('SLA_Bronze', 'Classroom Training', 'Virtual Router', 'Work Anywhere Software Bundle') order by Name ASC",
+  "description": "",
+  "headers": [],
+  "query": [
+    {
+      "key": "q",
+      "value": "Select Name, Id from Product2 Where NAME IN ('SLA_Bronze', 'Classroom Training', 'Virtual Router', 'Work Anywhere Software Bundle') order by Name ASC",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

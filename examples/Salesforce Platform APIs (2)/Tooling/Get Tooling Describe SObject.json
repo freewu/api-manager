@@ -1,0 +1,31 @@
+{
+  "uuid": "22e817b2-c0a2-4686-8a73-66986ebdec82",
+  "name": "Get Tooling Describe SObject",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/tooling/sobjects/{SOBJECT_API_NAME}/describe",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/:SOBJECT_API_NAME/describe",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

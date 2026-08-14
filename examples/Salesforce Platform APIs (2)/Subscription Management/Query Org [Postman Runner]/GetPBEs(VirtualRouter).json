@@ -1,0 +1,31 @@
+{
+  "uuid": "c170a381-2dfd-4f2d-88a9-fae24b1ae972",
+  "name": "GetPBEs(VirtualRouter)",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/query",
+  "url": "{{_endpoint}}/services/data/v{{version}}/query?q=Select ID, Name, ProductSellingModel.Name from pricebookentry where Product2.Name IN ('Virtual Router') order by ProductSellingModel.Name ASC",
+  "description": "",
+  "headers": [],
+  "query": [
+    {
+      "key": "q",
+      "value": "Select ID, Name, ProductSellingModel.Name from pricebookentry where Product2.Name IN ('Virtual Router') order by ProductSellingModel.Name ASC",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

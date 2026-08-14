@@ -1,0 +1,24 @@
+{
+  "uuid": "a74bb975-5aad-4cca-960a-8f0e1c87e4d8",
+  "name": "Update Commitment Payments",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/connect/fundraising/commitments/payment-updates",
+  "url": "{{_endpoint}}/services/data/v{{version}}/connect/fundraising/commitments/payment-updates",
+  "description": "Update the future payment instrument metadata for active gift commitments.\n\n## Required Attributes:\n\n- giftCommitmentId\n    \n- paymentInstrument.type",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n  \"updates\": [\n    {\n      \"giftCommitmentId\": \"<SFDC_GIFT_COMMITMENT_ID>\",\n      \"paymentInstrument\": {\n        \"type\": \"credit card\",\n        \"accountHolderName\": \"test donor 1\",\n        \"expiryMonth\": \"10\",\n        \"expiryYear\": \"2026\",\n        \"last4\": \"4585\",\n        \"cardBrand\": \"visa\",\n        \"bankName\": \"chase\",\n        \"digitalWalletProvider\": \"apple pay\",\n        \"bankAccountHolderType\": \"primary\",\n        \"bankAccountType\": \"checking\",\n        \"bankAccountNumber\": \"123456\",\n        \"bankCode\": \"HBUK\",\n        \"gatewayName\": \"stripe\",\n        \"processorName\": \"classy\",\n        \"processorPaymentReference\": \"string\",\n        \"gatewayReference\": \"string\"\n      }\n    },\n    {\n      \"giftCommitmentId\": \"<SFDC_GIFT_COMMITMENT_ID>\",\n      \"paymentInstrument\": {\n        \"type\": \"credit card\",\n        \"accountHolderName\": \"test donor 2\",\n        \"expiryMonth\": \"10\",\n        \"expiryYear\": \"2026\",\n        \"last4\": \"4585\",\n        \"cardBrand\": \"visa\",\n        \"bankName\": \"chase\",\n        \"digitalWalletProvider\": \"apple pay\",\n        \"bankAccountHolderType\": \"primary\",\n        \"bankAccountType\": \"checking\",\n        \"bankAccountNumber\": \"123456\",\n        \"bankCode\": \"HBUK\",\n        \"gatewayName\": \"stripe\",\n        \"processorName\": \"test processor\",\n        \"processorPaymentReference\": \"string\",\n        \"gatewayReference\": \"string\"\n      }\n    }\n  ]\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

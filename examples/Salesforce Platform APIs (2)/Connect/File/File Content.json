@@ -1,0 +1,31 @@
+{
+  "uuid": "e98e8a2a-5c02-45d0-b3d9-eb0e7e71e969",
+  "name": "File Content",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/connect/files/{FILE_ID}/content",
+  "url": "{{_endpoint}}/services/data/v{{version}}/connect/files/:FILE_ID/content",
+  "description": "Returns the binary content of the file, including references to external files. The content is streamed as the body of the response.\nhttps://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resources_files_content.htm",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "FILE_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

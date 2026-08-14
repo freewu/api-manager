@@ -1,0 +1,24 @@
+{
+  "uuid": "3a27988c-85f6-489b-980d-0463a0f7f269",
+  "name": "Predict",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/smartdatadiscovery/predict",
+  "url": "{{_endpoint}}/services/data/v{{version}}/smartdatadiscovery/predict",
+  "description": "Get available prediction definitions.",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"predictionDefinition\": \"<PREDICTION_DEFINITION_ID>\",\n    \"type\": \"RawData\",\n    \"columnNames\": [\n        \"Quantity\",\n        \"Category\",\n        \"Sub_Category\",\n        \"Sales\",\n        \"Profit_per_Order\"\n    ],\n    \"rows\": [\n        [\n            \"2\",\n            \"Furniture\",\n            \"Chairs\",\n            \"300\",\n            \"10\"\n        ]\n    ]\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

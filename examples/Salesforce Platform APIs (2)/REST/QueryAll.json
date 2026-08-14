@@ -1,0 +1,44 @@
+{
+  "uuid": "daa304be-03dc-4b05-bd2e-eab9f373f486",
+  "name": "QueryAll",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/queryAll/",
+  "url": "{{_endpoint}}/services/data/v{{version}}/queryAll/?q=SELECT+name+from+Account",
+  "description": "Executes the specified SOQL query. Unlike the Query resource, QueryAll will return records that have been deleted because of a merge or delete. QueryAll will also return information about archived Task and Event records. QueryAll is available in API version 29.0 and later.\n\nIf the query results are too large, the response contains the first batch of results and a query identifier in the nextRecordsUrl field of the response. The identifier can be used in an additional request to retrieve the next batch. Note that even though nextRecordsUrl has query in the URL, it will still provide remaining results from the initial QueryAll request. The remaining results will include deleted records that matched the initial query.\nhttps://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_queryall.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "q",
+      "value": "SELECT+name+from+Account",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "explain",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,51 @@
+{
+  "uuid": "7de70fdc-2934-45b4-bd72-a232712d20ab",
+  "name": "SObject Collections Retrieve",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/composite/sobjects/{SOBJECT_API_NAME}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/composite/sobjects/:SOBJECT_API_NAME?ids=&fields=",
+  "description": "Executes actions on multiple records in one request. Use SObject Collections to reduce the number of round-trips between the client and server. This resource is available in API version 42.0 and later.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_composite_sobjects_collections.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "ids",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "fields",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,80 @@
+{
+  "uuid": "a6479b7e-9cc1-45b2-9fa3-2ca3bb433f2f",
+  "name": "Get List View Records by API Name",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/list-records/{SOBJECT_API_NAME}/{LIST_VIEW_API_NAME}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/list-records/:SOBJECT_API_NAME/:LIST_VIEW_API_NAME",
+  "description": "Get record data for a list view by list view API name using URL parameters.",
+  "headers": [],
+  "query": [
+    {
+      "key": "fields",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "optionalFields",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "pageSize",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "pageToken",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "searchTerm",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "sortBy",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "where",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "LIST_VIEW_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

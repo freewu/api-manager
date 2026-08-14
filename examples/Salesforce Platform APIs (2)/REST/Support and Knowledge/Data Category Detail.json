@@ -1,0 +1,51 @@
+{
+  "uuid": "9a6bfacd-4b4c-4b31-a566-3b39183f9750",
+  "name": "Data Category Detail",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/support/dataCategoryGroups/{GROUP}/dataCategories/{CATEGORY}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/support/dataCategoryGroups/:GROUP/dataCategories/:CATEGORY",
+  "description": "Get data category details and the child categories by a given category.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "sObjectName",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "GROUP",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "CATEGORY",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

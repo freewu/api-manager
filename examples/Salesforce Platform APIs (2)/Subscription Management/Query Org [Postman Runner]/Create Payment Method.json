@@ -1,0 +1,24 @@
+{
+  "uuid": "fa09250b-59a8-40b2-9229-b5c1491edaab",
+  "name": "Create Payment Method",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/commerce/payments/payment-methods",
+  "url": "{{_endpoint}}/services/data/v{{version}}/commerce/payments/payment-methods",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"paymentGatewayId\" : \"{{defaultPaymentGatewayId}}\",\n    \"cardPaymentMethod\": {\n    \"cardHolderName\": \"{{_userFullName}}\",\n    \"expiryMonth\": \"11\",\n    \"expiryYear\": \"2222\",\n    \"cardNumber\": \"4111111111111111\",\n    \"cvv\": \"111\", \n    \"cardCategory\": \"CreditCard\",\n    \"cardType\": \"VISA\",\n    \"startYear\": \"2013\",\n    \"startMonth\": \"7\",\n    \"nickName\": \"Default Payment Method\",\n    \"accountId\": \"{{defaultAccountId}}\"\n    },\n  \"phone\": \"4155551212\",\n  \"email\": \"{{_userEmail}}\",\n  \"additionalData\":{\n      \"key1\":\"value1\",\n      \"key2\":\"value2\"\n    }\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

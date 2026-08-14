@@ -1,0 +1,31 @@
+{
+  "uuid": "50d9a83f-a38a-486f-937f-891ca7162960",
+  "name": "Publish single event",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/sobjects/{EventApiName}/",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/:EventApiName/",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "EventApiName",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"Annual_Mileage__c\": 12000,\n    \"Current_Vehicle__c\": \"Fast car\",\n    \"Model_Year__c\": 2019\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,31 @@
+{
+  "uuid": "447338f5-a174-4aa8-b31b-0b1013b4182a",
+  "name": "Update channel",
+  "method": "PATCH",
+  "path": "/services/data/v{{version}}/tooling/sobjects/PlatformEventChannel/{PLATFORM_EVENT_CHANNEL_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/PlatformEventChannel/:PLATFORM_EVENT_CHANNEL_ID",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "PLATFORM_EVENT_CHANNEL_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"FullName\": \"Carbon_Comparison_Channel__chn\",\n    \"Metadata\": {\n        \"channelType\": \"event\",\n        \"label\": \"Carbon Comparison Channel 2\",\n        \"urls\": null\n    }\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

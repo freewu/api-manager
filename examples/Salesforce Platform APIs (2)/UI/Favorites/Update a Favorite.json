@@ -1,0 +1,31 @@
+{
+  "uuid": "e75d7be1-3d01-4776-b604-019735511700",
+  "name": "Update a Favorite",
+  "method": "PATCH",
+  "path": "/services/data/v{{version}}/ui-api/favorites/{FAVORITE_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/favorites/:FAVORITE_ID",
+  "description": "Update a Favorite",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "FAVORITE_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n  \"name\": \"Red Accounts\",\n  \"sortOrder\": 1\n}\n",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

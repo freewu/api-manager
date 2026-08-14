@@ -1,0 +1,38 @@
+{
+  "uuid": "6819031e-4421-4817-9807-5b3c6b20b656",
+  "name": "Embedded Service Configuration Describe",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/support/embeddedservice/configuration/{EMBEDDED_SERVICE_CONFIG_DEVELOPERNAME}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/support/embeddedservice/configuration/:EMBEDDED_SERVICE_CONFIG_DEVELOPERNAME",
+  "description": "Retrieves the values for your Embedded Service deployment configuration, including the branding colors, font, and site URL.\n\nYou must be logged in to the account that owns the EmbeddedServiceConfigDeveloperName you are querying.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "EMBEDDED_SERVICE_CONFIG_DEVELOPERNAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

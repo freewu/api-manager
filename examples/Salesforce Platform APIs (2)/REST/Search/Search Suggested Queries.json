@@ -1,0 +1,56 @@
+{
+  "uuid": "beca9b74-a842-4fb9-a9dc-3e19bccfeae2",
+  "name": "Search Suggested Queries",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/search/suggestSearchQueries",
+  "url": "{{_endpoint}}/services/data/v{{version}}/search/suggestSearchQueries?q=&language=",
+  "description": "Returns a list of suggested searches based on the user’s query string text matching searches that other users have performed in Salesforce Knowledge. Provides a way to improve search effectiveness, before the user performs a search.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_search_suggest_queries.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "channel",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "limit",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "q",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "language",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

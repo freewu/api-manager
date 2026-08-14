@@ -1,0 +1,24 @@
+{
+  "uuid": "7f7bd376-0333-4ee5-8d4c-f1c72791b5a8",
+  "name": "Describe event relay",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/tooling/sobjects/EventRelayConfig/describe",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/EventRelayConfig/describe",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -354,6 +354,22 @@ body {
   opacity: 0.55;
 }
 
+/* 编辑器 / 响应面板之间：可上下拖动调整高度 */
+.v-resizer {
+  height: 5px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  background: transparent;
+  position: relative;
+  z-index: 5;
+  transition: background 0.15s;
+}
+.v-resizer:hover,
+.v-resizer.active {
+  background: var(--accent);
+  opacity: 0.55;
+}
+
 .sidebar-header {
   padding: 10px;
   border-bottom: 1px solid var(--border);
@@ -592,8 +608,8 @@ body {
 .editor {
   display: flex;
   flex-direction: column;
-  flex: 0 0 45%;
-  min-height: 200px;
+  flex: none;
+  min-height: 0;
   background: var(--bg);
 }
 
@@ -816,7 +832,7 @@ body {
 
 .code-area {
   width: 100%;
-  min-height: 160px;
+  min-height: 240px;
   background: var(--bg-deep);
   border: 1px solid var(--border);
   border-radius: var(--radius);

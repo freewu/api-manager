@@ -1,0 +1,31 @@
+{
+  "uuid": "6457d82f-046c-4c0f-b9cf-3b0ccbfb043d",
+  "name": "Get All Jobs",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/jobs/ingest",
+  "url": "{{_endpoint}}/services/data/v{{version}}/jobs/ingest",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

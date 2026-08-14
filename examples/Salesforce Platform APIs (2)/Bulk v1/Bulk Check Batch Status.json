@@ -1,0 +1,43 @@
+{
+  "uuid": "4f451e75-2660-45ca-a435-5500af496acc",
+  "name": "Bulk Check Batch Status",
+  "method": "GET",
+  "path": "/services/async/{{version}}/job/{{_jobId}}/batch",
+  "url": "{{_endpoint}}/services/async/{{version}}/job/{{_jobId}}/batch",
+  "description": "",
+  "headers": [
+    {
+      "key": "X-SFDC-Session",
+      "value": "{{_accessToken}}",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Accept-Encoding",
+      "value": "gzip",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Content-Encoding",
+      "value": "gzip",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

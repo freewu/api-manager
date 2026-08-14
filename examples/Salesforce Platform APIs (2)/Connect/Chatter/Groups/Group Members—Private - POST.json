@@ -1,0 +1,31 @@
+{
+  "uuid": "1970a102-832c-43e1-8771-b052f84d42ac",
+  "name": "Group Members—Private - POST",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/chatter/groups/{GROUP_ID}/members/requests",
+  "url": "{{_endpoint}}/services/data/v{{version}}/chatter/groups/:GROUP_ID/members/requests",
+  "description": "Request membership in a private group or get the status of requests to a join a private group.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resources_groups_GroupMembersRequests.htm",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "GROUP_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,24 @@
+{
+  "uuid": "a6f21824-9066-45e2-aafd-5c097afd3a16",
+  "name": "Publish multiple events",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/composite/",
+  "url": "{{_endpoint}}/services/data/v{{version}}/composite/",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"allOrNone\": true,\n    \"compositeRequest\": [\n        {\n            \"method\": \"POST\",\n            \"url\": \"/services/data/v{{version}}/sobjects/Carbon_Comparison__e\",\n            \"referenceId\": \"event1\",\n            \"body\": {\n                \"Annual_Mileage__c\": 12000,\n                \"Current_Vehicle__c\": \"Fast car 1\",\n                \"Model_Year__c\": 2019\n            }\n        },\n        {\n            \"method\": \"POST\",\n            \"url\": \"/services/data/v{{version}}/sobjects/Carbon_Comparison__e\",\n            \"referenceId\": \"event2\",\n            \"body\": {\n                \"Annual_Mileage__c\": 12000,\n                \"Current_Vehicle__c\": \"Fast car 2\",\n                \"Model_Year__c\": 2019\n            }\n        }\n    ]\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

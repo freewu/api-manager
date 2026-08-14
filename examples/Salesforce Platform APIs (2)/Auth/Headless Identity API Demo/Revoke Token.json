@@ -1,0 +1,31 @@
+{
+  "uuid": "ee503dce-3e6d-46ad-bbb4-6849c54f43dc",
+  "name": "Revoke Token",
+  "method": "POST",
+  "path": "/services/oauth2/revoke",
+  "url": "{{url}}{{site}}/services/oauth2/revoke",
+  "description": "This calls the standard revoke endpoint, passing in your access token. This endpoint should be called as part of your logout process to invalidate the access and refresh token. ",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "form",
+    "raw": "",
+    "form": [
+      {
+        "key": "token",
+        "value": "{{_accessToken}}",
+        "enabled": true,
+        "description": ""
+      }
+    ]
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,79 @@
+{
+  "uuid": "ae4ef45f-189b-476b-bceb-0dfe99c271ff",
+  "name": "Bulk Create Job",
+  "method": "POST",
+  "path": "/services/async/{{version}}/job",
+  "url": "{{_endpoint}}/services/async/{{version}}/job",
+  "description": "",
+  "headers": [
+    {
+      "key": "X-SFDC-Session",
+      "value": "{{_accessToken}}",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "charset",
+      "value": "UTF-8",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Sforce-Disable-Batch-Retry",
+      "value": "FALSE",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "Sforce-Line-Ending",
+      "value": "CRLF",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "Sforce-Enable-PKChunking",
+      "value": "FALSE",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "chunkSize",
+      "value": "10000",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "Accept-Encoding",
+      "value": "gzip",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "Content-Encoding",
+      "value": "gzip",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"operation\": \"insert\",\n    \"object\": \"Account\",\n    \"contentType\": \"CSV\"\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

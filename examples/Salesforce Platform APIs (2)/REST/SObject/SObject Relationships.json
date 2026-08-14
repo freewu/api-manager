@@ -1,0 +1,50 @@
+{
+  "uuid": "72e2dab2-e89b-404e-8da3-58f4c501599f",
+  "name": "SObject Relationships",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/sobjects/{SOBJECT_API_NAME}/{RECORD_ID}/{RELATIONSHIP_FIELD_NAME}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/:SOBJECT_API_NAME/:RECORD_ID/:RELATIONSHIP_FIELD_NAME",
+  "description": "Accesses records by traversing object relationships via friendly URLs. You can retrieve, update, or delete the record associated with the traversed relationship field. If there are multiple related records, you can retrieve the complete set of associated records. This resource is available in REST API version 36.0 and later.\n\nGET, PATCH, DELETE",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "RECORD_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "RELATIONSHIP_FIELD_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

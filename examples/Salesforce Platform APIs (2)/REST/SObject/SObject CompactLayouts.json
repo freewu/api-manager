@@ -1,0 +1,38 @@
+{
+  "uuid": "0dfeacb9-179c-4405-981c-faaf38fc8879",
+  "name": "SObject CompactLayouts",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/sobjects/{SOBJECT_API_NAME}/describe/describe/compactLayouts",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/:SOBJECT_API_NAME/describe/describe/compactLayouts",
+  "description": "Returns a list of compact layouts for a specific object. This resource is available in REST API version 29.0 and later.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,38 @@
+{
+  "uuid": "c8f5d360-bd15-42b3-af12-e13a43103969",
+  "name": "Feed Elements Capability, Comments Items",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/chatter/feed-elements/{FEED_ELEMENT_ID}/capabilities/comments/items",
+  "url": "{{_endpoint}}/services/data/v{{version}}/chatter/feed-elements/:FEED_ELEMENT_ID/capabilities/comments/items?text=New Comment",
+  "description": "Access comments for a feed element, or add a comment to a feed element.\nTo upload a binary file to attach to a comment, you must send it in a multipart/form-data request. To send the text of the comment, you can choose to include a JSON or XML rich input body part in the multipart/form-data request. Alternately, you can choose to pass the information in request parameter parts. For information about how to create the multipart/form-data message, see Uploading Binary Files.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resources_feed_element_capability_comments_items.htm#connect_resources_feed_element_capability_comments_items",
+  "headers": [],
+  "query": [
+    {
+      "key": "text",
+      "value": "New Comment",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "FEED_ELEMENT_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

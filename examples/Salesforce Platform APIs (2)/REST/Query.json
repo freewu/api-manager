@@ -1,0 +1,44 @@
+{
+  "uuid": "bffad6fe-7ea5-40a8-829e-c8b2b68decd9",
+  "name": "Query",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/query/",
+  "url": "{{_endpoint}}/services/data/v{{version}}/query/?q=SELECT FIELDS(All) FROM ACCOUNT ORDER BY Name LIMIT 5",
+  "description": "Executes the specified SOQL query.\n\nIf the query results are too large, the response contains the first batch of results and a query identifier in the nextRecordsUrl field of the response. The identifier can be used in an additional request to retrieve the next batch.\nhttps://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Authorization",
+      "value": "{{_accessToken}}",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "q",
+      "value": "SELECT FIELDS(All) FROM ACCOUNT ORDER BY Name LIMIT 5",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

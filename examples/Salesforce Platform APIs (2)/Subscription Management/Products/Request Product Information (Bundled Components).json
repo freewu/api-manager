@@ -1,0 +1,31 @@
+{
+  "uuid": "ca433f1f-a725-4525-8d0e-18f33cc9a733",
+  "name": "Request Product Information (Bundled Components)",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/commerce/catalog-products/actions/get-products",
+  "url": "{{_endpoint}}/services/data/v{{version}}/commerce/catalog-products/actions/get-products",
+  "description": "Request information for a single bundle product and all it's bundle components. See [Request Product Information](https://developer.salesforce.com/docs/revenue/subscription-management/references/products?meta=Request+Product+Information).",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "json",
+    "raw": "{\n  \"productContexts\": [\n    {\n      \"product2Id\": \"{{WorkAnywhereBundleProduct}}\"\n    }\n  ],\n  \"retrievalType\": \"IncludeChildComponents\"\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

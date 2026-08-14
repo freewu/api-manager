@@ -1,0 +1,24 @@
+{
+  "uuid": "5c79a364-40cd-4640-8b22-3b0f07d32349",
+  "name": "Describe event channel",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/tooling/sobjects/PlatformEventChannel/describe/",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/sobjects/PlatformEventChannel/describe/",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

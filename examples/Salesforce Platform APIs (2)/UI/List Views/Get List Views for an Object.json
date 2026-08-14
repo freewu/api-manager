@@ -1,0 +1,56 @@
+{
+  "uuid": "59531989-ef75-4015-a9cf-36e7aae99877",
+  "name": "Get List Views for an Object",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/list-info/{SOBJECT_API_NAME}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/list-info/:SOBJECT_API_NAME",
+  "description": "Get list views associated with an object.",
+  "headers": [],
+  "query": [
+    {
+      "key": "pageSize",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "pageToken",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "q",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "recentListsOnly",
+      "value": "true",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

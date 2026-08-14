@@ -1,0 +1,44 @@
+{
+  "uuid": "f57de20f-154a-486b-b26f-e6e05781792c",
+  "name": "SObject Collections Upsert",
+  "method": "PATCH",
+  "path": "/services/data/v{{version}}/composite/sobjects/{SOBJECT_API_NAME}/{FIELD_NAME}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/composite/sobjects/:SOBJECT_API_NAME/:FIELD_NAME",
+  "description": "Use a PATCH request with sObject Collections to either create or update (upsert) up to 200 records based on an external ID field. This method returns a list of UpsertResult objects. You can choose whether to roll back the entire request when an error occurs. This request is available in API version 46 and later.\n\n[https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_composite_sobjects_collections_upsert.htm](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_composite_sobjects_collections_upsert.htm)",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "FIELD_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"allOrNone\" : false,\n    \"records\" : [{\n        \"attributes\" : {\"type\" : \"Account\"},\n        \"Name\" : \"Test Upsert\",\n        \"Id\" : \"0012o00003OBzVSAA1\"\n    }]\n}\n\n\n",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

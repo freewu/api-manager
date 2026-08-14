@@ -1,0 +1,86 @@
+{
+  "uuid": "89bb0dcb-f6ad-404e-92aa-943e12c92b8e",
+  "name": "Search Suggested Article Title Matches",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/search/suggestions",
+  "url": "{{_endpoint}}/services/data/v{{version}}/search/suggestions?q=&publishStatus=&language=",
+  "description": "Returns a list of Salesforce Knowledge article titles that match the user’s search query string. Provides a shortcut to navigate directly to likely relevant articles before the user performs a search.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_search_suggest_title_matches.htm",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "articleTypes",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "categories",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "channel",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "limit",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "topics",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "validationStatus",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "q",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "publishStatus",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "language",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,43 @@
+{
+  "uuid": "4d0fa83f-6236-40ba-84b1-51ead58844fc",
+  "name": "User Messages, General",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/chatter/users/me/messages",
+  "url": "{{_endpoint}}/services/data/v{{version}}/chatter/users/me/messages?text=This is a private message&recipients=<USER1_ID>,<USER2_ID>",
+  "description": "Returns all the messages for all the private conversations for the context user. Also used to search across all messages and post a message.\nTo return all private conversations for the context user, see User Conversations, General.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resources_users_messages_general.htm",
+  "headers": [],
+  "query": [
+    {
+      "key": "text",
+      "value": "This is a private message",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "inReplyTo",
+      "value": "<MESSAGE_ID>",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "recipients",
+      "value": "<USER1_ID>,<USER2_ID>",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

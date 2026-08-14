@@ -1,0 +1,31 @@
+{
+  "uuid": "14770b4b-6cfc-4085-9723-c94465bbe0be",
+  "name": "Comment - Delete",
+  "method": "DELETE",
+  "path": "/services/data/v{{version}}/chatter/comments/{COMMENT_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/chatter/comments/:COMMENT_ID",
+  "description": "Get information about, edit, or delete a comment.\n\nhttps://developer.salesforce.com/docs/atlas.en-us.chatterapi.meta/chatterapi/connect_resources_comments_specific.htm#connect_resources_comments_specific",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "COMMENT_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

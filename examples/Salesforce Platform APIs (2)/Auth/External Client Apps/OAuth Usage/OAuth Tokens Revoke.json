@@ -1,0 +1,31 @@
+{
+  "uuid": "eb6ac5b0-7d60-464c-9eec-7cb075f90e92",
+  "name": "OAuth Tokens Revoke",
+  "method": "DELETE",
+  "path": "/services/data/v{{version}}/apps/oauth/usage/{{_appId}}/tokens",
+  "url": "{{url}}{{site}}/services/data/v{{version}}/apps/oauth/usage/{{_appId}}/tokens",
+  "description": "Revokes all tokens available for the external client app. See [Refresh Token by App ID](https://developer.salesforce.com/docs/atlas.en-us.246.0.chatterapi.meta/chatterapi/connect_resources_usage_app_id_tokens.htm).",
+  "headers": [
+    {
+      "key": "Authorization",
+      "value": "Bearer <token>",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

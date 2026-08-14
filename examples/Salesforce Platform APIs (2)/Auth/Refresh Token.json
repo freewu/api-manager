@@ -1,0 +1,56 @@
+{
+  "uuid": "6ef1747c-b658-4aa1-855f-d7e447118179",
+  "name": "Refresh Token",
+  "method": "POST",
+  "path": "/services/oauth2/token",
+  "url": "{{url}}{{site}}/services/oauth2/token",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/x-www-form-urlencoded",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "form",
+    "raw": "",
+    "form": [
+      {
+        "key": "grant_type",
+        "value": "refresh_token",
+        "enabled": true,
+        "description": ""
+      },
+      {
+        "key": "client_id",
+        "value": "{{clientId}}",
+        "enabled": true,
+        "description": ""
+      },
+      {
+        "key": "client_secret",
+        "value": "{{clientSecret}}",
+        "enabled": true,
+        "description": ""
+      },
+      {
+        "key": "refresh_token",
+        "value": "{{_refreshToken}}",
+        "enabled": true,
+        "description": ""
+      }
+    ]
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

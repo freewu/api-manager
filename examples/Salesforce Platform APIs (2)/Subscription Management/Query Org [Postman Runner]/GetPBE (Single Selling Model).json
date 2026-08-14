@@ -1,0 +1,31 @@
+{
+  "uuid": "aa99883a-af38-4425-9465-7c2e41b999b1",
+  "name": "GetPBE (Single Selling Model)",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/query",
+  "url": "{{_endpoint}}/services/data/v{{version}}/query?q=Select ID, Name, ProductSellingModel.Name from pricebookentry where Product2.Name IN ('Classroom Training', 'SLA_Bronze','Work Anywhere Software Bundle') order by name ASC",
+  "description": "",
+  "headers": [],
+  "query": [
+    {
+      "key": "q",
+      "value": "Select ID, Name, ProductSellingModel.Name from pricebookentry where Product2.Name IN ('Classroom Training', 'SLA_Bronze','Work Anywhere Software Bundle') order by name ASC",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

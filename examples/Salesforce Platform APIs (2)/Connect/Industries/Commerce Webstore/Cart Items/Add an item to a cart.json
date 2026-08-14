@@ -1,0 +1,45 @@
+{
+  "uuid": "b7c54e9f-f900-4be6-83a7-2256df92e5d2",
+  "name": "Add an item to a cart",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/commerce/webstores/{{webstoreId}}/carts/{webCartId}/cart-items",
+  "url": "{{_endpoint}}/services/data/v{{version}}/commerce/webstores/{{webstoreId}}/carts/:webCartId/cart-items?effectiveAccountId=<EFFECTiVE_ACCOUNT_ID>",
+  "description": "",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "effectiveAccountId",
+      "value": "<EFFECTiVE_ACCOUNT_ID>",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "webCartId",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n    \"productId\":\"<PRODUCT-ID>\",\n    \"quantity\":3,\n    \"type\":\"Product\"\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

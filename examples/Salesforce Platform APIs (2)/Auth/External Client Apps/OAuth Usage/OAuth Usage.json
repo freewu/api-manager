@@ -1,0 +1,44 @@
+{
+  "uuid": "995dfb2c-e11e-45c2-ba89-ef5d3fefef37",
+  "name": "OAuth Usage",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/apps/oauth/usage",
+  "url": "{{url}}{{site}}/services/data/v{{version}}/apps/oauth/usage?page=0&pageSize=100",
+  "description": "Lists all the external client apps for the current org. See [OAuth Usage](https://developer.salesforce.com/docs/atlas.en-us.246.0.chatterapi.meta/chatterapi/connect_resources_usage.htm).",
+  "headers": [
+    {
+      "key": "Authorization",
+      "value": "Bearer <token>",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "page",
+      "value": "0",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "pageSize",
+      "value": "100",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

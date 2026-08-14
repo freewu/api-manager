@@ -1,0 +1,31 @@
+{
+  "uuid": "053544c9-dcfb-4d63-9006-b142a26fda59",
+  "name": "Retrieve OpenAPI Schema",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/async/specifications/oas3/{schemaId}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/async/specifications/oas3/:schemaId",
+  "description": "Generate an OpenAPI 3.0 document for the sObjects REST API. This is a [Beta feature](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/openapi_beta.htm) that requires an activation step before it can be used.",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "schemaId",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

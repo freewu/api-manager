@@ -1,0 +1,44 @@
+{
+  "uuid": "018adb1e-4686-435a-98c7-11701440e5f6",
+  "name": "SObject ApprovalLayouts",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/sobjects/{SOBJECT_API_NAME}/describe/approvalLayouts/{APPROVAL_PROCESS_NAME}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/sobjects/:SOBJECT_API_NAME/describe/approvalLayouts/:APPROVAL_PROCESS_NAME",
+  "description": "Returns a list of approval layouts for a specified object. Specify a particular approval process name to limit the return value to one specific approval layout. This resource is available in REST API version 30.0 and later.\n\napprovalProcessName parameter is optional",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "APPROVAL_PROCESS_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

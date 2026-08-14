@@ -1,0 +1,44 @@
+{
+  "uuid": "bb47b33f-b198-4aaf-840c-dda3bf36069c",
+  "name": "Data Category Groups",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/support/dataCategoryGroups",
+  "url": "{{_endpoint}}/services/data/v{{version}}/support/dataCategoryGroups?sObjectName=",
+  "description": "Returns the list of list views for the specified sObject, including the ID and other basic information about each list view. You can also get basic information for a specific list view by ID.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "topCategoriesOnly",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "sObjectName",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

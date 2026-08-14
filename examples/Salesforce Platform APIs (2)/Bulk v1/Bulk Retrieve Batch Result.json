@@ -1,0 +1,43 @@
+{
+  "uuid": "c88d33bf-5a97-48e5-85bb-a5981dc3e159",
+  "name": "Bulk Retrieve Batch Result",
+  "method": "GET",
+  "path": "/services/async/{{version}}/job/{{_jobId}}/batch/{{_batchId}}/result",
+  "url": "{{_endpoint}}/services/async/{{version}}/job/{{_jobId}}/batch/{{_batchId}}/result",
+  "description": "",
+  "headers": [
+    {
+      "key": "X-SFDC-Session",
+      "value": "{{_accessToken}}",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Accept-Encoding",
+      "value": "gzip",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "Content-Encoding",
+      "value": "gzip",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

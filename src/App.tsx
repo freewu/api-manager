@@ -100,6 +100,12 @@ export default function App() {
     return saved >= 200 && saved <= 640 ? saved : 310;
   });
   const sidebarWidthRef = useRef(sidebarWidth);
+  // 编辑器 / 响应面板的高度比例（可拖动分栏调整）
+  const [editorRatio, setEditorRatio] = useState(() => {
+    const saved = Number(localStorage.getItem("editor-ratio"));
+    return saved >= 0.2 && saved <= 0.8 ? saved : 0.45;
+  });
+  const editorRatioRef = useRef(editorRatio);
   const toastTimer = useRef<number | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -318,6 +324,35 @@ export default function App() {
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  };
+
+  /** 编辑器 / 响应上下分栏拖动调整高度 */
+  const startVResize = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const contentEl = (e.currentTarget as HTMLElement).parentElement as HTMLElement;
+    const contentH = contentEl.clientHeight;
+    // 预留分隔条 + 响应面板最小高度
+    const maxRatio = Math.max(0.2, (contentH - 165) / contentH);
+    const onMove = (ev: MouseEvent) => {
+      const ratio = Math.min(
+        maxRatio,
+        Math.max(0.2, (contentH * editorRatioRef.current + (ev.clientY - startY)) / contentH)
+      );
+      editorRatioRef.current = ratio;
+      setEditorRatio(ratio);
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      localStorage.setItem("editor-ratio", String(editorRatioRef.current));
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    document.body.style.cursor = "row-resize";
     document.body.style.userSelect = "none";
   };
 
@@ -733,6 +768,7 @@ export default function App() {
           {api ? (
             <>
               <Editor
+                style={{ height: `${editorRatio * 100}%` }}
                 api={api}
                 baseUrl={baseUrl}
                 onChange={(a) => {
@@ -743,6 +779,16 @@ export default function App() {
                 onSaveVersion={handleSaveVersion}
                 enableVersion={settings.enableVersion}
                 sending={sending}
+              />
+              <div
+                className="v-resizer"
+                onMouseDown={startVResize}
+                onDoubleClick={() => {
+                  setEditorRatio(0.45);
+                  editorRatioRef.current = 0.45;
+                  localStorage.setItem("editor-ratio", "0.45");
+                }}
+                title="拖动调整编辑区 / 响应区高度，双击还原"
               />
               <Response result={response} sending={sending} />
             </>

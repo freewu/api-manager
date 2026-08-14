@@ -1,0 +1,43 @@
+{
+  "uuid": "20b5ceac-43df-4ed5-b77a-9eb513843e21",
+  "name": "Get Values for a Picklist Field",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/ui-api/object-info/{SOBJECT_API_NAME}/picklist-values/{RECORD_TYPE_ID}/{FIELD_API_NAME}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/ui-api/object-info/:SOBJECT_API_NAME/picklist-values/:RECORD_TYPE_ID/:FIELD_API_NAME",
+  "description": "Get metadata about a specific object. The response includes metadata describing fields, child relationships, record type, and theme.",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "SOBJECT_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "RECORD_TYPE_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    },
+    {
+      "key": "FIELD_API_NAME",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

@@ -1,0 +1,31 @@
+{
+  "uuid": "13e61af7-e396-43f8-80a7-c694e000b663",
+  "name": "List channel members",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/tooling/query/",
+  "url": "{{_endpoint}}/services/data/v{{version}}/tooling/query/?q=SELECT Id, DeveloperName, EventChannel, FilterExpression, SelectedEntity FROM PlatformEventChannelMember",
+  "description": "",
+  "headers": [],
+  "query": [
+    {
+      "key": "q",
+      "value": "SELECT Id, DeveloperName, EventChannel, FilterExpression, SelectedEntity FROM PlatformEventChannelMember",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

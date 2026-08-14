@@ -1,0 +1,31 @@
+{
+  "uuid": "6e9f27ac-db29-4c9f-98ac-7c5173bf4ccc",
+  "name": "Transaction Journals Simulation",
+  "method": "POST",
+  "path": "/services/data/v{{version}}/connect/realtime/loyalty/programs/{loyaltyProgramName}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/connect/realtime/loyalty/programs/:loyaltyProgramName",
+  "description": "Standard Documentation:\n\n[https://developer.salesforce.com/docs/atlas.en-us.loyalty.meta/loyalty/connect_resources_loyalty_program_process_simulation.htm](https://developer.salesforce.com/docs/atlas.en-us.loyalty.meta/loyalty/connect_resources_loyalty_program_process_simulation.htm)",
+  "headers": [],
+  "query": [],
+  "params": [
+    {
+      "key": "loyaltyProgramName",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "json",
+    "raw": "{\n  \"transactionJournals\": [\n    {\n      \"CurrencyIsoCode\": \"EUR\",\n      \"ActivityDate\": \"2022-01-04T12:45:19Z\",\n      \"JournalDate\": \"2022-01-04T00:45:19Z\",\n      \"Brand\": \"\",\n      \"Establishment\": \"Apple\",\n      \"ExternalTransactionNumber\": \"P1-981950\",\n      \"JournalTypeId\": \"0lET10000004CQp\",\n      \"LoyaltyProgramId\": \"0lpT10000004CdN\",\n      \"MemberId\": \"0lMT10000004CfA\",\n      \"TransactionAmount\": \"117\",\n      \"TransactionLocation\": \"HitechCity\",\n      \"VoucherCode\": \"\",\n      \"Origin\": \"asdf\",\n      \"Distance\": \"5\",\n      \"Destination\": \"Hyderabad\",\n      \"FlightNumber\": \"SF-Ran-001\",\n      \"Status\": \"Pending\"\n    }\n  ],\n  \"runSetting\": {\n    \"isSimulation\": true\n  }\n}",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

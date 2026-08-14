@@ -1,0 +1,57 @@
+{
+  "uuid": "58d4b67f-a4de-4816-a394-fb5165f1ad96",
+  "name": "Articles Details",
+  "method": "GET",
+  "path": "/services/data/v{{version}}/support/knowledgeArticles/{ARTICLE_ID}",
+  "url": "{{_endpoint}}/services/data/v{{version}}/support/knowledgeArticles/:ARTICLE_ID",
+  "description": "Get all online article fields, accessible to the user.",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "query": [
+    {
+      "key": "channel",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "updateViewStat",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    },
+    {
+      "key": "isUrlName",
+      "value": "",
+      "enabled": false,
+      "description": ""
+    }
+  ],
+  "params": [
+    {
+      "key": "ARTICLE_ID",
+      "value": "",
+      "enabled": true,
+      "description": ""
+    }
+  ],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}

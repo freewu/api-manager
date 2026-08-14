@@ -1,0 +1,49 @@
+{
+  "uuid": "70afbc63-4330-4857-acd2-fb2c202b437f",
+  "name": "Device Flow 1",
+  "method": "POST",
+  "path": "/services/oauth2/token",
+  "url": "{{url}}{{site}}/services/oauth2/token",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "form",
+    "raw": "",
+    "form": [
+      {
+        "key": "response_type",
+        "value": "device_code",
+        "enabled": true,
+        "description": ""
+      },
+      {
+        "key": "client_id",
+        "value": "{{clientId}}",
+        "enabled": true,
+        "description": ""
+      },
+      {
+        "key": "format",
+        "value": "json",
+        "enabled": true,
+        "description": ""
+      },
+      {
+        "key": "scope",
+        "value": "full refresh_token",
+        "enabled": true,
+        "description": ""
+      }
+    ]
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": []
+}
