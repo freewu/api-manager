@@ -20,7 +20,6 @@ interface Props {
   onVersions: (node: TreeNode) => void;
   onStats?: (node: TreeNode) => void;
   onOpenSettings?: () => void;
-  onImportPostman?: () => void;
   onMove: (srcPath: string, dstDir: string) => Promise<void>;
   enableVersion: boolean;
   // 请求历史列表数据（由 App 通过 useHistory 提供）
@@ -289,7 +288,7 @@ function NodeRow({
 }
 
 export function Sidebar(props: Props) {
-  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions, onStats, onOpenSettings, view, onSwitchView, onImportPostman, enableVersion } = props;
+  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions, onStats, onOpenSettings, view, onSwitchView, enableVersion } = props;
   const [filter, setFilter] = useState("");
   const [menu, setMenu] = useState<CtxMenu | null>(null);
   const [bgMenu, setBgMenu] = useState<{ x: number; y: number } | null>(null);
@@ -447,18 +446,6 @@ export function Sidebar(props: Props) {
         />
       )}
       <div className="sidebar-footer">
-        {onImportPostman && (
-          <button
-            className="icon-btn"
-            onClick={onImportPostman}
-            title="导入 Postman Collection（自动新建分组）"
-            aria-label="导入 Postman"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-              <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
-            </svg>
-          </button>
-        )}
         <button
           className={`icon-btn ${view === "history" ? "active" : ""}`}
           onClick={() => onSwitchView(view === "history" ? "api" : "history")}

@@ -3,7 +3,7 @@
   "name": "创建用户",
   "method": "POST",
   "path": "/api/users",
-  "url": "127.0.0.1:5050/api/users",
+  "url": "{{url}}/api/users",
   "description": "创建一个新用户",
   "headers": [
     {

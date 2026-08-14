@@ -1066,13 +1066,18 @@ fn save_api(path: String, data: ApiFile) -> Result<String, String> {
     Ok(path)
 }
 
-/// 保存接口新版本：写入工作区 .version/<uuid>/<名称>.<版本号>.json
+/// 保存接口新版本：写入工作区根目录 .version/<uuid>/<名称>.<版本号>.json
 #[tauri::command]
 fn save_api_version(
     state: State<'_, WorkspaceState>,
     data: ApiFile,
 ) -> Result<String, String> {
     let root = workspace_root(&state)?;
+    save_api_version_at(&root, data)
+}
+
+/// 纯函数：把版本写入 root 下的 .version 目录（根目录下，不随接口所在子目录变化）
+fn save_api_version_at(root: &Path, data: ApiFile) -> Result<String, String> {
     let mut data = data;
     if !valid_uuid(data.uuid.trim()) {
         data.uuid = uuid::Uuid::new_v4().to_string();
@@ -2422,6 +2427,44 @@ mod tests {
         assert_eq!(next_version(&dir, "x"), 4);
         assert_eq!(next_version(&dir, "y"), 1);
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_version_saved_at_workspace_root() {
+        // .version 必须创建在工作区根目录下，而不是接口文件所在的子目录
+        let root = std::env::temp_dir().join(format!("version-root-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        // 接口文件位于根目录的子目录中
+        let sub = root.join("some-folder");
+        fs::create_dir_all(&sub).unwrap();
+
+        let api = ApiFile {
+            uuid: "11111111-2222-3333-4444-555555555555".into(),
+            name: "创建用户".into(),
+            method: "POST".into(),
+            path: "/api/users".into(),
+            url: "".into(),
+            description: "".into(),
+            headers: vec![],
+            query: vec![],
+            params: vec![],
+            body: BodyData::default(),
+            mock: MockConfig::default(),
+            examples: vec![],
+        };
+        let rel = save_api_version_at(&root, api).unwrap();
+        assert!(rel.starts_with(".version/11111111-2222-3333-4444-555555555555/"));
+        let ver_file = root
+            .join(".version")
+            .join("11111111-2222-3333-4444-555555555555")
+            .join("创建用户.1.json");
+        assert!(ver_file.exists(), "版本文件应写入根目录 .version 下");
+        assert!(
+            !sub.join(".version").exists(),
+            "版本目录不应出现在接口所在子目录中"
+        );
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]

@@ -102,7 +102,8 @@ export default function App() {
   const history = useHistory();
   const switchView = (v: AppView) => {
     setView(v);
-    if (v === "history" && !history.loaded) history.reload();
+    // 每次进入历史视图都自动刷新一次列表
+    if (v === "history") history.reload();
   };
   const [demoCreate, setDemoCreate] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -767,6 +768,9 @@ export default function App() {
         <button className="btn" onClick={async () => { await reloadTree(); showToast("已刷新"); }}>
           🔄
         </button>
+        <button className="btn" onClick={() => void handleImportPostman()} title="导入 Postman Collection（自动新建分组）">
+          ⬇️ 导入
+        </button>
       </div>
 
       <div className="main">
@@ -785,7 +789,6 @@ export default function App() {
           onVersions={openVersions}
           onStats={setStatsNode}
           onOpenSettings={() => setSettingsOpen(true)}
-          onImportPostman={() => void handleImportPostman()}
           onMove={handleMove}
           enableVersion={settings.enableVersion}
           historyRecords={history.records}
