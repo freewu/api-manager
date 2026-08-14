@@ -27,6 +27,7 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
   const [editing, setEditing] = useState(false);
   const [nameBackup, setNameBackup] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
   const [valueModal, setValueModal] = useState(false);
 
   const env = draft.environments[idx];
@@ -104,31 +105,47 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
     setEditing(false);
   };
 
-  // ---- 拖动排序 ----
+  // ---- 拖动排序（HTML5 DnD） ----
 
-  const onDragStart = (i: number) => {
+  const onDragStart = (e: React.DragEvent, i: number) => {
     setDragIdx(i);
     setEditing(false);
-  };
-
-  const onDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const onDrop = (i: number) => {
-    if (dragIdx === null || dragIdx === i) {
-      setDragIdx(null);
-      return;
+    try {
+      e.dataTransfer.setData("text/plain", String(i));
+      e.dataTransfer.effectAllowed = "move";
+    } catch {
+      /* noop */
     }
+  };
+
+  const onDragOver = (e: React.DragEvent, i: number) => {
+    e.preventDefault();
+    try {
+      e.dataTransfer.dropEffect = "move";
+    } catch {
+      /* noop */
+    }
+    if (dragIdx !== null && dragIdx !== i && overIdx !== i) setOverIdx(i);
+  };
+
+  const onDrop = (e: React.DragEvent, i: number) => {
+    e.preventDefault();
+    const from = dragIdx;
+    setDragIdx(null);
+    setOverIdx(null);
+    if (from === null || from === i) return;
     setDraft((d) => {
       const next = [...d.environments];
-      const [moved] = next.splice(dragIdx, 1);
+      const [moved] = next.splice(from, 1);
       next.splice(i, 0, moved);
       return { ...d, environments: next };
     });
     setIdx(i);
+  };
+
+  const onDragEnd = () => {
     setDragIdx(null);
+    setOverIdx(null);
   };
 
   const setActive = (name: string) => setDraft((d) => ({ ...d, active: name }));
@@ -174,17 +191,17 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
             {draft.environments.map((e, i) => (
               <div
                 key={i}
-                className={`env-set-row ${i === idx ? "active" : ""} ${dragIdx === i ? "dragging" : ""}`}
-                draggable
-                onDragStart={() => onDragStart(i)}
-                onDragOver={onDragOver}
-                onDrop={() => onDrop(i)}
-                onDragEnd={() => setDragIdx(null)}
+                className={`env-set-row ${i === idx ? "active" : ""} ${dragIdx === i ? "dragging" : ""} ${overIdx === i && dragIdx !== null && dragIdx !== i ? "drop-target" : ""}`}
+                draggable={!(editing && i === idx)}
+                onDragStart={(ev) => onDragStart(ev, i)}
+                onDragOver={(ev) => onDragOver(ev, i)}
+                onDrop={(ev) => onDrop(ev, i)}
+                onDragEnd={onDragEnd}
                 onClick={() => {
                   setIdx(i);
                   setEditing(false);
                 }}
-                title={draft.active === e.name ? "当前环境" : e.name}
+                title={draft.active === e.name ? "当前环境，可拖动排序" : "可拖动排序"}
               >
                 <span className="env-drag-handle" title="拖动排序">⋮⋮</span>
                 {editing && i === idx ? (
@@ -238,11 +255,11 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
             <span className="env-set-actions-spacer" />
             <button
               className="btn primary"
-              disabled={!env}
+              disabled={draft.environments.length === 0}
               onClick={() => setValueModal(true)}
-              title="管理选中集的变量值"
+              title={env ? `管理「${env.name}」的变量值` : "请先选择环境变量集"}
             >
-              ✏ 管理变量值
+              ✏ 管理变量值{env ? `（${env.name}）` : ""}
             </button>
           </div>
 
@@ -275,6 +292,7 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
           variables={env.variables}
           onSave={(variables) => setEnv({ variables })}
           onClose={() => setValueModal(false)}
+          maskClassName="modal-mask-top"
         />
       )}
     </>

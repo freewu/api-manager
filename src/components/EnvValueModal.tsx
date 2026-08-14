@@ -8,10 +8,11 @@ interface Props {
   variables: EnvVariable[];
   onSave: (variables: EnvVariable[]) => void;
   onClose: () => void;
+  maskClassName?: string;
 }
 
 /** 第二个弹出框：环境变量值管理（选中具体环境变量集后打开） */
-export function EnvValueModal({ name, variables, onSave, onClose }: Props) {
+export function EnvValueModal({ name, variables, onSave, onClose, maskClassName }: Props) {
   const [draft, setDraft] = useState<EnvVariable[]>(() =>
     variables.map((v) => ({ ...v }))
   );
@@ -28,6 +29,7 @@ export function EnvValueModal({ name, variables, onSave, onClose }: Props) {
       title={`环境变量值管理 · ${name}`}
       onClose={onClose}
       className="modal-wide"
+      maskClassName={maskClassName}
       footer={
         <>
           <button className="btn" onClick={onClose}>
