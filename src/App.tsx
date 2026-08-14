@@ -691,6 +691,7 @@ export default function App() {
       {settingsOpen && (
         <SettingsModal
           settings={settings}
+          appVersion={version}
           onClose={() => setSettingsOpen(false)}
           onSave={handleSaveSettings}
         />

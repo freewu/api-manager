@@ -1257,6 +1257,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(WorkspaceState::default())
         .manage(MockRunState::default())
         .setup(|app| {

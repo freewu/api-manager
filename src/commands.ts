@@ -114,3 +114,8 @@ export function mockReload(): Promise<MockStatus> {
 export function getAppVersion(): Promise<string> {
   return invoke<string>("get_app_version");
 }
+
+/** 在系统浏览器中打开外部链接 */
+export function openExternal(url: string): Promise<void> {
+  return invoke("plugin:opener|open_url", { url });
+}

@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { AppSettings } from "../types";
 import { Modal } from "./Modal";
+import { openExternal } from "../commands";
 
 interface Props {
   settings: AppSettings;
+  appVersion: string;
   onClose: () => void;
   onSave: (s: AppSettings) => void;
 }
@@ -13,6 +15,9 @@ const MODES = [
   { value: "light", label: "☀️ 浅色" },
   { value: "system", label: "🖥 跟随系统" },
 ] as const;
+
+const PROJECT_URL = "https://github.com/freewu/api-manager";
+const ISSUE_URL = "https://github.com/freewu/api-manager/issues/new";
 
 function Switch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -24,8 +29,27 @@ function Switch({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   );
 }
 
-export function SettingsModal({ settings, onClose, onSave }: Props) {
-  const [tab, setTab] = useState<"appearance" | "features">("appearance");
+function LinkRow({ icon, title, desc, url }: { icon: string; title: string; desc: string; url: string }) {
+  return (
+    <button
+      type="button"
+      className="about-link"
+      onClick={() => {
+        void openExternal(url);
+      }}
+    >
+      <span className="about-link-icon">{icon}</span>
+      <span className="about-link-body">
+        <span className="about-link-title">{title}</span>
+        <span className="about-link-desc">{desc}</span>
+      </span>
+      <span className="about-link-arrow">↗</span>
+    </button>
+  );
+}
+
+export function SettingsModal({ settings, appVersion, onClose, onSave }: Props) {
+  const [tab, setTab] = useState<"appearance" | "features" | "about">("appearance");
 
   const patch = (p: Partial<AppSettings>) => onSave({ ...settings, ...p });
 
@@ -34,9 +58,7 @@ export function SettingsModal({ settings, onClose, onSave }: Props) {
       title="设置"
       onClose={onClose}
       className="modal-settings"
-      footer={
-        <span className="settings-auto-hint">⚡ 修改即时生效，无需保存</span>
-      }
+      footer={<span className="settings-auto-hint">⚡ 修改即时生效，无需保存</span>}
     >
       <div className="settings-layout">
         <div className="settings-nav">
@@ -51,6 +73,12 @@ export function SettingsModal({ settings, onClose, onSave }: Props) {
             onClick={() => setTab("features")}
           >
             ⚡ 功能
+          </div>
+          <div
+            className={`settings-nav-item ${tab === "about" ? "active" : ""}`}
+            onClick={() => setTab("about")}
+          >
+            ℹ️ 关于
           </div>
         </div>
 
@@ -144,11 +172,36 @@ export function SettingsModal({ settings, onClose, onSave }: Props) {
                   <span className="settings-desc-inline">默认 5050</span>
                 </div>
               </div>
+            </>
+          )}
 
-              <div className="settings-about">
-                <div className="settings-about-title">关于</div>
-                <div className="settings-about-item">API Manager 接口管理工具</div>
-                <div className="settings-about-item">接口、目录与 Mock 数据保存在本地工作区</div>
+          {tab === "about" && (
+            <>
+              <div className="settings-panel-title">关于</div>
+              <div className="about-app">
+                <div className="about-logo">🧪</div>
+                <div className="about-app-info">
+                  <div className="about-app-name">API Manager</div>
+                  <div className="about-app-desc">API 接口文档 · 测试 · Mock 工具</div>
+                  <div className="about-version">版本 v{appVersion || "0.1.0"}</div>
+                </div>
+              </div>
+              <div className="about-links">
+                <LinkRow
+                  icon="📦"
+                  title="项目地址"
+                  desc={PROJECT_URL}
+                  url={PROJECT_URL}
+                />
+                <LinkRow
+                  icon="🐛"
+                  title="提交 Issue"
+                  desc="反馈问题、建议新功能"
+                  url={ISSUE_URL}
+                />
+              </div>
+              <div className="about-footnote">
+                接口、目录与 Mock 数据保存在本地工作区文件，版本快照位于 .version 目录。
               </div>
             </>
           )}
