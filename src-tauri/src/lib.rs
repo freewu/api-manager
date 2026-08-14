@@ -641,6 +641,294 @@ fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String> {
     Ok(())
 }
 
+// ==================== Postman Collection 导入 ====================
+
+#[tauri::command]
+fn import_postman(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("Postman Collection", &["json"])
+        .blocking_pick_file();
+    let Some(path) = picked else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let root = workspace_root(&state)?;
+    let folder = import_postman_file(&root, &path)?;
+    Ok(Some(folder))
+}
+
+/// 解析 Postman Collection 文件，在工作区根新建同名分组并导入全部接口
+fn import_postman_file(root: &Path, file: &Path) -> Result<String, String> {
+    let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
+    let json: Value =
+        serde_json::from_str(&content).map_err(|e| format!("解析 JSON 失败: {e}"))?;
+    let info = json
+        .get("info")
+        .ok_or("不是有效的 Postman Collection 文件（缺少 info 字段）")?;
+    let coll_name = info
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Postman 导入")
+        .to_string();
+    let dir_name = sanitize_filename(&coll_name);
+    let dir_name = if dir_name.is_empty() {
+        "Postman 导入".to_string()
+    } else {
+        dir_name
+    };
+    let folder = unique_path(root, &dir_name, "");
+    fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
+    let src_name = file
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    write_pretty(
+        &folder.join(INFO_FILE),
+        &InfoJson {
+            name: Some(coll_name.clone()),
+            description: format!("从 Postman Collection 导入（{src_name}）"),
+            base_url: None,
+            mock_port: None,
+            order: None,
+            collapsed: None,
+        },
+    )?;
+    let items = json
+        .get("item")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    import_postman_items(&folder, &items)?;
+    Ok(folder.to_string_lossy().to_string())
+}
+
+/// 递归导入 item 列表：带 request 的生成接口文件，带 item 的生成子分组
+fn import_postman_items(dir: &Path, items: &[Value]) -> Result<(), String> {
+    for item in items {
+        let name = item
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("未命名")
+            .to_string();
+        if item.get("request").is_some() {
+            let api = postman_request_to_api(&name, &item["request"])?;
+            let file_base = sanitize_filename(&name);
+            let file_base = if file_base.is_empty() {
+                "未命名接口".to_string()
+            } else {
+                file_base
+            };
+            let file_path = unique_path(dir, &file_base, ".json");
+            write_pretty(&file_path, &api)?;
+        } else if let Some(sub) = item.get("item").and_then(|v| v.as_array()) {
+            let sub_base = sanitize_filename(&name);
+            let sub_base = if sub_base.is_empty() {
+                "子分组".to_string()
+            } else {
+                sub_base
+            };
+            let sub_dir = unique_path(dir, &sub_base, "");
+            fs::create_dir_all(&sub_dir).map_err(|e| format!("创建分组失败: {e}"))?;
+            write_pretty(
+                &sub_dir.join(INFO_FILE),
+                &InfoJson {
+                    name: Some(name.clone()),
+                    description: String::new(),
+                    base_url: None,
+                    mock_port: None,
+                    order: None,
+                    collapsed: None,
+                },
+            )?;
+            import_postman_items(&sub_dir, sub)?;
+        }
+    }
+    Ok(())
+}
+
+/// 将 Postman request 对象转换为 ApiFile
+fn postman_request_to_api(name: &str, request: &Value) -> Result<ApiFile, String> {
+    let method = request
+        .get("method")
+        .and_then(|v| v.as_str())
+        .unwrap_or("GET")
+        .to_uppercase();
+    let url = request.get("url").unwrap_or(&Value::Null);
+    let url_raw = url
+        .get("raw")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let (path, params) = postman_path_info(url);
+
+    let mut headers = Vec::new();
+    if let Some(arr) = request.pointer("/header").and_then(|v| v.as_array()) {
+        for h in arr {
+            let key = h
+                .get("key")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .trim()
+                .to_string();
+            if key.is_empty() {
+                continue;
+            }
+            headers.push(KeyValue {
+                key,
+                value: h.get("value").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                enabled: !h.get("disabled").and_then(|v| v.as_bool()).unwrap_or(false),
+                description: String::new(),
+            });
+        }
+    }
+
+    let mut query = Vec::new();
+    if let Some(arr) = url.get("query").and_then(|v| v.as_array()) {
+        for q in arr {
+            let key = q
+                .get("key")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .trim()
+                .to_string();
+            if key.is_empty() {
+                continue;
+            }
+            query.push(KeyValue {
+                key,
+                value: q
+                    .get("value")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string(),
+                enabled: !q.get("disabled").and_then(|v| v.as_bool()).unwrap_or(false),
+                description: String::new(),
+            });
+        }
+    }
+
+    let body = postman_body(request.get("body"));
+    let description = request
+        .get("description")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    Ok(ApiFile {
+        uuid: uuid::Uuid::new_v4().to_string(),
+        name: name.to_string(),
+        method,
+        path,
+        url: url_raw,
+        description,
+        headers,
+        query,
+        params,
+        body,
+        mock: MockConfig::default(),
+        examples: vec![],
+    })
+}
+
+/// 从 Postman URL 中提取路径（:id 转为 {id}）与路径参数
+fn postman_path_info(url: &Value) -> (String, Vec<KeyValue>) {
+    let raw = url.get("raw").and_then(|v| v.as_str()).unwrap_or("");
+    let no_query = raw.split('?').next().unwrap_or("");
+    let no_hash = no_query.split('#').next().unwrap_or("");
+    let after_scheme = match no_hash.splitn(2, "://").nth(1) {
+        Some(rest) => rest,
+        None => no_hash,
+    };
+    let path_only = match after_scheme.find('/') {
+        Some(i) => &after_scheme[i..],
+        None => "/",
+    };
+    let mut params = Vec::new();
+    let segs: Vec<String> = path_only
+        .split('/')
+        .map(|seg| {
+            if let Some(var) = seg.strip_prefix(':') {
+                if !var.is_empty() {
+                    params.push(KeyValue {
+                        key: var.to_string(),
+                        value: String::new(),
+                        enabled: true,
+                        description: String::new(),
+                    });
+                    return format!("{{{var}}}");
+                }
+            }
+            seg.to_string()
+        })
+        .collect();
+    let mut path = segs.join("/");
+    if !path.starts_with('/') {
+        path.insert(0, '/');
+    }
+    if path.is_empty() {
+        path = "/".to_string();
+    }
+    (path, params)
+}
+
+/// 转换 Postman body（raw / urlencoded / formdata）
+fn postman_body(body: Option<&Value>) -> BodyData {
+    let mut out = BodyData::default();
+    let Some(body) = body else {
+        return out;
+    };
+    match body.get("mode").and_then(|v| v.as_str()) {
+        Some("raw") => {
+            let raw = body.get("raw").and_then(|v| v.as_str()).unwrap_or("");
+            let trimmed = raw.trim_start();
+            out.mode = if trimmed.starts_with('{') || trimmed.starts_with('[') {
+                "json".to_string()
+            } else {
+                "raw".to_string()
+            };
+            out.raw = raw.to_string();
+        }
+        Some("urlencoded") | Some("formdata") => {
+            out.mode = "form".into();
+            let arr = body
+                .get("urlencoded")
+                .or_else(|| body.get("formdata"))
+                .and_then(|v| v.as_array());
+            if let Some(arr) = arr {
+                for f in arr {
+                    let key = f
+                        .get("key")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .trim()
+                        .to_string();
+                    if key.is_empty() {
+                        continue;
+                    }
+                    out.form.push(KeyValue {
+                        key,
+                        value: f
+                            .get("value")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
+                        enabled: !f.get("disabled").and_then(|v| v.as_bool()).unwrap_or(false),
+                        description: String::new(),
+                    });
+                }
+            }
+        }
+        _ => {}
+    }
+    out
+}
+
 #[tauri::command]
 fn read_tree(state: State<'_, WorkspaceState>) -> Result<TreeNode, String> {
     let root = workspace_root(&state)?;
@@ -1396,6 +1684,7 @@ pub fn run() {
             pick_workspace,
             workspace_is_empty,
             create_demo,
+            import_postman,
             read_tree,
             read_api,
             save_api,
@@ -1520,6 +1809,72 @@ mod tests {
         assert_eq!(map.get("token").map(|s| s.as_str()), Some("dev-token-123456"));
         // 不存在的环境 -> 空
         assert!(!map.contains_key("nope"));
+    }
+
+    #[test]
+    fn test_import_postman() {
+        let root = std::env::temp_dir().join(format!("apimgr-postman-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let coll = root.join("collection.json");
+        fs::write(
+            &coll,
+            r#"{
+                "info": { "name": "示例集合" },
+                "item": [
+                    {
+                        "name": "获取用户",
+                        "request": {
+                            "method": "GET",
+                            "url": {
+                                "raw": "https://api.example.com/users/:id?page=1",
+                                "query": [{ "key": "page", "value": "1", "disabled": false }]
+                            },
+                            "header": [{ "key": "Authorization", "value": "Bearer {{token}}", "disabled": false }]
+                        }
+                    },
+                    {
+                        "name": "订单",
+                        "item": [
+                            {
+                                "name": "创建订单",
+                                "request": {
+                                    "method": "POST",
+                                    "url": { "raw": "https://api.example.com/orders" },
+                                    "body": { "mode": "raw", "raw": "{\"no\":\"1\"}" }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }"#,
+        )
+        .unwrap();
+        let folder = import_postman_file(&root, &coll).unwrap();
+        assert!(folder.ends_with("示例集合"));
+        // 顶层接口 + 子分组 + 子接口
+        assert!(root.join("示例集合/获取用户.json").exists());
+        assert!(root.join("示例集合/订单/创建订单.json").exists());
+        // 校验内容：方法 / 路径变量 / query / header / body
+        let api: ApiFile = serde_json::from_str(
+            &fs::read_to_string(root.join("示例集合/获取用户.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(api.method, "GET");
+        assert_eq!(api.path, "/users/{id}");
+        assert_eq!(api.params.len(), 1);
+        assert_eq!(api.params[0].key, "id");
+        assert_eq!(api.query.len(), 1);
+        assert_eq!(api.query[0].key, "page");
+        assert_eq!(api.headers.len(), 1);
+        assert_eq!(api.headers[0].key, "Authorization");
+        let api2: ApiFile = serde_json::from_str(
+            &fs::read_to_string(root.join("示例集合/订单/创建订单.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(api2.method, "POST");
+        assert_eq!(api2.body.mode, "json");
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]

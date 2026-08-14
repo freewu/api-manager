@@ -27,6 +27,10 @@ export function createDemo(): Promise<void> {
   return invoke<void>("create_demo");
 }
 
+export function importPostman(): Promise<string | null> {
+  return invoke<string | null>("import_postman");
+}
+
 export function readTree(): Promise<TreeNode> {
   return invoke<TreeNode>("read_tree");
 }

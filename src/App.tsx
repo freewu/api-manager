@@ -8,6 +8,7 @@ import {
   deleteEntry,
   getAppVersion,
   getWorkspace,
+  importPostman,
   listVersions,
   loadSettings,
   mockReload,
@@ -269,6 +270,18 @@ export default function App() {
       }
       await loadAll(ws);
       if (!create) showToast("已打开工作区");
+    }
+  };
+
+  /** 导入 Postman Collection：自动新建分组 */
+  const handleImportPostman = async () => {
+    try {
+      const folder = await importPostman();
+      if (!folder) return; // 用户取消
+      await loadAll(workspace!);
+      showToast("已导入 Postman Collection");
+    } catch (e) {
+      showToast("导入失败: " + e);
     }
   };
 
@@ -601,6 +614,13 @@ export default function App() {
         <div className="workspace-chip" title="点击更换工作目录" onClick={handlePickWorkspace}>
           📁 {workspace}
         </div>
+        <button
+          className="btn"
+          onClick={() => void handleImportPostman()}
+          title="导入 Postman Collection 文件（自动新建分组）"
+        >
+          📥 导入 Postman
+        </button>
         <div className="toolbar-spacer" />
         <div className="env-box">
           <span style={{ fontSize: 12, color: "var(--text-dim)" }}>环境</span>
