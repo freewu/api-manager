@@ -33,7 +33,7 @@ import {
   vcsCommitPush,
   vcsInfo,
   vcsSync,
-  workspaceIsEmpty,
+  hasWorkspaceInfo,
 } from "./commands";
 import { Editor } from "./components/Editor";
 import { EnvModal } from "./components/EnvModal";
@@ -142,7 +142,13 @@ export default function App() {
       const ws = await getWorkspace();
       if (ws) {
         setWorkspace(ws);
-        await loadAll(ws);
+        if (!(await hasWorkspaceInfo())) {
+          // 新的工作目录（没有 __info.json）：询问是否生成演示案例
+          setDemoCreate(true);
+          setModal({ type: "demo", parent: ws });
+        } else {
+          await loadAll(ws);
+        }
       }
     })();
     loadSettings().then(setSettings).catch(() => {});
@@ -274,8 +280,8 @@ export default function App() {
       if (!ws) return;
       setWorkspace(ws);
       setResponse(null);
-      if (await workspaceIsEmpty()) {
-        // 空目录：询问是否生成演示案例
+      if (!(await hasWorkspaceInfo())) {
+        // 新的工作目录（没有 __info.json）：询问是否生成演示案例
         setDemoCreate(true);
         setModal({ type: "demo", parent: ws });
       } else {
@@ -287,7 +293,7 @@ export default function App() {
     }
   };
 
-  /** 空目录选择后的收尾：按参数生成演示案例并加载 */
+  /** 新工作目录（无 __info.json）询问后的收尾：按参数生成演示案例并加载 */
   const closeDemoModal = async (create: boolean) => {
     const ws = modal?.parent || workspace;
     setModal(null);
@@ -298,6 +304,18 @@ export default function App() {
           showToast("已生成演示案例");
         } catch (e) {
           showToast("生成演示案例失败: " + e);
+        }
+      } else {
+        // 不生成演示案例：写一份最小 __info.json，标记工作区已初始化，避免下次再询问
+        try {
+          await saveInfo(ws, {
+            name: "我的 API 集合",
+            description: "",
+            baseUrl: "",
+            mockPort: 5050,
+          });
+        } catch {
+          /* noop */
         }
       }
       await loadAll(ws);
@@ -1116,7 +1134,7 @@ export default function App() {
           }
         >
           <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.7 }}>
-            检测到所选工作目录为空。可以自动生成几个演示接口和环境变量，方便快速体验。
+            检测到这是一个新的工作目录（根目录没有 __info.json）。可以自动生成几个演示接口和环境变量，方便快速体验。
           </div>
           <label className="demo-check">
             <input

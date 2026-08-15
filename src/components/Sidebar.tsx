@@ -602,7 +602,7 @@ export function Sidebar(props: Props) {
               setBgMenu(null);
             }}
           >
-            📁 新增目录
+            📁 新增分组
           </button>
         </div>
       )}

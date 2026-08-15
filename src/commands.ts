@@ -23,6 +23,11 @@ export function workspaceIsEmpty(): Promise<boolean> {
   return invoke<boolean>("workspace_is_empty");
 }
 
+/** 工作区根目录是否已有 __info.json（判断是否为全新工作目录） */
+export function hasWorkspaceInfo(): Promise<boolean> {
+  return invoke<boolean>("has_workspace_info");
+}
+
 export function createDemo(): Promise<void> {
   return invoke<void>("create_demo");
 }

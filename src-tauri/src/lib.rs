@@ -639,17 +639,6 @@ fn pick_workspace(app: AppHandle, state: State<'_, WorkspaceState>) -> Result<Op
             if let Ok(mut guard) = state.root.lock() {
                 *guard = Some(p);
             }
-            // 如果根目录没有 __info.json，自动生成一份
-            let info_path = Path::new(&s).join(INFO_FILE);
-            if !info_path.exists() {
-                let info = serde_json::json!({
-                    "name": "我的 API 集合",
-                    "description": "",
-                    "baseUrl": "",
-                    "mockPort": 5050
-                });
-                let _ = write_pretty(&info_path, &info);
-            }
             Ok(Some(s))
         }
         None => Ok(None),
@@ -668,6 +657,13 @@ fn is_workspace_empty(root: &Path) -> Result<bool, String> {
         count += 1;
     }
     Ok(count == 0)
+}
+
+/// 工作区根目录是否已存在 __info.json（判断是否为全新工作目录）
+#[tauri::command]
+fn has_workspace_info(state: State<'_, WorkspaceState>) -> Result<bool, String> {
+    let root = workspace_root(&state)?;
+    Ok(root.join(INFO_FILE).exists())
 }
 
 #[tauri::command]
@@ -2218,6 +2214,7 @@ pub fn run() {
             get_workspace,
             pick_workspace,
             workspace_is_empty,
+            has_workspace_info,
             create_demo,
             import_postman,
             vcs_info,
