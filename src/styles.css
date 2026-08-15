@@ -1987,6 +1987,43 @@ body {
   height: 88px;
   object-fit: contain;
 }
+
+/* 开始页：最近打开的工作目录 */
+.recent-workspaces {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: 520px;
+  width: 100%;
+}
+.recent-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-faint);
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}
+.recent-item {
+  width: 100%;
+  text-align: left;
+  padding: 7px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 12.5px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s;
+}
+.recent-item:hover {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
 .landing h1 {
   font-size: 22px;
   font-weight: 700;

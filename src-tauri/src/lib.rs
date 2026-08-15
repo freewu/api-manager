@@ -660,6 +660,63 @@ fn vcs_commit_push(state: State<'_, WorkspaceState>, remote: bool) -> Result<Str
     }
 }
 
+// ==================== 最近打开的工作目录 ====================
+
+/// 最近打开工作目录数量上限
+const MAX_RECENT: usize = 8;
+
+fn recent_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| format!("获取配置目录失败: {e}"))?;
+    Ok(dir.join("recent_workspaces.json"))
+}
+
+fn read_recent(app: &AppHandle) -> Vec<String> {
+    let p = recent_path(app).ok();
+    match p.and_then(|p| fs::read_to_string(p).ok()) {
+        Some(content) => serde_json::from_str(&content).unwrap_or_default(),
+        None => Vec::new(),
+    }
+}
+
+/// 记录最近打开的工作目录（去重、最新的排最前、最多保留 MAX_RECENT 个）
+fn record_recent(app: &AppHandle, path: &str) {
+    let Ok(p) = recent_path(app) else { return };
+    let mut list = read_recent(app);
+    list.retain(|x| x != path);
+    list.insert(0, path.to_string());
+    list.truncate(MAX_RECENT);
+    if let Some(parent) = p.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let _ = write_pretty(&p, &list);
+}
+
+#[tauri::command]
+fn get_recent_workspaces(app: AppHandle) -> Vec<String> {
+    read_recent(&app)
+}
+
+/// 按路径直接打开工作目录（开始页「最近打开」点击时调用）
+#[tauri::command]
+fn open_workspace(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+    path: String,
+) -> Result<String, String> {
+    let p = PathBuf::from(&path);
+    if !p.is_dir() {
+        return Err(format!("目录不存在: {path}"));
+    }
+    if let Ok(mut guard) = state.root.lock() {
+        *guard = Some(p);
+    }
+    record_recent(&app, &path);
+    Ok(path)
+}
+
 #[tauri::command]
 fn get_workspace(state: State<'_, WorkspaceState>) -> Option<String> {
     state
@@ -681,6 +738,8 @@ fn pick_workspace(app: AppHandle, state: State<'_, WorkspaceState>) -> Result<Op
             if let Ok(mut guard) = state.root.lock() {
                 *guard = Some(p);
             }
+            // 记录最近打开
+            record_recent(&app, &s);
             Ok(Some(s))
         }
         None => Ok(None),
@@ -2902,6 +2961,8 @@ pub fn run() {
             load_settings,
             save_settings,
             get_workspace,
+            open_workspace,
+            get_recent_workspaces,
             pick_workspace,
             workspace_is_empty,
             has_workspace_info,

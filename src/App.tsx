@@ -8,6 +8,8 @@ import {
   deleteEntry,
   getAppVersion,
   getWorkspace,
+  getRecentWorkspaces,
+  openWorkspace,
   importOpenApi,
   importPostman,
   listVersions,
@@ -87,6 +89,7 @@ const emptyInfoForm = (): InfoForm => ({
 
 export default function App() {
   const [workspace, setWorkspace] = useState<string | null>(null);
+  const [recent, setRecent] = useState<string[]>([]);
   const [tree, setTree] = useState<TreeNode | null>(null);
   const [rootInfo, setRootInfo] = useState<InfoJson>({});
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
@@ -165,6 +168,10 @@ export default function App() {
         }
       }
     })();
+    // 加载最近打开的工作目录（开始页展示）
+    getRecentWorkspaces()
+      .then(setRecent)
+      .catch(() => {});
     loadSettings().then(setSettings).catch(() => {});
     mockStatus().then(setMock).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -317,20 +324,42 @@ export default function App() {
     [dirty, api, selectedPath, showToast]
   );
 
+  /** 打开工作目录后的统一收尾：加载树/信息并处理新目录询问 */
+  const finishOpenWorkspace = async (ws: string) => {
+    setWorkspace(ws);
+    setResponse(null);
+    if (!(await hasWorkspaceInfo())) {
+      // 新的工作目录（没有 __info.json）：询问是否生成演示案例
+      setDemoCreate(true);
+      setModal({ type: "demo", parent: ws });
+    } else {
+      await loadAll(ws);
+      showToast("已打开工作区");
+    }
+  };
+
+  /** 把目录加入最近打开列表（本地即时更新，后端已持久化） */
+  const pushRecent = (ws: string) => {
+    setRecent((r) => [ws, ...r.filter((x) => x !== ws)].slice(0, 8));
+  };
+
   const handlePickWorkspace = async () => {
     try {
       const ws = await pickWorkspace();
       if (!ws) return;
-      setWorkspace(ws);
-      setResponse(null);
-      if (!(await hasWorkspaceInfo())) {
-        // 新的工作目录（没有 __info.json）：询问是否生成演示案例
-        setDemoCreate(true);
-        setModal({ type: "demo", parent: ws });
-      } else {
-        await loadAll(ws);
-        showToast("已打开工作区");
-      }
+      pushRecent(ws);
+      await finishOpenWorkspace(ws);
+    } catch (e) {
+      showToast("打开失败: " + e);
+    }
+  };
+
+  /** 开始页「最近打开」：按路径直接打开 */
+  const handleOpenRecent = async (ws: string) => {
+    try {
+      await openWorkspace(ws);
+      pushRecent(ws);
+      await finishOpenWorkspace(ws);
     } catch (e) {
       showToast("打开失败: " + e);
     }
@@ -882,6 +911,16 @@ export default function App() {
           <button className="btn primary" style={{ fontSize: 14, padding: "10px 24px" }} onClick={handlePickWorkspace}>
             选择工作目录
           </button>
+          {recent.length > 0 && (
+            <div className="recent-workspaces">
+              <div className="recent-title">最近打开</div>
+              {recent.map((p) => (
+                <button key={p} className="recent-item" title={p} onClick={() => void handleOpenRecent(p)}>
+                  📁 {p}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="file-tree-note">
             目录结构约定：
             <br />├── __info.json &nbsp;// 根目录描述（name / description / baseUrl / mockPort）

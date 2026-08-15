@@ -1,8 +1,9 @@
 // 将 logo.png 处理为 1024x1024 方形图标源图（供 tauri icon 生成全套应用图标与 ico）
-// 只做尺寸处理：
+// 注意：logo.png 已是正方形时，直接交给 tauri icon 使用原图（不做任何透明度处理）；
+// 本脚本仅用于非正方形 logo：
 //   1. 尺寸裁剪 —— 裁掉透明边距，保持宽高比缩放到铺满画布（约 90%，四周留 5% 安全边）
-//   2. 透明度处理 —— 缩放时按预乘 alpha 采样（alpha-aware resample），
-//      透明边缘与半透明像素正确混合，避免黑边/光晕
+//   2. 透明度 —— 双线性采样对 RGBA 四通道一视同仁（alpha 独立平均），不预乘、不混合，
+//      不调整原图透明度
 import fs from "node:fs";
 import zlib from "node:zlib";
 
@@ -75,8 +76,8 @@ function cropAlpha(px, w, h, alphaThreshold = 8) {
   return { px: out, w: cw, h: ch };
 }
 
-// ---- 步骤 2：透明度处理 —— 预乘 alpha 双线性缩放 ----
-// 预乘（r*a,g*a,b*a,a）后采样再反预乘：半透明像素与透明边缘按 alpha 正确混合，不产生黑边光晕
+// ---- 步骤 2：普通 RGBA 双线性缩放（不调整透明度）----
+// 四通道（含 alpha）各自独立双线性插值，alpha 不被预乘混合，原图透明度保持不变
 function resizeAlpha(px, sw, sh, dw, dh) {
   const out = Buffer.alloc(dw * dh * 4);
   const sx = sw / dw, sy = sh / dh;
@@ -87,28 +88,15 @@ function resizeAlpha(px, sw, sh, dw, dh) {
       const x0 = Math.max(0, Math.floor(fx)), y0 = Math.max(0, Math.floor(fy));
       const x1 = Math.min(sw - 1, x0 + 1), y1 = Math.min(sh - 1, y0 + 1);
       const tx = fx - x0, ty = fy - y0;
-      let pr = 0, pg = 0, pb = 0, pa = 0;
-      const sample = (xx, yy, wt) => {
-        const i = (yy * sw + xx) * 4;
-        const a = px[i + 3] / 255;
-        pr += px[i] * a * wt;
-        pg += px[i + 1] * a * wt;
-        pb += px[i + 2] * a * wt;
-        pa += a * wt;
-      };
-      sample(x0, y0, (1 - tx) * (1 - ty));
-      sample(x1, y0, tx * (1 - ty));
-      sample(x0, y1, (1 - tx) * ty);
-      sample(x1, y1, tx * ty);
-      const o = (y * dw + x) * 4;
-      if (pa > 0.0001) {
-        out[o] = Math.round(pr / pa);
-        out[o + 1] = Math.round(pg / pa);
-        out[o + 2] = Math.round(pb / pa);
-      } else {
-        out[o] = out[o + 1] = out[o + 2] = 0;
+      for (let k = 0; k < 4; k++) {
+        const src = (i) => px[(i * 4) + k];
+        const v =
+          src(y0 * sw + x0) * (1 - tx) * (1 - ty) +
+          src(y0 * sw + x1) * tx * (1 - ty) +
+          src(y1 * sw + x0) * (1 - tx) * ty +
+          src(y1 * sw + x1) * tx * ty;
+        out[(y * dw + x) * 4 + k] = Math.round(v);
       }
-      out[o + 3] = Math.round(pa * 255);
     }
   }
   return out;

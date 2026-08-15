@@ -17,6 +17,14 @@ export function getWorkspace(): Promise<string | null> {
   return invoke<string | null>("get_workspace");
 }
 
+export function getRecentWorkspaces(): Promise<string[]> {
+  return invoke<string[]>("get_recent_workspaces");
+}
+
+export function openWorkspace(path: string): Promise<string> {
+  return invoke<string>("open_workspace", { path });
+}
+
 export function pickWorkspace(): Promise<string | null> {
   return invoke<string | null>("pick_workspace");
 }
