@@ -676,9 +676,7 @@ fn workspace_is_empty(state: State<'_, WorkspaceState>) -> Result<bool, String> 
 #[tauri::command]
 fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String> {
     let root = workspace_root(&state)?;
-    if !is_workspace_empty(&root)? {
-        return Err("工作区非空，不生成演示案例".into());
-    }
+    // 不判断工作区是否为空：演示案例直接生成（同名文件会被覆盖）
     let api_file = |name: &str, method: &str, path: &str, description: &str| {
         serde_json::json!({
             "uuid": uuid::Uuid::new_v4().to_string(),
