@@ -2,6 +2,7 @@ interface Row {
   key: string;
   value: string;
   enabled: boolean;
+  description: string;
 }
 
 interface Props<T extends Row> {
@@ -10,6 +11,8 @@ interface Props<T extends Row> {
   valuePlaceholder?: string;
   keyPlaceholder?: string;
   showCheck?: boolean;
+  /** 显示「说明」列（编辑 description 字段） */
+  showDescription?: boolean;
   makeRow?: () => T;
 }
 
@@ -19,6 +22,7 @@ export function KeyValueEditor<T extends Row>({
   valuePlaceholder = "值",
   keyPlaceholder = "键",
   showCheck = true,
+  showDescription = false,
   makeRow,
 }: Props<T>) {
   const update = (i: number, patch: Partial<Row>) => {
@@ -47,6 +51,7 @@ export function KeyValueEditor<T extends Row>({
             {showCheck && <th style={{ width: 30 }}></th>}
             <th>{keyPlaceholder}</th>
             <th>{valuePlaceholder}</th>
+            {showDescription && <th>说明</th>}
             <th style={{ width: 60 }}></th>
           </tr>
         </thead>
@@ -78,6 +83,16 @@ export function KeyValueEditor<T extends Row>({
                   spellCheck={false}
                 />
               </td>
+              {showDescription && (
+                <td>
+                  <input
+                    value={r.description}
+                    placeholder="参数说明"
+                    onChange={(e) => update(i, { description: e.target.value })}
+                    spellCheck={false}
+                  />
+                </td>
+              )}
               <td>
                 <button className="kv-remove" title="删除" onClick={() => remove(i)}>
                   🗑

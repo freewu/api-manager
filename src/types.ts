@@ -110,6 +110,8 @@ export interface AppSettings {
   enableMock: boolean;
   mockPort: number;
   syncRemote: boolean;
+  enableCodegen: boolean;
+  codegenLang: string; // curl / go / rust / java / python / javascript
 }
 
 export const defaultSettings = (): AppSettings => ({
@@ -118,6 +120,8 @@ export const defaultSettings = (): AppSettings => ({
   enableMock: true,
   mockPort: 5050,
   syncRemote: true,
+  enableCodegen: true,
+  codegenLang: "curl",
 });
 
 export interface HttpRequestData {

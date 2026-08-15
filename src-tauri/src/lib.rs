@@ -484,6 +484,10 @@ pub struct AppSettings {
     pub mock_port: u32,
     /// 是否同步远程（工作目录为 Git/SVN 仓库时显示同步与提交按钮）
     pub sync_remote: bool,
+    /// 是否启用请求代码生成（编辑区显示「代码」页签）
+    pub enable_codegen: bool,
+    /// 代码生成默认开发语言（curl / go / rust / java / python / javascript）
+    pub codegen_lang: String,
 }
 
 impl Default for AppSettings {
@@ -494,6 +498,8 @@ impl Default for AppSettings {
             enable_mock: true,
             mock_port: 5050,
             sync_remote: true,
+            enable_codegen: true,
+            codegen_lang: "curl".into(),
         }
     }
 }

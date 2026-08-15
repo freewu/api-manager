@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AppSettings } from "../types";
 import { Modal } from "./Modal";
 import { openExternal } from "../commands";
+import { CODE_LANGS } from "../utils/codegen";
 
 interface Props {
   settings: AppSettings;
@@ -173,6 +174,35 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
                   />
                   <span className="settings-desc-inline">默认 5050</span>
                 </div>
+              </div>
+              <div className="settings-feature">
+                <div className="settings-feature-head">
+                  <span className="settings-feature-name">请求代码生成</span>
+                  <Switch
+                    checked={settings.enableCodegen}
+                    onChange={(v) => patch({ enableCodegen: v })}
+                  />
+                </div>
+                <div className="settings-feature-desc">
+                  在编辑区显示「代码」页签，一键生成 curl / Go / Rust / Java / Python 等请求代码
+                </div>
+                {settings.enableCodegen && (
+                  <div className="settings-row settings-port-row">
+                    <span className="settings-label">默认开发语言</span>
+                    <select
+                      className="settings-port-input codegen-lang-select"
+                      value={settings.codegenLang}
+                      onChange={(e) => patch({ codegenLang: e.target.value })}
+                    >
+                      {CODE_LANGS.map((l) => (
+                        <option key={l.value} value={l.value}>
+                          {l.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="settings-desc-inline">打开「代码」页签时默认使用的语言</span>
+                  </div>
+                )}
               </div>
               {vcs && (
                 <div className="settings-feature">

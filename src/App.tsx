@@ -457,9 +457,10 @@ export default function App() {
         .filter((h) => h.enabled && h.key.trim())
         .map((h) => ({ ...h, key: sub(h.key), value: sub(h.value) }));
       let url = sub(api.url || rootInfo.baseUrl + api.path);
-      // 替换路径参数
+      // 替换路径参数（多个示例值逗号分隔，发送时取第一个）
       for (const p of api.params.filter((x) => x.enabled && x.key)) {
-        url = url.replaceAll(`{${p.key}}`, encodeURIComponent(sub(p.value)));
+        const v = p.value.split(",")[0].trim();
+        url = url.replaceAll(`{${p.key}}`, encodeURIComponent(sub(v)));
       }
       // URL 校验：空地址 / 缺少协议前缀 / 存在未替换的 {{变量}}
       if (!url.trim()) {
@@ -927,6 +928,8 @@ export default function App() {
                 enableVersion={settings.enableVersion}
                 sending={sending}
                 onCommit={handleAutoSave}
+                enableCodegen={settings.enableCodegen}
+                codegenLang={settings.codegenLang}
               />
               <div
                 className="v-resizer"

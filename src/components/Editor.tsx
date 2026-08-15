@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { ApiFile, BODY_MODES, DocParam, KeyValue, METHODS } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
+import { CodeTab } from "./CodeTab";
 
-type Tab = "params" | "path" | "headers" | "body" | "mock" | "desc" | "doc";
+type Tab = "params" | "path" | "headers" | "body" | "mock" | "desc" | "doc" | "code";
 
 interface Props {
   api: ApiFile;
@@ -15,15 +16,41 @@ interface Props {
   style?: React.CSSProperties;
   /** 失焦后自动保存（接口说明 textarea blur 时触发） */
   onCommit?: () => void;
+  /** 是否启用请求代码生成（显示「代码」页签） */
+  enableCodegen?: boolean;
+  /** 代码生成默认语言（curl / go / rust / java / python / javascript） */
+  codegenLang?: string;
 }
 
-export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit }: Props) {
+export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, codegenLang = "curl" }: Props) {
   const [tab, setTab] = useState<Tab>("params");
   const effectiveUrl = api.url || (baseUrl + api.path);
 
+  // 切换接口时回到 Params 页签
   useEffect(() => {
     setTab("params");
-  }, [api.path]);
+  }, [api.uuid]);
+
+  // URL / 路径中的 {xx} 占位符实时同步到 Path 页签（新增或删除）
+  const pathSource = api.url || api.path;
+  useEffect(() => {
+    const names = new Set(
+      [...pathSource.matchAll(/\{([^{}]+)\}/g)]
+        .map((m) => m[1].trim())
+        .filter(Boolean)
+    );
+    const cur = api.params;
+    const missing = [...names].filter((n) => !cur.some((r) => r.key.trim() === n));
+    const stale = cur.filter((r) => r.key.trim() && !names.has(r.key.trim()));
+    if (missing.length === 0 && stale.length === 0) return;
+    const next = cur
+      .filter((r) => !r.key.trim() || names.has(r.key.trim()))
+      .concat(
+        missing.map((n) => ({ key: n, value: "", enabled: true, description: "" }))
+      );
+    onChange({ ...api, params: next });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathSource]);
 
   const set = (patch: Partial<ApiFile>) => onChange({ ...api, ...patch });
 
@@ -102,6 +129,11 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         <div className={`tab ${tab === "doc" ? "active" : ""}`} onClick={() => setTab("doc")}>
           入参文档
         </div>
+        {enableCodegen && (
+          <div className={`tab ${tab === "code" ? "active" : ""}`} onClick={() => setTab("code")}>
+            代码
+          </div>
+        )}
       </div>
 
       <div className="editor-body">
@@ -122,7 +154,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         {tab === "path" && (
           <div>
             <div className="section-title">
-              Path 变量 <span className="help">（来自上方 URL，请求时替换 {`{name}`}）</span>
+              Path 变量 <span className="help">（来自上方 URL 中的 {`{name}`}，自动同步；请求时替换）</span>
             </div>
             {api.params.length === 0 ? (
               <div style={{ color: "var(--text-faint)", fontSize: 12, padding: "4px 2px" }}>
@@ -133,9 +165,13 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                 rows={api.params}
                 onChange={(rows) => set({ params: rows })}
                 keyPlaceholder="变量名"
-                valuePlaceholder="值"
+                valuePlaceholder="示例值"
+                showDescription
               />
             )}
+            <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 6 }}>
+              多个示例值可用逗号分隔（如 1,2,3），发送请求时取第一个；「说明」列用于描述该变量的含义。
+            </div>
           </div>
         )}
 
@@ -260,6 +296,8 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         )}
 
         {tab === "doc" && <DocParamsEditor api={api} set={set} />}
+
+        {tab === "code" && enableCodegen && <CodeTab api={api} baseUrl={baseUrl} defaultLang={codegenLang} />}
       </div>
     </div>
   );

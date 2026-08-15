@@ -2095,6 +2095,45 @@ body {
   word-break: break-all;
 }
 
+/* 请求代码生成页签 */
+.codegen-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.codegen-lang {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12.5px;
+  outline: none;
+  cursor: pointer;
+}
+.codegen-lang:focus {
+  border-color: var(--accent);
+}
+.codegen-area {
+  min-height: 260px;
+  line-height: 1.55;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  resize: vertical;
+}
+.codegen-lang-select {
+  height: 30px;
+  padding: 0 8px;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12.5px;
+  outline: none;
+}
+
 .env-var-table td:nth-child(2) input,
 .env-var-table td:nth-child(3) input {
   font-family: var(--font-mono);
