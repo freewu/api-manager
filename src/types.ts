@@ -121,7 +121,7 @@ export const defaultSettings = (): AppSettings => ({
   mockPort: 5050,
   syncRemote: true,
   enableCodegen: true,
-  codegenLang: "curl",
+  codegenLang: "bash",
 });
 
 export interface HttpRequestData {

@@ -131,7 +131,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         </div>
         {enableCodegen && (
           <div className={`tab ${tab === "code" ? "active" : ""}`} onClick={() => setTab("code")}>
-            代码
+            生成代码
           </div>
         )}
       </div>

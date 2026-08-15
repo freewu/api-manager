@@ -1,9 +1,9 @@
 import { ApiFile } from "../types";
 
-export type CodeLang = "curl" | "go" | "rust" | "java" | "python" | "javascript";
+export type CodeLang = "curl" | "bash" | "go" | "rust" | "java" | "python" | "javascript";
 
 export const CODE_LANGS: { value: CodeLang; label: string }[] = [
-  { value: "curl", label: "cURL" },
+  { value: "bash", label: "bash" },
   { value: "go", label: "Go" },
   { value: "rust", label: "Rust" },
   { value: "java", label: "Java" },
@@ -244,6 +244,7 @@ export function generateRequestCode(lang: CodeLang, api: ApiFile, baseUrl: strin
   const r = buildReq(api, baseUrl);
   switch (lang) {
     case "curl":
+    case "bash":
       return genCurl(r);
     case "go":
       return genGo(r);

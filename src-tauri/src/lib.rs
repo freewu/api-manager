@@ -499,7 +499,7 @@ impl Default for AppSettings {
             mock_port: 5050,
             sync_remote: true,
             enable_codegen: true,
-            codegen_lang: "curl".into(),
+            codegen_lang: "bash".into(),
         }
     }
 }

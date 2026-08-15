@@ -184,7 +184,7 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
                   />
                 </div>
                 <div className="settings-feature-desc">
-                  在编辑区显示「代码」页签，一键生成 curl / Go / Rust / Java / Python 等请求代码
+                  在编辑区显示「生成代码」页签，一键生成 curl / Go / Rust / Java / Python 等请求代码
                 </div>
                 {settings.enableCodegen && (
                   <div className="settings-row settings-port-row">
@@ -200,7 +200,7 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
                         </option>
                       ))}
                     </select>
-                    <span className="settings-desc-inline">打开「代码」页签时默认使用的语言</span>
+                    <span className="settings-desc-inline">打开「生成代码」页签时默认使用的语言</span>
                   </div>
                 )}
               </div>

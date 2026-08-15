@@ -2115,13 +2115,73 @@ body {
 .codegen-lang:focus {
   border-color: var(--accent);
 }
-.codegen-area {
-  min-height: 260px;
+.codegen-pre {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-height: 420px;
+  overflow: auto;
+  background: var(--bg-deep);
+}
+.codegen-pre .codegen-code {
+  display: block;
+  padding: 12px;
   line-height: 1.55;
   font-family: var(--font-mono);
   font-size: 12.5px;
-  resize: vertical;
+  white-space: pre;
+  user-select: text;
 }
+/* 浅色模式下覆盖 highlight.js github-dark 主题为浅色 token */
+:root[data-theme="light"] .codegen-code {
+  color: #24292e;
+  background: #ffffff;
+}
+:root[data-theme="light"] .codegen-code .hljs-comment,
+:root[data-theme="light"] .codegen-code .hljs-quote {
+  color: #6a737d;
+}
+:root[data-theme="light"] .codegen-code .hljs-keyword,
+:root[data-theme="light"] .codegen-code .hljs-selector-tag,
+:root[data-theme="light"] .codegen-code .hljs-subst {
+  color: #d73a49;
+}
+:root[data-theme="light"] .codegen-code .hljs-number,
+:root[data-theme="light"] .codegen-code .hljs-literal,
+:root[data-theme="light"] .codegen-code .hljs-variable,
+:root[data-theme="light"] .codegen-code .hljs-template-variable,
+:root[data-theme="light"] .codegen-code .hljs-tag .hljs-attr,
+:root[data-theme="light"] .codegen-code .hljs-built_in,
+:root[data-theme="light"] .codegen-code .hljs-builtin-name {
+  color: #005cc5;
+}
+:root[data-theme="light"] .codegen-code .hljs-string,
+:root[data-theme="light"] .codegen-code .hljs-doctag {
+  color: #032f62;
+}
+:root[data-theme="light"] .codegen-code .hljs-title,
+:root[data-theme="light"] .codegen-code .hljs-section,
+:root[data-theme="light"] .codegen-code .hljs-selector-id {
+  color: #6f42c1;
+}
+:root[data-theme="light"] .codegen-code .hljs-type,
+:root[data-theme="light"] .codegen-code .hljs-attr,
+:root[data-theme="light"] .codegen-code .hljs-attribute,
+:root[data-theme="light"] .codegen-code .hljs-name {
+  color: #22863a;
+}
+:root[data-theme="light"] .codegen-code .hljs-regexp,
+:root[data-theme="light"] .codegen-code .hljs-link {
+  color: #032f62;
+}
+:root[data-theme="light"] .codegen-code .hljs-symbol,
+:root[data-theme="light"] .codegen-code .hljs-bullet {
+  color: #e36209;
+}
+:root[data-theme="light"] .codegen-code .hljs-meta {
+  color: #6a737d;
+}
+
 .codegen-lang-select {
   height: 30px;
   padding: 0 8px;
