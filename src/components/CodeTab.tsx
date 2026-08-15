@@ -128,7 +128,7 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
         />
       </pre>
       <div className="codegen-hint">
-        代码自动跟随当前请求的 URL、Headers、Params、Path 与 Body；可在「设置 → 功能」中更改默认语言。
+        代码自动跟随当前请求的 URL、Headers、Query、Path 与 Body；可在「设置 → 功能」中更改默认语言。
       </div>
     </div>
   );

@@ -35,7 +35,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
     onTabChange?.(t);
   };
 
-  // 切换接口时回到 Params 页签
+  // 切换接口时回到 Query 页签
   useEffect(() => {
     setTab("params");
     onTabChange?.("params");
@@ -122,7 +122,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
 
       <div className="tabs">
         <div className={`tab ${tab === "params" ? "active" : ""}`} onClick={() => switchTab("params")}>
-          Params{enabledCount(api.query) > 0 && <span className="count">{enabledCount(api.query)}</span>}
+          Query{enabledCount(api.query) > 0 && <span className="count">{enabledCount(api.query)}</span>}
         </div>
         <div className={`tab ${tab === "path" ? "active" : ""}`} onClick={() => switchTab("path")}>
           Path{enabledCount(api.params) > 0 && <span className="count">{enabledCount(api.params)}</span>}
@@ -381,7 +381,7 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
   if (rows.length === 0) {
     return (
       <div style={{ color: "var(--text-faint)", fontSize: 12, padding: "6px 2px" }}>
-        暂无请求参数。可在 Params / Path / Body 页签中添加参数后，在这里补全类型与说明。
+        暂无请求参数。可在 Query / Path / Body 页签中添加参数后，在这里补全类型与说明。
       </div>
     );
   }
@@ -389,7 +389,7 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
   return (
     <div>
       <div className="section-title">
-        接口文档 <span className="help">自动汇总 Params / Path / Body 参数，补充类型与说明后随接口保存</span>
+        接口文档 <span className="help">自动汇总 Query / Path / Body 参数，补充类型与说明后随接口保存</span>
       </div>
       <table className="kv-table doc-params-table">
         <thead>
