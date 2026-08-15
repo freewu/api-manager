@@ -35,9 +35,9 @@ pub struct MockRunState {
 /// 系统托盘相关状态
 pub struct TrayState {
     /// 托盘菜单中“启动/停止 Mock”菜单项，用于动态更新文字
-    pub mock_item: Mutex<Option<tauri::menu::MenuItem<tauri::Wry>>>,
+    pub mock_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
     /// 托盘菜单中“环境变量”菜单项，显示当前环境名，点击可打开编辑器
-    pub env_item: Mutex<Option<tauri::menu::MenuItem<tauri::Wry>>>,
+    pub env_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
     /// 是否正在退出（退出时不拦截窗口关闭）
     pub exiting: AtomicBool,
 }
@@ -2856,7 +2856,7 @@ fn tray_toggle_mock(app: &AppHandle) {
 
 /// 创建系统托盘图标与菜单
 fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
-    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+    use tauri::menu::{IconMenuItem, Menu, PredefinedMenuItem};
     use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
     use tauri_plugin_opener::OpenerExt;
 
@@ -2866,21 +2866,59 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         exiting: AtomicBool::new(false),
     });
 
-    let version = MenuItem::with_id(
+    // 托盘菜单图标：由 gen-tray-icons.mjs 生成的 16x16 单色图标
+    let icon_info = tauri::image::Image::from_bytes(include_bytes!("../tray-icons/info.png"))?;
+    let icon_window =
+        tauri::image::Image::from_bytes(include_bytes!("../tray-icons/window.png"))?;
+    let icon_env = tauri::image::Image::from_bytes(include_bytes!("../tray-icons/env.png"))?;
+    let icon_mock = tauri::image::Image::from_bytes(include_bytes!("../tray-icons/mock.png"))?;
+    let icon_github =
+        tauri::image::Image::from_bytes(include_bytes!("../tray-icons/github.png"))?;
+    let icon_issue = tauri::image::Image::from_bytes(include_bytes!("../tray-icons/issue.png"))?;
+    let icon_quit = tauri::image::Image::from_bytes(include_bytes!("../tray-icons/quit.png"))?;
+
+    let version = IconMenuItem::with_id(
         app,
         "tray_version",
         format!("API Manager v{}", env!("CARGO_PKG_VERSION")),
         false,
+        Some(icon_info),
         None::<&str>,
     )?;
-    let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
-    let env_item =
-        MenuItem::with_id(app, "edit_env", "环境：未设置（点击编辑）", true, None::<&str>)?;
-    let toggle_mock =
-        MenuItem::with_id(app, "toggle_mock", "启动 Mock 服务", true, None::<&str>)?;
-    let github = MenuItem::with_id(app, "open_github", "GitHub 仓库", true, None::<&str>)?;
-    let issue = MenuItem::with_id(app, "open_issue", "提 Issue", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+    let show = IconMenuItem::with_id(app, "show", "显示窗口", true, Some(icon_window), None::<&str>)?;
+    let env_item = IconMenuItem::with_id(
+        app,
+        "edit_env",
+        "环境：未设置（点击编辑）",
+        true,
+        Some(icon_env),
+        None::<&str>,
+    )?;
+    let toggle_mock = IconMenuItem::with_id(
+        app,
+        "toggle_mock",
+        "启动 Mock 服务",
+        true,
+        Some(icon_mock),
+        None::<&str>,
+    )?;
+    let github = IconMenuItem::with_id(
+        app,
+        "open_github",
+        "GitHub 仓库",
+        true,
+        Some(icon_github),
+        None::<&str>,
+    )?;
+    let issue = IconMenuItem::with_id(
+        app,
+        "open_issue",
+        "提交 Issue",
+        true,
+        Some(icon_issue),
+        None::<&str>,
+    )?;
+    let quit = IconMenuItem::with_id(app, "quit", "退出", true, Some(icon_quit), None::<&str>)?;
     let menu = Menu::with_items(
         app,
         &[
