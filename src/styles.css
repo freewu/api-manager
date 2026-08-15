@@ -577,6 +577,7 @@ body {
   color: var(--text-faint);
   display: flex;
   justify-content: flex-start;
+  position: relative;
 }
 .icon-btn {
   width: 28px;
@@ -854,7 +855,7 @@ body {
 
 .desc-area {
   width: 100%;
-  min-height: 60px;
+  min-height: 180px;
   background: var(--bg-deep);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1963,9 +1964,9 @@ body {
   z-index: 190;
 }
 .import-menu {
-  position: fixed;
-  bottom: 52px;
-  right: 14px;
+  position: absolute;
+  bottom: 46px;
+  right: 10px;
   z-index: 200;
   min-width: 220px;
   background: var(--bg-panel);
