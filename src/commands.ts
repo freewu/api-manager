@@ -145,6 +145,11 @@ export function sendRequest(req: HttpRequestData): Promise<HttpResult> {
   return invoke<HttpResult>("send_request", { req });
 }
 
+/** 弹出系统文件选择框，返回文件路径（取消时返回 null） */
+export function pickFile(): Promise<string | null> {
+  return invoke<string | null>("pick_file");
+}
+
 // ---- 请求历史 ----
 
 export interface HistorySummary {

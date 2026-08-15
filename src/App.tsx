@@ -482,21 +482,26 @@ export default function App() {
         .join("&");
       if (qs) url += (url.includes("?") ? "&" : "?") + qs;
 
+      // 表单：含文件字段时走 multipart（req.form），否则拼 urlencoded body
+      const formRows = api.body.form.filter((f) => f.enabled && f.key);
       const body =
         api.body.mode === "form"
-          ? api.body.form
-              .filter((f) => f.enabled && f.key)
+          ? formRows
               .map((f) => `${encodeURIComponent(sub(f.key))}=${encodeURIComponent(sub(f.value))}`)
               .join("&")
           : api.body.mode === "raw" || api.body.mode === "json"
           ? sub(api.body.raw)
           : undefined;
+      const hasFile = api.body.mode === "form" && formRows.some((f) => f.isFile);
 
       const req: HttpRequestData = {
         method: api.method,
         url,
         headers,
-        body,
+        body: hasFile ? undefined : body,
+        form: hasFile
+          ? formRows.map((f) => ({ ...f, key: sub(f.key), value: sub(f.value) }))
+          : undefined,
         timeoutMs: 30000,
       };
       const res = await sendRequest(req);

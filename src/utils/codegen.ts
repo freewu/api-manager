@@ -28,6 +28,8 @@ interface Req {
   headers: { key: string; value: string }[];
   body: string;
   bodyKind: "none" | "json" | "text";
+  formText: { key: string; value: string }[];
+  files: { key: string; path: string }[];
 }
 
 function buildReq(api: ApiFile, baseUrl: string): Req {
@@ -48,6 +50,8 @@ function buildReq(api: ApiFile, baseUrl: string): Req {
     .map((h) => ({ key: h.key, value: h.value }));
   let body = "";
   let bodyKind: Req["bodyKind"] = "none";
+  let formText: Req["formText"] = [];
+  let files: Req["files"] = [];
   if (api.body.mode === "json") {
     body = api.body.raw.trim();
     if (body) bodyKind = "json";
@@ -56,19 +60,29 @@ function buildReq(api: ApiFile, baseUrl: string): Req {
     if (body.trim()) bodyKind = "text";
   } else if (api.body.mode === "form") {
     const f = api.body.form.filter((r) => r.enabled && r.key.trim());
-    if (f.length) {
-      body = f.map((r) => `${r.key}=${r.value}`).join("&");
+    const fileRows = f.filter((r) => r.isFile && r.value.trim());
+    const textRows = f.filter((r) => !r.isFile);
+    files = fileRows.map((r) => ({ key: r.key, path: r.value }));
+    formText = textRows.map((r) => ({ key: r.key, value: r.value }));
+    if (formText.length) {
+      body = formText.map((r) => `${r.key}=${r.value}`).join("&");
       bodyKind = "text";
     }
   }
-  return { method: api.method, url, headers, body, bodyKind };
+  return { method: api.method, url, headers, body, bodyKind, formText, files };
 }
 
 function genCurl(r: Req): string {
   const q = (s: string) => `'${s.replace(/'/g, "'\\''")}'`;
   const parts = [`curl -X ${r.method} ${q(r.url)}`];
   for (const h of r.headers) parts.push(`-H ${q(`${h.key}: ${h.value}`)}`);
-  if (r.body) parts.push(`--data-raw ${q(r.body)}`);
+  if (r.files.length) {
+    // multipart：文本字段用 -F key=value，文件字段用 -F key=@路径
+    for (const t of r.formText) parts.push(`-F ${q(`${t.key}=${t.value}`)}`);
+    for (const f of r.files) parts.push(`-F ${q(`${f.key}=@${f.path}`)}`);
+  } else if (r.body) {
+    parts.push(`--data-raw ${q(r.body)}`);
+  }
   return parts.map((p, i) => (i < parts.length - 1 ? p + " \\" : p)).join("\n");
 }
 
@@ -88,15 +102,29 @@ function genPython(r: Req): string {
     out.push("");
     out.push(`payload = """${esc(r.body, '"')}"""`);
   }
+  if (r.files.length) {
+    out.push("");
+    if (r.formText.length) {
+      out.push("data = {");
+      for (const t of r.formText) out.push(`    "${esc(t.key, '"')}": "${esc(t.value, '"')}",`);
+      out.push("}");
+    }
+    out.push("files = {");
+    for (const f of r.files) out.push(`    "${esc(f.key, '"')}": open("${esc(f.path, '"')}", "rb"),`);
+    out.push("}");
+  }
   out.push("");
   const m = r.method.toLowerCase();
-  if (r.bodyKind === "json") {
-    out.push(`response = requests.${m}(url, headers=headers, json=json.loads(payload))`);
-  } else if (r.bodyKind === "text") {
-    out.push(`response = requests.${m}(url, headers=headers, data=payload)`);
-  } else {
-    out.push(`response = requests.${m}(url, headers=headers)`);
+  const args: string[] = [];
+  if (r.headers.length) args.push("headers=headers");
+  if (r.bodyKind === "json") args.push("json=json.loads(payload)");
+  else if (r.bodyKind === "text") args.push("data=payload");
+  if (r.files.length) args.push("files=files");
+  if (r.files.length && r.formText.length) {
+    // 用 data 字典而不是 urlencoded payload
+    args.splice(args.indexOf("data=payload"), 1, "data=data");
   }
+  out.push(`response = requests.${m}(url${args.length ? ", " + args.join(", ") : ""})`);
   out.push("");
   out.push("print(response.status_code)");
   out.push("print(response.text)");
@@ -105,6 +133,9 @@ function genPython(r: Req): string {
 
 function genGo(r: Req): string {
   const out: string[] = [];
+  if (r.files.length) {
+    out.push("// 该表单包含文件上传（multipart/form-data），Go 请使用 mime/multipart 构造请求");
+  }
   out.push("package main");
   out.push("");
   out.push("import (");
@@ -158,6 +189,9 @@ function rustRaw(s: string): string {
 
 function genRust(r: Req): string {
   const out: string[] = [];
+  if (r.files.length) {
+    out.push("// 该表单包含文件上传（multipart/form-data），Rust 请使用 reqwest::multipart 构造请求");
+  }
   out.push("use reqwest;");
   out.push("");
   out.push("#[tokio::main]");
@@ -184,6 +218,9 @@ function genRust(r: Req): string {
 
 function genJava(r: Req): string {
   const out: string[] = [];
+  if (r.files.length) {
+    out.push("// 该表单包含文件上传（multipart/form-data），Java 请使用 MultipartBody.Builder 构造请求");
+  }
   out.push("import java.net.URI;");
   out.push("import java.net.http.HttpClient;");
   out.push("import java.net.http.HttpRequest;");
@@ -214,6 +251,9 @@ function genJava(r: Req): string {
 
 function genJavaScript(r: Req): string {
   const out: string[] = [];
+  if (r.files.length) {
+    out.push("// 该表单包含文件上传（multipart/form-data），浏览器环境请使用 FormData");
+  }
   out.push(`const url = "${esc(r.url, '"')}";`);
   out.push("");
   if (r.headers.length) {

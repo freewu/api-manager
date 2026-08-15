@@ -201,12 +201,18 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               <div style={{ color: "var(--text-faint)", fontSize: 12 }}>该请求没有请求体</div>
             )}
             {api.body.mode === "form" && (
-              <KeyValueEditor
-                rows={api.body.form}
-                onChange={(rows) => set({ body: { ...api.body, form: rows } })}
-                keyPlaceholder="字段名"
-                valuePlaceholder="值"
-              />
+              <>
+                <KeyValueEditor
+                  rows={api.body.form}
+                  onChange={(rows) => set({ body: { ...api.body, form: rows } })}
+                  keyPlaceholder="字段名"
+                  valuePlaceholder={undefined}
+                  showFileType
+                />
+                <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 6 }}>
+                  字段类型选择「文件」后可点击选择本地文件，发送时自动使用 multipart/form-data 上传。
+                </div>
+              </>
             )}
             {(api.body.mode === "raw" || api.body.mode === "json") && (
               <textarea

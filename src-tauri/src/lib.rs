@@ -83,6 +83,9 @@ pub struct KeyValue {
     pub enabled: bool,
     #[serde(default)]
     pub description: String,
+    /// 是否文件字段（表单上传用，value 为文件路径）
+    #[serde(default)]
+    pub is_file: bool,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -224,6 +227,9 @@ pub struct HttpRequestData {
     pub headers: Vec<KeyValue>,
     #[serde(default)]
     pub body: Option<String>,
+    /// 表单字段（含文件字段 isFile=true，值为文件路径），存在时按 multipart/form-data 发送
+    #[serde(default)]
+    pub form: Option<Vec<KeyValue>>,
     #[serde(default = "default_timeout")]
     pub timeout_ms: u64,
 }
@@ -1035,6 +1041,7 @@ fn postman_request_to_api(name: &str, request: &Value) -> Result<ApiFile, String
                 key,
                 value: h.get("value").and_then(|v| v.as_str()).unwrap_or("").to_string(),
                 enabled: !h.get("disabled").and_then(|v| v.as_bool()).unwrap_or(false),
+                is_file: false,
                 description: String::new(),
             });
         }
@@ -1060,6 +1067,7 @@ fn postman_request_to_api(name: &str, request: &Value) -> Result<ApiFile, String
                     .unwrap_or("")
                     .to_string(),
                 enabled: !q.get("disabled").and_then(|v| v.as_bool()).unwrap_or(false),
+                is_file: false,
                 description: String::new(),
             });
         }
@@ -1112,6 +1120,7 @@ fn postman_path_info(url: &Value) -> (String, Vec<KeyValue>) {
                         key: var.to_string(),
                         value: String::new(),
                         enabled: true,
+                        is_file: false,
                         description: String::new(),
                     });
                     return format!("{{{var}}}");
@@ -1164,6 +1173,8 @@ fn postman_body(body: Option<&Value>) -> BodyData {
                     if key.is_empty() {
                         continue;
                     }
+                    // Postman formdata 可带 type: file 表示文件字段
+                    let is_file = f.get("type").and_then(|v| v.as_str()).unwrap_or("") == "file";
                     out.form.push(KeyValue {
                         key,
                         value: f
@@ -1172,6 +1183,7 @@ fn postman_body(body: Option<&Value>) -> BodyData {
                             .unwrap_or("")
                             .to_string(),
                         enabled: !f.get("disabled").and_then(|v| v.as_bool()).unwrap_or(false),
+                        is_file,
                         description: String::new(),
                     });
                 }
@@ -1401,18 +1413,21 @@ fn openapi_op_to_api(
                 key,
                 value,
                 enabled: true,
+                is_file: false,
                 description: desc,
             }),
             "query" => query.push(KeyValue {
                 key,
                 value,
                 enabled: true,
+                is_file: false,
                 description: desc,
             }),
             "path" => params.push(KeyValue {
                 key,
                 value,
                 enabled: true,
+                is_file: false,
                 description: desc,
             }),
             _ => {}
@@ -2006,6 +2021,15 @@ fn decode_body(bytes: &[u8], headers: &[(String, String)]) -> String {
 }
 
 #[tauri::command]
+fn pick_file(app: AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app.dialog().file().blocking_pick_file();
+    Ok(picked
+        .and_then(|p| p.into_path().ok())
+        .map(|p| p.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
 async fn send_request(req: HttpRequestData) -> Result<HttpResult, String> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_millis(req.timeout_ms.max(1000)))
@@ -2021,7 +2045,34 @@ async fn send_request(req: HttpRequestData) -> Result<HttpResult, String> {
     for h in req.headers.iter().filter(|h| h.enabled && !h.key.trim().is_empty()) {
         rb = rb.header(h.key.trim(), h.value.trim());
     }
-    if let Some(body) = &req.body {
+    // 表单（含文件字段）：multipart/form-data；否则按原始 body 发送
+    if let Some(form) = &req.form {
+        if !form.is_empty() {
+            let mut mp = reqwest::multipart::Form::new();
+            for f in form.iter().filter(|f| f.enabled && !f.key.trim().is_empty()) {
+                if f.is_file {
+                    let path = f.value.trim();
+                    if path.is_empty() {
+                        return Err(format!("表单文件字段 [{}] 未选择文件", f.key.trim()));
+                    }
+                    let bytes = tokio::fs::read(path)
+                        .await
+                        .map_err(|e| format!("读取文件失败 [{}]: {e}", path))?;
+                    let fname = std::path::Path::new(path)
+                        .file_name()
+                        .map(|s| s.to_string_lossy().to_string())
+                        .unwrap_or_else(|| "file".to_string());
+                    mp = mp.part(
+                        f.key.trim().to_string(),
+                        reqwest::multipart::Part::bytes(bytes).file_name(fname),
+                    );
+                } else {
+                    mp = mp.text(f.key.trim().to_string(), f.value.clone());
+                }
+            }
+            rb = rb.multipart(mp);
+        }
+    } else if let Some(body) = &req.body {
         if !body.is_empty() {
             let has_ct = req
                 .headers
@@ -2656,6 +2707,7 @@ pub fn run() {
             update_tray_env,
             get_app_version,
             send_request,
+            pick_file,
             save_history,
             history_records,
             history_detail,
@@ -2724,6 +2776,7 @@ mod tests {
             url: format!("http://{addr}/api/users/1001?page=1"),
             headers: vec![],
             body: None,
+            form: None,
             timeout_ms: 5000,
         };
         let res = send_request(req).await.unwrap();
@@ -2737,6 +2790,71 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_send_request_multipart_file() {
+        use axum::extract::Multipart;
+        use axum::response::IntoResponse;
+
+        async fn upload(mut mp: Multipart) -> impl IntoResponse {
+            let mut text = String::new();
+            let mut files = Vec::new();
+            while let Some(field) = mp.next_field().await.unwrap() {
+                let name = field.name().unwrap_or("").to_string();
+                let data = field.bytes().await.unwrap();
+                if name == "file" {
+                    files.push(String::from_utf8_lossy(&data).to_string());
+                } else {
+                    text.push_str(&format!("{name}={}", String::from_utf8_lossy(&data)));
+                }
+            }
+            format!("text:{text};files:{}", files.join(","))
+        }
+
+        let app = axum::Router::new().route("/upload", axum::routing::post(upload));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+
+        // 准备一个待上传的临时文件
+        let file = std::env::temp_dir().join(format!("upload-test-{}.txt", std::process::id()));
+        fs::write(&file, "hello-multipart").unwrap();
+
+        let req = HttpRequestData {
+            method: "POST".into(),
+            url: format!("http://{addr}/upload"),
+            headers: vec![],
+            body: None,
+            form: Some(vec![
+                KeyValue {
+                    key: "name".into(),
+                    value: "张三".into(),
+                    enabled: true,
+                    is_file: false,
+                    description: String::new(),
+                },
+                KeyValue {
+                    key: "file".into(),
+                    value: file.to_string_lossy().to_string(),
+                    enabled: true,
+                    is_file: true,
+                    description: String::new(),
+                },
+            ]),
+            timeout_ms: 5000,
+        };
+        let res = send_request(req).await.unwrap();
+        server.abort();
+        let _ = server.await;
+        let _ = fs::remove_file(&file);
+
+        assert!(res.ok, "multipart 请求应成功: {:?}", res.error);
+        assert_eq!(res.status, 200);
+        assert!(res.body.contains("name=张三"), "应包含文本字段: {}", res.body);
+        assert!(res.body.contains("hello-multipart"), "应包含文件内容: {}", res.body);
+    }
+
+    #[tokio::test]
     async fn test_send_request_bad_url() {
         // 未替换的 {{变量}} 会产生 reqwest builder error，应给出中文提示而不是裸的 builder error
         for url in ["http://{{host}}:8080/api", "127.0.0.1:8080/api"] {
@@ -2745,6 +2863,7 @@ mod tests {
                 url: url.to_string(),
                 headers: vec![],
                 body: None,
+                form: None,
                 timeout_ms: 3000,
             };
             let res = send_request(req).await.unwrap();
@@ -2768,6 +2887,7 @@ mod tests {
             url: format!("http://{addr}/"),
             headers: vec![],
             body: None,
+            form: None,
             timeout_ms: 3000,
         };
         let res = send_request(req).await.unwrap();

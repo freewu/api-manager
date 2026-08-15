@@ -5,6 +5,8 @@ export interface KeyValue {
   value: string;
   enabled: boolean;
   description: string;
+  /** 是否文件字段（表单上传用，value 为文件路径） */
+  isFile?: boolean;
 }
 
 export interface BodyData {
@@ -129,6 +131,8 @@ export interface HttpRequestData {
   url: string;
   headers: KeyValue[];
   body?: string;
+  /** 表单字段（含文件字段 isFile=true，值为文件路径），存在时按 multipart/form-data 发送 */
+  form?: KeyValue[] | null;
   timeoutMs: number;
 }
 
