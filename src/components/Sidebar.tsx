@@ -21,6 +21,10 @@ interface Props {
   onStats?: (node: TreeNode) => void;
   onOpenSettings?: () => void;
   onImportPostman?: () => void;
+  /** 工作目录版本控制类型（.git / .svn），为空时不显示同步/提交按钮 */
+  vcs?: "git" | "svn" | null;
+  onVcsSync?: () => void;
+  onVcsCommitPush?: () => void;
   onMove: (srcPath: string, dstDir: string) => Promise<void>;
   enableVersion: boolean;
   // 请求历史列表数据（由 App 通过 useHistory 提供）
@@ -289,7 +293,7 @@ function NodeRow({
 }
 
 export function Sidebar(props: Props) {
-  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions, onStats, onOpenSettings, view, onSwitchView, onImportPostman, enableVersion } = props;
+  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions, onStats, onOpenSettings, view, onSwitchView, onImportPostman, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
   const [filter, setFilter] = useState("");
   const [menu, setMenu] = useState<CtxMenu | null>(null);
   const [bgMenu, setBgMenu] = useState<{ x: number; y: number } | null>(null);
@@ -457,6 +461,30 @@ export function Sidebar(props: Props) {
             <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
           </svg>
         </button>
+        {vcs && (
+          <>
+            <button
+              className="icon-btn"
+              onClick={onVcsSync}
+              title={`同步${vcs === "git" ? "（git pull）" : "（svn update）"}`}
+              aria-label="同步"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+              </svg>
+            </button>
+            <button
+              className="icon-btn"
+              onClick={onVcsCommitPush}
+              title="提交并 Push 远程（未开启同步远程时仅本地提交）"
+              aria-label="提交并 Push 远程"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M5 20h14v-2H5v2zM12 4l-6 6h4v5h4v-5h4l-6-6z" />
+              </svg>
+            </button>
+          </>
+        )}
         <button className="icon-btn" onClick={onOpenSettings} title="设置" aria-label="设置">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
             <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />

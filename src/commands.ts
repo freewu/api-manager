@@ -27,6 +27,24 @@ export function createDemo(): Promise<void> {
   return invoke<void>("create_demo");
 }
 
+export interface VcsInfo {
+  vcs: "git" | "svn" | null;
+}
+
+export function vcsInfo(): Promise<VcsInfo> {
+  return invoke<VcsInfo>("vcs_info");
+}
+
+/** 同步（git pull / svn update）；remote=false 时仅 git fetch */
+export function vcsSync(remote: boolean): Promise<string> {
+  return invoke<string>("vcs_sync", { remote });
+}
+
+/** 提交并推送远程；remote=false 时只提交不推送 */
+export function vcsCommitPush(remote: boolean): Promise<string> {
+  return invoke<string>("vcs_commit_push", { remote });
+}
+
 export interface PostmanImportResult {
   folder: string;
   env: string;

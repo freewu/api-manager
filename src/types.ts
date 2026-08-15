@@ -100,6 +100,7 @@ export interface AppSettings {
   enableVersion: boolean;
   enableMock: boolean;
   mockPort: number;
+  syncRemote: boolean;
 }
 
 export const defaultSettings = (): AppSettings => ({
@@ -107,6 +108,7 @@ export const defaultSettings = (): AppSettings => ({
   enableVersion: true,
   enableMock: true,
   mockPort: 5050,
+  syncRemote: true,
 });
 
 export interface HttpRequestData {

@@ -30,6 +30,9 @@ import {
   sendRequest,
   saveHistory,
   updateTrayEnv,
+  vcsCommitPush,
+  vcsInfo,
+  vcsSync,
   workspaceIsEmpty,
 } from "./commands";
 import { Editor } from "./components/Editor";
@@ -85,6 +88,7 @@ export default function App() {
   const [response, setResponse] = useState<HttpResult | null>(null);
   const [sending, setSending] = useState(false);
   const [mock, setMock] = useState<MockStatus>({ running: false, routeCount: 0 });
+  const [vcs, setVcs] = useState<"git" | "svn" | null>(null);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [modalText, setModalText] = useState("");
   const [infoForm, setInfoForm] = useState<InfoForm>(emptyInfoForm());
@@ -198,6 +202,8 @@ export default function App() {
     const envData = e || emptyEnv();
     setEnvs(envData);
     updateTrayEnv(envData.active || "").catch(() => {});
+    // 检测工作目录版本控制（.git / .svn）
+    vcsInfo().then((r) => setVcs(r.vcs)).catch(() => setVcs(null));
     // 自动选中第一个接口
     const first = findFirstApi(t);
     if (first) {
@@ -312,6 +318,29 @@ export default function App() {
       }
     } catch (e) {
       showToast("导入失败: " + e);
+    }
+  };
+
+  /** 同步（git pull / svn update） */
+  const handleVcsSync = async () => {
+    if (!vcs) return showToast("当前工作目录不是 Git / SVN 仓库");
+    if (!settings.syncRemote) return showToast("未开启「同步远程」，请在设置中开启");
+    try {
+      const out = await vcsSync(settings.syncRemote);
+      showToast(out.split("\n")[0] || "同步完成");
+    } catch (e) {
+      showToast("同步失败: " + e);
+    }
+  };
+
+  /** 提交并 Push 远程（未开启同步远程时只提交） */
+  const handleVcsCommitPush = async () => {
+    if (!vcs) return showToast("当前工作目录不是 Git / SVN 仓库");
+    try {
+      const out = await vcsCommitPush(settings.syncRemote);
+      showToast(out.split("\n")[0] || "提交完成");
+    } catch (e) {
+      showToast("提交失败: " + e);
     }
   };
 
@@ -810,6 +839,9 @@ export default function App() {
           onStats={setStatsNode}
           onOpenSettings={() => setSettingsOpen(true)}
           onImportPostman={() => void handleImportPostman()}
+          vcs={vcs}
+          onVcsSync={() => void handleVcsSync()}
+          onVcsCommitPush={() => void handleVcsCommitPush()}
           onMove={handleMove}
           enableVersion={settings.enableVersion}
           historyRecords={history.records}
@@ -930,6 +962,7 @@ export default function App() {
         <SettingsModal
           settings={settings}
           appVersion={version}
+          vcs={vcs}
           onClose={() => setSettingsOpen(false)}
           onSave={handleSaveSettings}
         />

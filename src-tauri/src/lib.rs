@@ -458,6 +458,8 @@ pub struct AppSettings {
     pub enable_mock: bool,
     /// Mock 服务默认端口
     pub mock_port: u32,
+    /// 是否同步远程（工作目录为 Git/SVN 仓库时显示同步与提交按钮）
+    pub sync_remote: bool,
 }
 
 impl Default for AppSettings {
@@ -467,6 +469,7 @@ impl Default for AppSettings {
             enable_version: true,
             enable_mock: true,
             mock_port: 5050,
+            sync_remote: true,
         }
     }
 }
@@ -501,6 +504,119 @@ fn save_settings(app: AppHandle, settings: AppSettings) -> Result<(), String> {
 }
 
 // ==================== 工作区命令 ====================
+
+/// 工作区版本控制信息（检测 .git / .svn）
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VcsInfo {
+    /// "git" | "svn" | null
+    pub vcs: Option<String>,
+}
+
+/// 检测工作区根目录使用的版本控制系统
+fn detect_vcs(root: &Path) -> Option<String> {
+    if root.join(".git").exists() {
+        Some("git".into())
+    } else if root.join(".svn").exists() {
+        Some("svn".into())
+    } else {
+        None
+    }
+}
+
+#[tauri::command]
+fn vcs_info(state: State<'_, WorkspaceState>) -> Result<VcsInfo, String> {
+    let root = workspace_root(&state)?;
+    Ok(VcsInfo {
+        vcs: detect_vcs(&root),
+    })
+}
+
+/// 执行外部命令，合并 stdout/stderr；退出码非 0 时返回错误信息
+fn run_cmd(cmd: &str, args: &[&str], cwd: &Path) -> Result<String, String> {
+    let out = std::process::Command::new(cmd)
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .map_err(|e| {
+            format!("执行 {cmd} 失败（请确认已安装 {cmd} 并加入 PATH）: {e}")
+        })?;
+    let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+    let combined = match (stdout.is_empty(), stderr.is_empty()) {
+        (true, true) => String::new(),
+        (false, true) => stdout,
+        (true, false) => stderr,
+        (false, false) => format!("{stdout}\n{stderr}"),
+    };
+    if !out.status.success() {
+        return Err(if combined.is_empty() {
+            format!("{cmd} 执行失败（退出码 {:?}）", out.status.code())
+        } else {
+            combined
+        });
+    }
+    Ok(combined)
+}
+
+fn now_stamp() -> String {
+    chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
+}
+
+/// 同步：git pull / svn update；remote=false 时仅 git fetch（不触碰工作区）
+#[tauri::command]
+fn vcs_sync(state: State<'_, WorkspaceState>, remote: bool) -> Result<String, String> {
+    let root = workspace_root(&state)?;
+    match detect_vcs(&root).as_deref() {
+        Some("git") => {
+            if remote {
+                run_cmd("git", &["pull"], &root)
+            } else {
+                run_cmd("git", &["fetch"], &root)
+            }
+        }
+        Some("svn") => run_cmd("svn", &["update"], &root),
+        _ => Err("当前工作目录不是 Git / SVN 仓库".into()),
+    }
+}
+
+/// 提交并推送远程：git add -A + commit + push / svn add + commit；remote=false 时只提交不推送
+#[tauri::command]
+fn vcs_commit_push(state: State<'_, WorkspaceState>, remote: bool) -> Result<String, String> {
+    let root = workspace_root(&state)?;
+    let msg = format!("接口文档更新 {}", now_stamp());
+    match detect_vcs(&root).as_deref() {
+        Some("git") => {
+            run_cmd("git", &["add", "-A"], &root)?;
+            match run_cmd("git", &["commit", "-m", &msg], &root) {
+                Ok(out) => {
+                    if remote {
+                        let push = run_cmd("git", &["push"], &root)?;
+                        Ok(format!("{out}\n{push}"))
+                    } else {
+                        Ok(format!("{out}\n（未开启同步远程，已跳过 push）"))
+                    }
+                }
+                Err(e) => {
+                    // 没有改动时视为成功
+                    if e.contains("nothing to commit")
+                        || e.contains("no changes added")
+                        || e.contains("没有要提交的内容")
+                    {
+                        Ok("没有需要提交的变更".into())
+                    } else {
+                        Err(e)
+                    }
+                }
+            }
+        }
+        Some("svn") => {
+            run_cmd("svn", &["add", "--force", "."], &root)?;
+            run_cmd("svn", &["commit", "-m", &msg], &root)
+        }
+        _ => Err("当前工作目录不是 Git / SVN 仓库".into()),
+    }
+}
 
 #[tauri::command]
 fn get_workspace(state: State<'_, WorkspaceState>) -> Option<String> {
@@ -2104,6 +2220,9 @@ pub fn run() {
             workspace_is_empty,
             create_demo,
             import_postman,
+            vcs_info,
+            vcs_sync,
+            vcs_commit_push,
             read_tree,
             read_api,
             save_api,
@@ -2464,6 +2583,26 @@ mod tests {
             !sub.join(".version").exists(),
             "版本目录不应出现在接口所在子目录中"
         );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_detect_vcs() {
+        // 检测 .git / .svn；都没有则返回 None
+        let root = std::env::temp_dir().join(format!("vcs-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+
+        assert_eq!(detect_vcs(&root), None);
+        fs::create_dir_all(root.join(".git")).unwrap();
+        assert_eq!(detect_vcs(&root).as_deref(), Some("git"));
+        fs::remove_dir_all(root.join(".git")).unwrap();
+        fs::create_dir_all(root.join(".svn")).unwrap();
+        assert_eq!(detect_vcs(&root).as_deref(), Some("svn"));
+        // .git 优先于 .svn
+        fs::create_dir_all(root.join(".git")).unwrap();
+        assert_eq!(detect_vcs(&root).as_deref(), Some("git"));
+
         let _ = fs::remove_dir_all(&root);
     }
 

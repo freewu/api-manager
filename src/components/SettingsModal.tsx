@@ -6,6 +6,8 @@ import { openExternal } from "../commands";
 interface Props {
   settings: AppSettings;
   appVersion: string;
+  /** 工作目录版本控制类型（.git / .svn），为空时不显示「同步远程」设置 */
+  vcs?: "git" | "svn" | null;
   onClose: () => void;
   onSave: (s: AppSettings) => void;
 }
@@ -48,7 +50,7 @@ function LinkRow({ icon, title, desc, url }: { icon: string; title: string; desc
   );
 }
 
-export function SettingsModal({ settings, appVersion, onClose, onSave }: Props) {
+export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Props) {
   const [tab, setTab] = useState<"appearance" | "features" | "about">("appearance");
 
   const patch = (p: Partial<AppSettings>) => onSave({ ...settings, ...p });
@@ -172,6 +174,23 @@ export function SettingsModal({ settings, appVersion, onClose, onSave }: Props) 
                   <span className="settings-desc-inline">默认 5050</span>
                 </div>
               </div>
+              {vcs && (
+                <div className="settings-feature">
+                  <div className="settings-feature-head">
+                    <span className="settings-feature-name">
+                      同步远程（{vcs === "git" ? "Git" : "SVN"}）
+                    </span>
+                    <Switch
+                      checked={settings.syncRemote}
+                      onChange={(v) => patch({ syncRemote: v })}
+                    />
+                  </div>
+                  <div className="settings-feature-desc">
+                    已检测到工作目录 {vcs === "git" ? ".git" : ".svn"}。开启后「同步」「提交并
+                    Push 远程」按钮会与远程仓库交互（git pull / push、svn update / commit）；关闭后仅本地提交，不同步远程。
+                  </div>
+                </div>
+              )}
             </>
           )}
 
