@@ -16,7 +16,7 @@ interface Props {
   style?: React.CSSProperties;
   /** 失焦后自动保存（接口说明 textarea blur 时触发） */
   onCommit?: () => void;
-  /** 是否启用请求代码生成（显示「代码」页签） */
+  /** 是否启用代码生成（显示「代码」页签） */
   enableCodegen?: boolean;
   /** 代码生成默认语言（bash / python / c / cpp / java / csharp / ...） */
   codegenLang?: string;
@@ -293,7 +293,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         )}
 
         {tab === "desc" && (
-          <div>
+          <div className="desc-root">
             <div className="section-title">接口说明</div>
             <textarea
               className="desc-area"
@@ -303,7 +303,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               onBlur={onCommit}
               spellCheck={false}
             />
-            <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 8 }}>
+            <div className="desc-hint">
               提示：接口名称 / 路径可在左侧右键「重命名」或顶部 URL 输入框中修改；说明文字失焦后自动保存。
             </div>
           </div>

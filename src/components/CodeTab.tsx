@@ -104,7 +104,7 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
   return (
     <div className="codegen-root">
       <div className="section-title codegen-head">
-        <span>请求代码生成</span>
+        <span>代码生成</span>
         <select
           className="codegen-lang"
           value={lang}

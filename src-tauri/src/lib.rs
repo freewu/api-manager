@@ -482,7 +482,7 @@ fn ensure_inside_workspace(root: &Path, target: &Path) -> Result<(), String> {
 pub struct AppSettings {
     /// "dark" | "light" | "system"（跟随系统）
     pub display_mode: String,
-    /// 是否启用接口版本管理（主页面显示「保存」与「查看版本信息」）
+    /// 是否启用接口版本（主页面显示「保存」与「查看版本信息」）
     pub enable_version: bool,
     /// 是否启用 Mock 功能（主页面显示 Mock 开关）
     pub enable_mock: bool,
@@ -490,9 +490,9 @@ pub struct AppSettings {
     pub mock_port: u32,
     /// 是否同步远程（工作目录为 Git/SVN 仓库时显示同步与提交按钮）
     pub sync_remote: bool,
-    /// 是否启用请求代码生成（编辑区显示「代码」页签）
+    /// 是否启用代码生成（编辑区显示「代码」页签）
     pub enable_codegen: bool,
-    /// 代码生成默认开发语言（curl / go / rust / java / python / javascript）
+    /// 代码生成默认开发语言（bash / python / c / cpp / java / csharp / ...）
     pub codegen_lang: String,
 }
 

@@ -137,7 +137,7 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
               <div className="settings-panel-title">功能</div>
               <div className="settings-feature">
                 <div className="settings-feature-head">
-                  <span className="settings-feature-name">接口版本管理</span>
+                  <span className="settings-feature-name">接口版本</span>
                   <Switch
                     checked={settings.enableVersion}
                     onChange={(v) => patch({ enableVersion: v })}
@@ -177,7 +177,7 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
               </div>
               <div className="settings-feature">
                 <div className="settings-feature-head">
-                  <span className="settings-feature-name">请求代码生成</span>
+                  <span className="settings-feature-name">代码生成</span>
                   <Switch
                     checked={settings.enableCodegen}
                     onChange={(v) => patch({ enableCodegen: v })}
