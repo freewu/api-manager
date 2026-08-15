@@ -1955,6 +1955,55 @@ body {
 .node-ctx-menu {
   min-width: 170px;
 }
+
+/* 左下角导入按钮的弹出菜单（Postman / OpenAPI） */
+.menu-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 190;
+}
+.import-menu {
+  position: fixed;
+  bottom: 52px;
+  right: 14px;
+  z-index: 200;
+  min-width: 220px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: menu-in 0.12s ease;
+}
+.import-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+}
+.import-menu button:hover {
+  background: var(--bg-hover);
+}
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 .env-ctx-menu button,
 .node-ctx-menu button {
   display: flex;

@@ -21,6 +21,7 @@ interface Props {
   onStats?: (node: TreeNode) => void;
   onOpenSettings?: () => void;
   onImportPostman?: () => void;
+  onImportOpenApi?: () => void;
   /** 工作目录版本控制类型（.git / .svn），为空时不显示同步/提交按钮 */
   vcs?: "git" | "svn" | null;
   onVcsSync?: () => void;
@@ -293,7 +294,8 @@ function NodeRow({
 }
 
 export function Sidebar(props: Props) {
-  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions, onStats, onOpenSettings, view, onSwitchView, onImportPostman, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
+  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions, onStats, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
+  const [importMenu, setImportMenu] = useState(false);
   const [filter, setFilter] = useState("");
   const [menu, setMenu] = useState<CtxMenu | null>(null);
   const [bgMenu, setBgMenu] = useState<{ x: number; y: number } | null>(null);
@@ -491,16 +493,41 @@ export function Sidebar(props: Props) {
           </svg>
         </button>
         {onImportPostman && (
-          <button
-            className="icon-btn import-btn"
-            onClick={onImportPostman}
-            title="导入 Postman Collection（自动新建分组）"
-            aria-label="导入 Postman"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-              <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
-            </svg>
-          </button>
+          <>
+            <button
+              className="icon-btn import-btn"
+              onClick={() => setImportMenu(!importMenu)}
+              title="导入（Postman Collection / OpenAPI Swagger）"
+              aria-label="导入"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+              </svg>
+            </button>
+            {importMenu && (
+              <>
+                <div className="menu-mask" onClick={() => setImportMenu(false)} />
+                <div className="import-menu">
+                  <button
+                    onClick={() => {
+                      setImportMenu(false);
+                      onImportPostman();
+                    }}
+                  >
+                    📦 Postman Collection
+                  </button>
+                  <button
+                    onClick={() => {
+                      setImportMenu(false);
+                      onImportOpenApi?.();
+                    }}
+                  >
+                    📖 OpenAPI / Swagger JSON
+                  </button>
+                </div>
+              </>
+            )}
+          </>
         )}
       </div>
 

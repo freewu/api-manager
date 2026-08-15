@@ -60,6 +60,15 @@ export function importPostman(): Promise<PostmanImportResult | null> {
   return invoke<PostmanImportResult | null>("import_postman");
 }
 
+export interface OpenApiImportResult {
+  folder: string;
+  count: number;
+}
+
+export function importOpenApi(): Promise<OpenApiImportResult | null> {
+  return invoke<OpenApiImportResult | null>("import_openapi");
+}
+
 export function readTree(): Promise<TreeNode> {
   return invoke<TreeNode>("read_tree");
 }

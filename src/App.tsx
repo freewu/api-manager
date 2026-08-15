@@ -8,6 +8,7 @@ import {
   deleteEntry,
   getAppVersion,
   getWorkspace,
+  importOpenApi,
   importPostman,
   listVersions,
   loadSettings,
@@ -336,6 +337,18 @@ export default function App() {
       } else {
         showToast("已导入 Postman Collection");
       }
+    } catch (e) {
+      showToast("导入失败: " + e);
+    }
+  };
+
+  /** 导入 OpenAPI (Swagger) 规范：自动新建分组并导入全部接口 */
+  const handleImportOpenApi = async () => {
+    try {
+      const result = await importOpenApi();
+      if (!result) return; // 用户取消
+      await loadAll(workspace!);
+      showToast(`已导入 OpenAPI 规范：${result.count} 个接口`);
     } catch (e) {
       showToast("导入失败: " + e);
     }
@@ -858,6 +871,7 @@ export default function App() {
           onStats={setStatsNode}
           onOpenSettings={() => setSettingsOpen(true)}
           onImportPostman={() => void handleImportPostman()}
+          onImportOpenApi={() => void handleImportOpenApi()}
           vcs={null} // 同步远程功能暂时隐藏（后端命令保留，恢复时改回 vcs && settings.syncRemote ? vcs : null）
           onVcsSync={() => void handleVcsSync()}
           onVcsCommitPush={() => void handleVcsCommitPush()}
