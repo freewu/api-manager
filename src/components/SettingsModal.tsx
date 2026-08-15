@@ -52,7 +52,9 @@ function LinkRow({ icon, title, desc, url }: { icon: string; title: string; desc
 }
 
 export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Props) {
-  const [tab, setTab] = useState<"appearance" | "features" | "about">("appearance");
+  const [tab, setTab] = useState<
+    "appearance" | "version" | "mock" | "codegen" | "sync" | "about"
+  >("appearance");
 
   const patch = (p: Partial<AppSettings>) => onSave({ ...settings, ...p });
 
@@ -72,11 +74,31 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
             🎨 外观
           </div>
           <div
-            className={`settings-nav-item ${tab === "features" ? "active" : ""}`}
-            onClick={() => setTab("features")}
+            className={`settings-nav-item ${tab === "version" ? "active" : ""}`}
+            onClick={() => setTab("version")}
           >
-            ⚡ 功能
+            📦 接口版本
           </div>
+          <div
+            className={`settings-nav-item ${tab === "mock" ? "active" : ""}`}
+            onClick={() => setTab("mock")}
+          >
+            🛡️ Mock 服务
+          </div>
+          <div
+            className={`settings-nav-item ${tab === "codegen" ? "active" : ""}`}
+            onClick={() => setTab("codegen")}
+          >
+            💻 代码生成
+          </div>
+          {vcs && (
+            <div
+              className={`settings-nav-item ${tab === "sync" ? "active" : ""}`}
+              onClick={() => setTab("sync")}
+            >
+              🔄 同步远程
+            </div>
+          )}
           <div
             className={`settings-nav-item ${tab === "about" ? "active" : ""}`}
             onClick={() => setTab("about")}
@@ -132,12 +154,12 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
             </>
           )}
 
-          {tab === "features" && (
+          {tab === "version" && (
             <>
-              <div className="settings-panel-title">功能</div>
+              <div className="settings-panel-title">接口版本</div>
               <div className="settings-feature">
                 <div className="settings-feature-head">
-                  <span className="settings-feature-name">接口版本</span>
+                  <span className="settings-feature-name">启用接口版本</span>
                   <Switch
                     checked={settings.enableVersion}
                     onChange={(v) => patch({ enableVersion: v })}
@@ -147,9 +169,15 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
                   在主页面显示「保存」按钮与右键「查看版本信息」
                 </div>
               </div>
+            </>
+          )}
+
+          {tab === "mock" && (
+            <>
+              <div className="settings-panel-title">Mock 服务</div>
               <div className="settings-feature">
                 <div className="settings-feature-head">
-                  <span className="settings-feature-name">Mock 服务</span>
+                  <span className="settings-feature-name">启用 Mock 服务</span>
                   <Switch
                     checked={settings.enableMock}
                     onChange={(v) => patch({ enableMock: v })}
@@ -175,9 +203,15 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
                   <span className="settings-desc-inline">默认 5050</span>
                 </div>
               </div>
+            </>
+          )}
+
+          {tab === "codegen" && (
+            <>
+              <div className="settings-panel-title">代码生成</div>
               <div className="settings-feature">
                 <div className="settings-feature-head">
-                  <span className="settings-feature-name">代码生成</span>
+                  <span className="settings-feature-name">启用代码生成</span>
                   <Switch
                     checked={settings.enableCodegen}
                     onChange={(v) => patch({ enableCodegen: v })}
@@ -204,23 +238,27 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
                   </div>
                 )}
               </div>
-              {vcs && (
-                <div className="settings-feature">
-                  <div className="settings-feature-head">
-                    <span className="settings-feature-name">
-                      同步远程（{vcs === "git" ? "Git" : "SVN"}）
-                    </span>
-                    <Switch
-                      checked={settings.syncRemote}
-                      onChange={(v) => patch({ syncRemote: v })}
-                    />
-                  </div>
-                  <div className="settings-feature-desc">
-                    已检测到工作目录 {vcs === "git" ? ".git" : ".svn"}。开启后「同步」「提交并
-                    Push 远程」按钮会与远程仓库交互（git pull / push、svn update / commit）；关闭后仅本地提交，不同步远程。
-                  </div>
+            </>
+          )}
+
+          {tab === "sync" && vcs && (
+            <>
+              <div className="settings-panel-title">同步远程</div>
+              <div className="settings-feature">
+                <div className="settings-feature-head">
+                  <span className="settings-feature-name">
+                    同步远程（{vcs === "git" ? "Git" : "SVN"}）
+                  </span>
+                  <Switch
+                    checked={settings.syncRemote}
+                    onChange={(v) => patch({ syncRemote: v })}
+                  />
                 </div>
-              )}
+                <div className="settings-feature-desc">
+                  已检测到工作目录 {vcs === "git" ? ".git" : ".svn"}。开启后「同步」「提交并
+                  Push 远程」按钮会与远程仓库交互（git pull / push、svn update / commit）；关闭后仅本地提交，不同步远程。
+                </div>
+              </div>
             </>
           )}
 

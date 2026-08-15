@@ -1277,8 +1277,8 @@ body {
   min-height: 300px;
 }
 .settings-nav {
-  width: 96px;
-  min-width: 96px;
+  width: 118px;
+  min-width: 118px;
   border-right: 1px solid var(--border);
   padding-right: 10px;
   display: flex;
