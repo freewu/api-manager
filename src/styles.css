@@ -1454,6 +1454,13 @@ body {
   font-size: 12px;
   color: var(--text-faint);
 }
+.settings-kv-wrap {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px;
+  background: var(--bg-input);
+}
 .settings-preview {
   margin-top: 26px;
   border: 1px solid var(--border);

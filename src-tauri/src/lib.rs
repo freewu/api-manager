@@ -494,6 +494,10 @@ pub struct AppSettings {
     pub enable_codegen: bool,
     /// 代码生成默认开发语言（bash / python / c / cpp / java / csharp / ...）
     pub codegen_lang: String,
+    /// 是否启用默认 Header（新增接口时自动附带）
+    pub enable_default_headers: bool,
+    /// 默认 Header 列表
+    pub default_headers: Vec<KeyValue>,
 }
 
 impl Default for AppSettings {
@@ -506,6 +510,8 @@ impl Default for AppSettings {
             sync_remote: true,
             enable_codegen: true,
             codegen_lang: "bash".into(),
+            enable_default_headers: false,
+            default_headers: vec![],
         }
     }
 }

@@ -704,6 +704,14 @@ export default function App() {
       setModal(null);
       await reloadTree();
       const data = await readApi(path);
+      // 设置开启「默认 Header」时，新接口自动附带默认请求头并落盘
+      if (settings.enableDefaultHeaders) {
+        const defaults = (settings.defaultHeaders || []).filter((h) => h.key.trim());
+        if (defaults.length > 0) {
+          data.headers = [...defaults.map((h) => ({ ...h })), ...data.headers];
+          await saveApi(path, data);
+        }
+      }
       setSelectedPath(path);
       setApi(data);
       setDirty(false);

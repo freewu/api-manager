@@ -114,6 +114,10 @@ export interface AppSettings {
   syncRemote: boolean;
   enableCodegen: boolean;
   codegenLang: string; // 代码生成默认语言（bash / python / c / cpp / java / csharp / ...）
+  /** 是否启用默认 Header（新增接口时自动附带） */
+  enableDefaultHeaders: boolean;
+  /** 默认 Header 列表 */
+  defaultHeaders: KeyValue[];
 }
 
 export const defaultSettings = (): AppSettings => ({
@@ -124,6 +128,8 @@ export const defaultSettings = (): AppSettings => ({
   syncRemote: true,
   enableCodegen: true,
   codegenLang: "bash",
+  enableDefaultHeaders: false,
+  defaultHeaders: [],
 });
 
 export interface HttpRequestData {

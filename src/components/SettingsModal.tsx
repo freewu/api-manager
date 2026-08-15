@@ -3,6 +3,7 @@ import { AppSettings } from "../types";
 import { Modal } from "./Modal";
 import { openExternal } from "../commands";
 import { CODE_LANGS } from "../utils/codegen";
+import { KeyValueEditor } from "./KeyValueEditor";
 import logoUrl from "../assets/logo.png";
 
 interface Props {
@@ -29,6 +30,7 @@ const NAV = [
   { id: "version", icon: "📦", title: "接口版本", desc: "版本快照开关" },
   { id: "mock", icon: "🛡️", title: "Mock 服务", desc: "本地 Mock · 端口" },
   { id: "codegen", icon: "💻", title: "代码生成", desc: "20 种语言请求代码" },
+  { id: "headers", icon: "🧾", title: "默认 Header", desc: "新接口自动附带请求头" },
   { id: "sync", icon: "🔄", title: "同步远程", desc: "Git / SVN 远程同步" },
   { id: "about", icon: "ℹ️", title: "关于", desc: "版本与项目信息" },
 ] as const;
@@ -235,6 +237,31 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
                     ))}
                   </select>
                   <span className="settings-desc-inline">页签默认语言</span>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section id="settings-headers" className="settings-section">
+            <div className="settings-panel-title">默认 Header</div>
+            <div className="settings-feature">
+              <div className="settings-feature-head">
+                <span className="settings-feature-name">启用默认 Header</span>
+                <Switch
+                  checked={settings.enableDefaultHeaders}
+                  onChange={(v) => patch({ enableDefaultHeaders: v })}
+                />
+              </div>
+              <div className="settings-feature-desc">
+                新增接口时自动附带以下请求头（勾选开关可临时停用某一条）
+              </div>
+              {settings.enableDefaultHeaders && (
+                <div className="settings-kv-wrap">
+                  <KeyValueEditor
+                    rows={settings.defaultHeaders}
+                    onChange={(rows) => patch({ defaultHeaders: rows })}
+                    makeRow={() => ({ enabled: true, key: "", value: "", description: "" })}
+                  />
                 </div>
               )}
             </div>
