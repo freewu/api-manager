@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { ApiFile, BODY_MODES, KeyValue, METHODS } from "../types";
+import { useEffect, useMemo, useState } from "react";
+import { ApiFile, BODY_MODES, DocParam, KeyValue, METHODS } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 
-type Tab = "params" | "headers" | "body" | "mock" | "desc";
+type Tab = "params" | "path" | "headers" | "body" | "mock" | "desc" | "doc";
 
 interface Props {
   api: ApiFile;
@@ -81,6 +81,9 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         <div className={`tab ${tab === "params" ? "active" : ""}`} onClick={() => setTab("params")}>
           Params{enabledCount(api.query) > 0 && <span className="count">{enabledCount(api.query)}</span>}
         </div>
+        <div className={`tab ${tab === "path" ? "active" : ""}`} onClick={() => setTab("path")}>
+          Path{enabledCount(api.params) > 0 && <span className="count">{enabledCount(api.params)}</span>}
+        </div>
         <div className={`tab ${tab === "headers" ? "active" : ""}`} onClick={() => setTab("headers")}>
           Headers{enabledCount(api.headers) > 0 && <span className="count">{enabledCount(api.headers)}</span>}
         </div>
@@ -96,6 +99,9 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         <div className={`tab ${tab === "desc" ? "active" : ""}`} onClick={() => setTab("desc")}>
           描述
         </div>
+        <div className={`tab ${tab === "doc" ? "active" : ""}`} onClick={() => setTab("doc")}>
+          入参文档
+        </div>
       </div>
 
       <div className="editor-body">
@@ -108,11 +114,19 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               valuePlaceholder="值"
             />
             <div className="section-title">
-              Path 变量 <span className="help">（来自下方“路径参数”，请求时替换 {`{name}`}）</span>
+              查询参数 <span className="help">（发送请求时拼接到 URL 问号后面）</span>
+            </div>
+          </div>
+        )}
+
+        {tab === "path" && (
+          <div>
+            <div className="section-title">
+              Path 变量 <span className="help">（来自上方 URL，请求时替换 {`{name}`}）</span>
             </div>
             {api.params.length === 0 ? (
               <div style={{ color: "var(--text-faint)", fontSize: 12, padding: "4px 2px" }}>
-                暂无路径参数，可在上方 URL 中使用 {`{变量名}`}，例如 /users/{`{id}`}
+                暂无路径参数，可在顶部 URL 中使用 {`{变量名}`}，例如 /users/{`{id}`}
               </div>
             ) : (
               <KeyValueEditor
@@ -244,7 +258,122 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             </div>
           </div>
         )}
+
+        {tab === "doc" && <DocParamsEditor api={api} set={set} />}
       </div>
+    </div>
+  );
+}
+
+/** 入参文档：汇总 query / path / body 请求参数，补充类型与说明 */
+function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>) => void }) {
+  type Row = { source: DocParam["source"]; key: string; value: string };
+
+  const rows: Row[] = useMemo(() => {
+    const out: Row[] = [];
+    api.query
+      .filter((r) => r.key.trim())
+      .forEach((r) => out.push({ source: "query", key: r.key, value: r.value }));
+    api.params
+      .filter((r) => r.key.trim())
+      .forEach((r) => out.push({ source: "path", key: r.key, value: r.value }));
+    if (api.body.mode === "form") {
+      api.body.form
+        .filter((r) => r.key.trim())
+        .forEach((r) => out.push({ source: "body", key: r.key, value: r.value }));
+    } else if (api.body.mode === "json") {
+      try {
+        const parsed = JSON.parse(api.body.raw);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          Object.entries(parsed).forEach(([k, v]) =>
+            out.push({
+              source: "body",
+              key: k,
+              value: typeof v === "string" ? v : JSON.stringify(v),
+            })
+          );
+        }
+      } catch {
+        /* JSON 无法解析时忽略 */
+      }
+    }
+    return out;
+  }, [api]);
+
+  const getDoc = (source: Row["source"], key: string): DocParam | undefined =>
+    api.docParams.find((d) => d.source === source && d.key === key);
+
+  const updateDoc = (source: Row["source"], key: string, patch: Partial<DocParam>) => {
+    const idx = api.docParams.findIndex((d) => d.source === source && d.key === key);
+    const next = [...api.docParams];
+    if (idx >= 0) {
+      next[idx] = { ...next[idx], ...patch };
+    } else {
+      next.push({ source, key, type: "", description: "", ...patch });
+    }
+    set({ docParams: next });
+  };
+
+  if (rows.length === 0) {
+    return (
+      <div style={{ color: "var(--text-faint)", fontSize: 12, padding: "6px 2px" }}>
+        暂无请求参数。可在 Params / Path / Body 页签中添加参数后，在这里补全类型与说明。
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="section-title">
+        入参文档 <span className="help">自动汇总 Params / Path / Body 参数，补充类型与说明后随接口保存</span>
+      </div>
+      <table className="kv-table doc-params-table">
+        <thead>
+          <tr>
+            <th style={{ width: 64 }}>位置</th>
+            <th>参数名</th>
+            <th>值</th>
+            <th style={{ width: 150 }}>类型</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const doc = getDoc(r.source, r.key);
+            return (
+              <tr key={r.source + ":" + r.key}>
+                <td>
+                  <span className={`doc-source doc-source-${r.source}`}>
+                    {r.source === "query" ? "Query" : r.source === "path" ? "Path" : "Body"}
+                  </span>
+                </td>
+                <td>
+                  <span className="doc-key">{r.key}</span>
+                </td>
+                <td>
+                  <span className="doc-value">{r.value || "—"}</span>
+                </td>
+                <td>
+                  <input
+                    value={doc?.type || ""}
+                    placeholder="如 string / number"
+                    onChange={(e) => updateDoc(r.source, r.key, { type: e.target.value })}
+                    spellCheck={false}
+                  />
+                </td>
+                <td>
+                  <input
+                    value={doc?.description || ""}
+                    placeholder="参数说明"
+                    onChange={(e) => updateDoc(r.source, r.key, { description: e.target.value })}
+                    spellCheck={false}
+                  />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

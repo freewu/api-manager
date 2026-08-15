@@ -34,6 +34,15 @@ export interface ApiFile {
   body: BodyData;
   mock: MockConfig;
   examples: unknown[];
+  /** 入参文档：请求参数的补充说明（类型 / 说明），按 source+key 关联 */
+  docParams: DocParam[];
+}
+
+export interface DocParam {
+  source: "query" | "path" | "body";
+  key: string;
+  type: string;
+  description: string;
 }
 
 export interface InfoJson {
@@ -176,5 +185,6 @@ export function emptyApi(): ApiFile {
     body: emptyBody(),
     mock: emptyMock(),
     examples: [],
+    docParams: [],
   };
 }

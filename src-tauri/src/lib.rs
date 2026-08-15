@@ -151,6 +151,30 @@ pub struct ApiFile {
     pub mock: MockConfig,
     #[serde(default)]
     pub examples: Vec<Value>,
+    /// 入参文档：请求参数的补充说明（类型 / 说明），按 source+key 关联到请求配置
+    #[serde(default)]
+    pub doc_params: Vec<DocParam>,
+}
+
+/// 入参文档条目：位置（query / path / body）+ 参数名 + 类型 + 说明
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DocParam {
+    pub source: String,
+    pub key: String,
+    pub r#type: String,
+    pub description: String,
+}
+
+impl Default for DocParam {
+    fn default() -> Self {
+        Self {
+            source: String::new(),
+            key: String::new(),
+            r#type: String::new(),
+            description: String::new(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -1055,6 +1079,7 @@ fn postman_request_to_api(name: &str, request: &Value) -> Result<ApiFile, String
         body,
         mock: MockConfig::default(),
         examples: vec![],
+        doc_params: vec![],
     })
 }
 
@@ -1433,6 +1458,7 @@ fn openapi_op_to_api(
         body,
         mock: MockConfig::default(),
         examples: vec![],
+        doc_params: vec![],
     })
 }
 
@@ -1723,6 +1749,7 @@ fn create_api(
         body: BodyData::default(),
         mock: MockConfig::default(),
         examples: vec![],
+        doc_params: vec![],
     };
     write_pretty(&file_path, &data)?;
     Ok(file_path.to_string_lossy().to_string())
@@ -2953,6 +2980,7 @@ mod tests {
             body: BodyData::default(),
             mock: MockConfig::default(),
             examples: vec![],
+            doc_params: vec![],
         };
         let rel = save_api_version_at(&root, api).unwrap();
         assert!(rel.starts_with(".version/11111111-2222-3333-4444-555555555555/"));
