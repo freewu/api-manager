@@ -3,6 +3,7 @@ import { AppSettings } from "../types";
 import { Modal } from "./Modal";
 import { openExternal } from "../commands";
 import { CODE_LANGS } from "../utils/codegen";
+import logoUrl from "../assets/logo.png";
 
 interface Props {
   settings: AppSettings;
@@ -266,7 +267,9 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
             <>
               <div className="settings-panel-title">关于</div>
               <div className="about-app">
-                <div className="about-logo">🧪</div>
+                <div className="about-logo">
+                  <img src={logoUrl} alt="API Manager" style={{ width: 34, height: 34, objectFit: "contain" }} />
+                </div>
                 <div className="about-app-info">
                   <div className="about-app-name">API Manager</div>
                   <div className="about-app-desc">API 接口文档 · 测试 · Mock 工具</div>

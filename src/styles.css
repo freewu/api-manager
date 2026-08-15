@@ -175,17 +175,11 @@ body {
   white-space: nowrap;
 }
 
-.logo-badge {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  background: linear-gradient(135deg, #2e59a7, #6f8fd6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  color: #fff;
-  font-weight: 800;
+.logo-img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 .logo-version {
   margin-left: 6px;
@@ -1761,7 +1755,9 @@ body {
   background: var(--bg);
 }
 .landing-logo {
-  font-size: 60px;
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
 }
 .landing h1 {
   font-size: 22px;

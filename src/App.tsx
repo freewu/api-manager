@@ -48,6 +48,7 @@ import { Response } from "./components/Response";
 import { SettingsModal } from "./components/SettingsModal";
 import { Sidebar } from "./components/Sidebar";
 import { StatsModal } from "./components/StatsModal";
+import logoUrl from "./assets/logo.png";
 
 /** 转义正则特殊字符（用于按字面量构造 {变量名} 匹配） */
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -820,7 +821,7 @@ export default function App() {
       <div className="app">
         <div className="toolbar">
           <div className="logo">
-            <div className="logo-badge">API</div>
+            <img className="logo-img" src={logoUrl} alt="API Manager" />
             <span>API Manager</span>
           </div>
           <div className="toolbar-spacer" />
@@ -829,7 +830,7 @@ export default function App() {
           </span>
         </div>
         <div className="landing">
-          <div className="landing-logo">📂</div>
+          <img className="landing-logo" src={logoUrl} alt="API Manager" />
           <h1>API Manager</h1>
           <p>接口文档 · 接口测试 · Mock 服务，一站式管理</p>
           <button className="btn primary" style={{ fontSize: 14, padding: "10px 24px" }} onClick={handlePickWorkspace}>
@@ -852,7 +853,7 @@ export default function App() {
     <div className="app">
       <div className="toolbar">
         <div className="logo">
-          <div className="logo-badge">API</div>
+          <img className="logo-img" src={logoUrl} alt="API Manager" />
           <span>API Manager</span>
           {version && <span className="logo-version">v{version}</span>}
         </div>
