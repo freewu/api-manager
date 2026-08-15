@@ -1,5 +1,8 @@
-// 将 logo.png（312x256）居中放到 1024x1024 透明画布，输出 logo-square.png
-// 供 tauri icon 生成全套应用图标与 ico
+// 将 logo.png 处理为 1024x1024 方形图标源图（供 tauri icon 生成全套应用图标与 ico）
+// 只做尺寸处理：
+//   1. 尺寸裁剪 —— 裁掉透明边距，保持宽高比缩放到铺满画布（约 90%，四周留 5% 安全边）
+//   2. 透明度处理 —— 缩放时按预乘 alpha 采样（alpha-aware resample），
+//      透明边缘与半透明像素正确混合，避免黑边/光晕
 import fs from "node:fs";
 import zlib from "node:zlib";
 
@@ -8,7 +11,7 @@ const sw = src.readUInt32BE(16);
 const sh = src.readUInt32BE(20);
 
 // ---- 解码 PNG（支持 filter 0-4）----
-function decodePng(buf) {
+function decodePng(buf, w, h) {
   let idat = Buffer.alloc(0);
   let off = 8;
   while (off < buf.length) {
@@ -19,18 +22,18 @@ function decodePng(buf) {
     if (type === "IEND") break;
   }
   const raw = zlib.inflateSync(idat);
-  const px = Buffer.alloc(sw * sh * 4);
-  const stride = sw * 4 + 1;
-  let prev = Buffer.alloc(sw * 4);
+  const px = Buffer.alloc(w * h * 4);
+  const stride = w * 4 + 1;
+  let prev = Buffer.alloc(w * 4);
   const paeth = (a, b, c) => {
     const p = a + b - c;
     const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
     return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
   };
-  for (let y = 0; y < sh; y++) {
+  for (let y = 0; y < h; y++) {
     const f = raw[y * stride];
     const row = Buffer.from(raw.slice(y * stride + 1, (y + 1) * stride));
-    for (let x = 0; x < sw; x++) {
+    for (let x = 0; x < w; x++) {
       const i = x * 4;
       const a = x > 0 ? row[i - 4] : 0;
       const b = y > 0 ? prev[i] : 0;
@@ -44,10 +47,71 @@ function decodePng(buf) {
         row[i + k] = v;
       }
       prev[i] = row[i];
-      px.set(row.slice(i, i + 4), y * sw * 4 + i);
+      px.set(row.slice(i, i + 4), y * w * 4 + i);
     }
   }
   return px;
+}
+
+// ---- 步骤 1：尺寸裁剪 —— 裁掉透明边距 ----
+function cropAlpha(px, w, h, alphaThreshold = 8) {
+  let minX = w, minY = h, maxX = -1, maxY = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (px[(y * w + x) * 4 + 3] > alphaThreshold) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0) throw new Error("图片内容为空（无可见像素）");
+  const cw = maxX - minX + 1, ch = maxY - minY + 1;
+  const out = Buffer.alloc(cw * ch * 4);
+  for (let y = 0; y < ch; y++) {
+    px.copy(out, y * cw * 4, (minY + y) * w * 4 + minX * 4, (minY + y) * w * 4 + minX * 4 + cw * 4);
+  }
+  return { px: out, w: cw, h: ch };
+}
+
+// ---- 步骤 2：透明度处理 —— 预乘 alpha 双线性缩放 ----
+// 预乘（r*a,g*a,b*a,a）后采样再反预乘：半透明像素与透明边缘按 alpha 正确混合，不产生黑边光晕
+function resizeAlpha(px, sw, sh, dw, dh) {
+  const out = Buffer.alloc(dw * dh * 4);
+  const sx = sw / dw, sy = sh / dh;
+  for (let y = 0; y < dh; y++) {
+    const fy = (y + 0.5) * sy - 0.5;
+    for (let x = 0; x < dw; x++) {
+      const fx = (x + 0.5) * sx - 0.5;
+      const x0 = Math.max(0, Math.floor(fx)), y0 = Math.max(0, Math.floor(fy));
+      const x1 = Math.min(sw - 1, x0 + 1), y1 = Math.min(sh - 1, y0 + 1);
+      const tx = fx - x0, ty = fy - y0;
+      let pr = 0, pg = 0, pb = 0, pa = 0;
+      const sample = (xx, yy, wt) => {
+        const i = (yy * sw + xx) * 4;
+        const a = px[i + 3] / 255;
+        pr += px[i] * a * wt;
+        pg += px[i + 1] * a * wt;
+        pb += px[i + 2] * a * wt;
+        pa += a * wt;
+      };
+      sample(x0, y0, (1 - tx) * (1 - ty));
+      sample(x1, y0, tx * (1 - ty));
+      sample(x0, y1, (1 - tx) * ty);
+      sample(x1, y1, tx * ty);
+      const o = (y * dw + x) * 4;
+      if (pa > 0.0001) {
+        out[o] = Math.round(pr / pa);
+        out[o + 1] = Math.round(pg / pa);
+        out[o + 2] = Math.round(pb / pa);
+      } else {
+        out[o] = out[o + 1] = out[o + 2] = 0;
+      }
+      out[o + 3] = Math.round(pa * 255);
+    }
+  }
+  return out;
 }
 
 // ---- PNG 编码（8bit RGBA，filter 0）----
@@ -93,21 +157,30 @@ function encodePng(w, h, px) {
   ]);
 }
 
-// ---- 生成 1024x1024，logo 居中 ----
+// ---- 生成 1024x1024，logo 铺满画布约 90% ----
 const W = 1024;
-const px = decodePng(src);
+const FILL = 0.9; // 内容占画布比例（四周各留 5% 安全边）
+const px0 = decodePng(src, sw, sh);
+const cropped = cropAlpha(px0, sw, sh);
+const scale = (W * FILL) / Math.max(cropped.w, cropped.h);
+const nw = Math.max(1, Math.round(cropped.w * scale));
+const nh = Math.max(1, Math.round(cropped.h * scale));
+const resized = resizeAlpha(cropped.px, cropped.w, cropped.h, nw, nh);
+
 const canvas = Buffer.alloc(W * W * 4);
-const ox = Math.floor((W - sw) / 2);
-const oy = Math.floor((W - sh) / 2);
-for (let y = 0; y < sh; y++) {
-  for (let x = 0; x < sw; x++) {
-    const si = (y * sw + x) * 4;
+const ox = Math.floor((W - nw) / 2);
+const oy = Math.floor((W - nh) / 2);
+for (let y = 0; y < nh; y++) {
+  for (let x = 0; x < nw; x++) {
+    const si = (y * nw + x) * 4;
     const di = ((oy + y) * W + (ox + x)) * 4;
-    canvas[di] = px[si];
-    canvas[di + 1] = px[si + 1];
-    canvas[di + 2] = px[si + 2];
-    canvas[di + 3] = px[si + 3];
+    canvas[di] = resized[si];
+    canvas[di + 1] = resized[si + 1];
+    canvas[di + 2] = resized[si + 2];
+    canvas[di + 3] = resized[si + 3];
   }
 }
 fs.writeFileSync("logo-square.png", encodePng(W, W, canvas));
-console.log("logo-square.png written: 1024x1024, centered at", ox, oy);
+console.log(
+  `logo-square.png written: 1024x1024 (裁剪 ${sw}x${sh} -> ${cropped.w}x${cropped.h}，缩放 -> ${nw}x${nh}，位置 ${ox},${oy})`
+);

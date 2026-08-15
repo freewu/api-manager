@@ -114,5 +114,32 @@ const c = (x, y) => { const i = (y * p.w + x) * 4; return [...p.px.slice(i, i + 
 console.log("opaque ratio:", ratio + "%");
 console.log("corners:", c(2, 2), c(p.w - 3, 2), c(2, p.h - 3), c(p.w - 3, p.h - 3));
 console.log("center:", c(p.w >> 1, p.h >> 1));
-// 原 logo.png 徽标比例 3.79% 不透明；居中于 1024 画布缩放后应 ≈ 0.3%
-console.log("判断:", ratio < 2 ? "✅ 透明背景 + 细徽标（logo.png 特征）" : "❌ 疑似旧图标（深色方块应 >20%）");
+
+// 字形颜色采样：logo 为蓝/黑双色线条文字标
+let blue = 0, black = 0, op = 0;
+for (let y = 0; y < p.h; y += 4) {
+  for (let x = 0; x < p.w; x += 4) {
+    const i = (y * p.w + x) * 4;
+    if (p.px[i + 3] > 100) {
+      op++;
+      const r = p.px[i], g = p.px[i + 1], b = p.px[i + 2];
+      if (b > r && b > g && b > 100) blue++;
+      if (r < 80 && g < 80 && b < 80) black++;
+    }
+  }
+}
+console.log("glyph sample:", op, "px, blue:", blue, "black:", black);
+
+// 判断：透明背景 + 线条字形（旧图标为深色圆角方块，角部不透明且 >20% 覆盖）
+const cornersTransparent =
+  [c(2, 2), c(p.w - 3, 2), c(2, p.h - 3), c(p.w - 3, p.h - 3)].every(
+    (px) => px[3] <= 8
+  );
+const ratioOk = parseFloat(ratio) > 0.2 && parseFloat(ratio) < 15;
+const glyphOk = blue + black >= 8;
+const ok = cornersTransparent && ratioOk && glyphOk;
+console.log(
+  ok
+    ? "✅ 透明背景 + 蓝/黑线条字形（logo.png 特征）"
+    : `❌ 疑似旧图标（角部透明=${cornersTransparent}，比例${ratio}%=${ratioOk}，字形色=${glyphOk}）`
+);
