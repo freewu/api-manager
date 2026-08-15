@@ -1286,24 +1286,54 @@ body {
   min-height: 0;
 }
 .settings-nav {
-  width: 118px;
-  min-width: 118px;
+  width: 230px;
+  min-width: 230px;
   border-right: 1px solid var(--border);
-  padding-right: 10px;
+  padding-right: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  overflow-y: auto;
 }
 .settings-nav-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   padding: 8px 10px;
   border-radius: var(--radius);
-  font-size: 13px;
-  color: var(--text-dim);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 .settings-nav-item:hover {
   background: var(--bg-hover);
+}
+.settings-nav-item.active {
+  background: var(--bg-active);
+}
+.settings-nav-item.active .settings-nav-title {
+  color: var(--text);
+}
+.settings-nav-icon {
+  font-size: 15px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+.settings-nav-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.settings-nav-title {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.settings-nav-desc {
+  font-size: 11px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .settings-nav-item.active {
   background: rgba(88, 166, 255, 0.12);
@@ -1315,6 +1345,19 @@ body {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  scroll-behavior: smooth;
+  padding-right: 4px;
+}
+.settings-section {
+  scroll-margin-top: 2px;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 4px;
 }
 .settings-panel-title {
   font-size: 12px;
