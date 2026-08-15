@@ -522,7 +522,7 @@ export function Sidebar(props: Props) {
                       onImportOpenApi?.();
                     }}
                   >
-                    📖 OpenAPI / Swagger JSON
+                    📖 OpenAPI / Swagger（JSON / YAML）
                   </button>
                 </div>
               </>

@@ -1168,7 +1168,7 @@ fn import_openapi(
     let picked = app
         .dialog()
         .file()
-        .add_filter("OpenAPI / Swagger JSON", &["json"])
+        .add_filter("OpenAPI / Swagger", &["json", "yml", "yaml"])
         .blocking_pick_file();
     let Some(path) = picked else {
         return Ok(None);
@@ -1179,11 +1179,18 @@ fn import_openapi(
     Ok(Some(result))
 }
 
-/// 解析 OpenAPI / Swagger JSON 文件：在工作区根新建分组，按 tag 分小组并导入全部接口
+/// 解析 OpenAPI / Swagger 文件（支持 .json 与 .yml/.yaml），在工作区根新建分组，按 tag 分小组并导入全部接口
 fn import_openapi_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, String> {
     let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
-    let json: Value =
-        serde_json::from_str(&content).map_err(|e| format!("解析 JSON 失败: {e}"))?;
+    let is_yaml = matches!(
+        file.extension().and_then(|e| e.to_str()),
+        Some("yml") | Some("yaml")
+    );
+    let json: Value = if is_yaml {
+        serde_yaml::from_str(&content).map_err(|e| format!("解析 YAML 失败: {e}"))?
+    } else {
+        serde_json::from_str(&content).map_err(|e| format!("解析 JSON 失败: {e}"))?
+    };
 
     // 校验 OpenAPI / Swagger 版本字段
     let version = if let Some(v) = json.get("openapi").and_then(|v| v.as_str()) {
@@ -3054,6 +3061,14 @@ mod tests {
         .unwrap();
         assert_eq!(post_api.body.mode, "json");
         assert!(post_api.body.raw.contains("\"name\""));
+
+        // YAML 格式同样支持（.yaml / .yml）
+        let yaml_content = serde_yaml::to_string(&spec).unwrap();
+        let yaml_file = root.join("swagger.yaml");
+        fs::write(&yaml_file, yaml_content).unwrap();
+        let result2 = import_openapi_file(&root, &yaml_file).unwrap();
+        assert_eq!(result2.count, 2);
+        assert!(PathBuf::from(&result2.folder).join("pets").exists());
 
         let _ = fs::remove_dir_all(&root);
     }
