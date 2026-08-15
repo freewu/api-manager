@@ -18,6 +18,12 @@ interface Props<T extends Row> {
   showDescription?: boolean;
   /** 显示「类型」列（文本 / 文件），文件字段 value 为路径，可点击选择文件 */
   showFileType?: boolean;
+  /** 隐藏「+ 添加」按钮（行数由外部决定，如 Path 变量与 URL 一一对应） */
+  hideAdd?: boolean;
+  /** 隐藏每行「删除」按钮 */
+  hideRemove?: boolean;
+  /** 键名只读（由外部派生，如 URL 中的 {变量名}） */
+  readonlyKey?: boolean;
   makeRow?: () => T;
 }
 
@@ -29,6 +35,9 @@ export function KeyValueEditor<T extends Row>({
   showCheck = true,
   showDescription = false,
   showFileType = false,
+  hideAdd = false,
+  hideRemove = false,
+  readonlyKey = false,
   makeRow,
 }: Props<T>) {
   const update = (i: number, patch: Partial<Row>) => {
@@ -68,7 +77,7 @@ export function KeyValueEditor<T extends Row>({
             <th>{keyPlaceholder}</th>
             <th>{valuePlaceholder}</th>
             {showDescription && <th>说明</th>}
-            <th style={{ width: 60 }}></th>
+            {!hideRemove && <th style={{ width: 60 }}></th>}
           </tr>
         </thead>
         <tbody>
@@ -99,6 +108,8 @@ export function KeyValueEditor<T extends Row>({
                 <input
                   value={r.key}
                   placeholder={keyPlaceholder}
+                  readOnly={readonlyKey}
+                  title={readonlyKey ? "变量名来自 URL 中的 {变量名}，不可修改" : undefined}
                   onChange={(e) => update(i, { key: e.target.value })}
                   spellCheck={false}
                 />
@@ -146,18 +157,22 @@ export function KeyValueEditor<T extends Row>({
                   />
                 </td>
               )}
-              <td>
-                <button className="kv-remove" title="删除" onClick={() => remove(i)}>
-                  🗑
-                </button>
-              </td>
+              {!hideRemove && (
+                <td>
+                  <button className="kv-remove" title="删除" onClick={() => remove(i)}>
+                    🗑
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
       </table>
-      <button className="btn small kv-add" onClick={add}>
-        + 添加
-      </button>
+      {!hideAdd && (
+        <button className="btn small kv-add" onClick={add}>
+          + 添加
+        </button>
+      )}
     </div>
   );
 }

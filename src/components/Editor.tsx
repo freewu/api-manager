@@ -168,7 +168,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         {tab === "path" && (
           <div>
             <div className="section-title">
-              Path 变量 <span className="help">（来自上方 URL 中的 {`{name}`}，自动同步；请求时替换）</span>
+              Path 变量 <span className="help">（与上方 URL 中的 {`{name}`} 一一对应，自动同步；只做赋值与说明，不可增删）</span>
             </div>
             {api.params.length === 0 ? (
               <div style={{ color: "var(--text-faint)", fontSize: 12, padding: "4px 2px" }}>
@@ -181,10 +181,14 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                 keyPlaceholder="变量名"
                 valuePlaceholder="示例值"
                 showDescription
+                showCheck={false}
+                hideAdd
+                hideRemove
+                readonlyKey
               />
             )}
             <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 6 }}>
-              多个示例值可用逗号分隔（如 1,2,3），发送请求时取第一个；「说明」列用于描述该变量的含义。
+              路径变量在顶部 URL 中用 {`{变量名}`} 定义，此处自动生成并保持一一对应；多个示例值可用逗号分隔（如 1,2,3），发送请求时取第一个；「说明」列用于描述该变量的含义。
             </div>
           </div>
         )}
