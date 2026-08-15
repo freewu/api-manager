@@ -2640,8 +2640,8 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     update_tray_env_item(app.handle());
 
     TrayIconBuilder::with_id("main")
-        // 使用项目 logo.png 作为托盘图标（24px 原生尺寸，小尺寸显示更清晰）
-        .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/logo.png"))?)
+        // 使用项目 logo 生成的 32px 方形图标作为托盘图标（小尺寸显示更清晰）
+        .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png"))?)
         .menu(&menu)
         .tooltip("API Manager")
         .show_menu_on_left_click(false)

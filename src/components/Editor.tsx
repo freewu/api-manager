@@ -140,7 +140,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           Mock{api.mock.enabled && <span className="count">●</span>}
         </div>
         <div className={`tab ${tab === "desc" ? "active" : ""}`} onClick={() => switchTab("desc")}>
-          描述
+          接口描述
         </div>
         <div className={`tab ${tab === "doc" ? "active" : ""}`} onClick={() => switchTab("doc")}>
           接口文档
@@ -306,7 +306,6 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
 
         {tab === "desc" && (
           <div className="desc-root">
-            <div className="section-title">接口说明</div>
             <textarea
               className="desc-area"
               value={api.description}
