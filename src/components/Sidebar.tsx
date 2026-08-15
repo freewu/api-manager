@@ -119,17 +119,21 @@ function NodeRow({
     node.name.toLowerCase().includes(filter) ||
     (node.endpoint || "").toLowerCase().includes(filter);
 
+  // 深度搜索：任意层级的后代命中关键词（导入的接口常嵌套在 导入分组→tag 分组 下）
   const childrenMatch = useMemo(() => {
     if (!isFolder || !node.children) return false;
-    if (filter) {
-      return node.children.some(
-        (c) =>
-          c.name.toLowerCase().includes(filter) ||
-          (c.endpoint || "").toLowerCase().includes(filter)
-      );
-    }
-    return false;
+    if (!filter) return false;
+    const hit = (n: TreeNode): boolean =>
+      n.name.toLowerCase().includes(filter) ||
+      (n.endpoint || "").toLowerCase().includes(filter) ||
+      (n.kind === "folder" && !!n.children && n.children.some(hit));
+    return node.children.some(hit);
   }, [isFolder, node.children, filter]);
+
+  // 搜索时自动展开包含命中项的文件夹，保证结果可见
+  useEffect(() => {
+    if (filter && isFolder && childrenMatch) setOpen(true);
+  }, [filter, isFolder, childrenMatch]);
 
   if (!matches && !childrenMatch && filter) return null;
 
