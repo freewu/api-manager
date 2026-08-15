@@ -93,6 +93,8 @@ export default function App() {
   const [modalText, setModalText] = useState("");
   const [infoForm, setInfoForm] = useState<InfoForm>(emptyInfoForm());
   const [toast, setToast] = useState<string | null>(null);
+  /** 右下角持久弹窗（不自动消失），用于同步/提交等错误提示 */
+  const [notify, setNotify] = useState<{ title: string; body: string } | null>(null);
   const [version, setVersion] = useState("");
   const [envs, setEnvs] = useState<EnvStore>(emptyEnv());
   const [envModal, setEnvModal] = useState(false);
@@ -323,24 +325,23 @@ export default function App() {
 
   /** 同步（git pull / svn update） */
   const handleVcsSync = async () => {
-    if (!vcs) return showToast("当前工作目录不是 Git / SVN 仓库");
-    if (!settings.syncRemote) return showToast("未开启「同步远程」，请在设置中开启");
+    if (!vcs || !settings.syncRemote) return; // 按钮仅在开启同步远程时显示
     try {
       const out = await vcsSync(settings.syncRemote);
       showToast(out.split("\n")[0] || "同步完成");
     } catch (e) {
-      showToast("同步失败: " + e);
+      setNotify({ title: "同步失败", body: String(e) });
     }
   };
 
   /** 提交并 Push 远程（未开启同步远程时只提交） */
   const handleVcsCommitPush = async () => {
-    if (!vcs) return showToast("当前工作目录不是 Git / SVN 仓库");
+    if (!vcs) return;
     try {
       const out = await vcsCommitPush(settings.syncRemote);
       showToast(out.split("\n")[0] || "提交完成");
     } catch (e) {
-      showToast("提交失败: " + e);
+      setNotify({ title: "提交失败", body: String(e) });
     }
   };
 
@@ -839,7 +840,7 @@ export default function App() {
           onStats={setStatsNode}
           onOpenSettings={() => setSettingsOpen(true)}
           onImportPostman={() => void handleImportPostman()}
-          vcs={vcs}
+          vcs={vcs && settings.syncRemote ? vcs : null}
           onVcsSync={() => void handleVcsSync()}
           onVcsCommitPush={() => void handleVcsCommitPush()}
           onMove={handleMove}
@@ -926,6 +927,23 @@ export default function App() {
       </div>
 
       {toast && <div className="toast">{toast}</div>}
+
+      {notify && (
+        <div className="notify-pop" role="alert">
+          <div className="notify-pop-head">
+            <span className="notify-pop-title">⚠️ {notify.title}</span>
+            <button
+              className="notify-pop-close"
+              onClick={() => setNotify(null)}
+              title="关闭"
+              aria-label="关闭"
+            >
+              ✕
+            </button>
+          </div>
+          <pre className="notify-pop-body">{notify.body}</pre>
+        </div>
+      )}
 
       {emptyMenu && (
         <div className="node-ctx-menu" style={{ left: emptyMenu.x, top: emptyMenu.y }}>
