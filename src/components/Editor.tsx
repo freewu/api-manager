@@ -41,11 +41,12 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
     onTabChange?.("params");
   }, [api.uuid]);
 
-  // URL / 路径中的 {xx} 占位符实时同步到 Path 页签（新增或删除）
+  // URL / 路径中的 {xx} 占位符实时同步到 Path 页签（新增或删除）；
+  // {{xx}} 是全局环境变量（双大括号），不会被当作路径参数
   const pathSource = api.url || api.path;
   useEffect(() => {
     const names = new Set(
-      [...pathSource.matchAll(/\{([^{}]+)\}/g)]
+      [...pathSource.matchAll(/(?<!\{)\{([^{}]+)\}(?!\})/g)]
         .map((m) => m[1].trim())
         .filter(Boolean)
     );
@@ -86,6 +87,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             className="url-input"
             value={effectiveUrl}
             placeholder="https://api.example.com/v1/users"
+            title="{变量名} 为路径参数（在 Path 页签赋值）；{{变量名}} 为全局环境变量（请求时自动替换）"
             onChange={(e) => {
               const v = e.target.value;
               if (v.startsWith(baseUrl) && baseUrl) {
@@ -168,11 +170,11 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         {tab === "path" && (
           <div>
             <div className="section-title">
-              Path 变量 <span className="help">（与上方 URL 中的 {`{name}`} 一一对应，自动同步；只做赋值与说明，不可增删）</span>
+              Path 变量 <span className="help">（与上方 URL 中的 {`{name}`} 一一对应，自动同步；{`{{name}}`} 为全局环境变量，不在此列；只做赋值与说明，不可增删）</span>
             </div>
             {api.params.length === 0 ? (
               <div style={{ color: "var(--text-faint)", fontSize: 12, padding: "4px 2px" }}>
-                暂无路径参数，可在顶部 URL 中使用 {`{变量名}`}，例如 /users/{`{id}`}
+                暂无路径参数，可在顶部 URL 中使用 {`{变量名}`}，例如 /users/{`{id}`}（{`{{变量名}}`} 表示全局环境变量，不会被当作路径参数）
               </div>
             ) : (
               <KeyValueEditor
@@ -188,7 +190,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               />
             )}
             <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 6 }}>
-              路径变量在顶部 URL 中用 {`{变量名}`} 定义，此处自动生成并保持一一对应；多个示例值可用逗号分隔（如 1,2,3），发送请求时取第一个；「说明」列用于描述该变量的含义。
+              单大括号 {`{变量名}`} 为路径参数（顶部 URL 定义，此处自动生成并保持一一对应，只做赋值与说明）；双大括号 {`{{变量名}}`} 为全局环境变量（来自环境设置，请求时自动替换）。多个示例值可用逗号分隔（如 1,2,3），发送请求时取第一个。
             </div>
           </div>
         )}

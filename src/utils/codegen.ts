@@ -1,5 +1,8 @@
 import { ApiFile } from "../types";
 
+/** 转义正则特殊字符（用于按字面量构造 {变量名} 匹配） */
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 export type CodeLang =
   | "curl" // 旧值，兼容已保存的设置（等价 bash）
   | "bash"
@@ -69,9 +72,11 @@ interface Req {
 
 function buildReq(api: ApiFile, baseUrl: string): Req {
   let url = api.url || baseUrl + (api.path || "/");
+  // 仅替换单大括号 {变量名} 路径参数，不触碰 {{变量名}} 全局环境变量
   for (const p of api.params.filter((x) => x.enabled && x.key)) {
     const v = (p.value || "").split(",")[0].trim();
-    url = url.split(`{${p.key}}`).join(v ? encodeURIComponent(v) : `{${p.key}}`);
+    const rx = new RegExp(`(?<!\\{)\\{${escapeRe(p.key)}\\}(?!\\})`, "g");
+    url = url.replace(rx, v ? encodeURIComponent(v) : `{${p.key}}`);
   }
   const query = api.query.filter((q) => q.enabled && q.key.trim());
   if (query.length) {

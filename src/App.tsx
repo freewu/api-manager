@@ -48,6 +48,9 @@ import { Response } from "./components/Response";
 import { SettingsModal } from "./components/SettingsModal";
 import { Sidebar } from "./components/Sidebar";
 import { StatsModal } from "./components/StatsModal";
+
+/** 转义正则特殊字符（用于按字面量构造 {变量名} 匹配） */
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 import { VersionModal } from "./components/VersionModal";
 import {
   ApiFile,
@@ -491,10 +494,12 @@ export default function App() {
         .filter((h) => h.enabled && h.key.trim())
         .map((h) => ({ ...h, key: sub(h.key), value: sub(h.value) }));
       let url = sub(api.url || rootInfo.baseUrl + api.path);
-      // 替换路径参数（多个示例值逗号分隔，发送时取第一个）
+      // 替换路径参数（多个示例值逗号分隔，发送时取第一个）；
+      // 仅替换单大括号 {变量名}，不触碰 {{变量名}} 全局环境变量
       for (const p of api.params.filter((x) => x.enabled && x.key)) {
         const v = p.value.split(",")[0].trim();
-        url = url.replaceAll(`{${p.key}}`, encodeURIComponent(sub(v)));
+        const rx = new RegExp(`(?<!\\{)\\{${escapeRe(p.key)}\\}(?!\\})`, "g");
+        url = url.replace(rx, encodeURIComponent(sub(v)));
       }
       // URL 校验：空地址 / 缺少协议前缀 / 存在未替换的 {{变量}}
       if (!url.trim()) {
