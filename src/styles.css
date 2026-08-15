@@ -1263,12 +1263,27 @@ body {
   width: 1000px;
 }
 .modal-settings {
-  width: 720px;
+  /* 设置窗口占主窗口的 90%（vw/vh 即主窗口可视区域） */
+  width: 90vw;
+  max-width: 90vw;
+  height: 90vh;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+.modal-settings .modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.modal-settings .modal-foot {
+  flex-shrink: 0;
 }
 .settings-layout {
   display: flex;
   gap: 14px;
-  min-height: 300px;
+  flex: 1;
+  min-height: 0;
 }
 .settings-nav {
   width: 118px;
@@ -1298,6 +1313,8 @@ body {
 .settings-panel {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 .settings-panel-title {
   font-size: 12px;
@@ -1314,7 +1331,7 @@ body {
   font-size: 13px;
 }
 .settings-label {
-  width: 64px;
+  width: 120px;
   color: var(--text-dim);
   flex-shrink: 0;
 }

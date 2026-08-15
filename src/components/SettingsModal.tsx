@@ -219,7 +219,7 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
                   />
                 </div>
                 <div className="settings-feature-desc">
-                  在编辑区显示「生成代码」页签，一键生成 Bash / Python / C / C++ / Java / C# / JavaScript / R / Rust / Delphi / PHP / Go / Ruby / Swift / Perl / Objective-C / Julia / Kotlin / TypeScript / Erlang 等请求代码
+                  在编辑区显示「生成代码」页签，支持 20 种语言一键生成请求代码
                 </div>
                 {settings.enableCodegen && (
                   <div className="settings-row settings-port-row">
@@ -235,7 +235,7 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
                         </option>
                       ))}
                     </select>
-                    <span className="settings-desc-inline">打开「生成代码」页签时默认使用的语言</span>
+                    <span className="settings-desc-inline">页签默认语言</span>
                   </div>
                 )}
               </div>
@@ -256,8 +256,7 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
                   />
                 </div>
                 <div className="settings-feature-desc">
-                  已检测到工作目录 {vcs === "git" ? ".git" : ".svn"}。开启后「同步」「提交并
-                  Push 远程」按钮会与远程仓库交互（git pull / push、svn update / commit）；关闭后仅本地提交，不同步远程。
+                  已检测到工作目录 {vcs === "git" ? ".git" : ".svn"}。开启后「同步」「提交并 Push 远程」会与远程仓库交互（git pull / push、svn update / commit）；关闭则仅本地提交。
                 </div>
               </div>
             </>
