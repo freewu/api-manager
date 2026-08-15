@@ -327,7 +327,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         {tab === "doc" && <DocParamsEditor api={api} set={set} />}
 
         {tab === "code" && enableCodegen && <CodeTab api={api} baseUrl={baseUrl} defaultLang={codegenLang} />}
-        {tab === "examples" && <ExamplesTab uuid={api.uuid} />}
+        {tab === "examples" && <ExamplesTab uuid={api.uuid} api={api} onChange={onChange} />}
       </div>
     </div>
   );

@@ -1,15 +1,36 @@
 import { useEffect, useState } from "react";
-import { ExampleFile, ExampleSummary } from "../types";
+import { ApiFile, ExampleFile, ExampleSummary } from "../types";
 import { deleteExample, listExamples, readExample } from "../commands";
-import { highlightJson, statusClass } from "./Response";
+import { highlightJson } from "./Response";
 
 interface Props {
   /** 当前接口 uuid（.examples/<uuid>/ 目录） */
   uuid: string;
+  /** 当前接口（「应用到当前接口」需要） */
+  api: ApiFile;
+  /** 修改接口（「应用到当前接口」回调） */
+  onChange: (api: ApiFile) => void;
 }
 
 function fmtTime(t: number): string {
   return new Date(t * 1000).toLocaleString();
+}
+
+/** 键值表（Header / Path / Query / 响应头） */
+function KVTable({ rows, empty }: { rows: [string, string][]; empty: string }) {
+  if (!rows.length) return <div className="examples-empty">{empty}</div>;
+  return (
+    <table className="resp-headers-table">
+      <tbody>
+        {rows.map(([k, v], i) => (
+          <tr key={i}>
+            <td>{k}</td>
+            <td>{v}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 /** 请求/响应体展示：JSON 高亮，其余原文 */
@@ -33,7 +54,7 @@ function BodyView({ text }: { text: string }) {
   return <pre className="examples-body examples-pre">{text}</pre>;
 }
 
-export function ExamplesTab({ uuid }: Props) {
+export function ExamplesTab({ uuid, api, onChange }: Props) {
   const [list, setList] = useState<ExampleSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -86,15 +107,35 @@ export function ExamplesTab({ uuid }: Props) {
     }
   };
 
+  // 把示例的 Header / Path / Query / Body 应用到当前接口（URL 保持当前接口的占位符形式）
+  const apply = (d: ExampleFile) => {
+    const kv = (rows: [string, string][]) =>
+      rows.map(([key, value]) => ({ key, value, enabled: true, description: "" }));
+    const body = { ...api.body };
+    if (d.reqBody !== undefined && d.reqBody !== null) {
+      const t = d.reqBody.trim();
+      body.mode = t.startsWith("{") || t.startsWith("[") ? "json" : "raw";
+      body.raw = d.reqBody;
+    }
+    onChange({
+      ...api,
+      headers: kv(d.reqHeaders),
+      params: kv(d.reqPath),
+      query: kv(d.reqQuery),
+      body,
+    });
+  };
+
   return (
     <div className="examples-root">
       <div className="examples-head">
         <span className="examples-title">
-          请求示例 <span className="help">保存在工作区 .examples/{uuid || "…"}/ 目录，同名示例会覆盖</span>
+          请求示例{" "}
+          <span className="help">保存在工作区 .examples/{uuid || "…"}/ 目录，同名示例会覆盖</span>
         </span>
         <div className="examples-actions">
           <span className="examples-count">{list.length} 个</span>
-          <button type="button" className="btn mini" onClick={() => void load()} disabled={loading}>
+          <button type="button" className="btn small" onClick={() => void load()} disabled={loading}>
             🔄 刷新
           </button>
         </div>
@@ -114,12 +155,8 @@ export function ExamplesTab({ uuid }: Props) {
           {list.map((s) => (
             <div key={s.file} className={`examples-item ${expanded === s.file ? "open" : ""}`}>
               <div className="examples-item-head" onClick={() => void toggle(s)}>
-                <span className={`status-badge ${statusClass(s.status)}`}>{s.status}</span>
                 <span className="examples-item-name" title={s.name}>
                   {s.name}
-                </span>
-                <span className="examples-item-meta">
-                  {s.method} {s.url}
                 </span>
                 <span className="examples-item-time">{fmtTime(s.time)}</span>
                 <button
@@ -136,48 +173,49 @@ export function ExamplesTab({ uuid }: Props) {
               </div>
               {expanded === s.file && detail && (
                 <div className="examples-detail">
-                  <div className="examples-detail-col">
-                    <div className="examples-detail-title">请求</div>
-                    <div className="examples-line">
-                      <b>{detail.method}</b> {detail.url}
-                    </div>
-                    {detail.reqHeaders.length > 0 && (
-                      <table className="resp-headers-table">
-                        <tbody>
-                          {detail.reqHeaders.map(([k, v], i) => (
-                            <tr key={i}>
-                              <td>{k}</td>
-                              <td>{v}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
+                  <div className="examples-request-line">
+                    <b>{detail.method}</b> {detail.url}
+                    <button
+                      type="button"
+                      className="btn small primary examples-apply"
+                      title="将 Header / Path / Query / Body 参数填充到当前接口"
+                      onClick={() => apply(detail)}
+                    >
+                      ⬇ 应用到当前接口
+                    </button>
+                  </div>
+                  <div className="examples-section">
+                    <div className="examples-detail-title">Header</div>
+                    <KVTable rows={detail.reqHeaders} empty="（无请求头）" />
+                  </div>
+                  <div className="examples-section">
+                    <div className="examples-detail-title">Path</div>
+                    <KVTable rows={detail.reqPath} empty="（无路径参数）" />
+                  </div>
+                  <div className="examples-section">
+                    <div className="examples-detail-title">Query</div>
+                    <KVTable rows={detail.reqQuery} empty="（无 Query 参数）" />
+                  </div>
+                  <div className="examples-section">
+                    <div className="examples-detail-title">Body</div>
                     <BodyView text={detail.reqBody || ""} />
                   </div>
-                  <div className="examples-detail-col">
+                  <div className="examples-section">
                     <div className="examples-detail-title">
                       响应{" "}
                       <span className="examples-detail-meta">
-                        {detail.timeMs} ms · {(detail.size / 1024).toFixed(2)} KB
+                        {detail.error
+                          ? "请求失败"
+                          : `${detail.status} ${detail.statusText} · ${detail.timeMs} ms · ${(
+                              detail.size / 1024
+                            ).toFixed(2)} KB`}
                       </span>
                     </div>
                     {detail.error ? (
                       <div className="error-banner">{detail.error}</div>
                     ) : (
                       <>
-                        {detail.respHeaders.length > 0 && (
-                          <table className="resp-headers-table">
-                            <tbody>
-                              {detail.respHeaders.map(([k, v], i) => (
-                                <tr key={i}>
-                                  <td>{k}</td>
-                                  <td>{v}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
+                        <KVTable rows={detail.respHeaders} empty="（无响应头）" />
                         <BodyView text={detail.respBody} />
                       </>
                     )}

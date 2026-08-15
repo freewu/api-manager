@@ -55,6 +55,10 @@ export interface ExampleFile {
   method: string;
   url: string;
   reqHeaders: [string, string][];
+  /** 路径参数（发送时的取值） */
+  reqPath: [string, string][];
+  /** Query 参数（发送时的取值） */
+  reqQuery: [string, string][];
   reqBody?: string;
   status: number;
   statusText: string;

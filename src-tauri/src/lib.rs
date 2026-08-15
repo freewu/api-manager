@@ -2492,6 +2492,12 @@ pub struct ExampleFile {
     pub url: String,
     #[serde(default)]
     pub req_headers: Vec<(String, String)>,
+    /// 路径参数（发送时的取值）
+    #[serde(default)]
+    pub req_path: Vec<(String, String)>,
+    /// Query 参数（发送时的取值）
+    #[serde(default)]
+    pub req_query: Vec<(String, String)>,
     #[serde(default)]
     pub req_body: Option<String>,
     #[serde(default)]
@@ -3486,6 +3492,8 @@ mod tests {
             method: "GET".into(),
             url: url.into(),
             req_headers: vec![("Accept".into(), "*/*".into())],
+            req_path: vec![("id".into(), "42".into())],
+            req_query: vec![("page".into(), "1".into())],
             req_body: None,
             status: 200,
             status_text: "OK".into(),
@@ -3517,6 +3525,8 @@ mod tests {
         let detail = read_example_file(&root, "uuid-1", &f3).unwrap();
         assert_eq!(detail.url, "http://a/c");
         assert_eq!(detail.resp_body, "{\"ok\":true}");
+        assert_eq!(detail.req_path[0], ("id".to_string(), "42".to_string()));
+        assert_eq!(detail.req_query[0], ("page".to_string(), "1".to_string()));
 
         // 空 uuid / 空名称报错
         assert!(save_example_to(&root, "", "x", make("x", "")).is_err());

@@ -94,6 +94,8 @@ export default function App() {
   const [dirty, setDirty] = useState(false);
   const [response, setResponse] = useState<HttpResult | null>(null);
   const [lastRequest, setLastRequest] = useState<HttpRequestData | null>(null);
+  /** 发送请求时的接口快照（用于保存示例时记录 path/query 结构化参数） */
+  const [lastApiSnapshot, setLastApiSnapshot] = useState<ApiFile | null>(null);
   // Mock / 描述 / 接口文档 / 生成代码 页签下隐藏响应面板
   const [hideResponse, setHideResponse] = useState(false);
   const [sending, setSending] = useState(false);
@@ -549,6 +551,7 @@ export default function App() {
       const res = await sendRequest(req);
       setResponse(res);
       setLastRequest(req);
+      setLastApiSnapshot(api);
       // 每次请求都保存到 .history 目录（按天分文件）
       try {
         await saveHistory({
@@ -578,6 +581,7 @@ export default function App() {
   // 将最近一次请求与响应保存为示例 -> 工作区 .examples/<接口uuid>/<示例名称hash值>.json
   const handleSaveExample = async (name: string) => {
     if (!api || !lastRequest || !response) return;
+    const snap = lastApiSnapshot || api;
     try {
       await saveExample(api.uuid || crypto.randomUUID(), name, {
         name,
@@ -585,6 +589,12 @@ export default function App() {
         method: lastRequest.method,
         url: lastRequest.url,
         reqHeaders: lastRequest.headers.map((h) => [h.key, h.value]),
+        reqPath: snap.params
+          .filter((p) => p.enabled && p.key.trim())
+          .map((p) => [p.key, p.value]),
+        reqQuery: snap.query
+          .filter((q) => q.enabled && q.key.trim())
+          .map((q) => [q.key, q.value]),
         reqBody: lastRequest.body,
         status: response.status,
         statusText: response.statusText,
