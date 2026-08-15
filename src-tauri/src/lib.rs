@@ -2776,6 +2776,7 @@ fn tray_toggle_mock(app: &AppHandle) {
 fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
     use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+    use tauri_plugin_opener::OpenerExt;
 
     app.manage(TrayState {
         mock_item: Mutex::new(None),
@@ -2783,20 +2784,34 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         exiting: AtomicBool::new(false),
     });
 
+    let version = MenuItem::with_id(
+        app,
+        "tray_version",
+        format!("API Manager v{}", env!("CARGO_PKG_VERSION")),
+        false,
+        None::<&str>,
+    )?;
     let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
     let env_item =
         MenuItem::with_id(app, "edit_env", "环境：未设置（点击编辑）", true, None::<&str>)?;
     let toggle_mock =
         MenuItem::with_id(app, "toggle_mock", "启动 Mock 服务", true, None::<&str>)?;
+    let github = MenuItem::with_id(app, "open_github", "GitHub 仓库", true, None::<&str>)?;
+    let issue = MenuItem::with_id(app, "open_issue", "提 Issue", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
     let menu = Menu::with_items(
         app,
         &[
+            &version,
+            &PredefinedMenuItem::separator(app)?,
             &show,
             &PredefinedMenuItem::separator(app)?,
             &env_item,
             &PredefinedMenuItem::separator(app)?,
             &toggle_mock,
+            &PredefinedMenuItem::separator(app)?,
+            &github,
+            &issue,
             &PredefinedMenuItem::separator(app)?,
             &quit,
         ],
@@ -2811,7 +2826,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         // 使用项目 logo 生成的 32px 方形图标作为托盘图标（小尺寸显示更清晰）
         .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png"))?)
         .menu(&menu)
-        .tooltip("API Manager")
+        .tooltip(format!("API Manager v{}", env!("CARGO_PKG_VERSION")))
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "show" => show_main_window(app),
@@ -2821,6 +2836,18 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
                 let _ = app.emit("open-env-editor", ());
             }
             "toggle_mock" => tray_toggle_mock(app),
+            "open_github" => {
+                // 打开项目 GitHub 仓库
+                let _ = app
+                    .opener()
+                    .open_url("https://github.com/freewu/api-manager", None::<&str>);
+            }
+            "open_issue" => {
+                // 快速跳转到新建 Issue 页面
+                let _ = app
+                    .opener()
+                    .open_url("https://github.com/freewu/api-manager/issues/new", None::<&str>);
+            }
             "quit" => {
                 app.state::<TrayState>()
                     .exiting
