@@ -184,7 +184,7 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
                   />
                 </div>
                 <div className="settings-feature-desc">
-                  在编辑区显示「生成代码」页签，一键生成 curl / Go / Rust / Java / Python 等请求代码
+                  在编辑区显示「生成代码」页签，一键生成 Bash / Python / C / C++ / Java / C# / JavaScript / R / Rust / Delphi / PHP / Go / Ruby / Swift / Perl / Objective-C / Julia / Kotlin / TypeScript / Erlang 等请求代码
                 </div>
                 {settings.enableCodegen && (
                   <div className="settings-row settings-port-row">

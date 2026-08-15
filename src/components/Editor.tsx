@@ -18,13 +18,13 @@ interface Props {
   onCommit?: () => void;
   /** 是否启用请求代码生成（显示「代码」页签） */
   enableCodegen?: boolean;
-  /** 代码生成默认语言（curl / go / rust / java / python / javascript） */
+  /** 代码生成默认语言（bash / python / c / cpp / java / csharp / ...） */
   codegenLang?: string;
   /** 页签切换回调（App 据此隐藏/显示响应面板） */
   onTabChange?: (tab: string) => void;
 }
 
-export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, codegenLang = "curl", onTabChange }: Props) {
+export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, codegenLang = "bash", onTabChange }: Props) {
   const [tab, setTab] = useState<Tab>("params");
   const effectiveUrl = api.url || (baseUrl + api.path);
 

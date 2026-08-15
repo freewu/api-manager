@@ -1,31 +1,73 @@
 import { useMemo, useState } from "react";
 import hljs from "highlight.js/lib/core";
 import bash from "highlight.js/lib/languages/bash";
+import c from "highlight.js/lib/languages/c";
+import cpp from "highlight.js/lib/languages/cpp";
+import csharp from "highlight.js/lib/languages/csharp";
+import delphi from "highlight.js/lib/languages/delphi";
+import erlang from "highlight.js/lib/languages/erlang";
 import go from "highlight.js/lib/languages/go";
-import rust from "highlight.js/lib/languages/rust";
 import java from "highlight.js/lib/languages/java";
-import python from "highlight.js/lib/languages/python";
 import javascript from "highlight.js/lib/languages/javascript";
+import julia from "highlight.js/lib/languages/julia";
+import kotlin from "highlight.js/lib/languages/kotlin";
+import objectivec from "highlight.js/lib/languages/objectivec";
+import perl from "highlight.js/lib/languages/perl";
+import php from "highlight.js/lib/languages/php";
+import python from "highlight.js/lib/languages/python";
+import r from "highlight.js/lib/languages/r";
+import ruby from "highlight.js/lib/languages/ruby";
+import rust from "highlight.js/lib/languages/rust";
+import swift from "highlight.js/lib/languages/swift";
+import typescript from "highlight.js/lib/languages/typescript";
 import "highlight.js/styles/github-dark.css";
 import { ApiFile } from "../types";
 import { CODE_LANGS, CodeLang, generateRequestCode } from "../utils/codegen";
 
 hljs.registerLanguage("bash", bash);
+hljs.registerLanguage("c", c);
+hljs.registerLanguage("cpp", cpp);
+hljs.registerLanguage("csharp", csharp);
+hljs.registerLanguage("delphi", delphi);
+hljs.registerLanguage("erlang", erlang);
 hljs.registerLanguage("go", go);
-hljs.registerLanguage("rust", rust);
 hljs.registerLanguage("java", java);
-hljs.registerLanguage("python", python);
 hljs.registerLanguage("javascript", javascript);
+hljs.registerLanguage("julia", julia);
+hljs.registerLanguage("kotlin", kotlin);
+hljs.registerLanguage("objectivec", objectivec);
+hljs.registerLanguage("perl", perl);
+hljs.registerLanguage("php", php);
+hljs.registerLanguage("python", python);
+hljs.registerLanguage("r", r);
+hljs.registerLanguage("ruby", ruby);
+hljs.registerLanguage("rust", rust);
+hljs.registerLanguage("swift", swift);
+hljs.registerLanguage("typescript", typescript);
 
 /** CodeLang（含旧值 curl）→ highlight.js 语言 id */
 const HLJS_LANG: Record<CodeLang, string> = {
   curl: "bash",
   bash: "bash",
-  go: "go",
-  rust: "rust",
-  java: "java",
   python: "python",
+  c: "c",
+  cpp: "cpp",
+  java: "java",
+  csharp: "csharp",
   javascript: "javascript",
+  r: "r",
+  rust: "rust",
+  delphi: "delphi",
+  php: "php",
+  go: "go",
+  ruby: "ruby",
+  swift: "swift",
+  perl: "perl",
+  objectivec: "objectivec",
+  julia: "julia",
+  kotlin: "kotlin",
+  typescript: "typescript",
+  erlang: "erlang",
 };
 
 interface Props {
@@ -60,7 +102,7 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
   };
 
   return (
-    <div>
+    <div className="codegen-root">
       <div className="section-title codegen-head">
         <span>请求代码生成</span>
         <select
@@ -85,7 +127,7 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
           dangerouslySetInnerHTML={{ __html: html }}
         />
       </pre>
-      <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 6 }}>
+      <div className="codegen-hint">
         代码自动跟随当前请求的 URL、Headers、Params、Path 与 Body；可在「设置 → 功能」中更改默认语言。
       </div>
     </div>

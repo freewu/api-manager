@@ -113,7 +113,7 @@ export interface AppSettings {
   mockPort: number;
   syncRemote: boolean;
   enableCodegen: boolean;
-  codegenLang: string; // curl / go / rust / java / python / javascript
+  codegenLang: string; // 代码生成默认语言（bash / python / c / cpp / java / csharp / ...）
 }
 
 export const defaultSettings = (): AppSettings => ({
