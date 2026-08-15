@@ -2507,12 +2507,6 @@ fn show_main_window(app: &AppHandle) {
     }
 }
 
-fn hide_main_window(app: &AppHandle) {
-    if let Some(w) = app.get_webview_window("main") {
-        let _ = w.hide();
-    }
-}
-
 /// 当前激活环境名（从工作区 __envs.json 读取）
 fn active_env_name(app: &AppHandle) -> String {
     let root = app
@@ -2599,6 +2593,8 @@ fn tray_toggle_mock(app: &AppHandle) {
             let _ = mock::start_mock(&app, port).await;
         }
         update_tray_mock_item(&app);
+        // 托盘操作 Mock 后通知主页面刷新状态（启动/停止联动）
+        let _ = app.emit("mock-status-changed", ());
     });
 }
 
@@ -2614,7 +2610,6 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     });
 
     let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
-    let hide = MenuItem::with_id(app, "hide", "隐藏窗口", true, None::<&str>)?;
     let env_item =
         MenuItem::with_id(app, "edit_env", "环境：未设置（点击编辑）", true, None::<&str>)?;
     let toggle_mock =
@@ -2624,7 +2619,6 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         app,
         &[
             &show,
-            &hide,
             &PredefinedMenuItem::separator(app)?,
             &env_item,
             &PredefinedMenuItem::separator(app)?,
@@ -2646,7 +2640,6 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "show" => show_main_window(app),
-            "hide" => hide_main_window(app),
             "edit_env" => {
                 // 显示窗口并通知前端打开环境变量编辑器
                 show_main_window(app);

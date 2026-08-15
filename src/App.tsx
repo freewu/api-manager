@@ -196,6 +196,23 @@ export default function App() {
     return () => unlisten?.();
   }, []);
 
+  // 托盘 Mock 服务启动/停止后，主页面联动刷新状态并提示
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      unlisten = await listen("mock-status-changed", async () => {
+        try {
+          const s = await mockStatus();
+          setMock(s);
+          showToast(s.running ? `Mock 服务已启动: http://127.0.0.1:${s.port || settings.mockPort}` : "Mock 服务已停止");
+        } catch {
+          /* noop */
+        }
+      });
+    })();
+    return () => unlisten?.();
+  }, []);
+
   // 空区域右键菜单：点击任意处 / Esc 关闭
   useEffect(() => {
     if (!emptyMenu) return;
