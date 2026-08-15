@@ -1726,6 +1726,33 @@ fn list_versions(state: State<'_, WorkspaceState>, uuid: String) -> Result<Vec<V
     Ok(list)
 }
 
+/// 查询接口当前版本号：.version/<uuid> 目录下的最大版本号（未保存过版本返回 0）
+#[tauri::command]
+fn get_current_version(state: State<'_, WorkspaceState>, uuid: String) -> Result<u32, String> {
+    let root = workspace_root(&state)?;
+    let uuid = uuid.trim().to_string();
+    if !valid_uuid(&uuid) {
+        return Ok(0);
+    }
+    let dir = root.join(".version").join(&uuid);
+    if !dir.exists() {
+        return Ok(0);
+    }
+    let mut max: u32 = 0;
+    for entry in fs::read_dir(&dir).map_err(|e| format!("读取版本目录失败: {e}"))? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let fname = entry.file_name().to_string_lossy().to_string();
+        if let Some(stem) = fname.strip_suffix(".json") {
+            if let Some(idx) = stem.rfind('.') {
+                if let Ok(n) = stem[idx + 1..].parse::<u32>() {
+                    max = max.max(n);
+                }
+            }
+        }
+    }
+    Ok(max)
+}
+
 /// 读取某个历史版本文件的原始内容（用于 diff）
 #[tauri::command]
 fn read_api_version(path: String) -> Result<String, String> {
@@ -2694,6 +2721,7 @@ pub fn run() {
             save_api,
             save_api_version,
             list_versions,
+            get_current_version,
             read_api_version,
             create_api,
             create_folder,

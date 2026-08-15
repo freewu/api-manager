@@ -13,6 +13,8 @@ interface Props {
   onSaveVersion: () => void;
   enableVersion: boolean;
   sending: boolean;
+  /** 当前接口已保存的最新版本号（保存按钮 tip 展示） */
+  currentVersion?: number;
   style?: React.CSSProperties;
   /** 失焦后自动保存（接口说明 textarea blur 时触发） */
   onCommit?: () => void;
@@ -24,7 +26,7 @@ interface Props {
   onTabChange?: (tab: string) => void;
 }
 
-export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, codegenLang = "bash", onTabChange }: Props) {
+export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, codegenLang = "bash", onTabChange, currentVersion = 0 }: Props) {
   const [tab, setTab] = useState<Tab>("params");
   const effectiveUrl = api.url || (baseUrl + api.path);
 
@@ -105,7 +107,11 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           <button
             className="save-btn"
             onClick={onSaveVersion}
-            title="将当前接口内容保存为新版本（.version/<uuid>/<名称>.<版本号>.json）"
+            title={
+              currentVersion > 0
+                ? `当前版本：${currentVersion}（点击将当前内容保存为新版本）`
+                : "当前版本：暂无（点击保存生成第一个版本）"
+            }
           >
             💾 保存
           </button>

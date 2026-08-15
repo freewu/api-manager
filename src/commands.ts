@@ -89,6 +89,10 @@ export function listVersions(uuid: string): Promise<VersionInfo[]> {
   return invoke<VersionInfo[]>("list_versions", { uuid });
 }
 
+export function getCurrentVersion(uuid: string): Promise<number> {
+  return invoke<number>("get_current_version", { uuid });
+}
+
 export function readApiVersion(path: string): Promise<string> {
   return invoke<string>("read_api_version", { path });
 }

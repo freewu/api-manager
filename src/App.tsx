@@ -35,6 +35,7 @@ import {
   vcsInfo,
   vcsSync,
   hasWorkspaceInfo,
+  getCurrentVersion,
 } from "./commands";
 import { Editor } from "./components/Editor";
 import { EnvModal } from "./components/EnvModal";
@@ -99,6 +100,8 @@ export default function App() {
   /** 右下角持久弹窗（不自动消失），用于同步/提交等错误提示 */
   const [notify, setNotify] = useState<{ title: string; body: string } | null>(null);
   const [version, setVersion] = useState("");
+  /** 当前接口已保存的最新版本号（.version/<uuid> 最大版本，未保存过为 0） */
+  const [currentVersion, setCurrentVersion] = useState(0);
   const [envs, setEnvs] = useState<EnvStore>(emptyEnv());
   const [envModal, setEnvModal] = useState(false);
   const [envValue, setEnvValue] = useState(false);
@@ -206,6 +209,15 @@ export default function App() {
     };
   }, [emptyMenu]);
 
+  /** 查询接口当前版本号（保存按钮 tip 展示用） */
+  const refreshVersion = useCallback(async (uuid: string) => {
+    try {
+      setCurrentVersion(await getCurrentVersion(uuid));
+    } catch {
+      setCurrentVersion(0);
+    }
+  }, []);
+
   async function loadAll(ws: string) {
     const [t, info, e] = await Promise.all([readTree(), readInfo(ws), readEnv()]);
     setTree(t);
@@ -222,9 +234,11 @@ export default function App() {
       const data = await readApi(first.path);
       setApi(data);
       setDirty(false);
+      void refreshVersion(data.uuid);
     } else {
       setSelectedPath(null);
       setApi(null);
+      setCurrentVersion(0);
     }
   }
 
@@ -273,6 +287,7 @@ export default function App() {
       setApi(data);
       setDirty(false);
       setResponse(null);
+      void refreshVersion(data.uuid);
     },
     [dirty, api, selectedPath, showToast]
   );
@@ -561,6 +576,7 @@ export default function App() {
       }
       const rel = await saveApiVersion(data);
       showToast(`已保存新版本: ${rel}`);
+      void refreshVersion(data.uuid);
     } catch (e) {
       showToast("保存版本失败: " + e);
     }
@@ -669,6 +685,7 @@ export default function App() {
       setApi(data);
       setDirty(false);
       setResponse(null);
+      void refreshVersion(data.uuid);
       showToast(`已创建接口: ${name}`);
     } catch (e) {
       showToast("创建失败: " + e);
@@ -926,6 +943,7 @@ export default function App() {
                 style={{ height: hideResponse ? "100%" : `${editorRatio * 100}%` }}
                 api={api}
                 baseUrl={baseUrl}
+                currentVersion={currentVersion}
                 onChange={(a) => {
                   setApi(a);
                   setDirty(true);
