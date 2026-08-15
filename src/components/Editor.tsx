@@ -20,15 +20,23 @@ interface Props {
   enableCodegen?: boolean;
   /** 代码生成默认语言（curl / go / rust / java / python / javascript） */
   codegenLang?: string;
+  /** 页签切换回调（App 据此隐藏/显示响应面板） */
+  onTabChange?: (tab: string) => void;
 }
 
-export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, codegenLang = "curl" }: Props) {
+export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, codegenLang = "curl", onTabChange }: Props) {
   const [tab, setTab] = useState<Tab>("params");
   const effectiveUrl = api.url || (baseUrl + api.path);
+
+  const switchTab = (t: Tab) => {
+    setTab(t);
+    onTabChange?.(t);
+  };
 
   // 切换接口时回到 Params 页签
   useEffect(() => {
     setTab("params");
+    onTabChange?.("params");
   }, [api.uuid]);
 
   // URL / 路径中的 {xx} 占位符实时同步到 Path 页签（新增或删除）
@@ -105,32 +113,32 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
       </div>
 
       <div className="tabs">
-        <div className={`tab ${tab === "params" ? "active" : ""}`} onClick={() => setTab("params")}>
+        <div className={`tab ${tab === "params" ? "active" : ""}`} onClick={() => switchTab("params")}>
           Params{enabledCount(api.query) > 0 && <span className="count">{enabledCount(api.query)}</span>}
         </div>
-        <div className={`tab ${tab === "path" ? "active" : ""}`} onClick={() => setTab("path")}>
+        <div className={`tab ${tab === "path" ? "active" : ""}`} onClick={() => switchTab("path")}>
           Path{enabledCount(api.params) > 0 && <span className="count">{enabledCount(api.params)}</span>}
         </div>
-        <div className={`tab ${tab === "headers" ? "active" : ""}`} onClick={() => setTab("headers")}>
+        <div className={`tab ${tab === "headers" ? "active" : ""}`} onClick={() => switchTab("headers")}>
           Headers{enabledCount(api.headers) > 0 && <span className="count">{enabledCount(api.headers)}</span>}
         </div>
         <div
           className={`tab ${tab === "body" ? "active" : ""}`}
-          onClick={() => setTab("body")}
+          onClick={() => switchTab("body")}
         >
           Body{api.body.mode !== "none" && api.body.raw && <span className="count">•</span>}
         </div>
-        <div className={`tab ${tab === "mock" ? "active" : ""}`} onClick={() => setTab("mock")}>
+        <div className={`tab ${tab === "mock" ? "active" : ""}`} onClick={() => switchTab("mock")}>
           Mock{api.mock.enabled && <span className="count">●</span>}
         </div>
-        <div className={`tab ${tab === "desc" ? "active" : ""}`} onClick={() => setTab("desc")}>
+        <div className={`tab ${tab === "desc" ? "active" : ""}`} onClick={() => switchTab("desc")}>
           描述
         </div>
-        <div className={`tab ${tab === "doc" ? "active" : ""}`} onClick={() => setTab("doc")}>
-          入参文档
+        <div className={`tab ${tab === "doc" ? "active" : ""}`} onClick={() => switchTab("doc")}>
+          接口文档
         </div>
         {enableCodegen && (
-          <div className={`tab ${tab === "code" ? "active" : ""}`} onClick={() => setTab("code")}>
+          <div className={`tab ${tab === "code" ? "active" : ""}`} onClick={() => switchTab("code")}>
             生成代码
           </div>
         )}
@@ -309,7 +317,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   );
 }
 
-/** 入参文档：汇总 query / path / body 请求参数，补充类型与说明 */
+/** 接口文档：汇总 query / path / body 请求参数，补充类型与说明 */
 function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>) => void }) {
   type Row = { source: DocParam["source"]; key: string; value: string };
 
@@ -369,7 +377,7 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
   return (
     <div>
       <div className="section-title">
-        入参文档 <span className="help">自动汇总 Params / Path / Body 参数，补充类型与说明后随接口保存</span>
+        接口文档 <span className="help">自动汇总 Params / Path / Body 参数，补充类型与说明后随接口保存</span>
       </div>
       <table className="kv-table doc-params-table">
         <thead>

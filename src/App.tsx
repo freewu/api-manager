@@ -87,6 +87,8 @@ export default function App() {
   const [api, setApi] = useState<ApiFile | null>(null);
   const [dirty, setDirty] = useState(false);
   const [response, setResponse] = useState<HttpResult | null>(null);
+  // Mock / 描述 / 接口文档 / 生成代码 页签下隐藏响应面板
+  const [hideResponse, setHideResponse] = useState(false);
   const [sending, setSending] = useState(false);
   const [mock, setMock] = useState<MockStatus>({ running: false, routeCount: 0 });
   const [vcs, setVcs] = useState<"git" | "svn" | null>(null);
@@ -921,7 +923,7 @@ export default function App() {
           ) : api ? (
             <>
               <Editor
-                style={{ height: `${editorRatio * 100}%` }}
+                style={{ height: hideResponse ? "100%" : `${editorRatio * 100}%` }}
                 api={api}
                 baseUrl={baseUrl}
                 onChange={(a) => {
@@ -935,18 +937,21 @@ export default function App() {
                 onCommit={handleAutoSave}
                 enableCodegen={settings.enableCodegen}
                 codegenLang={settings.codegenLang}
+                onTabChange={(t) => setHideResponse(["mock", "desc", "doc", "code"].includes(t))}
               />
-              <div
-                className="v-resizer"
-                onMouseDown={startVResize}
-                onDoubleClick={() => {
-                  setEditorRatio(0.45);
-                  editorRatioRef.current = 0.45;
-                  localStorage.setItem("editor-ratio", "0.45");
-                }}
-                title="拖动调整编辑区 / 响应区高度，双击还原"
-              />
-              <Response result={response} sending={sending} />
+              {!hideResponse && (
+                <div
+                  className="v-resizer"
+                  onMouseDown={startVResize}
+                  onDoubleClick={() => {
+                    setEditorRatio(0.45);
+                    editorRatioRef.current = 0.45;
+                    localStorage.setItem("editor-ratio", "0.45");
+                  }}
+                  title="拖动调整编辑区 / 响应区高度，双击还原"
+                />
+              )}
+              {!hideResponse && <Response result={response} sending={sending} />}
             </>
           ) : (
             <div
