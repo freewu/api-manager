@@ -858,7 +858,7 @@ export default function App() {
           onStats={setStatsNode}
           onOpenSettings={() => setSettingsOpen(true)}
           onImportPostman={() => void handleImportPostman()}
-          vcs={vcs && settings.syncRemote ? vcs : null}
+          vcs={null} // 同步远程功能暂时隐藏（后端命令保留，恢复时改回 vcs && settings.syncRemote ? vcs : null）
           onVcsSync={() => void handleVcsSync()}
           onVcsCommitPush={() => void handleVcsCommitPush()}
           onMove={handleMove}
@@ -998,7 +998,7 @@ export default function App() {
         <SettingsModal
           settings={settings}
           appVersion={version}
-          vcs={vcs}
+          vcs={null} // 同步远程设置暂时隐藏
           onClose={() => setSettingsOpen(false)}
           onSave={handleSaveSettings}
         />
