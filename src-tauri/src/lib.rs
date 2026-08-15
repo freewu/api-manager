@@ -2476,6 +2476,168 @@ fn history_clear(state: State<'_, WorkspaceState>) -> Result<(), String> {
     Ok(())
 }
 
+// ==================== 请求示例 ====================
+
+pub const EXAMPLES_DIR: &str = ".examples";
+
+/// 示例文件内容（.examples/<接口uuid>/<示例名称hash值>.json）
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExampleFile {
+    /// 示例名称
+    pub name: String,
+    /// 保存时间（Unix 秒）
+    pub time: u64,
+    pub method: String,
+    pub url: String,
+    #[serde(default)]
+    pub req_headers: Vec<(String, String)>,
+    #[serde(default)]
+    pub req_body: Option<String>,
+    #[serde(default)]
+    pub status: u16,
+    #[serde(default)]
+    pub status_text: String,
+    #[serde(default)]
+    pub resp_headers: Vec<(String, String)>,
+    #[serde(default)]
+    pub resp_body: String,
+    #[serde(default)]
+    pub time_ms: u64,
+    #[serde(default)]
+    pub size: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// 示例列表摘要（不含请求/响应全文）
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExampleSummary {
+    pub name: String,
+    /// 文件名（不含目录），用于读取/删除
+    pub file: String,
+    pub time: u64,
+    pub method: String,
+    pub url: String,
+    pub status: u16,
+}
+
+/// 示例名称 -> 稳定哈希（同名示例覆盖保存；FNV-1a 64 位）
+fn example_name_hash(name: &str) -> String {
+    let mut h: u64 = 0xcbf29ce484222325;
+    for b in name.as_bytes() {
+        h ^= *b as u64;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    format!("{h:016x}")
+}
+
+fn examples_dir(root: &Path, uuid: &str) -> Result<PathBuf, String> {
+    if uuid.trim().is_empty() {
+        return Err("接口标识为空，无法保存示例".into());
+    }
+    Ok(root.join(EXAMPLES_DIR).join(uuid.trim()))
+}
+
+fn save_example_to(root: &Path, uuid: &str, name: &str, data: ExampleFile) -> Result<String, String> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err("示例名称不能为空".into());
+    }
+    let dir = examples_dir(root, uuid)?;
+    fs::create_dir_all(&dir).map_err(|e| format!("创建示例目录失败: {e}"))?;
+    let file = format!("{}.json", example_name_hash(name));
+    write_pretty(&dir.join(&file), &data)?;
+    Ok(file)
+}
+
+fn list_examples_from(root: &Path, uuid: &str) -> Result<Vec<ExampleSummary>, String> {
+    let dir = examples_dir(root, uuid)?;
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut out = Vec::new();
+    for entry in fs::read_dir(&dir).map_err(|e| format!("读取示例目录失败: {e}"))? {
+        let p = entry.map_err(|e| format!("读取示例目录失败: {e}"))?.path();
+        if p.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        if let Ok(content) = fs::read_to_string(&p) {
+            if let Ok(f) = serde_json::from_str::<ExampleFile>(&content) {
+                out.push(ExampleSummary {
+                    name: f.name,
+                    file: p
+                        .file_name()
+                        .map(|n| n.to_string_lossy().into_owned())
+                        .unwrap_or_default(),
+                    time: f.time,
+                    method: f.method,
+                    url: f.url,
+                    status: f.status,
+                });
+            }
+        }
+    }
+    out.sort_by(|a, b| b.time.cmp(&a.time));
+    Ok(out)
+}
+
+fn example_path(root: &Path, uuid: &str, file: &str) -> Result<PathBuf, String> {
+    // 防目录穿越：文件名必须是纯文件名
+    if file.contains('/') || file.contains('\\') || file.contains("..") {
+        return Err("非法的示例文件名".into());
+    }
+    Ok(examples_dir(root, uuid)?.join(file))
+}
+
+#[tauri::command]
+fn save_example(
+    state: State<'_, WorkspaceState>,
+    uuid: String,
+    name: String,
+    data: ExampleFile,
+) -> Result<String, String> {
+    let root = workspace_root(&state)?;
+    save_example_to(&root, &uuid, &name, data)
+}
+
+#[tauri::command]
+fn list_examples(
+    state: State<'_, WorkspaceState>,
+    uuid: String,
+) -> Result<Vec<ExampleSummary>, String> {
+    let root = workspace_root(&state)?;
+    list_examples_from(&root, &uuid)
+}
+
+fn read_example_file(root: &Path, uuid: &str, file: &str) -> Result<ExampleFile, String> {
+    let p = example_path(root, uuid, file)?;
+    let content = fs::read_to_string(&p).map_err(|e| format!("读取示例失败: {e}"))?;
+    serde_json::from_str(&content).map_err(|e| format!("解析示例失败: {e}"))
+}
+
+#[tauri::command]
+fn read_example(
+    state: State<'_, WorkspaceState>,
+    uuid: String,
+    file: String,
+) -> Result<ExampleFile, String> {
+    let root = workspace_root(&state)?;
+    read_example_file(&root, &uuid, &file)
+}
+
+#[tauri::command]
+fn delete_example(
+    state: State<'_, WorkspaceState>,
+    uuid: String,
+    file: String,
+) -> Result<(), String> {
+    let root = workspace_root(&state)?;
+    let p = example_path(&root, &uuid, &file)?;
+    fs::remove_file(&p).map_err(|e| format!("删除示例失败: {e}"))
+}
+
 // ==================== Mock 服务 ====================
 
 #[tauri::command]
@@ -2741,6 +2903,10 @@ pub fn run() {
             history_detail,
             history_days,
             history_clear,
+            save_example,
+            list_examples,
+            read_example,
+            delete_example,
             mock_start,
             mock_stop,
             mock_status,
@@ -3304,6 +3470,64 @@ mod tests {
         fs::remove_dir_all(root.join(HISTORY_DIR)).unwrap();
         assert!(history_records_from(&root, 0, 100).unwrap().is_empty());
         assert!(history_days_from(&root).unwrap().is_empty());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_example_roundtrip() {
+        // 保存（同名覆盖）-> 列表 -> 读取 -> 删除 全链路
+        let root = std::env::temp_dir().join(format!("example-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+
+        let make = |name: &str, url: &str| ExampleFile {
+            name: name.into(),
+            time: 1700000000,
+            method: "GET".into(),
+            url: url.into(),
+            req_headers: vec![("Accept".into(), "*/*".into())],
+            req_body: None,
+            status: 200,
+            status_text: "OK".into(),
+            resp_headers: vec![("X-Test".into(), "yes".into())],
+            resp_body: "{\"ok\":true}".into(),
+            time_ms: 8,
+            size: 64,
+            error: None,
+        };
+
+        // 名称哈希稳定：同名两次保存得到相同文件名（覆盖）
+        let f1 = save_example_to(&root, "uuid-1", "登录成功", make("登录成功", "http://a/b")).unwrap();
+        let f2 = save_example_to(&root, "uuid-1", "登录成功", make("登录成功", "http://a/b?x=2")).unwrap();
+        assert_eq!(f1, f2);
+        // 不同名 -> 不同文件
+        let f3 = save_example_to(&root, "uuid-1", "查询列表", make("查询列表", "http://a/c")).unwrap();
+        assert_ne!(f1, f3);
+        // 不同接口 -> 不同目录
+        let f4 = save_example_to(&root, "uuid-2", "登录成功", make("登录成功", "http://a/b")).unwrap();
+        assert_eq!(f1, f4);
+
+        let list = list_examples_from(&root, "uuid-1").unwrap();
+        assert_eq!(list.len(), 2);
+        // 最新在前
+        assert_eq!(list[0].name, "查询列表");
+        assert!(list.iter().all(|s| s.file.ends_with(".json")));
+
+        // 读取详情
+        let detail = read_example_file(&root, "uuid-1", &f3).unwrap();
+        assert_eq!(detail.url, "http://a/c");
+        assert_eq!(detail.resp_body, "{\"ok\":true}");
+
+        // 空 uuid / 空名称报错
+        assert!(save_example_to(&root, "", "x", make("x", "")).is_err());
+        assert!(save_example_to(&root, "uuid-1", "   ", make("x", "")).is_err());
+
+        // 防目录穿越
+        assert!(example_path(&root, "uuid-1", "../evil.json").is_err());
+
+        // 删除后列表为空
+        fs::remove_file(root.join(EXAMPLES_DIR).join("uuid-1").join(&f3)).unwrap();
+        assert_eq!(list_examples_from(&root, "uuid-1").unwrap().len(), 1);
         let _ = fs::remove_dir_all(&root);
     }
 

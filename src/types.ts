@@ -47,6 +47,35 @@ export interface DocParam {
   description: string;
 }
 
+/** 请求示例文件内容（.examples/<接口uuid>/<示例名称hash值>.json） */
+export interface ExampleFile {
+  name: string;
+  /** 保存时间（Unix 秒） */
+  time: number;
+  method: string;
+  url: string;
+  reqHeaders: [string, string][];
+  reqBody?: string;
+  status: number;
+  statusText: string;
+  respHeaders: [string, string][];
+  respBody: string;
+  timeMs: number;
+  size: number;
+  error?: string;
+}
+
+/** 示例列表摘要（不含请求/响应全文） */
+export interface ExampleSummary {
+  name: string;
+  /** 文件名（不含目录），用于读取/删除 */
+  file: string;
+  time: number;
+  method: string;
+  url: string;
+  status: number;
+}
+
 export interface InfoJson {
   name?: string;
   description?: string;

@@ -30,6 +30,7 @@ import {
   saveSettings,
   sendRequest,
   saveHistory,
+  saveExample,
   updateTrayEnv,
   vcsCommitPush,
   vcsInfo,
@@ -92,6 +93,7 @@ export default function App() {
   const [api, setApi] = useState<ApiFile | null>(null);
   const [dirty, setDirty] = useState(false);
   const [response, setResponse] = useState<HttpResult | null>(null);
+  const [lastRequest, setLastRequest] = useState<HttpRequestData | null>(null);
   // Mock / 描述 / 接口文档 / 生成代码 页签下隐藏响应面板
   const [hideResponse, setHideResponse] = useState(false);
   const [sending, setSending] = useState(false);
@@ -546,6 +548,7 @@ export default function App() {
       };
       const res = await sendRequest(req);
       setResponse(res);
+      setLastRequest(req);
       // 每次请求都保存到 .history 目录（按天分文件）
       try {
         await saveHistory({
@@ -569,6 +572,31 @@ export default function App() {
       setResponse({ ok: false, status: 0, statusText: "", headers: [], body: "", timeMs: 0, size: 0, url: "", error: String(e) });
     } finally {
       setSending(false);
+    }
+  };
+
+  // 将最近一次请求与响应保存为示例 -> 工作区 .examples/<接口uuid>/<示例名称hash值>.json
+  const handleSaveExample = async (name: string) => {
+    if (!api || !lastRequest || !response) return;
+    try {
+      await saveExample(api.uuid || crypto.randomUUID(), name, {
+        name,
+        time: Math.floor(Date.now() / 1000),
+        method: lastRequest.method,
+        url: lastRequest.url,
+        reqHeaders: lastRequest.headers.map((h) => [h.key, h.value]),
+        reqBody: lastRequest.body,
+        status: response.status,
+        statusText: response.statusText,
+        respHeaders: response.headers,
+        respBody: response.body,
+        timeMs: response.timeMs,
+        size: response.size,
+        error: response.error || undefined,
+      });
+      showToast(`示例已保存: ${name}`);
+    } catch (e) {
+      showToast("保存示例失败: " + e);
     }
   };
 
@@ -986,7 +1014,7 @@ export default function App() {
                 onCommit={handleAutoSave}
                 enableCodegen={settings.enableCodegen}
                 codegenLang={settings.codegenLang}
-                onTabChange={(t) => setHideResponse(["mock", "desc", "doc", "code"].includes(t))}
+                onTabChange={(t) => setHideResponse(["mock", "desc", "doc", "code", "examples"].includes(t))}
               />
               {!hideResponse && (
                 <div
@@ -1000,7 +1028,7 @@ export default function App() {
                   title="拖动调整编辑区 / 响应区高度，双击还原"
                 />
               )}
-              {!hideResponse && <Response result={response} sending={sending} />}
+              {!hideResponse && <Response result={response} sending={sending} onSaveExample={handleSaveExample} />}
             </>
           ) : (
             <div

@@ -4,6 +4,8 @@ import { HttpResult } from "../types";
 interface Props {
   result: HttpResult | null;
   sending: boolean;
+  /** 点击「保存为示例」并确认名称后回调（App 负责写入 .examples 目录） */
+  onSaveExample?: (name: string) => void;
 }
 
 type View = "auto" | "raw" | "html" | "xml" | "json" | "text";
@@ -16,7 +18,7 @@ const VIEWS: { value: View; label: string }[] = [
   { value: "auto", label: "自动" },
 ];
 
-function statusClass(status: number) {
+export function statusClass(status: number) {
   if (status >= 200 && status < 300) return "status-2xx";
   if (status >= 300 && status < 400) return "status-3xx";
   if (status >= 400 && status < 500) return "status-4xx";
@@ -116,10 +118,12 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
-export function Response({ result, sending }: Props) {
+export function Response({ result, sending, onSaveExample }: Props) {
   const [tab, setTab] = useState<"body" | "headers">("body");
   const [view, setView] = useState<View>("auto");
   const [copied, setCopied] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
 
   const contentType = useMemo(
     () => result?.headers.find(([k]) => k.toLowerCase() === "content-type")?.[1],
@@ -224,6 +228,53 @@ export function Response({ result, sending }: Props) {
           </>
         ) : (
           <span className="status-badge status-5xx">请求失败</span>
+        )}
+        {onSaveExample && (
+          <div className="resp-save-example">
+            {saveOpen ? (
+              <>
+                <input
+                  className="resp-save-input"
+                  autoFocus
+                  placeholder="示例名称"
+                  value={saveName}
+                  onChange={(e) => setSaveName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && saveName.trim()) {
+                      onSaveExample(saveName.trim());
+                      setSaveOpen(false);
+                      setSaveName("");
+                    }
+                    if (e.key === "Escape") {
+                      setSaveOpen(false);
+                      setSaveName("");
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn small primary"
+                  disabled={!saveName.trim()}
+                  onClick={() => {
+                    if (saveName.trim()) {
+                      onSaveExample(saveName.trim());
+                      setSaveOpen(false);
+                      setSaveName("");
+                    }
+                  }}
+                >
+                  保存
+                </button>
+                <button type="button" className="btn small" onClick={() => setSaveOpen(false)}>
+                  取消
+                </button>
+              </>
+            ) : (
+              <button type="button" className="btn small" onClick={() => setSaveOpen(true)}>
+                💾 保存为示例
+              </button>
+            )}
+          </div>
         )}
       </div>
       <div className="response-body">

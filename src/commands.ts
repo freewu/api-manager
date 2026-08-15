@@ -3,6 +3,8 @@ import type {
   ApiFile,
   AppSettings,
   EnvStore,
+  ExampleFile,
+  ExampleSummary,
   HttpRequestData,
   HttpResult,
   InfoJson,
@@ -224,6 +226,26 @@ export function historyDays(): Promise<HistoryDay[]> {
 
 export function historyClear(): Promise<void> {
   return invoke<void>("history_clear");
+}
+
+export function saveExample(
+  uuid: string,
+  name: string,
+  data: ExampleFile
+): Promise<string> {
+  return invoke<string>("save_example", { uuid, name, data });
+}
+
+export function listExamples(uuid: string): Promise<ExampleSummary[]> {
+  return invoke<ExampleSummary[]>("list_examples", { uuid });
+}
+
+export function readExample(uuid: string, file: string): Promise<ExampleFile> {
+  return invoke<ExampleFile>("read_example", { uuid, file });
+}
+
+export function deleteExample(uuid: string, file: string): Promise<void> {
+  return invoke("delete_example", { uuid, file });
 }
 
 export function mockStart(port: number): Promise<MockStatus> {

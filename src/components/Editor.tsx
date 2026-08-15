@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { ApiFile, BODY_MODES, DocParam, KeyValue, METHODS } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { CodeTab } from "./CodeTab";
+import { ExamplesTab } from "./ExamplesTab";
 
-type Tab = "params" | "path" | "headers" | "body" | "mock" | "desc" | "doc" | "code";
+type Tab = "params" | "path" | "headers" | "body" | "mock" | "desc" | "doc" | "code" | "examples";
 
 interface Props {
   api: ApiFile;
@@ -150,6 +151,9 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             生成代码
           </div>
         )}
+        <div className={`tab ${tab === "examples" ? "active" : ""}`} onClick={() => switchTab("examples")}>
+          示例
+        </div>
       </div>
 
       <div className="editor-body">
@@ -323,6 +327,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         {tab === "doc" && <DocParamsEditor api={api} set={set} />}
 
         {tab === "code" && enableCodegen && <CodeTab api={api} baseUrl={baseUrl} defaultLang={codegenLang} />}
+        {tab === "examples" && <ExamplesTab uuid={api.uuid} />}
       </div>
     </div>
   );
