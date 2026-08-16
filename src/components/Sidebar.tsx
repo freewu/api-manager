@@ -719,6 +719,20 @@ export function Sidebar(props: Props) {
           >
             📁 新增分组
           </button>
+          {tree && (
+            <>
+              <div className="node-ctx-sep" />
+              <button
+                onClick={() => {
+                  // 空白处右键 → 统计整个工作区（根目录）
+                  onStats?.(tree);
+                  setBgMenu(null);
+                }}
+              >
+                📊 统计
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
