@@ -75,7 +75,6 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
   const [wsName, setWsName] = useState(workspaceName);
   // 保存工作区名称后（props 更新）同步本地输入框
   useEffect(() => setWsName(workspaceName), [workspaceName]);
-  const [wsSaving, setWsSaving] = useState(false);
   const patch = (p: Partial<AppSettings>) => onSave({ ...settings, ...p });
 
   // 点击导航 -> 平滑滚动到对应分区
@@ -140,23 +139,19 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                 value={wsName}
                 placeholder="工作区名称"
                 onChange={(e) => setWsName(e.target.value)}
+                onBlur={() => {
+                  // 失焦即保存（值未变化或为空时跳过）
+                  const n = wsName.trim();
+                  if (!n || n === workspaceName) return;
+                  void onSaveWorkspaceName(wsName);
+                }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") void onSaveWorkspaceName(wsName).finally(() => setWsSaving(false));
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                 }}
               />
-              <button
-                className="btn"
-                disabled={wsSaving || !wsName.trim() || wsName.trim() === workspaceName}
-                onClick={() => {
-                  setWsSaving(true);
-                  void onSaveWorkspaceName(wsName).finally(() => setWsSaving(false));
-                }}
-              >
-                {wsSaving ? "保存中…" : "保存名称"}
-              </button>
             </div>
             <div className="settings-desc">
-              工作区名称即根目录 __info.json 的 name，显示于应用各处；不设置时使用目录名
+              工作区名称即根目录 __info.json 的 name，显示于应用各处；不设置时使用目录名（输入后失焦自动保存）
             </div>
           </section>
 
