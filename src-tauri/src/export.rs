@@ -313,10 +313,14 @@ fn openapi_operation(segs: &[String], api: &ApiFile) -> Value {
 
 // ==================== Docsify 文档目录 ====================
 
-/// 生成 Docsify 文档目录：返回 (相对路径, 内容) 列表，含 _sidebar.md 与各分组 README.md
+/// 生成 Docsify 文档目录：返回 (相对路径, 内容) 列表，
+/// 含 _sidebar.md、根 README.md（首页）与 index.html（开启 _sidebar 支持）
 pub fn docsify_files(apis: &[(Vec<String>, ApiFile)]) -> Vec<(PathBuf, String)> {
     let mut files: Vec<(PathBuf, String)> = Vec::new();
     let mut used: Vec<PathBuf> = Vec::new();
+
+    // 根 README.md 是 Docsify 首页，先占位避免顶层接口重名
+    used.push(PathBuf::from("README.md"));
 
     // 接口 .md 文件：<分组路径>/<接口名>.md（重名自动加序号）
     let mut tree: SideNode = SideNode {
@@ -337,14 +341,51 @@ pub fn docsify_files(apis: &[(Vec<String>, ApiFile)]) -> Vec<(PathBuf, String)> 
         cur.apis.push(api);
     }
 
-    // 递归写出文件
+    // 递归写出接口/分组文件
     write_side(&tree, PathBuf::new(), &mut files, &mut used);
 
-    // _sidebar.md
+    // 导航列表（根级接口 + 全部分组层级）
+    let nav = side_bullets(&tree, PathBuf::new(), 0);
+
+    // _sidebar.md：左侧导航
     let mut sidebar = String::from("# 接口文档\n\n");
-    sidebar.push_str(&side_bullets(&tree, PathBuf::new(), 0));
+    sidebar.push_str(&nav);
     files.push((PathBuf::from("_sidebar.md"), sidebar));
+
+    // README.md：首页
+    let mut readme = String::from("# 接口文档\n\n");
+    readme.push_str(&nav);
+    files.push((PathBuf::from("README.md"), readme));
+
+    // index.html：Docsify 入口，开启 _sidebar 支持
+    files.push((PathBuf::from("index.html"), index_html()));
     files
+}
+
+/// Docsify 入口页 HTML：加载 _sidebar.md 侧栏
+fn index_html() -> String {
+    r#"<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>接口文档</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    window.$docsify = {
+      name: "接口文档",
+      loadSidebar: true,
+      subMaxLevel: 2,
+      auto2top: true
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
+</body>
+</html>"#
+    .to_string()
 }
 
 struct SideNode<'a> {
@@ -397,10 +438,25 @@ fn write_side(
     }
 }
 
-/// 生成 _sidebar.md 的嵌套列表（路径相对 Docsify 根）
+/// 生成侧栏/首页的嵌套列表（路径相对 Docsify 根），含根级接口与全部分组层级
 fn side_bullets(n: &SideNode, dir: PathBuf, depth: usize) -> String {
     let mut out = String::new();
     let indent = "  ".repeat(depth);
+    // 当前层级的接口（根级接口在此列出）
+    for api in &n.apis {
+        let base = if api.name.trim().is_empty() {
+            "未命名接口".to_string()
+        } else {
+            sanitize_filename(api.name.trim())
+        };
+        let rel = dir.join(format!("{base}.md"));
+        out.push_str(&format!(
+            "{indent}- [{}]({})\n",
+            api.name,
+            rel.to_string_lossy().replace('\\', "/")
+        ));
+    }
+    // 子分组
     for (_, c) in &n.children {
         let sub = dir.join(&c.name);
         out.push_str(&format!(
@@ -408,19 +464,6 @@ fn side_bullets(n: &SideNode, dir: PathBuf, depth: usize) -> String {
             c.name,
             sub.to_string_lossy().replace('\\', "/")
         ));
-        for api in &c.apis {
-            let base = if api.name.trim().is_empty() {
-                "未命名接口".to_string()
-            } else {
-                sanitize_filename(api.name.trim())
-            };
-            let rel = sub.join(format!("{base}.md"));
-            out.push_str(&format!(
-                "{indent}  - [{}]({})\n",
-                api.name,
-                rel.to_string_lossy().replace('\\', "/")
-            ));
-        }
         out.push_str(&side_bullets(c, sub, depth + 1));
     }
     out
@@ -492,8 +535,14 @@ mod tests {
         assert!(names.contains(&"用户管理/创建用户(2).md".to_string()));
         assert!(names.contains(&"用户管理/README.md".to_string()));
         assert!(names.contains(&"_sidebar.md".to_string()));
+        assert!(names.contains(&"README.md".to_string()));
+        assert!(names.contains(&"index.html".to_string()));
         let sidebar = files.iter().find(|(p, _)| p.to_string_lossy() == "_sidebar.md").unwrap().1.clone();
         assert!(sidebar.contains("[创建用户]"));
+        let index = files.iter().find(|(p, _)| p.to_string_lossy() == "index.html").unwrap().1.clone();
+        assert!(index.contains("loadSidebar: true"));
+        let readme = files.iter().find(|(p, _)| p.to_string_lossy() == "README.md").unwrap().1.clone();
+        assert!(readme.contains("[创建用户]"));
     }
 
     /// 勾选分组后前端会把分组目录 + 其下全部文件路径一起提交，后端应去重
