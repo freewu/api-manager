@@ -1298,6 +1298,7 @@ export default function App() {
                 sending={sending}
                 onCommit={handleAutoSave}
                 enableCodegen={settings.enableCodegen}
+                enableMock={settings.enableMock}
                 codegenLang={settings.codegenLang}
                 onTabChange={(t) => setHideResponse(["mock", "desc", "doc", "code", "examples"].includes(t))}
               />

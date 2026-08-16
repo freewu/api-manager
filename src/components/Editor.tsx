@@ -22,13 +22,15 @@ interface Props {
   onCommit?: () => void;
   /** 是否启用代码生成（显示「代码」页签） */
   enableCodegen?: boolean;
+  /** 是否启用 Mock（设置关闭时隐藏 Mock 页签） */
+  enableMock?: boolean;
   /** 代码生成默认语言（bash / python / c / cpp / java / csharp / ...） */
   codegenLang?: string;
   /** 页签切换回调（App 据此隐藏/显示响应面板） */
   onTabChange?: (tab: string) => void;
 }
 
-export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, codegenLang = "bash", onTabChange, currentVersion = 0 }: Props) {
+export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, enableMock = true, codegenLang = "bash", onTabChange, currentVersion = 0 }: Props) {
   const t = useT();
   const [tab, setTab] = useState<Tab>("params");
   const effectiveUrl = api.url || (baseUrl + api.path);
@@ -43,6 +45,15 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
     setTab("params");
     onTabChange?.("params");
   }, [api.uuid]);
+
+  // 设置中全局关闭 Mock 时，若当前停留在 Mock 页签则切回 Query
+  useEffect(() => {
+    if (!enableMock && tab === "mock") {
+      setTab("params");
+      onTabChange?.("params");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enableMock]);
 
   // URL / 路径中的 {xx} 占位符实时同步到 Path 页签（新增或删除）；
   // {{xx}} 是全局环境变量（双大括号），不会被当作路径参数
@@ -139,9 +150,11 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         >
           Body{api.body.mode !== "none" && api.body.raw && <span className="count">•</span>}
         </div>
-        <div className={`tab ${tab === "mock" ? "active" : ""}`} onClick={() => switchTab("mock")}>
-          Mock{api.mock.enabled && <span className="count">●</span>}
-        </div>
+        {enableMock && (
+          <div className={`tab ${tab === "mock" ? "active" : ""}`} onClick={() => switchTab("mock")}>
+            Mock{api.mock.enabled && <span className="count">●</span>}
+          </div>
+        )}
         <div className={`tab ${tab === "desc" ? "active" : ""}`} onClick={() => switchTab("desc")}>
           {t("editor.descTab")}
         </div>
@@ -256,7 +269,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           </div>
         )}
 
-        {tab === "mock" && (
+        {enableMock && tab === "mock" && (
           <div>
             <div className="meta-row">
               <label className="meta-item" style={{ cursor: "pointer" }}>
