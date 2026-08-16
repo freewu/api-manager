@@ -7,6 +7,8 @@ interface Props {
   tree: TreeNode | null;
   /** 预选路径（如右键某个节点导出） */
   preselect?: string[];
+  /** 默认导出格式（来自设置） */
+  defaultFormat?: ExportFormat;
   onExport: (paths: string[], format: ExportFormat) => Promise<void>;
   onClose: () => void;
 }
@@ -29,7 +31,7 @@ function findNode(node: TreeNode, path: string): TreeNode | null {
 }
 
 /** 导出弹窗：勾选接口/分组（勾选分组 = 整棵子树），选择格式后导出 */
-export function ExportModal({ tree, preselect, onExport, onClose }: Props) {
+export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose }: Props) {
   const [selected, setSelected] = useState<Set<string>>(() => {
     const s = new Set<string>();
     if (preselect?.length && tree) {
@@ -45,8 +47,10 @@ export function ExportModal({ tree, preselect, onExport, onClose }: Props) {
     }
     return s;
   });
-  const [format, setFormat] = useState<ExportFormat>("postman");
+  const [format, setFormat] = useState<ExportFormat>(defaultFormat || "postman");
   const [busy, setBusy] = useState(false);
+  // 折叠状态：默认全部展开，点击箭头折叠/展开分组
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
 
   const allPaths = useMemo(() => (tree ? subtreePaths(tree) : []), [tree]);
 
@@ -74,17 +78,41 @@ export function ExportModal({ tree, preselect, onExport, onClose }: Props) {
     });
   };
 
+  const toggleFold = (path: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
+
   const renderNode = (node: TreeNode, depth: number) => {
     const isFolder = node.kind === "folder";
     const checked = selected.has(node.path);
     const kids = node.children || [];
+    const isCollapsed = collapsed.has(node.path);
     return (
       <div key={node.path}>
         <div
           className="export-row"
-          style={{ paddingLeft: 10 + depth * 20 }}
+          style={{ paddingLeft: 8 + depth * 20 }}
           onClick={() => toggleNode(node, !checked)}
         >
+          {isFolder ? (
+            <button
+              className={`export-fold ${isCollapsed ? "collapsed" : ""}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFold(node.path);
+              }}
+              aria-label={isCollapsed ? "展开" : "折叠"}
+            >
+              {isCollapsed ? "▸" : "▾"}
+            </button>
+          ) : (
+            <span className="export-fold export-fold-empty" />
+          )}
           <input
             type="checkbox"
             checked={checked}
@@ -104,7 +132,7 @@ export function ExportModal({ tree, preselect, onExport, onClose }: Props) {
             </span>
           )}
         </div>
-        {kids.map((c) => renderNode(c, depth + 1))}
+        {isFolder && !isCollapsed && kids.map((c) => renderNode(c, depth + 1))}
       </div>
     );
   };
@@ -136,20 +164,17 @@ export function ExportModal({ tree, preselect, onExport, onClose }: Props) {
         </>
       }
     >
-      <div className="export-formats">
-        {(
-          [
-            ["postman", "Postman Collection", "json"],
-            ["openapi", "OpenAPI 3.0", "json"],
-            ["docsify", "Docsify 文档", "md 目录"],
-          ] as [ExportFormat, string, string][]
-        ).map(([v, label, ext]) => (
-          <label key={v} className={`export-format ${format === v ? "active" : ""}`}>
-            <input type="radio" name="export-format" checked={format === v} onChange={() => setFormat(v)} />
-            <span className="export-format-name">{label}</span>
-            <span className="export-format-ext">{ext}</span>
-          </label>
-        ))}
+      <div className="export-format-row">
+        <span className="export-format-label">导出格式</span>
+        <select
+          className="export-format-select"
+          value={format}
+          onChange={(e) => setFormat(e.target.value as ExportFormat)}
+        >
+          <option value="postman">Postman Collection（.json）</option>
+          <option value="openapi">OpenAPI 3.0（.json）</option>
+          <option value="docsify">Docsify 文档（.md 目录）</option>
+        </select>
       </div>
       <div className="export-tree-head">
         <label className="export-all">

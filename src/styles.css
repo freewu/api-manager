@@ -2664,42 +2664,29 @@ body {
 .export-modal .modal-foot {
   flex-shrink: 0;
 }
-.export-formats {
-  display: flex;
-  gap: 8px;
-  padding: 10px 14px 0;
-}
-.export-format {
-  flex: 1;
+.export-format-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
+  gap: 10px;
+  padding: 10px 4px 2px;
+}
+.export-format-label {
+  font-size: 13px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.export-format-select {
+  flex: 1;
+  padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  cursor: pointer;
-  background: var(--bg-panel);
-  transition: border-color 0.15s, background 0.15s;
-}
-.export-format.active {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-}
-.export-format input {
-  accent-color: var(--accent);
-  margin: 0;
-}
-.export-format-name {
-  font-size: 13px;
-  font-weight: 600;
-}
-.export-format-ext {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--text-faint);
   background: var(--bg-input);
-  border-radius: 4px;
-  padding: 1px 6px;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+.export-format-select:focus {
+  border-color: var(--accent);
 }
 .export-tree-head {
   display: flex;
@@ -2740,13 +2727,38 @@ body {
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: 6px;
   cursor: pointer;
   user-select: none;
 }
 .export-row:hover {
   background: var(--bg-hover);
+}
+.export-fold {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 4px;
+}
+.export-fold:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.export-fold-empty {
+  cursor: default;
+}
+.export-fold-empty:hover {
+  background: none;
 }
 .export-row input {
   accent-color: var(--accent);

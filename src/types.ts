@@ -154,6 +154,8 @@ export interface VersionInfo {
   endpoint?: string;
 }
 
+export type ExportFormat = "postman" | "openapi" | "docsify";
+
 export interface AppSettings {
   displayMode: string; // "dark" | "light" | "system"
   enableVersion: boolean;
@@ -166,6 +168,8 @@ export interface AppSettings {
   enableDefaultHeaders: boolean;
   /** 默认 Header 列表 */
   defaultHeaders: KeyValue[];
+  /** 导出默认格式 */
+  exportFormat: ExportFormat;
 }
 
 export const defaultSettings = (): AppSettings => ({
@@ -178,6 +182,7 @@ export const defaultSettings = (): AppSettings => ({
   codegenLang: "bash",
   enableDefaultHeaders: false,
   defaultHeaders: [],
+  exportFormat: "postman",
 });
 
 export interface HttpRequestData {

@@ -30,6 +30,7 @@ const NAV = [
   { id: "version", icon: "📦", title: "接口版本", desc: "版本快照开关" },
   { id: "mock", icon: "🛡️", title: "Mock 服务", desc: "本地 Mock · 端口" },
   { id: "codegen", icon: "💻", title: "代码生成", desc: "20 种语言请求代码" },
+  { id: "export", icon: "📤", title: "导出", desc: "默认导出格式" },
   { id: "headers", icon: "🧾", title: "默认 Header", desc: "新接口自动附带请求头" },
   { id: "sync", icon: "🔄", title: "同步远程", desc: "Git / SVN 远程同步" },
   { id: "about", icon: "ℹ️", title: "关于", desc: "版本与项目信息" },
@@ -239,6 +240,25 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
                   <span className="settings-desc-inline">页签默认语言</span>
                 </div>
               )}
+            </div>
+          </section>
+
+          <section id="settings-export" className="settings-section">
+            <div className="settings-panel-title">导出</div>
+            <div className="settings-feature">
+              <div className="settings-row settings-port-row">
+                <span className="settings-label">默认导出格式</span>
+                <select
+                  className="settings-port-input codegen-lang-select"
+                  value={settings.exportFormat}
+                  onChange={(e) => patch({ exportFormat: e.target.value as typeof settings.exportFormat })}
+                >
+                  <option value="postman">Postman Collection（.json）</option>
+                  <option value="openapi">OpenAPI 3.0（.json）</option>
+                  <option value="docsify">Docsify 文档（.md 目录）</option>
+                </select>
+                <span className="settings-desc-inline">导出弹窗默认选中格式</span>
+              </div>
             </div>
           </section>
 

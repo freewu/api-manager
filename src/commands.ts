@@ -5,6 +5,7 @@ import type {
   EnvStore,
   ExampleFile,
   ExampleSummary,
+  ExportFormat,
   HttpRequestData,
   HttpResult,
   InfoJson,
@@ -12,6 +13,7 @@ import type {
   TreeNode,
   VersionInfo,
 } from "./types";
+export type { ExportFormat };
 
 export function getWorkspace(): Promise<string | null> {
   return invoke<string | null>("get_workspace");
@@ -104,8 +106,6 @@ export interface MarkdownImportResult {
 export function importMarkdown(): Promise<MarkdownImportResult | null> {
   return invoke<MarkdownImportResult | null>("import_markdown");
 }
-
-export type ExportFormat = "postman" | "openapi" | "docsify";
 
 /** 导出选中接口/分组为 Postman / OpenAPI / Docsify 格式，返回保存路径或 null（用户取消） */
 export function exportSelection(paths: string[], format: ExportFormat): Promise<string | null> {

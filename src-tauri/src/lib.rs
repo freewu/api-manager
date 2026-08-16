@@ -518,6 +518,8 @@ pub struct AppSettings {
     pub enable_default_headers: bool,
     /// 默认 Header 列表
     pub default_headers: Vec<KeyValue>,
+    /// 导出默认格式（postman / openapi / docsify）
+    pub export_format: String,
 }
 
 impl Default for AppSettings {
@@ -532,6 +534,7 @@ impl Default for AppSettings {
             codegen_lang: "bash".into(),
             enable_default_headers: false,
             default_headers: vec![],
+            export_format: "postman".into(),
         }
     }
 }

@@ -1322,6 +1322,7 @@ export default function App() {
         <ExportModal
           tree={tree}
           preselect={exportPreselect}
+          defaultFormat={settings.exportFormat}
           onExport={(paths, fmt) => handleExport(paths, fmt)}
           onClose={() => {
             setExportOpen(false);

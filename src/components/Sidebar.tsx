@@ -73,6 +73,7 @@ function validDrop(dragSrc: string, dst: string): boolean {
 function NodeRow({
   node,
   depth,
+  rootPath,
   selectedPath,
   onSelect,
   onNewApi,
@@ -97,6 +98,8 @@ function NodeRow({
 }: {
   node: TreeNode;
   depth: number;
+  /** 工作区根路径（根目录行不可拖拽） */
+  rootPath?: string;
   selectedPath: string | null;
   onSelect: (node: TreeNode) => void;
   onNewApi: (parent: string) => void;
@@ -157,7 +160,7 @@ function NodeRow({
       <div
         className={`node ${selected ? "selected" : ""} ${canDrop && dragOver === dropTarget ? "drag-over" : ""} ${dragSrc === node.path ? "dragging" : ""} ${isFolder ? "folder-node" : ""}`}
         style={{ paddingLeft: indent }}
-        draggable={true}
+        draggable={node.path !== rootPath}
         onDragStart={(e) => {
           e.stopPropagation();
           e.dataTransfer.effectAllowed = "move";
@@ -269,6 +272,7 @@ function NodeRow({
               key={child.path + i}
               node={child}
               depth={depth + 1}
+              rootPath={rootPath}
               selectedPath={selectedPath}
               onSelect={onSelect}
               onNewApi={onNewApi}
@@ -411,45 +415,41 @@ export function Sidebar(props: Props) {
           if (src) void props.onMove(src, "");
         }}
       >
-        {tree && tree.children && (
-          <div>
-            {tree.children.map((child, i) => (
-              <NodeRow
-                key={child.path + i}
-                node={child}
-                depth={0}
-                selectedPath={props.selectedPath}
-                onSelect={props.onSelect}
-                onNewApi={onNewApi}
-                onNewFolder={onNewFolder}
-                onRename={onRename}
-                onCopy={onCopy}
-                onDelete={onDelete}
-                onEditInfo={onEditInfo}
-                onVersions={onVersions}
-                onStats={props.onStats}
-                enableVersion={enableVersion}
-                onContextMenu={openMenu}
-                filter={filter.trim().toLowerCase()}
-                tree={null}
-                dragSrc={dragSrc}
-                dragOver={dragOver}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onDragOverTarget={handleDragOverTarget}
-                onDragLeaveTarget={handleDragLeaveTarget}
-                onDropTarget={handleDropTarget}
-              />
-            ))}
-            {!filter.trim() && (
-              <div
-                className="node"
-                style={{ paddingLeft: 10, color: "var(--text-faint)", fontSize: 12 }}
-                onClick={() => onNewFolder("")}
-              >
-                ＋ 新建分组
-              </div>
-            )}
+        {tree && (
+          <NodeRow
+            node={tree}
+            depth={0}
+            rootPath={tree.path}
+            selectedPath={props.selectedPath}
+            onSelect={props.onSelect}
+            onNewApi={onNewApi}
+            onNewFolder={onNewFolder}
+            onRename={onRename}
+            onCopy={onCopy}
+            onDelete={onDelete}
+            onEditInfo={onEditInfo}
+            onVersions={onVersions}
+            onStats={props.onStats}
+            enableVersion={enableVersion}
+            onContextMenu={openMenu}
+            filter={filter.trim().toLowerCase()}
+            tree={null}
+            dragSrc={dragSrc}
+            dragOver={dragOver}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragOverTarget={handleDragOverTarget}
+            onDragLeaveTarget={handleDragLeaveTarget}
+            onDropTarget={handleDropTarget}
+          />
+        )}
+        {!filter.trim() && tree && (
+          <div
+            className="node"
+            style={{ paddingLeft: 24, color: "var(--text-faint)", fontSize: 12 }}
+            onClick={() => onNewFolder("")}
+          >
+            ＋ 新建分组
           </div>
         )}
         {!tree && <div className="tree-root">暂无数据</div>}
@@ -593,14 +593,16 @@ export function Sidebar(props: Props) {
               >
                 📤 导出
               </button>
-              <button
-                onClick={() => {
-                  onCopy(menu.node);
-                  setMenu(null);
-                }}
-              >
-                📋 复制
-              </button>
+              {menu.node.path !== tree?.path && (
+                <button
+                  onClick={() => {
+                    onCopy(menu.node);
+                    setMenu(null);
+                  }}
+                >
+                  📋 复制
+                </button>
+              )}
               <button
                 onClick={() => {
                   onStats?.(menu.node);
@@ -617,15 +619,17 @@ export function Sidebar(props: Props) {
               >
                 ✎ 编辑分组
               </button>
-              <button
-                className="danger"
-                onClick={() => {
-                  onDelete(menu.node);
-                  setMenu(null);
-                }}
-              >
-                🗑 删除
-              </button>
+              {menu.node.path !== tree?.path && (
+                <button
+                  className="danger"
+                  onClick={() => {
+                    onDelete(menu.node);
+                    setMenu(null);
+                  }}
+                >
+                  🗑 删除
+                </button>
+              )}
             </>
           ) : (
             <>
