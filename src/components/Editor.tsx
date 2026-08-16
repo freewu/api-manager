@@ -90,7 +90,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             className="url-input"
             value={effectiveUrl}
             placeholder="https://api.example.com/v1/users"
-            title="{变量名} 为路径参数（在 Path 页签赋值）；{{变量名}} 为全局环境变量（请求时自动替换）"
+            title={t("editor.urlTitle")}
             onChange={(e) => {
               const v = e.target.value;
               if (v.startsWith(baseUrl) && baseUrl) {
@@ -164,11 +164,10 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             <KeyValueEditor
               rows={api.query}
               onChange={(rows) => set({ query: rows })}
-              keyPlaceholder="参数名"
-              valuePlaceholder="值"
+              keyPlaceholder={t("editor.paramName")}
             />
             <div className="section-title">
-              查询参数 <span className="help">（发送请求时拼接到 URL 问号后面）</span>
+              {t("editor.queryParams")} <span className="help">{t("editor.queryParamsHint")}</span>
             </div>
           </div>
         )}
@@ -176,18 +175,18 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         {tab === "path" && (
           <div>
             <div className="section-title">
-              Path 变量 <span className="help">（与上方 URL 中的 {`{name}`} 一一对应，自动同步；{`{{name}}`} 为全局环境变量，不在此列；只做赋值与说明，不可增删）</span>
+              {t("editor.pathVars")} <span className="help">{t("editor.pathVarsHint")}</span>
             </div>
             {api.params.length === 0 ? (
               <div style={{ color: "var(--text-faint)", fontSize: 12, padding: "4px 2px" }}>
-                暂无路径参数，可在顶部 URL 中使用 {`{变量名}`}，例如 /users/{`{id}`}（{`{{变量名}}`} 表示全局环境变量，不会被当作路径参数）
+                {t("editor.pathEmpty")}
               </div>
             ) : (
               <KeyValueEditor
                 rows={api.params}
                 onChange={(rows) => set({ params: rows })}
-                keyPlaceholder="变量名"
-                valuePlaceholder="示例值"
+                keyPlaceholder={t("editor.varName")}
+                valuePlaceholder={t("editor.sampleValue")}
                 showDescription
                 showCheck={false}
                 hideAdd
@@ -196,7 +195,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               />
             )}
             <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 6 }}>
-              单大括号 {`{变量名}`} 为路径参数（顶部 URL 定义，此处自动生成并保持一一对应，只做赋值与说明）；双大括号 {`{{变量名}}`} 为全局环境变量（来自环境设置，请求时自动替换）。多个示例值可用逗号分隔（如 1,2,3），发送请求时取第一个。
+              {t("editor.pathHint")}
             </div>
           </div>
         )}
@@ -205,8 +204,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           <KeyValueEditor
             rows={api.headers}
             onChange={(rows) => set({ headers: rows })}
-            keyPlaceholder="Header 名"
-            valuePlaceholder="值"
+            keyPlaceholder={t("editor.headerName")}
           />
         )}
 
@@ -219,24 +217,30 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                   className={`body-mode ${api.body.mode === m ? "active" : ""}`}
                   onClick={() => set({ body: { ...api.body, mode: m } })}
                 >
-                  {m === "none" ? "无" : m === "raw" ? "原始文本" : m === "json" ? "JSON" : "表单"}
+                  {m === "none"
+                    ? t("editor.none")
+                    : m === "raw"
+                      ? t("editor.raw")
+                      : m === "json"
+                        ? "JSON"
+                        : t("editor.form")}
                 </div>
               ))}
             </div>
             {api.body.mode === "none" && (
-              <div style={{ color: "var(--text-faint)", fontSize: 12 }}>该请求没有请求体</div>
+              <div style={{ color: "var(--text-faint)", fontSize: 12 }}>{t("editor.noBody")}</div>
             )}
             {api.body.mode === "form" && (
               <>
                 <KeyValueEditor
                   rows={api.body.form}
                   onChange={(rows) => set({ body: { ...api.body, form: rows } })}
-                  keyPlaceholder="字段名"
+                  keyPlaceholder={t("editor.fieldName")}
                   valuePlaceholder={undefined}
                   showFileType
                 />
                 <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 6 }}>
-                  字段类型选择「文件」后可点击选择本地文件，发送时自动使用 multipart/form-data 上传。
+                  {t("editor.fileTypeHint")}
                 </div>
               </>
             )}
@@ -244,7 +248,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               <textarea
                 className="code-area"
                 value={api.body.raw}
-                placeholder={api.body.mode === "json" ? '{\n  "key": "value"\n}' : "请求体原始内容"}
+                placeholder={api.body.mode === "json" ? '{\n  "key": "value"\n}' : t("editor.bodyRaw")}
                 onChange={(e) => set({ body: { ...api.body, raw: e.target.value } })}
                 spellCheck={false}
               />
@@ -262,12 +266,12 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                   onChange={(e) => set({ mock: { ...api.mock, enabled: e.target.checked } })}
                   style={{ width: "auto" }}
                 />
-                启用 Mock（保存后需刷新 Mock 服务）
+                {t("editor.enableMockHint")}
               </label>
             </div>
             <div className="meta-row">
               <label className="meta-item">
-                状态码
+                {t("editor.statusCode")}
                 <input
                   type="number"
                   min={100}
@@ -279,7 +283,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                 />
               </label>
               <label className="meta-item">
-                延迟(ms)
+                {t("editor.delayMs")}
                 <input
                   type="number"
                   min={0}
@@ -290,15 +294,14 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                 />
               </label>
             </div>
-            <div className="section-title">响应 Headers</div>
+            <div className="section-title">{t("editor.respHeaders")}</div>
             <KeyValueEditor
               rows={api.mock.headers}
               onChange={(rows) => set({ mock: { ...api.mock, headers: rows } })}
-              keyPlaceholder="Header 名"
-              valuePlaceholder="值"
+              keyPlaceholder={t("editor.headerName")}
             />
             <div className="section-title">
-              响应体 <span className="help">支持模板变量 {`{{path.id}}`}、{`{{query.page}}`}、{`{{method}}`}</span>
+              {t("editor.respBody")} <span className="help">{t("editor.respBodyHint")}</span>
             </div>
             <textarea
               className="code-area"
@@ -315,14 +318,12 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             <textarea
               className="desc-area"
               value={api.description}
-              placeholder="描述该接口的用途、参数、返回值等"
+              placeholder={t("editor.descPlaceholder")}
               onChange={(e) => set({ description: e.target.value })}
               onBlur={onCommit}
               spellCheck={false}
             />
-            <div className="desc-hint">
-              提示：接口名称 / 路径可在左侧右键「重命名」或顶部 URL 输入框中修改；说明文字失焦后自动保存。
-            </div>
+            <div className="desc-hint">{t("editor.descHint")}</div>
           </div>
         )}
 
@@ -340,6 +341,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
  *  字段类型可选 String / Integer / Float / Boolean / List / Object，
  *  List 可再选元素类型，Object 可设置对象名称，下级字段用树状表单表示 */
 function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>) => void }) {
+  const T = useT();
   // ---- 树节点（由请求配置 / Mock 响应 JSON 推导） ----
   type RNode = {
     key: string;
@@ -517,7 +519,7 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
   const blocks = useMemo<Block[]>(() => {
     const out: Block[] = [];
     const headerNodes = kvNodes(api.headers);
-    if (headerNodes.length) out.push({ source: "header", title: "请求 Header", nodes: headerNodes, manual: false });
+    if (headerNodes.length) out.push({ source: "header", title: T("editor.requestHeader"), nodes: headerNodes, manual: false });
     const queryNodes = kvNodes(api.query);
     if (queryNodes.length) out.push({ source: "query", title: "Query", nodes: queryNodes, manual: false });
     const pathNodes = kvNodes(api.params);
@@ -557,38 +559,38 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
     return (
       <div>
         <div className="section-title">
-          接口文档 <span className="help">按请求 Header / Query / Path / Body / 响应分块；响应区分请求成功与请求失败</span>
+          {T("tab.doc")} <span className="help">{T("editor.docBlockHint")}</span>
         </div>
         <div style={{ color: "var(--text-faint)", fontSize: 12, padding: "0 2px 10px" }}>
-          暂无请求参数。可在 Query / Path / Body / Mock 页签中添加参数后，在这里补全类型与说明。
+          {T("editor.noParams")}
         </div>
         <div className="doc-block doc-block-resp">
           <div className="doc-block-title">
-            <span className="doc-source doc-source-resp">响应</span>
+            <span className="doc-source doc-source-resp">{T("editor.response")}</span>
           </div>
           <div className="doc-sub">
             <div className="doc-sub-title">
-              请求失败
+              {T("editor.requestFailed")}
               <button className="btn btn-sm" onClick={() => addDocRow("resp_fail", [])}>
-                ＋ 添加字段
+                {T("editor.addField")}
               </button>
             </div>
             <table className="kv-table doc-params-table">
               <thead>
                 <tr>
-                  <th>字段名</th>
-                  <th style={{ width: 130 }}>值</th>
-                  <th style={{ width: 108 }}>类型</th>
-                  <th style={{ width: 120 }}>对象名</th>
-                  <th>说明</th>
-                  <th style={{ width: 62 }}>操作</th>
+                  <th>{T("editor.fieldName")}</th>
+                  <th style={{ width: 130 }}>{T("common.value")}</th>
+                  <th style={{ width: 108 }}>{T("kv.type")}</th>
+                  <th style={{ width: 120 }}>{T("editor.objectName")}</th>
+                  <th>{T("kv.desc")}</th>
+                  <th style={{ width: 62 }}>{T("common.operation")}</th>
                 </tr>
               </thead>
               <tbody>
                 {failDocs.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="doc-empty">
-                      暂无字段，点击「＋ 添加字段」开始编写请求失败响应字段
+                      {T("editor.noFailFields")}
                     </td>
                   </tr>
                 ) : (
@@ -670,7 +672,7 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
               <input
                 className="doc-key-input"
                 value={row.key}
-                placeholder="字段名"
+                placeholder={T("editor.fieldName")}
                 spellCheck={false}
                 onChange={(e) => updateKey(source, row.keys, e.target.value)}
               />
@@ -687,10 +689,10 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
             <select
               className={`doc-type-select${row.typeAuto ? " doc-type-auto" : ""}`}
               value={row.type}
-              title={row.typeAuto ? "自动推导类型，可手动选择覆盖" : "字段类型"}
+              title={row.typeAuto ? T("editor.typeAutoHint") : T("kv.fileType")}
               onChange={(e) => updateType(source, row.keys, e.target.value)}
             >
-              <option value="">自动</option>
+              <option value="">{T("editor.auto")}</option>
               {DOC_TYPES.map((t) => (
                 <option key={t} value={t}>
                   {t}
@@ -705,7 +707,7 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
                   className="doc-name-input"
                   value={row.objectName}
                   placeholder={row.key}
-                  title="对象名称"
+                  title={T("editor.objectName")}
                   spellCheck={false}
                   onChange={(e) => updateName(source, row.keys, e.target.value)}
                 />
@@ -715,19 +717,19 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
           <td>
             <input
               value={row.description}
-              placeholder="字段说明"
+              placeholder={T("editor.fieldDesc")}
               spellCheck={false}
               onChange={(e) => updateDesc(source, row.keys, e.target.value)}
             />
           </td>
           <td className="doc-ops">
             {manual && isObject && (
-              <button className="doc-op" title="添加下级字段" onClick={() => addDocRow(source, row.keys)}>
+              <button className="doc-op" title={T("editor.addSubField")} onClick={() => addDocRow(source, row.keys)}>
                 ＋
               </button>
             )}
             {manual && (
-              <button className="doc-op doc-op-del" title="删除字段" onClick={() => removeDocRow(source, row.keys)}>
+              <button className="doc-op doc-op-del" title={T("editor.delField")} onClick={() => removeDocRow(source, row.keys)}>
                 ✕
               </button>
             )}
@@ -744,19 +746,19 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
         <span className={`doc-source ${badgeClass}`}>{title}</span>
         {manual && (
           <button className="btn btn-sm" onClick={() => addDocRow(source, [])}>
-            ＋ 添加字段
+            {T("editor.addField")}
           </button>
         )}
       </div>
       <table className="kv-table doc-params-table">
         <thead>
           <tr>
-            <th>字段名</th>
-            <th style={{ width: 130 }}>值</th>
-            <th style={{ width: 108 }}>类型</th>
-            {showObjectName && <th style={{ width: 120 }}>对象名</th>}
-            <th>说明</th>
-            {manual && <th style={{ width: 62 }}>操作</th>}
+            <th>{T("editor.fieldName")}</th>
+            <th style={{ width: 130 }}>{T("common.value")}</th>
+            <th style={{ width: 108 }}>{T("kv.type")}</th>
+            {showObjectName && <th style={{ width: 120 }}>{T("editor.objectName")}</th>}
+            <th>{T("kv.desc")}</th>
+            {manual && <th style={{ width: 62 }}>{T("common.operation")}</th>}
           </tr>
         </thead>
         <tbody>{rows.map((r) => renderRow(r, 0, source, manual, showObjectName))}</tbody>
@@ -780,7 +782,7 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
   return (
     <div>
       <div className="section-title">
-        接口文档 <span className="help">按请求 Header / Query / Path / Body / 响应分块；响应区分请求成功与请求失败</span>
+        {T("tab.doc")} <span className="help">{T("editor.docBlockHint")}</span>
       </div>
       {blocks.map((b) =>
         renderBlock(
@@ -795,19 +797,19 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
       {(respSuccessNodes.length > 0 || failDocs.length > 0) && (
         <div className="doc-block doc-block-resp">
           <div className="doc-block-title">
-            <span className="doc-source doc-source-resp">响应</span>
+            <span className="doc-source doc-source-resp">{T("editor.response")}</span>
           </div>
           {respSuccessNodes.length > 0 && (
             <div className="doc-sub">
-              <div className="doc-sub-title">请求成功</div>
+              <div className="doc-sub-title">{T("editor.requestSuccess")}</div>
               <table className="kv-table doc-params-table">
                 <thead>
                   <tr>
-                    <th>字段名</th>
-                    <th style={{ width: 130 }}>值</th>
-                    <th style={{ width: 108 }}>类型</th>
-                    <th style={{ width: 120 }}>对象名</th>
-                    <th>说明</th>
+                    <th>{T("editor.fieldName")}</th>
+                    <th style={{ width: 130 }}>{T("common.value")}</th>
+                    <th style={{ width: 108 }}>{T("kv.type")}</th>
+                    <th style={{ width: 120 }}>{T("editor.objectName")}</th>
+                    <th>{T("kv.desc")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -820,27 +822,27 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
           )}
           <div className="doc-sub">
             <div className="doc-sub-title">
-              请求失败
+              {T("editor.requestFailed")}
               <button className="btn btn-sm" onClick={() => addDocRow("resp_fail", [])}>
-                ＋ 添加字段
+                {T("editor.addField")}
               </button>
             </div>
             <table className="kv-table doc-params-table">
               <thead>
                 <tr>
-                  <th>字段名</th>
-                  <th style={{ width: 130 }}>值</th>
-                  <th style={{ width: 108 }}>类型</th>
-                  <th style={{ width: 120 }}>对象名</th>
-                  <th>说明</th>
-                  <th style={{ width: 62 }}>操作</th>
+                  <th>{T("editor.fieldName")}</th>
+                  <th style={{ width: 130 }}>{T("common.value")}</th>
+                  <th style={{ width: 108 }}>{T("kv.type")}</th>
+                  <th style={{ width: 120 }}>{T("editor.objectName")}</th>
+                  <th>{T("kv.desc")}</th>
+                  <th style={{ width: 62 }}>{T("common.operation")}</th>
                 </tr>
               </thead>
               <tbody>
                 {failDocs.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="doc-empty">
-                      暂无字段，点击「＋ 添加字段」开始编写请求失败响应字段
+                      {T("editor.noFailFields")}
                     </td>
                   </tr>
                 ) : (

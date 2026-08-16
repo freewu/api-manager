@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { HttpResult } from "../types";
+import { useT } from "../i18n";
 
 interface Props {
   result: HttpResult | null;
@@ -15,7 +16,7 @@ const VIEWS: { value: View; label: string }[] = [
   { value: "xml", label: "XML" },
   { value: "json", label: "JSON" },
   { value: "text", label: "TEXT" },
-  { value: "auto", label: "自动" },
+  { value: "auto", label: "" },
 ];
 
 export function statusClass(status: number) {
@@ -119,6 +120,7 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 export function Response({ result, sending, onSaveExample }: Props) {
+  const t = useT();
   const [tab, setTab] = useState<"body" | "headers">("body");
   const [view, setView] = useState<View>("auto");
   const [copied, setCopied] = useState(false);
@@ -182,7 +184,7 @@ export function Response({ result, sending, onSaveExample }: Props) {
         <div className="response-body">
           <div className="response-empty">
             <span className="big">⏳</span>
-            <span>请求发送中…</span>
+            <span>{t("resp.sending")}</span>
           </div>
         </div>
       </div>
@@ -193,12 +195,12 @@ export function Response({ result, sending, onSaveExample }: Props) {
     return (
       <div className="response">
         <div className="response-head" style={{ color: "var(--text-faint)" }}>
-          响应
+          {t("resp.response")}
         </div>
         <div className="response-body">
           <div className="response-empty">
             <span className="big">📡</span>
-            <span>点击「发送」查看响应结果</span>
+            <span>{t("resp.hint")}</span>
           </div>
         </div>
       </div>
@@ -217,17 +219,17 @@ export function Response({ result, sending, onSaveExample }: Props) {
             </span>
             <span className="resp-meta">
               <span>
-                <span className="label">耗时 </span>
+                <span className="label">{t("resp.time")} </span>
                 <b>{result.timeMs} ms</b>
               </span>
               <span>
-                <span className="label">大小 </span>
+                <span className="label">{t("resp.size")} </span>
                 <b>{kb} KB</b>
               </span>
             </span>
           </>
         ) : (
-          <span className="status-badge status-5xx">请求失败</span>
+          <span className="status-badge status-5xx">{t("resp.failed")}</span>
         )}
         {onSaveExample && (
           <div className="resp-save-example">
@@ -236,7 +238,7 @@ export function Response({ result, sending, onSaveExample }: Props) {
                 <input
                   className="resp-save-input"
                   autoFocus
-                  placeholder="示例名称"
+                  placeholder={t("resp.exampleName")}
                   value={saveName}
                   onChange={(e) => setSaveName(e.target.value)}
                   onKeyDown={(e) => {
@@ -263,15 +265,15 @@ export function Response({ result, sending, onSaveExample }: Props) {
                     }
                   }}
                 >
-                  保存
+                  {t("common.save")}
                 </button>
                 <button type="button" className="btn small" onClick={() => setSaveOpen(false)}>
-                  取消
+                  {t("common.cancel")}
                 </button>
               </>
             ) : (
               <button type="button" className="btn small" onClick={() => setSaveOpen(true)}>
-                💾 保存为示例
+                💾 {t("resp.saveExample")}
               </button>
             )}
           </div>
@@ -304,11 +306,11 @@ export function Response({ result, sending, onSaveExample }: Props) {
                       className="view-select"
                       value={view}
                       onChange={(e) => setView(e.target.value as View)}
-                      title="响应体显示格式"
+                      title={t("resp.viewFormat")}
                     >
                       {VIEWS.map((v) => (
                         <option key={v.value} value={v.value}>
-                          {v.label}
+                          {v.value === "auto" ? t("resp.auto") : v.label}
                         </option>
                       ))}
                     </select>
@@ -316,12 +318,12 @@ export function Response({ result, sending, onSaveExample }: Props) {
                       type="button"
                       className={`view-copy ${copied ? "ok" : ""}`}
                       onClick={() => void handleCopy()}
-                      title="复制响应结果"
+                      title={t("resp.copyResult")}
                     >
-                      {copied ? "✓ 已复制" : "📋 复制"}
+                      {copied ? t("resp.copied") : "📋 " + t("common.copy")}
                     </button>
                     {contentType && (
-                      <span className="view-ct" title="响应 Content-Type">
+                      <span className="view-ct" title={t("resp.contentType")}>
                         {contentType.split(";")[0]}
                       </span>
                     )}
@@ -331,7 +333,7 @@ export function Response({ result, sending, onSaveExample }: Props) {
                   bodyEl
                 ) : (
                   <div className="response-empty">
-                    <span>（空响应体）</span>
+                    <span>{t("resp.emptyBody")}</span>
                   </div>
                 )}
               </>

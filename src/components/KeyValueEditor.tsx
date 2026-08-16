@@ -1,4 +1,5 @@
 import { pickFile } from "../commands";
+import { useT } from "../i18n";
 
 interface Row {
   key: string;
@@ -30,8 +31,8 @@ interface Props<T extends Row> {
 export function KeyValueEditor<T extends Row>({
   rows,
   onChange,
-  valuePlaceholder = "值",
-  keyPlaceholder = "键",
+  valuePlaceholder,
+  keyPlaceholder,
   showCheck = true,
   showDescription = false,
   showFileType = false,
@@ -40,7 +41,9 @@ export function KeyValueEditor<T extends Row>({
   readonlyKey = false,
   makeRow,
 }: Props<T>) {
-  const update = (i: number, patch: Partial<Row>) => {
+  const t = useT();
+  const vPlaceholder = valuePlaceholder ?? t("common.value");
+  const kPlaceholder = keyPlaceholder ?? t("common.key");  const update = (i: number, patch: Partial<Row>) => {
     const next = rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r));
     onChange(next);
   };
@@ -73,10 +76,10 @@ export function KeyValueEditor<T extends Row>({
         <thead>
           <tr>
             {showCheck && <th style={{ width: 30 }}></th>}
-            {showFileType && <th style={{ width: 70 }}>类型</th>}
-            <th>{keyPlaceholder}</th>
-            <th>{valuePlaceholder}</th>
-            {showDescription && <th>说明</th>}
+            {showFileType && <th style={{ width: 70 }}>{t("kv.type")}</th>}
+            <th>{kPlaceholder}</th>
+            <th>{vPlaceholder}</th>
+            {showDescription && <th>{t("kv.desc")}</th>}
             {!hideRemove && <th style={{ width: 60 }}></th>}
           </tr>
         </thead>
@@ -97,19 +100,19 @@ export function KeyValueEditor<T extends Row>({
                   <select
                     value={r.isFile ? "file" : "text"}
                     onChange={(e) => update(i, { isFile: e.target.value === "file" })}
-                    title="字段类型"
+                    title={t("kv.fileType")}
                   >
-                    <option value="text">文本</option>
-                    <option value="file">文件</option>
+                    <option value="text">{t("kv.text")}</option>
+                    <option value="file">{t("kv.file")}</option>
                   </select>
                 </td>
               )}
               <td>
                 <input
                   value={r.key}
-                  placeholder={keyPlaceholder}
+                  placeholder={kPlaceholder}
                   readOnly={readonlyKey}
-                  title={readonlyKey ? "变量名来自 URL 中的 {变量名}，不可修改" : undefined}
+                  title={readonlyKey ? t("kv.variableFromUrl", { var: "{变量名}" }) : undefined}
                   onChange={(e) => update(i, { key: e.target.value })}
                   spellCheck={false}
                 />
@@ -119,10 +122,10 @@ export function KeyValueEditor<T extends Row>({
                   <input
                     className="kv-file-path"
                     value={r.value}
-                    placeholder="未选择文件"
+                    placeholder={t("kv.fileNotSelected")}
                     readOnly
                     onClick={() => pickRow(i)}
-                    title="点击选择文件"
+                    title={t("kv.chooseFile")}
                   />
                   <button className="btn small kv-file-btn" onClick={() => pickRow(i)}>
                     📂
@@ -130,7 +133,7 @@ export function KeyValueEditor<T extends Row>({
                   {r.value && (
                     <button
                       className="btn small kv-file-btn"
-                      title="清除"
+                      title={t("kv.clear")}
                       onClick={() => update(i, { value: "" })}
                     >
                       ✕
@@ -141,7 +144,7 @@ export function KeyValueEditor<T extends Row>({
                 <td>
                   <input
                     value={r.value}
-                    placeholder={valuePlaceholder}
+                    placeholder={vPlaceholder}
                     onChange={(e) => update(i, { value: e.target.value })}
                     spellCheck={false}
                   />
@@ -151,7 +154,7 @@ export function KeyValueEditor<T extends Row>({
                 <td>
                   <input
                     value={r.description}
-                    placeholder="参数说明"
+                    placeholder={t("kv.paramDesc")}
                     onChange={(e) => update(i, { description: e.target.value })}
                     spellCheck={false}
                   />
@@ -159,7 +162,7 @@ export function KeyValueEditor<T extends Row>({
               )}
               {!hideRemove && (
                 <td>
-                  <button className="kv-remove" title="删除" onClick={() => remove(i)}>
+                  <button className="kv-remove" title={t("common.delete")} onClick={() => remove(i)}>
                     🗑
                   </button>
                 </td>
@@ -170,7 +173,7 @@ export function KeyValueEditor<T extends Row>({
       </table>
       {!hideAdd && (
         <button className="btn small kv-add" onClick={add}>
-          + 添加
+          + {t("common.add")}
         </button>
       )}
     </div>

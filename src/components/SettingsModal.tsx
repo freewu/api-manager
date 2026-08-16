@@ -231,19 +231,19 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
             <div className="settings-desc">{t("settings.modeDesc")}</div>
 
             <div className="settings-preview">
-              <div className="settings-preview-title">预览</div>
+              <div className="settings-preview-title">{t("settings.preview")}</div>
               <div className="settings-preview-row">
                 <span className="preview-dot preview-dot-folder">📁</span>
-                <span className="preview-text">用户管理</span>
+                <span className="preview-text">{t("settings.previewUserMgmt")}</span>
               </div>
               <div className="settings-preview-row">
                 <span className="preview-dot preview-dot-api">🌐</span>
-                <span className="preview-text">创建用户</span>
+                <span className="preview-text">{t("settings.previewCreateUser")}</span>
                 <span className="preview-method">GET</span>
               </div>
               <div className="settings-preview-row">
                 <span className="preview-dot preview-dot-api">🌐</span>
-                <span className="preview-text">获取订单列表</span>
+                <span className="preview-text">{t("settings.previewOrders")}</span>
                 <span className="preview-method">POST</span>
               </div>
             </div>

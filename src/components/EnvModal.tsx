@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { EnvStore } from "../types";
 import { EnvValueModal } from "./EnvValueModal";
 import { Modal } from "./Modal";
+import { useT } from "../i18n";
 
 interface Props {
   envs: EnvStore;
@@ -17,6 +18,7 @@ interface CtxMenu {
 
 /** 环境变量集管理：列表 + 右键菜单(编辑/复制/删除) + 拖动排序；当前环境由工具栏「环境」下拉切换 */
 export function EnvModal({ envs, onClose, onSave }: Props) {
+  const t = useT();
   const [draft, setDraft] = useState<EnvStore>(() => ({
     active: envs.active,
     environments: envs.environments.map((e) => ({
@@ -70,7 +72,7 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
   // ---- 新增 ----
 
   const addEnv = () => {
-    const name = uniqueName(`环境 ${draft.environments.length + 1}`);
+    const name = uniqueName(`${t("envModal.envName")} ${draft.environments.length + 1}`);
     setDraft((d) => ({
       ...d,
       environments: [...d.environments, { name, variables: [] }],
@@ -85,8 +87,8 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
   const copyEnvAt = (i: number) => {
     const src = draft.environments[i];
     if (!src) return;
-    const base = src.name.replace(/\s*\(副本\)\s*$/, "").trim() || "环境";
-    const name = uniqueName(`${base} (副本)`);
+    const base = src.name.replace(/\s*\(副本\)\s*$/, "").trim() || t("envModal.envName");
+    const name = uniqueName(`${base} (${t("envModal.copySuffix")})`);
     setDraft((d) => ({
       ...d,
       environments: [
@@ -206,26 +208,24 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
   return (
     <>
       <Modal
-        title="环境变量集管理"
+        title={t("envModal.title")}
         onClose={onClose}
         className="modal-xwide"
         footer={
           <>
             <button className="btn" onClick={onClose}>
-              取消
+              {t("common.cancel")}
             </button>
             <button className="btn primary" onClick={save}>
-              保存
+              {t("common.save")}
             </button>
           </>
         }
       >
         <div className="env-manager env-set-manager">
           <div className="section-title env-section">
-            环境变量集
-            <span className="help">
-              拖动 ⋮⋮ 调整顺序；右键 编辑 / 复制 / 删除；双击 管理变量值
-            </span>
+            {t("envModal.set")}
+            <span className="help">{t("envModal.hint")}</span>
           </div>
 
           <div className="env-set-list">
@@ -249,9 +249,9 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
                   setValueModal(true);
                 }}
                 onContextMenu={(ev) => openMenu(ev, i)}
-                title={draft.active === e.name ? "当前环境 · 右键菜单 · 双击管理变量值" : "右键菜单 · 双击管理变量值"}
+                title={draft.active === e.name ? t("envModal.rowTipActive") : t("envModal.rowTip")}
               >
-                <span className="env-drag-handle" title="拖动排序">⋮⋮</span>
+                <span className="env-drag-handle" title={t("envModal.dragSort")}>⋮⋮</span>
                 {editing && i === idx ? (
                   <>
                     <input
@@ -267,43 +267,43 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
                       spellCheck={false}
                     />
                     <button className="btn small primary" onClick={(ev) => { ev.stopPropagation(); finishEdit(); }}>
-                      确定
+                      {t("common.confirm")}
                     </button>
                     <button className="btn small" onClick={(ev) => { ev.stopPropagation(); cancelEdit(); }}>
-                      取消
+                      {t("common.cancel")}
                     </button>
                   </>
                 ) : (
                   <>
                     <span className="env-set-name">{e.name}</span>
-                    {draft.active === e.name && <span className="env-current-badge">当前</span>}
-                    <span className="env-set-count">{e.variables.length} 个变量</span>
+                    {draft.active === e.name && <span className="env-current-badge">{t("envModal.current")}</span>}
+                    <span className="env-set-count">{e.variables.length} {t("envModal.vars")}</span>
                   </>
                 )}
               </div>
             ))}
             {draft.environments.length === 0 && (
-              <div className="env-empty-block">暂无环境变量集，点击「+ 新增」创建</div>
+              <div className="env-empty-block">{t("envModal.empty")}</div>
             )}
           </div>
 
           <div className="env-set-actions">
-            <button className="btn small" onClick={addEnv} title="新增环境变量集">
-              + 新增
+            <button className="btn small" onClick={addEnv} title={t("envModal.addTip")}>
+              + {t("common.add")}
             </button>
             <span className="env-set-actions-spacer" />
             <button
               className="btn primary"
               disabled={!env}
               onClick={() => setValueModal(true)}
-              title={env ? `管理「${env.name}」的变量值` : "请先选择环境变量集"}
+              title={env ? t("envModal.manageTip", { name: env.name }) : t("envModal.noSelection")}
             >
-              ✏ 管理变量值{env ? `（${env.name}）` : ""}
+              ✏ {t("envModal.manage")}{env ? ` (${env.name})` : ""}
             </button>
           </div>
 
           <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 10 }}>
-            环境配置保存在工作区根目录 <code>__envs.json</code>；当前环境可在工具栏「环境」下拉框切换。
+            {t("envModal.savedHint")} <code>__envs.json</code>{t("envModal.switchHint")}
           </div>
         </div>
       </Modal>
@@ -326,7 +326,7 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
               setMenu(null);
             }}
           >
-            ✎ 编辑
+            ✎ {t("common.rename")}
           </button>
           <button
             onClick={() => {
@@ -334,7 +334,7 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
               setMenu(null);
             }}
           >
-            ⧉ 复制
+            ⧉ {t("common.copy")}
           </button>
           <button
             className="danger"
@@ -343,20 +343,20 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
               setMenu(null);
             }}
           >
-            🗑 删除
+            🗑 {t("common.delete")}
           </button>
         </div>
       )}
 
       {confirmDel !== null && draft.environments[confirmDel] && (
         <Modal
-          title="删除环境变量集"
+          title={t("envModal.delTitle")}
           onClose={() => setConfirmDel(null)}
           maskClassName="modal-mask-top"
           footer={
             <>
               <button className="btn" onClick={() => setConfirmDel(null)}>
-                取消
+                {t("common.cancel")}
               </button>
               <button
                 className="btn danger"
@@ -365,15 +365,15 @@ export function EnvModal({ envs, onClose, onSave }: Props) {
                   setConfirmDel(null);
                 }}
               >
-                删除
+                {t("common.delete")}
               </button>
             </>
           }
         >
           <div style={{ fontSize: 13, color: "var(--text)" }}>
-            确定删除环境变量集「<b>{draft.environments[confirmDel].name}</b>」？
+            {t("envModal.delConfirm", { name: draft.environments[confirmDel].name })}
             <div style={{ color: "var(--text-faint)", fontSize: 12, marginTop: 6 }}>
-              删除后不可恢复。
+              {t("envModal.delWarn")}
             </div>
           </div>
         </Modal>

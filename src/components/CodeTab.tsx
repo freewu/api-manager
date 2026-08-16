@@ -23,6 +23,7 @@ import typescript from "highlight.js/lib/languages/typescript";
 import "highlight.js/styles/github-dark.css";
 import { ApiFile } from "../types";
 import { CODE_LANGS, CodeLang, generateRequestCode } from "../utils/codegen";
+import { useT } from "../i18n";
 
 hljs.registerLanguage("bash", bash);
 hljs.registerLanguage("c", c);
@@ -77,6 +78,7 @@ interface Props {
 }
 
 export function CodeTab({ api, baseUrl, defaultLang }: Props) {
+  const t = useT();
   const [lang, setLang] = useState<CodeLang>(
     (CODE_LANGS.some((l) => l.value === defaultLang) ? defaultLang : "bash") as CodeLang
   );
@@ -104,12 +106,12 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
   return (
     <div className="codegen-root">
       <div className="section-title codegen-head">
-        <span>代码生成</span>
+        <span>{t("codegen.title")}</span>
         <select
           className="codegen-lang"
           value={lang}
           onChange={(e) => setLang(e.target.value as CodeLang)}
-          title="切换开发语言"
+          title={t("codegen.switchLang")}
         >
           {CODE_LANGS.map((l) => (
             <option key={l.value} value={l.value}>
@@ -118,7 +120,7 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
           ))}
         </select>
         <button className="btn small" onClick={copy}>
-          {copied ? "✓ 已复制" : "📋 复制"}
+          {copied ? t("resp.copied") : "📋 " + t("common.copy")}
         </button>
       </div>
       <pre className="codegen-pre">
@@ -127,9 +129,7 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
           dangerouslySetInnerHTML={{ __html: html }}
         />
       </pre>
-      <div className="codegen-hint">
-        代码自动跟随当前请求的 URL、Headers、Query、Path 与 Body；可在「设置 → 功能」中更改默认语言。
-      </div>
+      <div className="codegen-hint">{t("codegen.hint")}</div>
     </div>
   );
 }

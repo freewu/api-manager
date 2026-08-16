@@ -203,7 +203,7 @@ function NodeRow({
         }}
         title={
           canDrop
-            ? "拖放到此处移动"
+            ? t("sidebar.dropHere")
             : isFolder
               ? node.description || node.name
               : `${node.method} ${node.endpoint}`
@@ -217,7 +217,7 @@ function NodeRow({
         <span className="node-icon">{isFolder ? "📁" : "🌐"}</span>
         <span className="node-name">{node.name}</span>
         {isFolder && !!node.apiCount && (
-          <span className="node-count" title={`${node.apiCount} 个接口`}>
+          <span className="node-count" title={t("sidebar.apiCount", { count: node.apiCount })}>
             {node.apiCount}
           </span>
         )}
@@ -229,12 +229,12 @@ function NodeRow({
         {!isFolder && node.method && (
           <span className={`node-method ${methodClass(node.method)}`}>{node.method}</span>
         )}
-        {!isFolder && node.mockEnabled && <span className="mock-dot" title="已启用 Mock" />}
+        {!isFolder && node.mockEnabled && <span className="mock-dot" title={t("sidebar.mockEnabled")} />}
         <span className="node-actions">
           {isFolder && (
             <button
               className="node-action"
-              title="在此分组下新建接口"
+              title={t("sidebar.newApiIn")}
               onClick={(e) => {
                 e.stopPropagation();
                 onNewApi(node.path);

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { HistoryDay, HistorySummary } from "../commands";
+import { useT } from "../i18n";
 
 function fmtTime(secs: number): string {
   const d = new Date(secs * 1000);
@@ -52,6 +53,7 @@ export function HistoryList({
   onReload,
   onClear,
 }: Props) {
+  const t = useT();
   const [confirmClear, setConfirmClear] = useState(false);
 
   // 已加载的记录按天分组（记录本身已按时间倒序）
@@ -71,15 +73,15 @@ export function HistoryList({
     <div className="history-list-side">
       <div className="history-side-toolbar">
         <span className="history-side-count">
-          {totalCount > 0 ? `共 ${totalCount} 条` : "暂无记录"}
+          {totalCount > 0 ? t("history.total", { count: totalCount }) : t("history.empty")}
         </span>
         <span style={{ flex: 1 }} />
         <button
           className="icon-btn"
           onClick={onReload}
           disabled={loading}
-          title="刷新历史"
-          aria-label="刷新历史"
+          title={t("history.refresh")}
+          aria-label={t("history.refresh")}
         >
           <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
             <path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
@@ -96,8 +98,8 @@ export function HistoryList({
               window.setTimeout(() => setConfirmClear(false), 2500);
             }
           }}
-          title={confirmClear ? "再次点击确认清空全部历史" : "清空全部请求历史"}
-          aria-label="清空全部请求历史"
+          title={confirmClear ? t("history.clearConfirm") : t("history.clear")}
+          aria-label={t("history.clear")}
         >
           <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
             <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
@@ -106,14 +108,14 @@ export function HistoryList({
       </div>
       <div className="history-list-scroll">
         {records.length === 0 && !loading && (
-          <div className="history-empty">暂无请求记录，发送请求后自动保存</div>
+          <div className="history-empty">{t("history.emptyHint")}</div>
         )}
         {groups.map(([day, list]) => (
           <div key={day}>
             <div className="history-day">
               {day}
               {dayCount.has(day) && (
-                <span className="history-day-count">{dayCount.get(day)} 条</span>
+                <span className="history-day-count">{dayCount.get(day)} {t("history.items")}</span>
               )}
             </div>
             {list.map((r) => (
@@ -135,13 +137,13 @@ export function HistoryList({
             ))}
           </div>
         ))}
-        {loading && <div className="history-empty">加载中…</div>}
+        {loading && <div className="history-empty">{t("history.loading")}</div>}
         {!hasMore && records.length > 0 && (
-          <div className="history-empty">已全部加载（{records.length} 条）</div>
+          <div className="history-empty">{t("history.allLoaded", { count: records.length })}</div>
         )}
         {hasMore && !loading && (
           <button className="history-load-more" onClick={onLoadMore} disabled={loading}>
-            加载更多（已加载 {records.length} 条）
+            {t("history.loadMore", { count: records.length })}
           </button>
         )}
       </div>

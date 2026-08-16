@@ -461,7 +461,7 @@ export default function App() {
         // 不生成演示案例：写一份最小 __info.json，标记工作区已初始化，避免下次再询问
         try {
           await saveInfo(ws, {
-            name: "我的 API 集合",
+            name: t("app.defaultWsName"),
             description: "",
             baseUrl: "",
             mockPort: 5050,
@@ -671,16 +671,14 @@ export default function App() {
       }
       // URL 校验：空地址 / 缺少协议前缀 / 存在未替换的 {{变量}}
       if (!url.trim()) {
-        throw new Error("请求 URL 为空，请填写完整地址或设置 Base URL");
+        throw new Error(t("app.urlEmpty"));
       }
       if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(url)) {
         url = "http://" + url;
       }
       const unresolved = [...url.matchAll(/\{\{\s*([^{}]+?)\s*\}\}/g)].map((m) => m[0]);
       if (unresolved.length > 0) {
-        throw new Error(
-          `URL 中存在未替换的环境变量: ${unresolved.join("、")}（请检查激活的环境变量，或直接修改 URL）`
-        );
+        throw new Error(t("app.envUnresolved", { names: unresolved.join(t("app.envJoin")) }));
       }
       // 拼接 query
       const qs = api.query
@@ -917,7 +915,7 @@ export default function App() {
 
   // ---------- 弹窗操作 ----------
   const openModal = (type: ModalState["type"], parent = "", target?: TreeNode) => {
-    setModalText(target?.name || (type === "newApi" ? "未命名接口" : type === "newFolder" ? "新分组" : ""));
+    setModalText(target?.name || (type === "newApi" ? t("app.unnamedApi") : type === "newFolder" ? t("app.newFolder") : ""));
     setModal({ type, parent, target });
   };
 
@@ -936,7 +934,7 @@ export default function App() {
 
   const doNewApi = async () => {
     if (!modal) return;
-    const name = modalText.trim() || "未命名接口";
+    const name = modalText.trim() || t("app.unnamedApi");
     try {
       const dir = modal.parent || workspace!;
       const path = await createApi(dir, name);
@@ -965,7 +963,7 @@ export default function App() {
 
   const doNewFolder = async () => {
     if (!modal) return;
-    const name = modalText.trim() || "新分组";
+    const name = modalText.trim() || t("app.newFolder");
     try {
       const parent = modal.parent || workspace!;
       await createFolder(parent, name);
@@ -1058,9 +1056,9 @@ export default function App() {
       await saveInfo(workspace, { name: n });
       setRootInfo((prev) => ({ ...prev, name: n }));
       await reloadTree();
-      showToast("工作区名称已更新");
+      showToast(t("toast.wsNameUpdated"));
     } catch (e) {
-      showToast("保存失败: " + e);
+      showToast(t("toast.saveFailed", { err: String(e) }));
     }
   };
 
@@ -1084,9 +1082,9 @@ export default function App() {
         if (prev && prev.startsWith(srcPath + "/")) return null; // 目录被移动，内部选中项路径已失效
         return prev;
       });
-      showToast("已移动");
+      showToast(t("toast.moved"));
     } catch (e) {
-      showToast("移动失败: " + e);
+      showToast(t("toast.moveFailed", { err: String(e) }));
     }
   };
 
@@ -1267,7 +1265,7 @@ export default function App() {
             sidebarWidthRef.current = 310;
             localStorage.setItem("sidebar-width", "310");
           }}
-          title="拖动调整侧边栏宽度，双击还原"
+          title={t("app.resizeSidebarTip")}
         />
 
         <div
@@ -1312,7 +1310,7 @@ export default function App() {
                     editorRatioRef.current = 0.45;
                     localStorage.setItem("editor-ratio", "0.45");
                   }}
-                  title="拖动调整编辑区 / 响应区高度，双击还原"
+                  title={t("app.resizePaneTip")}
                 />
               )}
               {!hideResponse && <Response result={response} sending={sending} onSaveExample={handleSaveExample} />}
@@ -1499,7 +1497,7 @@ export default function App() {
 
       {modal?.type === "rename" && modal.target && (
         <Modal
-          title="重命名"
+          title={t("common.rename")}
           onClose={() => setModal(null)}
           footer={
             <>

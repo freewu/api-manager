@@ -1,4 +1,5 @@
 import { EnvVariable } from "../types";
+import { useT } from "../i18n";
 
 interface Props {
   rows: EnvVariable[];
@@ -7,6 +8,7 @@ interface Props {
 
 /** 环境变量值编辑器：变量名 / 现有值 / 默认值 / 描述说明 */
 export function EnvVarEditor({ rows, onChange }: Props) {
+  const t = useT();
   const update = (i: number, patch: Partial<EnvVariable>) => {
     onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   };
@@ -26,10 +28,10 @@ export function EnvVarEditor({ rows, onChange }: Props) {
         <thead>
           <tr>
             <th style={{ width: 30 }}></th>
-            <th>变量名</th>
-            <th>现有值</th>
-            <th>默认值</th>
-            <th>描述说明</th>
+            <th>{t("envVar.name")}</th>
+            <th>{t("envVar.current")}</th>
+            <th>{t("envVar.default")}</th>
+            <th>{t("envVar.desc")}</th>
             <th style={{ width: 60 }}></th>
           </tr>
         </thead>
@@ -41,13 +43,13 @@ export function EnvVarEditor({ rows, onChange }: Props) {
                   type="checkbox"
                   checked={r.enabled}
                   onChange={(e) => update(i, { enabled: e.target.checked })}
-                  title="启用 / 停用该变量"
+                  title={t("envVar.toggleTip")}
                 />
               </td>
               <td>
                 <input
                   value={r.key}
-                  placeholder="变量名"
+                  placeholder={t("envVar.name")}
                   onChange={(e) => update(i, { key: e.target.value })}
                   spellCheck={false}
                 />
@@ -55,31 +57,31 @@ export function EnvVarEditor({ rows, onChange }: Props) {
               <td>
                 <input
                   value={r.value}
-                  placeholder="现有值"
+                  placeholder={t("envVar.current")}
                   onChange={(e) => update(i, { value: e.target.value })}
                   spellCheck={false}
-                  title="请求时使用的值"
+                  title={t("envVar.usedTip")}
                 />
               </td>
               <td>
                 <input
                   value={r.defaultValue}
-                  placeholder="默认值（现值为空时使用）"
+                  placeholder={t("envVar.defaultPlaceholder")}
                   onChange={(e) => update(i, { defaultValue: e.target.value })}
                   spellCheck={false}
-                  title="现值为空时使用该默认值"
+                  title={t("envVar.defaultTip")}
                 />
               </td>
               <td>
                 <input
                   value={r.description}
-                  placeholder="描述说明"
+                  placeholder={t("envVar.desc")}
                   onChange={(e) => update(i, { description: e.target.value })}
                   spellCheck={false}
                 />
               </td>
               <td>
-                <button className="kv-remove" title="删除该变量" onClick={() => remove(i)}>
+                <button className="kv-remove" title={t("envVar.removeTip")} onClick={() => remove(i)}>
                   🗑
                 </button>
               </td>
@@ -89,7 +91,7 @@ export function EnvVarEditor({ rows, onChange }: Props) {
       </table>
       </div>
       <button className="btn small kv-add" onClick={add}>
-        + 新增变量
+        + {t("envVar.add")}
       </button>
     </div>
   );

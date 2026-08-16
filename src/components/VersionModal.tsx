@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { readApiVersion } from "../commands";
 import { ApiFile, VersionInfo } from "../types";
 import { Modal } from "./Modal";
+import { useT } from "../i18n";
 
 interface Props {
   api: ApiFile;
@@ -72,6 +73,7 @@ function fmtTime(sec: number): string {
 }
 
 export function VersionModal({ api, versions, onClose }: Props) {
+  const t = useT();
   const [selIdx, setSelIdx] = useState(0);
   const [diff, setDiff] = useState<DiffRow[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -106,23 +108,23 @@ export function VersionModal({ api, versions, onClose }: Props) {
 
   return (
     <Modal
-      title={`📑 版本信息 - ${api.name}`}
+      title={`📑 ${t("version.title")} - ${api.name}`}
       onClose={onClose}
       className="modal-version"
       footer={
         <button className="btn" onClick={onClose}>
-          关闭
+          {t("common.close")}
         </button>
       }
     >
       <div className="version-body">
         <div className="version-list">
-          <div className="version-list-title">历史版本（{versions.length}）</div>
+          <div className="version-list-title">{t("version.history", { count: versions.length })}</div>
           {versions.length === 0 && (
             <div className="version-empty">
-              暂无版本记录
+              {t("version.empty")}
               <br />
-              可在编辑器中点击「保存」为当前接口保存新版本
+              {t("version.emptyHint")}
             </div>
           )}
           {versions.map((v, i) => (
@@ -146,13 +148,13 @@ export function VersionModal({ api, versions, onClose }: Props) {
         <div className="diff-pane">
           <div className="diff-head">
             <span>
-              <span className="diff-legend-add">＋ 当前</span>
+              <span className="diff-legend-add">＋ {t("version.current")}</span>
               <span className="diff-legend-del">− v{sel?.version ?? "?"}</span>
             </span>
-            <span style={{ fontSize: 11, color: "var(--text-faint)" }}>与当前版本对比</span>
+            <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{t("version.compare")}</span>
           </div>
           <div className="diff-body">
-            {loading && <div className="diff-hint">加载中…</div>}
+            {loading && <div className="diff-hint">{t("version.loading")}</div>}
             {err && <div className="diff-error">{err}</div>}
             {diff &&
               diff.map((r, i) => (

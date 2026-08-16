@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ApiFile, ExampleFile, ExampleSummary } from "../types";
 import { deleteExample, listExamples, readExample } from "../commands";
 import { highlightJson } from "./Response";
+import { useT } from "../i18n";
 
 interface Props {
   /** 当前接口 uuid（.examples/<uuid>/ 目录） */
@@ -35,8 +36,9 @@ function KVTable({ rows, empty }: { rows: [string, string][]; empty: string }) {
 
 /** 请求/响应体展示：JSON 高亮，其余原文 */
 function BodyView({ text }: { text: string }) {
+  const T = useT();
   const t = text.trim();
-  if (!t) return <div className="examples-empty">（空）</div>;
+  if (!t) return <div className="examples-empty">{T("examples.emptyBody")}</div>;
   const isJson = t.startsWith("{") || t.startsWith("[");
   if (isJson) {
     try {
@@ -55,6 +57,7 @@ function BodyView({ text }: { text: string }) {
 }
 
 export function ExamplesTab({ uuid, api, onChange }: Props) {
+  const t = useT();
   const [list, setList] = useState<ExampleSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -130,13 +133,13 @@ export function ExamplesTab({ uuid, api, onChange }: Props) {
     <div className="examples-root">
       <div className="examples-head">
         <span className="examples-title">
-          请求示例{" "}
-          <span className="help">保存在工作区 .examples/{uuid || "…"}/ 目录，同名示例会覆盖</span>
+          {t("examples.title")}{" "}
+          <span className="help">{t("examples.savedHint", { uuid: uuid || "…" })}</span>
         </span>
         <div className="examples-actions">
-          <span className="examples-count">{list.length} 个</span>
+          <span className="examples-count">{list.length} {t("examples.count")}</span>
           <button type="button" className="btn small" onClick={() => void load()} disabled={loading}>
-            🔄 刷新
+            🔄 {t("common.refresh")}
           </button>
         </div>
       </div>
@@ -144,11 +147,11 @@ export function ExamplesTab({ uuid, api, onChange }: Props) {
       {error && <div className="error-banner">{error}</div>}
 
       {loading ? (
-        <div className="examples-empty">加载中…</div>
+        <div className="examples-empty">{t("examples.loading")}</div>
       ) : list.length === 0 ? (
         <div className="examples-empty">
           <span className="big">🧪</span>
-          <span>暂无示例。发送请求后，在响应区点击「保存为示例」即可生成</span>
+          <span>{t("examples.empty")}</span>
         </div>
       ) : (
         <div className="examples-list">
@@ -162,7 +165,7 @@ export function ExamplesTab({ uuid, api, onChange }: Props) {
                 <button
                   type="button"
                   className="examples-delete"
-                  title="删除示例"
+                  title={t("examples.delete")}
                   onClick={(e) => {
                     e.stopPropagation();
                     void remove(s);
@@ -178,23 +181,23 @@ export function ExamplesTab({ uuid, api, onChange }: Props) {
                     <button
                       type="button"
                       className="btn small primary examples-apply"
-                      title="将 Header / Path / Query / Body 参数填充到当前接口"
+                      title={t("examples.applyTip")}
                       onClick={() => apply(detail)}
                     >
-                      ⬇ 应用到当前接口
+                      ⬇ {t("examples.apply")}
                     </button>
                   </div>
                   <div className="examples-section">
                     <div className="examples-detail-title">Header</div>
-                    <KVTable rows={detail.reqHeaders} empty="（无请求头）" />
+                    <KVTable rows={detail.reqHeaders} empty={t("examples.noHeaders")} />
                   </div>
                   <div className="examples-section">
                     <div className="examples-detail-title">Path</div>
-                    <KVTable rows={detail.reqPath} empty="（无路径参数）" />
+                    <KVTable rows={detail.reqPath} empty={t("examples.noPath")} />
                   </div>
                   <div className="examples-section">
                     <div className="examples-detail-title">Query</div>
-                    <KVTable rows={detail.reqQuery} empty="（无 Query 参数）" />
+                    <KVTable rows={detail.reqQuery} empty={t("examples.noQuery")} />
                   </div>
                   <div className="examples-section">
                     <div className="examples-detail-title">Body</div>
@@ -202,10 +205,10 @@ export function ExamplesTab({ uuid, api, onChange }: Props) {
                   </div>
                   <div className="examples-section">
                     <div className="examples-detail-title">
-                      响应{" "}
+                      {t("examples.response")}{" "}
                       <span className="examples-detail-meta">
                         {detail.error
-                          ? "请求失败"
+                          ? t("examples.failed")
                           : `${detail.status} ${detail.statusText} · ${detail.timeMs} ms · ${(
                               detail.size / 1024
                             ).toFixed(2)} KB`}
@@ -215,7 +218,7 @@ export function ExamplesTab({ uuid, api, onChange }: Props) {
                       <div className="error-banner">{detail.error}</div>
                     ) : (
                       <>
-                        <KVTable rows={detail.respHeaders} empty="（无响应头）" />
+                        <KVTable rows={detail.respHeaders} empty={t("examples.noRespHeaders")} />
                         <BodyView text={detail.respBody} />
                       </>
                     )}

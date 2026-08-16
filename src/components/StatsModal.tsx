@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { TreeNode } from "../types";
 import { Modal } from "./Modal";
+import { useT } from "../i18n";
 
 interface Props {
   node: TreeNode;
@@ -73,10 +74,11 @@ function computeStats(node: TreeNode): Stats {
 /** 环形图：接口方法分布 */
 function Donut({ data }: { data: [string, number][] }) {
   const total = data.reduce((s, [, c]) => s + c, 0);
+  const T = useT();
   if (total === 0) {
     return (
       <div className="stats-empty" style={{ width: 140, height: 140 }}>
-        暂无数据
+        {T("stats.noData")}
       </div>
     );
   }
@@ -102,7 +104,7 @@ function Donut({ data }: { data: [string, number][] }) {
             strokeDashoffset={-offset}
             transform="rotate(-90 50 50)"
           >
-            <title>{`${m}: ${c} 个`}</title>
+            <title>{`${m}: ${c} ${T("stats.count")}`}</title>
           </circle>
         );
         offset += dash;
@@ -112,38 +114,39 @@ function Donut({ data }: { data: [string, number][] }) {
         {total}
       </text>
       <text x="50" y="63" textAnchor="middle" className="donut-label">
-        接口
+        {T("stats.apis")}
       </text>
     </svg>
   );
 }
 
 export function StatsModal({ node, onClose }: Props) {
+  const t = useT();
   const stats = useMemo(() => computeStats(node), [node]);
   const maxApis = Math.max(1, ...stats.items.map((i) => i.apis));
 
   return (
-    <Modal title={`📊 统计 - ${node.name}`} onClose={onClose} className="stats-modal">
+    <Modal title={`📊 ${t("stats.title")} - ${node.name}`} onClose={onClose} className="stats-modal">
       <div className="stats-cards">
         <div className="stats-card">
           <div className="stats-card-num">{stats.totalApis}</div>
-          <div className="stats-card-label">接口总数</div>
+          <div className="stats-card-label">{t("stats.totalApis")}</div>
         </div>
         <div className="stats-card">
           <div className="stats-card-num">{stats.totalFolders}</div>
-          <div className="stats-card-label">分组数</div>
+          <div className="stats-card-label">{t("stats.totalFolders")}</div>
         </div>
         <div className="stats-card">
           <div className="stats-card-num">{stats.mockEnabled}</div>
-          <div className="stats-card-label">启用 Mock</div>
+          <div className="stats-card-label">{t("stats.mockEnabled")}</div>
         </div>
       </div>
 
       <div className="stats-body">
         <div className="stats-panel">
-          <div className="stats-panel-title">请求方法分布</div>
+          <div className="stats-panel-title">{t("stats.methods")}</div>
           {stats.methods.length === 0 ? (
-            <div className="stats-empty">该分组下暂无接口</div>
+            <div className="stats-empty">{t("stats.noApis")}</div>
           ) : (
             <div className="stats-method-row">
               <Donut data={stats.methods} />
@@ -167,9 +170,9 @@ export function StatsModal({ node, onClose }: Props) {
         </div>
 
         <div className="stats-panel">
-          <div className="stats-panel-title">下级分组 / 接口数量</div>
+          <div className="stats-panel-title">{t("stats.subItems")}</div>
           {stats.items.length === 0 ? (
-            <div className="stats-empty">该分组下暂无内容</div>
+            <div className="stats-empty">{t("stats.noContent")}</div>
           ) : (
             <div className="stats-bars">
               {stats.items.map((it) => (

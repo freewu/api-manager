@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Modal } from "./Modal";
 import { TreeNode } from "../types";
 import { ExportFormat } from "../commands";
+import { useT } from "../i18n";
 
 interface Props {
   tree: TreeNode | null;
@@ -32,6 +33,7 @@ function findNode(node: TreeNode, path: string): TreeNode | null {
 
 /** 导出弹窗：勾选接口/分组（勾选分组 = 整棵子树），选择格式后导出 */
 export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose }: Props) {
+  const t = useT();
   const [selected, setSelected] = useState<Set<string>>(() => {
     const s = new Set<string>();
     if (preselect?.length && tree) {
@@ -106,7 +108,7 @@ export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose 
                 e.stopPropagation();
                 toggleFold(node.path);
               }}
-              aria-label={isCollapsed ? "展开" : "折叠"}
+              aria-label={isCollapsed ? t("common.expand") : t("common.collapse")}
             >
               {isCollapsed ? "▸" : "▾"}
             </button>
@@ -128,7 +130,7 @@ export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose 
           </span>
           {isFolder && (
             <span className="export-row-count">
-              {node.apiCount != null ? `${node.apiCount} 个接口` : ""}
+              {node.apiCount != null ? `${node.apiCount} ${t("export.apis")}` : ""}
             </span>
           )}
         </div>
@@ -149,43 +151,43 @@ export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose 
 
   return (
     <Modal
-      title="导出接口 / 分组"
+      title={t("export.title")}
       onClose={onClose}
       className="export-modal"
       footer={
         <>
-          <span className="export-tip">已选 {selected.size} 项</span>
+          <span className="export-tip">{t("export.selected", { count: selected.size })}</span>
           <button className="btn" onClick={onClose}>
-            取消
+            {t("common.cancel")}
           </button>
           <button className="btn primary" disabled={busy || selected.size === 0} onClick={() => void doExport()}>
-            {busy ? "导出中…" : "导出"}
+            {busy ? t("export.busy") : t("export.export")}
           </button>
         </>
       }
     >
       <div className="export-format-row">
-        <span className="export-format-label">导出格式</span>
+        <span className="export-format-label">{t("export.format")}</span>
         <select
           className="export-format-select"
           value={format}
           onChange={(e) => setFormat(e.target.value as ExportFormat)}
         >
-          <option value="postman">Postman Collection（.json）</option>
-          <option value="openapi">OpenAPI 3.0（.json）</option>
-          <option value="docsify">Docsify 文档（.md 目录）</option>
+          <option value="postman">{t("export.postman")}</option>
+          <option value="openapi">{t("export.openapi")}</option>
+          <option value="docsify">{t("export.docsify")}</option>
         </select>
       </div>
       <div className="export-tree-head">
         <label className="export-all">
           <input type="checkbox" checked={allSelected} onChange={toggleAll} />
-          全选
+          {t("common.selectAll")}
         </label>
         <button className="btn-link" onClick={() => setSelected(new Set())}>
-          清空
+          {t("common.clear")}
         </button>
       </div>
-      <div className="export-tree">{tree ? renderNode(tree, 0) : <div className="doc-empty">暂无数据</div>}</div>
+      <div className="export-tree">{tree ? renderNode(tree, 0) : <div className="doc-empty">{t("export.noData")}</div>}</div>
     </Modal>
   );
 }
