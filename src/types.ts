@@ -171,7 +171,7 @@ export interface AppSettings {
   /** 导出默认格式 */
   exportFormat: ExportFormat;
   /** 界面语言（zh / en） */
-  language: "zh" | "en";
+  language: "zh" | "zh-tw" | "en";
 }
 
 export const defaultSettings = (): AppSettings => ({

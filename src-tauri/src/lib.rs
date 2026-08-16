@@ -48,8 +48,9 @@ pub struct TrayState {
     pub issue_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
     /// 退出菜单项
     pub quit_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
-    /// 语言菜单项（中文 / English），用于高亮当前语言
+    /// 语言菜单项（简体中文 / 繁體中文 / English），当前语言带 ✓ 前缀
     pub lang_zh_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
+    pub lang_tw_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
     pub lang_en_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
     /// 是否正在退出（退出时不拦截窗口关闭）
     pub exiting: AtomicBool,
@@ -531,7 +532,7 @@ pub struct AppSettings {
     pub default_headers: Vec<KeyValue>,
     /// 导出默认格式（postman / openapi / docsify）
     pub export_format: String,
-    /// 界面语言（zh / en，设置页与托盘菜单同步切换）
+    /// 界面语言（zh / zh-tw / en，设置页与托盘菜单同步切换）
     pub language: String,
 }
 
@@ -3240,20 +3241,30 @@ fn active_env_name(app: &AppHandle) -> String {
     }
 }
 
-/// 当前设置语言（"zh" 或 "en"，读取 settings.json）
+/// 当前设置语言（"zh" / "zh-tw" / "en"，读取 settings.json，兼容旧值）
 fn settings_lang(app: &AppHandle) -> String {
     let lang = load_settings(app.clone()).unwrap_or_default().language;
-    if lang.eq_ignore_ascii_case("en") {
+    normalize_lang(&lang)
+}
+
+/// 归一化语言：旧配置 "" / "zh" / "en" 与新值 "zh-tw" 统一处理
+fn normalize_lang(lang: &str) -> String {
+    let l = lang.trim().to_lowercase().replace('_', "-");
+    if l == "en" {
         "en".into()
+    } else if l == "zh-tw" || l == "zh-hant" || l == "zh-cht" || l == "tw" || l == "cht" {
+        "zh-tw".into()
     } else {
         "zh".into()
     }
 }
 
-/// 按语言取托盘文案
-fn tray_text(lang: &str, zh: &str, en: &str) -> String {
+/// 按语言取托盘文案（简体中文 / 繁體中文 / English）
+fn tray_text(lang: &str, zh: &str, tw: &str, en: &str) -> String {
     if lang == "en" {
         en.into()
+    } else if lang == "zh-tw" {
+        tw.into()
     } else {
         zh.into()
     }
@@ -3264,9 +3275,9 @@ pub fn update_tray_env_item(app: &AppHandle) {
     let lang = settings_lang(app);
     let name = active_env_name(app);
     let text = if name.trim().is_empty() {
-        tray_text(&lang, "环境：未设置（点击编辑）", "Env: unset (click to edit)")
+        tray_text(&lang, "环境：未设置（点击编辑）", "環境：未設置（點擊編輯）", "Env: unset (click to edit)")
     } else {
-        tray_text(&lang, "环境：{name}（点击编辑）", "Env: {name} (click to edit)")
+        tray_text(&lang, "环境：{name}（点击编辑）", "環境：{name}（點擊編輯）", "Env: {name} (click to edit)")
             .replace("{name}", name.trim())
     };
     let state = app.state::<TrayState>();
@@ -3281,9 +3292,9 @@ pub fn update_tray_env_item(app: &AppHandle) {
 fn update_tray_env(app: AppHandle, name: String) {
     let lang = settings_lang(&app);
     let text = if name.trim().is_empty() {
-        tray_text(&lang, "环境：未设置（点击编辑）", "Env: unset (click to edit)")
+        tray_text(&lang, "环境：未设置（点击编辑）", "環境：未設置（點擊編輯）", "Env: unset (click to edit)")
     } else {
-        tray_text(&lang, "环境：{name}（点击编辑）", "Env: {name} (click to edit)")
+        tray_text(&lang, "环境：{name}（点击编辑）", "環境：{name}（點擊編輯）", "Env: {name} (click to edit)")
             .replace("{name}", name.trim())
     };
     let state = app.state::<TrayState>();
@@ -3305,9 +3316,9 @@ pub fn update_tray_mock_item(app: &AppHandle) {
     let guard = state.mock_item.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(item) = guard.as_ref() {
         let _ = item.set_text(if running {
-            tray_text(&lang, "停止 Mock 服务", "Stop Mock Server")
+            tray_text(&lang, "停止 Mock 服务", "停止 Mock 服務", "Stop Mock Server")
         } else {
-            tray_text(&lang, "启动 Mock 服务", "Start Mock Server")
+            tray_text(&lang, "启动 Mock 服务", "啟動 Mock 服務", "Start Mock Server")
         });
     }
 }
@@ -3317,24 +3328,43 @@ pub fn update_tray_language(app: &AppHandle) {
     let lang = settings_lang(app);
     let st = app.state::<TrayState>();
     if let Some(i) = st.show_item.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
-        let _ = i.set_text(&tray_text(&lang, "显示窗口", "Show Window"));
+        let _ = i.set_text(&tray_text(&lang, "显示窗口", "顯示窗口", "Show Window"));
     }
     if let Some(i) = st.github_item.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
-        let _ = i.set_text(&tray_text(&lang, "GitHub 仓库", "GitHub Repository"));
+        let _ = i.set_text(&tray_text(&lang, "GitHub 仓库", "GitHub 倉庫", "GitHub Repository"));
     }
     if let Some(i) = st.issue_item.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
-        let _ = i.set_text(&tray_text(&lang, "提交 Issue", "Submit Issue"));
+        let _ = i.set_text(&tray_text(&lang, "提交 Issue", "提交 Issue", "Submit Issue"));
     }
     if let Some(i) = st.quit_item.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
-        let _ = i.set_text(&tray_text(&lang, "退出", "Quit"));
+        let _ = i.set_text(&tray_text(&lang, "退出", "退出", "Quit"));
     }
-    // 高亮当前语言（置灰非当前语言项）
-    if let Some(i) = st.lang_zh_item.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
-        let _ = i.set_enabled(lang != "en");
-    }
-    if let Some(i) = st.lang_en_item.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
-        let _ = i.set_enabled(lang == "en");
-    }
+    // 当前语言带 ✓ 前缀高亮，其余项保持可点击（点击任意项即可切换）
+    let mark = |item: &Option<tauri::menu::IconMenuItem<tauri::Wry>>, label: &str, active: bool| {
+        if let Some(i) = item.as_ref() {
+            let _ = i.set_text(&if active {
+                format!("✓ {label}")
+            } else {
+                label.to_string()
+            });
+            let _ = i.set_enabled(true);
+        }
+    };
+    mark(
+        &st.lang_zh_item.lock().unwrap_or_else(|e| e.into_inner()),
+        "简体中文",
+        lang == "zh",
+    );
+    mark(
+        &st.lang_tw_item.lock().unwrap_or_else(|e| e.into_inner()),
+        "繁體中文",
+        lang == "zh-tw",
+    );
+    mark(
+        &st.lang_en_item.lock().unwrap_or_else(|e| e.into_inner()),
+        "English",
+        lang == "en",
+    );
     update_tray_env_item(app);
     update_tray_mock_item(app);
 }
@@ -3342,15 +3372,16 @@ pub fn update_tray_language(app: &AppHandle) {
 /// 切换界面语言：保存设置 + 刷新托盘菜单 + 通知前端刷新文案
 #[tauri::command]
 fn set_language(app: AppHandle, lang: String) -> Result<(), String> {
+    let normalized = normalize_lang(&lang);
     let mut s = load_settings(app.clone())?;
-    s.language = if lang.eq_ignore_ascii_case("en") {
-        "en".into()
-    } else {
-        "zh".into()
-    };
+    if s.language == normalized {
+        // 已是当前语言，无需重复刷新
+        return Ok(());
+    }
+    s.language = normalized.clone();
     save_settings(app.clone(), s)?;
     update_tray_language(&app);
-    let _ = app.emit("language-changed", lang);
+    let _ = app.emit("language-changed", normalized);
     Ok(())
 }
 
@@ -3397,6 +3428,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         issue_item: Mutex::new(None),
         quit_item: Mutex::new(None),
         lang_zh_item: Mutex::new(None),
+        lang_tw_item: Mutex::new(None),
         lang_en_item: Mutex::new(None),
         exiting: AtomicBool::new(false),
     });
@@ -3454,11 +3486,19 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         None::<&str>,
     )?;
     let quit = IconMenuItem::with_id(app, "quit", "退出", true, Some(icon_quit), None::<&str>)?;
-    // 语言切换（国旗图标）：点击后保存设置并联动前端
+    // 语言切换（简体中文 / 繁體中文 / English）：点击任意项即可切换，当前语言带 ✓ 前缀
     let lang_zh = IconMenuItem::with_id(
         app,
         "lang_zh",
-        "🇨🇳 中文",
+        "简体中文",
+        true,
+        None::<tauri::image::Image>,
+        None::<&str>,
+    )?;
+    let lang_tw = IconMenuItem::with_id(
+        app,
+        "lang_tw",
+        "繁體中文",
         true,
         None::<tauri::image::Image>,
         None::<&str>,
@@ -3466,7 +3506,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let lang_en = IconMenuItem::with_id(
         app,
         "lang_en",
-        "🇺🇸 English",
+        "English",
         true,
         None::<tauri::image::Image>,
         None::<&str>,
@@ -3486,6 +3526,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
             &issue,
             &PredefinedMenuItem::separator(app)?,
             &lang_zh,
+            &lang_tw,
             &lang_en,
             &PredefinedMenuItem::separator(app)?,
             &quit,
@@ -3499,6 +3540,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     *app.state::<TrayState>().issue_item.lock().unwrap() = Some(issue.clone());
     *app.state::<TrayState>().quit_item.lock().unwrap() = Some(quit.clone());
     *app.state::<TrayState>().lang_zh_item.lock().unwrap() = Some(lang_zh.clone());
+    *app.state::<TrayState>().lang_tw_item.lock().unwrap() = Some(lang_tw.clone());
     *app.state::<TrayState>().lang_en_item.lock().unwrap() = Some(lang_en.clone());
     // 用当前设置语言 + 工作区环境名刷新托盘文字
     update_tray_language(app.handle());
@@ -3537,6 +3579,9 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
             }
             "lang_zh" => {
                 let _ = crate::set_language(app.clone(), "zh".to_string());
+            }
+            "lang_tw" => {
+                let _ = crate::set_language(app.clone(), "zh-tw".to_string());
             }
             "lang_en" => {
                 let _ = crate::set_language(app.clone(), "en".to_string());

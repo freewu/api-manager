@@ -81,7 +81,7 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
   const patch = (p: Partial<AppSettings>) => onSave({ ...settings, ...p });
 
   // 切换界面语言：即时生效 + 持久化 + 联动托盘
-  const switchLang = (l: "zh" | "en") => {
+  const switchLang = (l: "zh" | "zh-tw" | "en") => {
     if (settings.language === l) return;
     setLang(l);
     patch({ language: l });
@@ -179,6 +179,17 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                     onChange={() => switchLang("zh")}
                   />
                   🇨🇳 {t("settings.lang.zh")}
+                </label>
+                <label
+                  className={`settings-option ${settings.language === "zh-tw" ? "active" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="language"
+                    checked={settings.language === "zh-tw"}
+                    onChange={() => switchLang("zh-tw")}
+                  />
+                  🇹🇼 {t("settings.lang.zhTw")}
                 </label>
                 <label
                   className={`settings-option ${settings.language === "en" ? "active" : ""}`}

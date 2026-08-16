@@ -65,6 +65,14 @@ import logoUrl from "./assets/logo.png";
 
 /** 转义正则特殊字符（用于按字面量构造 {变量名} 匹配） */
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** 归一化语言值：兼容旧配置 "" / "zh" / "en" 与新值 "zh-tw" */
+const normalizeLang = (v: unknown): "zh" | "zh-tw" | "en" => {
+  const s = String(v || "").toLowerCase().replace(/_/g, "-");
+  if (s === "en") return "en";
+  if (s === "zh-tw" || s === "zh-hant" || s === "zh-cht" || s === "tw" || s === "cht") return "zh-tw";
+  return "zh";
+};
 import { VersionModal } from "./components/VersionModal";
 import {
   ApiFile,
@@ -204,7 +212,7 @@ export default function App() {
     loadSettings()
       .then((s) => {
         setSettings(s);
-        setLang(s.language === "en" ? "en" : "zh");
+        setLang(normalizeLang(s.language));
       })
       .catch(() => {});
     mockStatus().then(setMock).catch(() => {});
@@ -216,7 +224,7 @@ export default function App() {
     let unlisten: (() => void) | undefined;
     (async () => {
       unlisten = await listen("language-changed", (e) => {
-        const l = e.payload === "en" ? "en" : "zh";
+        const l = normalizeLang(e.payload);
         setLang(l);
         setSettings((s) => ({ ...s, language: l }));
       });
