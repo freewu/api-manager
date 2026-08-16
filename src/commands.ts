@@ -148,6 +148,11 @@ export function saveSettings(settings: AppSettings): Promise<void> {
   return invoke<void>("save_settings", { settings });
 }
 
+/** 切换界面语言（保存设置 + 刷新托盘菜单 + 通知前端） */
+export function setLanguage(lang: "zh" | "en"): Promise<void> {
+  return invoke<void>("set_language", { lang });
+}
+
 export function createApi(dir: string, name: string): Promise<string> {
   return invoke<string>("create_api", { dir, name });
 }

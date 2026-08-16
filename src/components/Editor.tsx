@@ -3,6 +3,7 @@ import { ApiFile, BODY_MODES, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS,
 import { KeyValueEditor } from "./KeyValueEditor";
 import { CodeTab } from "./CodeTab";
 import { ExamplesTab } from "./ExamplesTab";
+import { useT } from "../i18n";
 
 type Tab = "params" | "path" | "headers" | "body" | "mock" | "desc" | "doc" | "code" | "examples";
 
@@ -28,6 +29,7 @@ interface Props {
 }
 
 export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, codegenLang = "bash", onTabChange, currentVersion = 0 }: Props) {
+  const t = useT();
   const [tab, setTab] = useState<Tab>("params");
   const effectiveUrl = api.url || (baseUrl + api.path);
 
@@ -104,7 +106,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           />
         </div>
         <button className="send-btn" onClick={onSend} disabled={sending}>
-          {sending ? "发送中…" : "发送"}
+          {sending ? t("tab.sending") : t("tab.send")}
         </button>
         {enableVersion && (
           <button
@@ -112,11 +114,11 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             onClick={onSaveVersion}
             title={
               currentVersion > 0
-                ? `当前版本：${currentVersion}（点击将当前内容保存为新版本）`
-                : "当前版本：暂无（点击保存生成第一个版本）"
+                ? t("tab.currentVersion", { v: currentVersion })
+                : t("tab.noVersion")
             }
           >
-            💾 保存
+            💾 {t("tab.save")}
           </button>
         )}
       </div>
@@ -141,18 +143,18 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           Mock{api.mock.enabled && <span className="count">●</span>}
         </div>
         <div className={`tab ${tab === "desc" ? "active" : ""}`} onClick={() => switchTab("desc")}>
-          接口描述
+          {t("editor.descTab")}
         </div>
         <div className={`tab ${tab === "doc" ? "active" : ""}`} onClick={() => switchTab("doc")}>
-          接口文档
+          {t("tab.doc")}
         </div>
         {enableCodegen && (
           <div className={`tab ${tab === "code" ? "active" : ""}`} onClick={() => switchTab("code")}>
-            生成代码
+            {t("editor.codeTab")}
           </div>
         )}
         <div className={`tab ${tab === "examples" ? "active" : ""}`} onClick={() => switchTab("examples")}>
-          示例
+          {t("tab.examples")}
         </div>
       </div>
 

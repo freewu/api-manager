@@ -170,6 +170,8 @@ export interface AppSettings {
   defaultHeaders: KeyValue[];
   /** 导出默认格式 */
   exportFormat: ExportFormat;
+  /** 界面语言（zh / en） */
+  language: "zh" | "en";
 }
 
 export const defaultSettings = (): AppSettings => ({
@@ -183,6 +185,7 @@ export const defaultSettings = (): AppSettings => ({
   enableDefaultHeaders: false,
   defaultHeaders: [],
   exportFormat: "postman",
+  language: "zh",
 });
 
 export interface HttpRequestData {

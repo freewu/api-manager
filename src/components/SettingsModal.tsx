@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { AppSettings } from "../types";
 import { Modal } from "./Modal";
-import { openExternal } from "../commands";
+import { openExternal, setLanguage } from "../commands";
 import { CODE_LANGS } from "../utils/codegen";
 import { KeyValueEditor } from "./KeyValueEditor";
+import { setLang, useT } from "../i18n";
 import logoUrl from "../assets/logo.png";
 
 interface Props {
@@ -20,9 +21,9 @@ interface Props {
 }
 
 const MODES = [
-  { value: "dark", label: "🌙 深色" },
-  { value: "light", label: "☀️ 浅色" },
-  { value: "system", label: "🖥 跟随系统" },
+  { value: "dark", labelKey: "settings.mode.dark" },
+  { value: "light", labelKey: "settings.mode.light" },
+  { value: "system", labelKey: "settings.mode.system" },
 ] as const;
 
 const PROJECT_URL = "https://github.com/freewu/api-manager";
@@ -30,15 +31,16 @@ const ISSUE_URL = "https://github.com/freewu/api-manager/issues/new";
 
 /** 左侧导航（目录）项：点击滚动到对应分区 */
 const NAV = [
-  { id: "workspace", icon: "📁", title: "工作区", desc: "名称 · 路径" },
-  { id: "appearance", icon: "🎨", title: "外观", desc: "显示模式 · 预览" },
-  { id: "version", icon: "📦", title: "接口版本", desc: "版本快照开关" },
-  { id: "mock", icon: "🛡️", title: "Mock 服务", desc: "本地 Mock · 端口" },
-  { id: "codegen", icon: "💻", title: "代码生成", desc: "20 种语言请求代码" },
-  { id: "export", icon: "📤", title: "导出", desc: "默认导出格式" },
-  { id: "headers", icon: "🧾", title: "默认 Header", desc: "新接口自动附带请求头" },
-  { id: "sync", icon: "🔄", title: "同步远程", desc: "Git / SVN 远程同步" },
-  { id: "about", icon: "ℹ️", title: "关于", desc: "版本与项目信息" },
+  { id: "workspace", icon: "📁", titleKey: "settings.nav.workspace", descKey: "settings.nav.workspaceDesc" },
+  { id: "language", icon: "🌐", titleKey: "settings.nav.language", descKey: "settings.nav.languageDesc" },
+  { id: "appearance", icon: "🎨", titleKey: "settings.nav.appearance", descKey: "settings.nav.appearanceDesc" },
+  { id: "version", icon: "📦", titleKey: "settings.nav.version", descKey: "settings.nav.versionDesc" },
+  { id: "mock", icon: "🛡️", titleKey: "settings.nav.mock", descKey: "settings.nav.mockDesc" },
+  { id: "codegen", icon: "💻", titleKey: "settings.nav.codegen", descKey: "settings.nav.codegenDesc" },
+  { id: "export", icon: "📤", titleKey: "settings.nav.export", descKey: "settings.nav.exportDesc" },
+  { id: "headers", icon: "🧾", titleKey: "settings.nav.headers", descKey: "settings.nav.headersDesc" },
+  { id: "sync", icon: "🔄", titleKey: "settings.nav.sync", descKey: "settings.nav.syncDesc" },
+  { id: "about", icon: "ℹ️", titleKey: "settings.nav.about", descKey: "settings.nav.aboutDesc" },
 ] as const;
 
 function Switch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -71,11 +73,20 @@ function LinkRow({ icon, title, desc, url }: { icon: string; title: string; desc
 }
 
 export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSaveWorkspaceName, onClose, onSave }: Props) {
+  const t = useT();
   const [active, setActive] = useState<string>("appearance");
   const [wsName, setWsName] = useState(workspaceName);
   // 保存工作区名称后（props 更新）同步本地输入框
   useEffect(() => setWsName(workspaceName), [workspaceName]);
   const patch = (p: Partial<AppSettings>) => onSave({ ...settings, ...p });
+
+  // 切换界面语言：即时生效 + 持久化 + 联动托盘
+  const switchLang = (l: "zh" | "en") => {
+    if (settings.language === l) return;
+    setLang(l);
+    patch({ language: l });
+    setLanguage(l).catch(() => {});
+  };
 
   // 点击导航 -> 平滑滚动到对应分区
   const scrollTo = (id: string) => {
@@ -107,10 +118,10 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
 
   return (
     <Modal
-      title="设置"
+      title={t("settings.title")}
       onClose={onClose}
       className="modal-settings"
-      footer={<span className="settings-auto-hint">⚡ 修改即时生效，无需保存</span>}
+      footer={<span className="settings-auto-hint">⚡ {t("settings.autoHint")}</span>}
     >
       <div className="settings-layout">
         <div className="settings-nav">
@@ -122,8 +133,8 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
             >
               <span className="settings-nav-icon">{n.icon}</span>
               <span className="settings-nav-text">
-                <span className="settings-nav-title">{n.title}</span>
-                <span className="settings-nav-desc">{n.desc}</span>
+                <span className="settings-nav-title">{t(n.titleKey)}</span>
+                <span className="settings-nav-desc">{t(n.descKey)}</span>
               </span>
             </div>
           ))}
@@ -131,13 +142,13 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
 
         <div className="settings-panel" id="settings-panel">
           <section id="settings-workspace" className="settings-section">
-            <div className="settings-panel-title">工作区</div>
+            <div className="settings-panel-title">{t("settings.nav.workspace")}</div>
             <div className="settings-row settings-port-row">
-              <span className="settings-label">工作区名称</span>
+              <span className="settings-label">{t("settings.wsName")}</span>
               <input
                 className="settings-port-input settings-ws-input"
                 value={wsName}
-                placeholder="工作区名称"
+                placeholder={t("settings.wsName")}
                 onChange={(e) => setWsName(e.target.value)}
                 onBlur={() => {
                   // 失焦即保存（值未变化或为空时跳过）
@@ -150,15 +161,45 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                 }}
               />
             </div>
-            <div className="settings-desc">
-              工作区名称即根目录 __info.json 的 name，显示于应用各处；不设置时使用目录名（输入后失焦自动保存）
+            <div className="settings-desc">{t("settings.wsDesc")}</div>
+          </section>
+
+          <section id="settings-language" className="settings-section">
+            <div className="settings-panel-title">{t("settings.nav.language")}</div>
+            <div className="settings-row">
+              <span className="settings-label">{t("settings.languageTip")}</span>
+              <div className="settings-options">
+                <label
+                  className={`settings-option ${settings.language === "zh" ? "active" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="language"
+                    checked={settings.language === "zh"}
+                    onChange={() => switchLang("zh")}
+                  />
+                  🇨🇳 {t("settings.lang.zh")}
+                </label>
+                <label
+                  className={`settings-option ${settings.language === "en" ? "active" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="language"
+                    checked={settings.language === "en"}
+                    onChange={() => switchLang("en")}
+                  />
+                  🇺🇸 {t("settings.lang.en")}
+                </label>
+              </div>
             </div>
+            <div className="settings-desc">{t("settings.langDesc")}</div>
           </section>
 
           <section id="settings-appearance" className="settings-section">
-            <div className="settings-panel-title">外观</div>
+            <div className="settings-panel-title">{t("settings.nav.appearance")}</div>
             <div className="settings-row">
-              <span className="settings-label">显示模式</span>
+              <span className="settings-label">{t("settings.displayMode")}</span>
               <div className="settings-options">
                 {MODES.map((m) => (
                   <label
@@ -171,12 +212,12 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                       checked={settings.displayMode === m.value}
                       onChange={() => patch({ displayMode: m.value })}
                     />
-                    {m.label}
+                    {t(m.labelKey)}
                   </label>
                 ))}
               </div>
             </div>
-            <div className="settings-desc">深色 / 浅色 / 跟随系统（Windows 主题自动切换）</div>
+            <div className="settings-desc">{t("settings.modeDesc")}</div>
 
             <div className="settings-preview">
               <div className="settings-preview-title">预览</div>
@@ -198,34 +239,32 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
           </section>
 
           <section id="settings-version" className="settings-section">
-            <div className="settings-panel-title">接口版本</div>
+            <div className="settings-panel-title">{t("settings.nav.version")}</div>
             <div className="settings-feature">
               <div className="settings-feature-head">
-                <span className="settings-feature-name">启用接口版本</span>
+                <span className="settings-feature-name">{t("settings.enableVersion")}</span>
                 <Switch
                   checked={settings.enableVersion}
                   onChange={(v) => patch({ enableVersion: v })}
                 />
               </div>
-              <div className="settings-feature-desc">
-                在主页面显示「保存」按钮与右键「查看版本信息」
-              </div>
+              <div className="settings-feature-desc">{t("settings.enableVersionDesc")}</div>
             </div>
           </section>
 
           <section id="settings-mock" className="settings-section">
-            <div className="settings-panel-title">Mock 服务</div>
+            <div className="settings-panel-title">{t("settings.nav.mock")}</div>
             <div className="settings-feature">
               <div className="settings-feature-head">
-                <span className="settings-feature-name">启用 Mock 服务</span>
+                <span className="settings-feature-name">{t("settings.enableMock")}</span>
                 <Switch
                   checked={settings.enableMock}
                   onChange={(v) => patch({ enableMock: v })}
                 />
               </div>
-              <div className="settings-feature-desc">在主页面显示 Mock 开关与端口</div>
+              <div className="settings-feature-desc">{t("settings.enableMockDesc")}</div>
               <div className="settings-row settings-port-row">
-                <span className="settings-label">Mock 端口</span>
+                <span className="settings-label">{t("settings.mockPort")}</span>
                 <input
                   className="settings-port-input"
                   type="number"
@@ -238,27 +277,25 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                     })
                   }
                 />
-                <span className="settings-desc-inline">默认 5050</span>
+                <span className="settings-desc-inline">5050</span>
               </div>
             </div>
           </section>
 
           <section id="settings-codegen" className="settings-section">
-            <div className="settings-panel-title">代码生成</div>
+            <div className="settings-panel-title">{t("settings.nav.codegen")}</div>
             <div className="settings-feature">
               <div className="settings-feature-head">
-                <span className="settings-feature-name">启用代码生成</span>
+                <span className="settings-feature-name">{t("settings.enableCodegen")}</span>
                 <Switch
                   checked={settings.enableCodegen}
                   onChange={(v) => patch({ enableCodegen: v })}
                 />
               </div>
-              <div className="settings-feature-desc">
-                在编辑区显示「生成代码」页签，支持 20 种语言一键生成请求代码
-              </div>
+              <div className="settings-feature-desc">{t("settings.enableCodegenDesc")}</div>
               {settings.enableCodegen && (
                 <div className="settings-row settings-port-row">
-                  <span className="settings-label">默认开发语言</span>
+                  <span className="settings-label">{t("settings.codegenLang")}</span>
                   <select
                     className="settings-port-input codegen-lang-select"
                     value={settings.codegenLang}
@@ -270,17 +307,17 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                       </option>
                     ))}
                   </select>
-                  <span className="settings-desc-inline">页签默认语言</span>
+                  <span className="settings-desc-inline">{t("settings.codegenLangHint")}</span>
                 </div>
               )}
             </div>
           </section>
 
           <section id="settings-export" className="settings-section">
-            <div className="settings-panel-title">导出</div>
+            <div className="settings-panel-title">{t("settings.nav.export")}</div>
             <div className="settings-feature">
               <div className="settings-row settings-port-row">
-                <span className="settings-label">默认导出格式</span>
+                <span className="settings-label">{t("settings.exportFormat")}</span>
                 <select
                   className="settings-port-input codegen-lang-select"
                   value={settings.exportFormat}
@@ -288,26 +325,24 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                 >
                   <option value="postman">Postman Collection（.json）</option>
                   <option value="openapi">OpenAPI 3.0（.json）</option>
-                  <option value="docsify">Docsify 文档（.md 目录）</option>
+                  <option value="docsify">Docsify（.md）</option>
                 </select>
-                <span className="settings-desc-inline">导出弹窗默认选中格式</span>
+                <span className="settings-desc-inline">{t("settings.exportFormatHint")}</span>
               </div>
             </div>
           </section>
 
           <section id="settings-headers" className="settings-section">
-            <div className="settings-panel-title">默认 Header</div>
+            <div className="settings-panel-title">{t("settings.nav.headers")}</div>
             <div className="settings-feature">
               <div className="settings-feature-head">
-                <span className="settings-feature-name">启用默认 Header</span>
+                <span className="settings-feature-name">{t("settings.enableDefaultHeaders")}</span>
                 <Switch
                   checked={settings.enableDefaultHeaders}
                   onChange={(v) => patch({ enableDefaultHeaders: v })}
                 />
               </div>
-              <div className="settings-feature-desc">
-                新增接口时自动附带以下请求头（勾选开关可临时停用某一条）
-              </div>
+              <div className="settings-feature-desc">{t("settings.enableDefaultHeadersDesc")}</div>
               {settings.enableDefaultHeaders && (
                 <div className="settings-kv-wrap">
                   <KeyValueEditor
@@ -322,43 +357,39 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
 
           {vcs && (
             <section id="settings-sync" className="settings-section">
-              <div className="settings-panel-title">同步远程</div>
+              <div className="settings-panel-title">{t("settings.nav.sync")}</div>
               <div className="settings-feature">
                 <div className="settings-feature-head">
                   <span className="settings-feature-name">
-                    同步远程（{vcs === "git" ? "Git" : "SVN"}）
+                    {t("settings.syncRemote", { vcs: vcs === "git" ? "Git" : "SVN" })}
                   </span>
                   <Switch
                     checked={settings.syncRemote}
                     onChange={(v) => patch({ syncRemote: v })}
                   />
                 </div>
-                <div className="settings-feature-desc">
-                  已检测到工作目录 {vcs === "git" ? ".git" : ".svn"}。开启后「同步」「提交并 Push 远程」会与远程仓库交互（git pull / push、svn update / commit）；关闭则仅本地提交。
-                </div>
+                <div className="settings-feature-desc">{t("settings.syncRemoteDesc", { vcs: vcs === "git" ? ".git" : ".svn" })}</div>
               </div>
             </section>
           )}
 
           <section id="settings-about" className="settings-section">
-            <div className="settings-panel-title">关于</div>
+            <div className="settings-panel-title">{t("settings.nav.about")}</div>
             <div className="about-app">
               <div className="about-logo">
                 <img src={logoUrl} alt="API Manager" style={{ width: 34, height: 34, objectFit: "contain" }} />
               </div>
               <div className="about-app-info">
                 <div className="about-app-name">API Manager</div>
-                <div className="about-app-desc">API 接口文档 · 测试 · Mock 工具</div>
-                <div className="about-version">版本 v{appVersion || "0.1.0"}</div>
+                <div className="about-app-desc">{t("settings.aboutDesc")}</div>
+                <div className="about-version">v{appVersion || "0.1.0"}</div>
               </div>
             </div>
             <div className="about-links">
-              <LinkRow icon="📦" title="项目地址" desc={PROJECT_URL} url={PROJECT_URL} />
-              <LinkRow icon="🐛" title="提交 Issue" desc="反馈问题、建议新功能" url={ISSUE_URL} />
+              <LinkRow icon="📦" title={t("settings.projectUrl")} desc={PROJECT_URL} url={PROJECT_URL} />
+              <LinkRow icon="🐛" title={t("settings.issueUrl")} desc={t("settings.issueUrlDesc")} url={ISSUE_URL} />
             </div>
-            <div className="about-footnote">
-              接口、目录与 Mock 数据保存在本地工作区文件，版本快照位于 .version 目录。
-            </div>
+            <div className="about-footnote">{t("settings.aboutFootnote")}</div>
           </section>
         </div>
       </div>

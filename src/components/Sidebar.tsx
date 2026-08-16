@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { TreeNode } from "../types";
 import { HistoryDay, HistorySummary } from "../commands";
 import { HistoryList } from "./HistoryList";
+import { useT } from "../i18n";
 
 export type AppView = "api" | "history";
 
@@ -122,6 +123,7 @@ function NodeRow({
   onDragLeaveTarget: (dst: string) => void;
   onDropTarget: (src: string, dst: string) => void;
 }) {
+  const t = useT();
   const isFolder = node.kind === "folder";
   const [open, setOpen] = useState(node.collapsed !== true);
 
@@ -243,7 +245,7 @@ function NodeRow({
           )}
           <button
             className="node-action"
-            title={isFolder ? "编辑分组" : "重命名"}
+            title={isFolder ? t("sidebar.editInfo") : t("sidebar.rename")}
             onClick={(e) => {
               e.stopPropagation();
               if (isFolder) onEditInfo(node);
@@ -254,7 +256,7 @@ function NodeRow({
           </button>
           <button
             className="node-action del"
-            title="删除"
+            title={t("sidebar.delete")}
             onClick={(e) => {
               e.stopPropagation();
               onDelete(node);
@@ -301,7 +303,7 @@ function NodeRow({
               style={{ paddingLeft: indent + depth * 14 + 10, color: "var(--text-faint)", fontSize: 12 }}
               onClick={() => onNewFolder(node.path)}
             >
-              ＋ 新建分组
+              ＋ {t("sidebar.newFolder")}
             </div>
           )}
         </div>
@@ -311,6 +313,7 @@ function NodeRow({
 }
 
 export function Sidebar(props: Props) {
+  const t = useT();
   const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onEditInfo, onDelete, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
   const [importMenu, setImportMenu] = useState(false);
   const [filter, setFilter] = useState("");
@@ -367,7 +370,7 @@ export function Sidebar(props: Props) {
           <div className="search-box">
             <span className="icon">🔍</span>
             <input
-              placeholder="搜索接口 / 路径"
+              placeholder={t("sidebar.search")}
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               spellCheck={false}
@@ -375,12 +378,12 @@ export function Sidebar(props: Props) {
           </div>
         ) : (
           <div className="history-side-header">
-            <span className="history-side-title">请求历史</span>
+            <span className="history-side-title">{t("history.title")}</span>
             <button
               className="icon-btn"
               onClick={() => onSwitchView("api")}
-              title="返回接口管理"
-              aria-label="返回接口管理"
+              title={t("history.back")}
+              aria-label={t("history.back")}
             >
               <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
                 <path d="M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0 4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z" />
@@ -449,7 +452,7 @@ export function Sidebar(props: Props) {
                 style={{ paddingLeft: 10, color: "var(--text-faint)", fontSize: 12 }}
                 onClick={() => onNewFolder("")}
               >
-                ＋ 新建分组
+                ＋ {t("sidebar.newFolder")}
               </div>
             )}
           </div>
@@ -462,10 +465,10 @@ export function Sidebar(props: Props) {
         {loading && !tree && (
           <div className="tree-loading">
             <span className="spinner" />
-            <span>正在加载工作目录…</span>
+            <span>{t("sidebar.loading")}</span>
           </div>
         )}
-        {!loading && !tree && <div className="tree-root">暂无数据</div>}
+        {!loading && !tree && <div className="tree-root">{t("sidebar.emptyTree")}</div>}
       </div>
       {view === "history" && (
         <HistoryList
@@ -485,8 +488,8 @@ export function Sidebar(props: Props) {
         <button
           className={`icon-btn ${view === "history" ? "active" : ""}`}
           onClick={() => onSwitchView(view === "history" ? "api" : "history")}
-          title={view === "history" ? "返回接口管理" : "请求历史"}
-          aria-label="请求历史"
+          title={view === "history" ? t("history.back") : t("history.title")}
+          aria-label={t("history.title")}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
             <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
@@ -497,8 +500,8 @@ export function Sidebar(props: Props) {
             <button
               className="icon-btn"
               onClick={onVcsSync}
-              title={`同步${vcs === "git" ? "（git pull）" : "（svn update）"}`}
-              aria-label="同步"
+              title={t("vcs.syncTip", { vcs: vcs === "git" ? "git pull" : "svn update" })}
+              aria-label={t("vcs.sync")}
             >
               <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
                 <path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
@@ -507,8 +510,8 @@ export function Sidebar(props: Props) {
             <button
               className="icon-btn"
               onClick={onVcsCommitPush}
-              title="提交并 Push 远程（未开启同步远程时仅本地提交）"
-              aria-label="提交并 Push 远程"
+              title={t("vcs.pushTip")}
+              aria-label={t("vcs.push")}
             >
               <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
                 <path d="M5 20h14v-2H5v2zM12 4l-6 6h4v5h4v-5h4l-6-6z" />
@@ -516,13 +519,13 @@ export function Sidebar(props: Props) {
             </button>
           </>
         )}
-        <button className="icon-btn" onClick={onOpenSettings} title="设置" aria-label="设置">
+        <button className="icon-btn" onClick={onOpenSettings} title={t("sidebar.settings")} aria-label={t("sidebar.settings")}>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
             <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
           </svg>
         </button>
         {onExport && (
-          <button className="icon-btn" onClick={onExport} title="导出（Postman / OpenAPI / Docsify）" aria-label="导出">
+          <button className="icon-btn" onClick={onExport} title={t("sidebar.export")} aria-label={t("sidebar.export")}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
               <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z" />
             </svg>
@@ -533,8 +536,8 @@ export function Sidebar(props: Props) {
             <button
               className="icon-btn import-btn"
               onClick={() => setImportMenu(!importMenu)}
-              title="导入（Postman Collection / OpenAPI Swagger / Markdown 文档）"
-              aria-label="导入"
+              title={t("sidebar.import")}
+              aria-label={t("sidebar.import")}
             >
               <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
                 <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
@@ -567,7 +570,7 @@ export function Sidebar(props: Props) {
                         onImportMarkdown();
                       }}
                     >
-                      📄 Markdown 文档
+                      📄 Markdown {t("sidebar.markdown")}
                     </button>
                   )}
                 </div>
@@ -587,7 +590,7 @@ export function Sidebar(props: Props) {
                   setMenu(null);
                 }}
               >
-                📁 新增分组
+                📁 {t("sidebar.newFolder")}
               </button>
               <button
                 onClick={() => {
@@ -595,7 +598,7 @@ export function Sidebar(props: Props) {
                   setMenu(null);
                 }}
               >
-                🌐 新增接口
+                🌐 {t("sidebar.newApi")}
               </button>
               <div className="node-ctx-sep" />
               <button
@@ -604,7 +607,7 @@ export function Sidebar(props: Props) {
                   setMenu(null);
                 }}
               >
-                📤 导出
+                📤 {t("sidebar.exportNode")}
               </button>
               <button
                 onClick={() => {
@@ -612,7 +615,7 @@ export function Sidebar(props: Props) {
                   setMenu(null);
                 }}
               >
-                📋 复制
+                📋 {t("sidebar.copy")}
               </button>
               <button
                 onClick={() => {
@@ -620,7 +623,7 @@ export function Sidebar(props: Props) {
                   setMenu(null);
                 }}
               >
-                📊 统计
+                📊 {t("sidebar.stats")}
               </button>
               <button
                 onClick={() => {
@@ -628,7 +631,7 @@ export function Sidebar(props: Props) {
                   setMenu(null);
                 }}
               >
-                ✎ 编辑分组
+                ✎ {t("sidebar.editInfo")}
               </button>
               <button
                 className="danger"
@@ -637,7 +640,7 @@ export function Sidebar(props: Props) {
                   setMenu(null);
                 }}
               >
-                🗑 删除
+                🗑 {t("sidebar.delete")}
               </button>
             </>
           ) : (
@@ -648,7 +651,7 @@ export function Sidebar(props: Props) {
                   setMenu(null);
                 }}
               >
-                ✎ 修改
+                ✎ {t("sidebar.rename")}
               </button>
               {enableVersion && (
                 <button
@@ -657,7 +660,7 @@ export function Sidebar(props: Props) {
                     setMenu(null);
                   }}
                 >
-                  📑 查看版本信息
+                  📑 {t("sidebar.versions")}
                 </button>
               )}
               {onViewMarkdown && (
@@ -667,7 +670,7 @@ export function Sidebar(props: Props) {
                     setMenu(null);
                   }}
                 >
-                  📝 查看 Markdown
+                  📝 {t("sidebar.viewMarkdown")}
                 </button>
               )}
               <button
@@ -676,7 +679,7 @@ export function Sidebar(props: Props) {
                   setMenu(null);
                 }}
               >
-                📤 导出
+                📤 {t("sidebar.exportNode")}
               </button>
               <button
                 onClick={() => {
@@ -684,7 +687,7 @@ export function Sidebar(props: Props) {
                   setMenu(null);
                 }}
               >
-                📋 复制
+                📋 {t("sidebar.copy")}
               </button>
               <div className="node-ctx-sep" />
               <button
@@ -694,7 +697,7 @@ export function Sidebar(props: Props) {
                   setMenu(null);
                 }}
               >
-                🗑 删除
+                🗑 {t("sidebar.delete")}
               </button>
             </>
           )}
@@ -709,7 +712,7 @@ export function Sidebar(props: Props) {
               setBgMenu(null);
             }}
           >
-            🌐 新增接口
+            🌐 {t("sidebar.newApi")}
           </button>
           <button
             onClick={() => {
@@ -717,7 +720,7 @@ export function Sidebar(props: Props) {
               setBgMenu(null);
             }}
           >
-            📁 新增分组
+            📁 {t("sidebar.newFolder")}
           </button>
           {tree && (
             <>
@@ -729,7 +732,7 @@ export function Sidebar(props: Props) {
                   setBgMenu(null);
                 }}
               >
-                📊 统计
+                📊 {t("sidebar.stats")}
               </button>
             </>
           )}

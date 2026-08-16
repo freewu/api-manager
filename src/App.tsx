@@ -60,6 +60,7 @@ import { Response } from "./components/Response";
 import { SettingsModal } from "./components/SettingsModal";
 import { Sidebar } from "./components/Sidebar";
 import { StatsModal } from "./components/StatsModal";
+import { setLang, useT } from "./i18n";
 import logoUrl from "./assets/logo.png";
 
 /** 转义正则特殊字符（用于按字面量构造 {变量名} 匹配） */
@@ -97,6 +98,7 @@ const emptyInfoForm = (): InfoForm => ({
 });
 
 export default function App() {
+  const t = useT();
   const [workspace, setWorkspace] = useState<string | null>(null);
   const [recent, setRecent] = useState<string[]>([]);
   const [showRecent, setShowRecent] = useState(false);
@@ -199,9 +201,27 @@ export default function App() {
     };
     document.addEventListener("mousedown", closeRecent);
     return () => document.removeEventListener("mousedown", closeRecent);
-    loadSettings().then(setSettings).catch(() => {});
+    loadSettings()
+      .then((s) => {
+        setSettings(s);
+        setLang(s.language === "en" ? "en" : "zh");
+      })
+      .catch(() => {});
     mockStatus().then(setMock).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 托盘菜单切换语言后，前端同步刷新文案与设置状态
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      unlisten = await listen("language-changed", (e) => {
+        const l = e.payload === "en" ? "en" : "zh";
+        setLang(l);
+        setSettings((s) => ({ ...s, language: l }));
+      });
+    })();
+    return () => unlisten?.();
   }, []);
 
   // 窗口标题带上版本号
@@ -246,7 +266,7 @@ export default function App() {
         try {
           const s = await mockStatus();
           setMock(s);
-          showToast(s.running ? `Mock 服务已启动: http://127.0.0.1:${s.port || settings.mockPort}` : "Mock 服务已停止");
+          showToast(s.running ? t("mock.starting", { port: s.port || settings.mockPort }) : t("mock.stopped"));
         } catch {
           /* noop */
         }
@@ -359,7 +379,7 @@ export default function App() {
       if (dirty && api) {
         try {
           await saveApi(selectedPath!, api);
-          showToast("已自动保存修改");
+          showToast(t("toast.autoSaved"));
         } catch (e) {
           console.error(e);
         }
@@ -386,7 +406,7 @@ export default function App() {
       setModal({ type: "demo", parent: ws });
     } else {
       await loadAll(ws);
-      showToast("已打开工作区");
+      showToast(t("toast.opened"));
     }
   };
 
@@ -402,7 +422,7 @@ export default function App() {
       pushRecent(ws);
       await finishOpenWorkspace(ws);
     } catch (e) {
-      showToast("打开失败: " + e);
+      showToast(t("toast.openFailed", { err: String(e) }));
     }
   };
 
@@ -413,7 +433,7 @@ export default function App() {
       pushRecent(ws);
       await finishOpenWorkspace(ws);
     } catch (e) {
-      showToast("打开失败: " + e);
+      showToast(t("toast.openFailed", { err: String(e) }));
     }
   };
 
@@ -425,9 +445,9 @@ export default function App() {
       if (create) {
         try {
           await createDemo();
-          showToast("已生成演示案例");
+          showToast(t("toast.demoCreated"));
         } catch (e) {
-          showToast("生成演示案例失败: " + e);
+          showToast(t("toast.demoFailed", { err: String(e) }));
         }
       } else {
         // 不生成演示案例：写一份最小 __info.json，标记工作区已初始化，避免下次再询问
@@ -443,7 +463,7 @@ export default function App() {
         }
       }
       await loadAll(ws);
-      if (!create) showToast("已打开工作区");
+      if (!create) showToast(t("toast.opened"));
     }
   };
 
@@ -454,14 +474,13 @@ export default function App() {
       if (!result) return; // 用户取消
       await loadAll(workspace!);
       if (result.vars > 0) {
-        showToast(
-          `已导入 Postman Collection，${result.vars} 个变量已合并到环境变量集「${result.env}」`
-        );
+        showToast(t("toast.importedPostman", { count: result.vars, env: result.env }));
       } else {
-        showToast("已导入 Postman Collection");
+        showToast(t("toast.importedPostmanSimple"));
       }
+      void reloadMockIfRunning();
     } catch (e) {
-      showToast("导入失败: " + e);
+      showToast(t("toast.importFailed", { err: String(e) }));
     }
   };
 
@@ -471,9 +490,10 @@ export default function App() {
       const result = await importOpenApi();
       if (!result) return; // 用户取消
       await loadAll(workspace!);
-      showToast(`已导入 OpenAPI 规范：${result.count} 个接口`);
+      showToast(t("toast.importedOpenApi", { count: result.count }));
+      void reloadMockIfRunning();
     } catch (e) {
-      showToast("导入失败: " + e);
+      showToast(t("toast.importFailed", { err: String(e) }));
     }
   };
 
@@ -483,7 +503,7 @@ export default function App() {
       const doc = await renderApiMarkdown(node.path);
       setMdView({ node, doc });
     } catch (e) {
-      showToast("生成 Markdown 失败: " + e);
+      showToast(t("toast.markdownFailed", { err: String(e) }));
     }
   };
 
@@ -492,9 +512,9 @@ export default function App() {
     if (!mdView) return;
     try {
       const saved = await exportApiMarkdown(mdView.node.path, format);
-      if (saved) showToast(`已保存: ${saved}`);
+      if (saved) showToast(t("toast.savedTo", { path: saved }));
     } catch (e) {
-      showToast("保存失败: " + e);
+      showToast(t("toast.saveFailed", { err: String(e) }));
     }
   };
 
@@ -504,9 +524,10 @@ export default function App() {
       const result = await importMarkdown();
       if (!result) return; // 用户取消
       await loadAll(workspace!);
-      showToast(`已导入 Markdown 文档：${result.count} 个接口`);
+      showToast(t("toast.importedMarkdown", { count: result.count }));
+      void reloadMockIfRunning();
     } catch (e) {
-      showToast("导入失败: " + e);
+      showToast(t("toast.importFailed", { err: String(e) }));
     }
   };
 
@@ -515,12 +536,12 @@ export default function App() {
     try {
       const saved = await exportSelection(paths, format);
       if (!saved) return; // 用户取消
-      const kind = format === "docsify" ? "目录" : "文件";
-      showToast(`已导出 ${kind}: ${saved}`);
+      const kind = format === "docsify" ? t("export.kindDir") : t("export.kindFile");
+      showToast(t("toast.exported", { kind, path: saved }));
       setExportOpen(false);
       setExportPreselect(undefined);
     } catch (e) {
-      showToast("导出失败: " + e);
+      showToast(t("toast.exportFailed", { err: String(e) }));
     }
   };
 
@@ -535,9 +556,9 @@ export default function App() {
     if (!vcs || !settings.syncRemote) return; // 按钮仅在开启同步远程时显示
     try {
       const out = await vcsSync(settings.syncRemote);
-      showToast(out.split("\n")[0] || "同步完成");
+      showToast(out.split("\n")[0] || t("toast.synced"));
     } catch (e) {
-      setNotify({ title: "同步失败", body: String(e) });
+      setNotify({ title: t("notify.syncFailed"), body: String(e) });
     }
   };
 
@@ -546,9 +567,9 @@ export default function App() {
     if (!vcs) return;
     try {
       const out = await vcsCommitPush(settings.syncRemote);
-      showToast(out.split("\n")[0] || "提交完成");
+      showToast(out.split("\n")[0] || t("toast.committed"));
     } catch (e) {
-      setNotify({ title: "提交失败", body: String(e) });
+      setNotify({ title: t("notify.commitFailed"), body: String(e) });
     }
   };
 
@@ -760,9 +781,9 @@ export default function App() {
         size: response.size,
         error: response.error || undefined,
       });
-      showToast(`示例已保存: ${name}`);
+      showToast(t("toast.exampleSaved", { name }));
     } catch (e) {
-      showToast("保存示例失败: " + e);
+      showToast(t("toast.saveExampleFailed", { err: String(e) }));
     }
   };
 
@@ -772,9 +793,9 @@ export default function App() {
     try {
       await saveApi(selectedPath, api);
       setDirty(false);
-      showToast("已保存");
+      showToast(t("toast.saved"));
     } catch (e) {
-      showToast("保存失败: " + e);
+      showToast(t("toast.saveFailed", { err: String(e) }));
     }
   }, [dirty, api, selectedPath, showToast]);
 
@@ -792,10 +813,10 @@ export default function App() {
         }
       }
       const rel = await saveApiVersion(data);
-      showToast(`已保存新版本: ${rel}`);
+      showToast(t("toast.savedVersion", { rel }));
       void refreshVersion(data.uuid);
     } catch (e) {
-      showToast("保存版本失败: " + e);
+      showToast(t("toast.saveVersionFailed", { err: String(e) }));
     }
   };
 
@@ -803,14 +824,30 @@ export default function App() {
     try {
       if (mock.running) {
         setMock(await mockStop());
-        showToast("Mock 服务已停止");
+        showToast(t("mock.stopped"));
       } else {
         const port = settings.mockPort || 5050;
-        setMock(await mockStart(port));
-        showToast(`Mock 服务已启动: http://127.0.0.1:${port}`);
+        const s = await mockStart(port);
+        setMock(s);
+        if (s.routeCount > 0) {
+          showToast(t("mock.startedWithRoutes", { port, count: s.routeCount }));
+        } else {
+          showToast(t("mock.noRoutes"));
+        }
       }
     } catch (e) {
-      showToast("Mock 操作失败: " + e);
+      showToast(t("mock.failed", { err: String(e) }));
+    }
+  };
+
+  /** 新增/复制/导入接口后，若 Mock 服务运行中则热重载路由 */
+  const reloadMockIfRunning = async () => {
+    if (!mock.running) return;
+    try {
+      const s = await mockReload();
+      setMock(s);
+    } catch {
+      /* noop */
     }
   };
 
@@ -824,9 +861,9 @@ export default function App() {
         const m = await mockReload();
         setMock(m);
       }
-      showToast(active ? `已切换环境: ${active}` : "已切换到无环境");
+      showToast(active ? t("toast.envSwitched", { name: active }) : t("toast.noEnv"));
     } catch (e) {
-      showToast("切换环境失败: " + e);
+      showToast(t("toast.envSwitchFailed", { err: String(e) }));
     }
   };
 
@@ -840,9 +877,9 @@ export default function App() {
         const m = await mockReload();
         setMock(m);
       }
-      showToast(data.active ? `环境已保存，当前: ${data.active}` : "环境已保存");
+      showToast(data.active ? t("toast.envSaved", { name: data.active }) : t("toast.envSavedNone"));
     } catch (e) {
-      showToast("保存环境失败: " + e);
+      showToast(t("toast.saveEnvFailed", { err: String(e) }));
     }
   };
 
@@ -863,9 +900,9 @@ export default function App() {
       if (mock.running) {
         setMock(await mockReload());
       }
-      showToast(`环境变量已保存：${activeEnv.name}`);
+      showToast(t("toast.envValuesSaved", { name: activeEnv.name }));
     } catch (e) {
-      showToast("保存环境变量失败: " + e);
+      showToast(t("toast.saveEnvValuesFailed", { err: String(e) }));
     }
     setEnvValue(false);
   };
@@ -885,7 +922,7 @@ export default function App() {
       });
       setModal({ type: "info", parent: target.path, target });
     } catch (e) {
-      showToast("读取信息失败: " + e);
+      showToast(t("toast.readInfoFailed", { err: String(e) }));
     }
   };
 
@@ -911,9 +948,10 @@ export default function App() {
       setDirty(false);
       setResponse(null);
       void refreshVersion(data.uuid);
-      showToast(`已创建接口: ${name}`);
+      void reloadMockIfRunning();
+      showToast(t("toast.createdApi", { name }));
     } catch (e) {
-      showToast("创建失败: " + e);
+      showToast(t("toast.failed", { err: String(e) }));
     }
   };
 
@@ -925,9 +963,9 @@ export default function App() {
       await createFolder(parent, name);
       setModal(null);
       await reloadTree();
-      showToast(`已创建分组: ${name}`);
+      showToast(t("toast.createdFolder", { name }));
     } catch (e) {
-      showToast("创建失败: " + e);
+      showToast(t("toast.failed", { err: String(e) }));
     }
   };
 
@@ -939,9 +977,9 @@ export default function App() {
       await renameEntry(modal.target.path, name);
       setModal(null);
       await reloadTree();
-      showToast("已重命名");
+      showToast(t("toast.renamed"));
     } catch (e) {
-      showToast("重命名失败: " + e);
+      showToast(t("toast.renameFailed", { err: String(e) }));
     }
   };
 
@@ -949,9 +987,10 @@ export default function App() {
     try {
       const p = await copyEntry(node.path);
       await reloadTree();
-      showToast(`已复制: ${p}`);
+      void reloadMockIfRunning();
+      showToast(t("toast.copied", { name: p }));
     } catch (e) {
-      showToast("复制失败: " + e);
+      showToast(t("toast.failed", { err: String(e) }));
     }
   };
 
@@ -966,9 +1005,9 @@ export default function App() {
         setResponse(null);
       }
       await reloadTree();
-      showToast("已删除");
+      showToast(t("toast.deleted"));
     } catch (e) {
-      showToast("删除失败: " + e);
+      showToast(t("toast.deleteFailed", { err: String(e) }));
     }
   };
 
@@ -981,9 +1020,9 @@ export default function App() {
       });
       setModal(null);
       await reloadTree();
-      showToast("已保存");
+      showToast(t("toast.saved"));
     } catch (e) {
-      showToast("保存失败: " + e);
+      showToast(t("toast.saveFailed", { err: String(e) }));
     }
   };
 
@@ -995,7 +1034,7 @@ export default function App() {
       const versions = await listVersions(data.uuid);
       setVersionModal({ api: data, versions });
     } catch (e) {
-      showToast("读取版本信息失败: " + e);
+      showToast(t("toast.readVersionsFailed", { err: String(e) }));
     }
   };
 
@@ -1003,7 +1042,7 @@ export default function App() {
   const saveWorkspaceName = async (name: string) => {
     const n = name.trim();
     if (!n) {
-      showToast("工作区名称不能为空");
+      showToast(t("toast.wsNameEmpty"));
       return;
     }
     if (!workspace) return;
@@ -1023,7 +1062,7 @@ export default function App() {
     try {
       await saveSettings(s);
     } catch (e) {
-      showToast("保存设置失败: " + e);
+      showToast(t("toast.saveSettingsFailed", { err: String(e) }));
     }
   };
 
@@ -1056,19 +1095,19 @@ export default function App() {
           </div>
           <div className="toolbar-spacer" />
           <span style={{ color: "var(--text-faint)", fontSize: 12 }}>
-            API 文档 · 测试 · Mock · v{version}
+            {t("start.tagline")} · v{version}
           </span>
         </div>
         <div className="landing">
           <img className="landing-logo" src={logoUrl} alt="API Manager" />
           <h1>API Manager</h1>
-          <p>接口文档 · 接口测试 · Mock 服务，一站式管理</p>
+          <p>{t("start.subtitle")}</p>
           <button className="btn primary" style={{ fontSize: 14, padding: "10px 24px" }} onClick={handlePickWorkspace}>
-            选择工作目录
+            {t("start.chooseDir")}
           </button>
           {recent.length > 0 && (
             <div className="recent-workspaces">
-              <div className="recent-title">最近打开</div>
+              <div className="recent-title">{t("start.recent")}</div>
               {recent.map((p) => (
                 <button key={p} className="recent-item" title={p} onClick={() => void handleOpenRecent(p)}>
                   📁 {p}
@@ -1077,13 +1116,13 @@ export default function App() {
             </div>
           )}
           <div className="file-tree-note">
-            目录结构约定：
-            <br />├── __info.json &nbsp;// 根目录描述（name / description / baseUrl / mockPort）
-            <br />├── 分组/
-            <br />│&nbsp;&nbsp;├── __info.json &nbsp;// 分组描述
-            <br />│&nbsp;&nbsp;└── 接口.json &nbsp;// 一个接口一个 JSON 文件
+            {t("start.structureTitle")}：
+            <br />├── __info.json &nbsp;// {t("start.treeInfo")}
+            <br />├── {t("start.treeGroup")}/
+            <br />│&nbsp;&nbsp;├── __info.json &nbsp;// {t("start.treeGroupDesc")}
+            <br />│&nbsp;&nbsp;└── {t("start.treeApi")} &nbsp;// {t("start.treeApiDesc")}
           </div>
-          <div className="hint">选择一个已按约定组织的目录，或直接选择空目录从零开始</div>
+          <div className="hint">{t("start.hint")}</div>
         </div>
       </div>
     );
@@ -1096,7 +1135,7 @@ export default function App() {
           <img className="logo-img" src={logoUrl} alt="API Manager" />
           <span>API Manager</span>
         </div>
-        <div className="workspace-chip" title="点击更换工作目录" onClick={handlePickWorkspace}>
+        <div className="workspace-chip" title={t("toolbar.workspaceTip")} onClick={handlePickWorkspace}>
           📁 {workspace}
         </div>
         <div className="toolbar-spacer" />
@@ -1104,16 +1143,16 @@ export default function App() {
           <div className="recent-btn-wrap" ref={recentBtnRef}>
             <button
               className={`btn ${showRecent ? "active" : ""}`}
-              title="选择之前打开过的目录"
+              title={t("toolbar.recent")}
               onClick={() => setShowRecent((s) => !s)}
             >
               🕘
             </button>
             {showRecent && (
               <div className="recent-dropdown">
-                <div className="recent-dropdown-title">最近打开的目录</div>
+                <div className="recent-dropdown-title">{t("toolbar.recentTitle")}</div>
                 {recent.length === 0 ? (
-                  <div className="recent-dropdown-empty">暂无记录</div>
+                  <div className="recent-dropdown-empty">{t("toolbar.recentEmpty")}</div>
                 ) : (
                   recent.map((p) => (
                     <button
@@ -1132,14 +1171,14 @@ export default function App() {
               </div>
             )}
           </div>
-          <span style={{ fontSize: 12, color: "var(--text-dim)" }}>环境</span>
+          <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{t("toolbar.env")}</span>
           <select
             className="env-select"
             value={envs.active || ""}
             onChange={(e) => handleEnvSwitch(e.target.value)}
-            title="全局环境变量（请求时 {{变量名}} 会被替换）"
+            title={t("toolbar.envTip")}
           >
-            <option value="">（无环境）</option>
+            <option value="">{t("toolbar.noEnv")}</option>
             {envs.environments.map((e) => (
               <option key={e.name} value={e.name}>
                 {e.name}
@@ -1149,25 +1188,25 @@ export default function App() {
           <button
             className="btn"
             disabled={!activeEnv}
-            title={activeEnv ? `查看 / 管理当前环境「${activeEnv.name}」的变量值` : "请先在工具栏选择环境"}
+            title={activeEnv ? t("toolbar.envManageTip", { name: activeEnv.name }) : t("toolbar.envPickTip")}
             onClick={() => setEnvValue(true)}
           >
             📋
           </button>
-          <button className="btn" title="管理环境变量" onClick={() => setEnvModal(true)}>
+          <button className="btn" title={t("toolbar.envsTip")} onClick={() => setEnvModal(true)}>
             🌐
           </button>
         </div>
         {settings.enableMock && (
           <div className="mock-box">
-            <span style={{ fontSize: 12, color: "var(--text-dim)" }}>Mock · {settings.mockPort}</span>
-            <button className={`switch ${mock.running ? "on" : ""}`} onClick={toggleMock} title={`启动/停止 Mock 服务（端口 ${settings.mockPort}，可在设置中修改）`} />
+            <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{t("toolbar.mockLabel", { port: settings.mockPort })}</span>
+            <button className={`switch ${mock.running ? "on" : ""}`} onClick={toggleMock} title={t("toolbar.mockToggleTip", { port: settings.mockPort })} />
             <span className="mock-status">
-              {mock.running ? `运行中 ${mock.routeCount} 条路由` : "未运行"}
+              {mock.running ? t("toolbar.mockRunning", { count: mock.routeCount }) : t("toolbar.mockStopped")}
             </span>
           </div>
         )}
-        <button className="btn" onClick={async () => { await reloadTree(true); showToast("已刷新"); }}>
+        <button className="btn" onClick={async () => { await reloadTree(true); showToast(t("toast.refreshed")); }} title={t("toolbar.refresh")}>
           🔄
         </button>
       </div>
@@ -1282,7 +1321,7 @@ export default function App() {
               }}
             >
               <span className="big">📄</span>
-              <span>从左侧选择一个接口开始（右键可新建接口 / 分组）</span>
+              <span>{t("editor.emptyHint")}</span>
             </div>
           )}
         </div>
@@ -1297,8 +1336,8 @@ export default function App() {
             <button
               className="notify-pop-close"
               onClick={() => setNotify(null)}
-              title="关闭"
-              aria-label="关闭"
+              title={t("common.close")}
+              aria-label={t("common.close")}
             >
               ✕
             </button>
@@ -1315,7 +1354,7 @@ export default function App() {
               setEmptyMenu(null);
             }}
           >
-            🌐 新增接口
+            🌐 {t("sidebar.newApi")}
           </button>
           <button
             onClick={() => {
@@ -1323,7 +1362,7 @@ export default function App() {
               setEmptyMenu(null);
             }}
           >
-            📁 新增分组
+            📁 {t("sidebar.newFolder")}
           </button>
         </div>
       )}
@@ -1396,27 +1435,27 @@ export default function App() {
 
       {modal?.type === "newApi" && (
         <Modal
-          title="新建接口"
+          title={t("modal.newApi")}
           onClose={() => setModal(null)}
           footer={
             <>
-              <button className="btn" onClick={() => setModal(null)}>取消</button>
-              <button className="btn primary" onClick={doNewApi}>创建</button>
+              <button className="btn" onClick={() => setModal(null)}>{t("common.cancel")}</button>
+              <button className="btn primary" onClick={doNewApi}>{t("modal.create")}</button>
             </>
           }
         >
           <label>
-            接口名称
+            {t("modal.apiName")}
             <input
               autoFocus
               value={modalText}
               onChange={(e) => setModalText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && doNewApi()}
-              placeholder="例如：获取用户信息"
+              placeholder={t("modal.apiNamePlaceholder")}
             />
           </label>
           <label>
-            保存位置
+            {t("modal.saveTo")}
             <input value={modal.parent || workspace!} disabled style={{ opacity: 0.6 }} />
           </label>
         </Modal>
@@ -1424,27 +1463,27 @@ export default function App() {
 
       {modal?.type === "newFolder" && (
         <Modal
-          title="新建分组"
+          title={t("modal.newFolder")}
           onClose={() => setModal(null)}
           footer={
             <>
-              <button className="btn" onClick={() => setModal(null)}>取消</button>
-              <button className="btn primary" onClick={doNewFolder}>创建</button>
+              <button className="btn" onClick={() => setModal(null)}>{t("common.cancel")}</button>
+              <button className="btn primary" onClick={doNewFolder}>{t("modal.create")}</button>
             </>
           }
         >
           <label>
-            分组名称
+            {t("modal.folderName")}
             <input
               autoFocus
               value={modalText}
               onChange={(e) => setModalText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && doNewFolder()}
-              placeholder="例如：用户管理"
+              placeholder={t("modal.folderNamePlaceholder")}
             />
           </label>
           <label>
-            保存位置
+            {t("modal.saveTo")}
             <input value={modal.parent || workspace!} disabled style={{ opacity: 0.6 }} />
           </label>
         </Modal>
@@ -1456,13 +1495,13 @@ export default function App() {
           onClose={() => setModal(null)}
           footer={
             <>
-              <button className="btn" onClick={() => setModal(null)}>取消</button>
-              <button className="btn primary" onClick={doRename}>确定</button>
+              <button className="btn" onClick={() => setModal(null)}>{t("common.cancel")}</button>
+              <button className="btn primary" onClick={doRename}>{t("common.confirm")}</button>
             </>
           }
         >
           <label>
-            新名称
+            {t("modal.newName")}
             <input
               autoFocus
               value={modalText}
@@ -1475,38 +1514,42 @@ export default function App() {
 
       {modal?.type === "delete" && modal.target && (
         <Modal
-          title="确认删除"
+          title={t("modal.confirmDelete")}
           onClose={() => setModal(null)}
           footer={
             <>
-              <button className="btn" onClick={() => setModal(null)}>取消</button>
-              <button className="btn danger" onClick={doDelete}>删除</button>
+              <button className="btn" onClick={() => setModal(null)}>{t("common.cancel")}</button>
+              <button className="btn danger" onClick={doDelete}>{t("common.delete")}</button>
             </>
           }
         >
           <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
-            确定要删除 <b style={{ color: "var(--text)" }}>{modal.target.name}</b> 吗？
-            {modal.target.kind === "folder" && <div style={{ marginTop: 6 }}>将连同其下所有接口一并删除，此操作不可恢复！</div>}
+            {modal.target.kind === "folder"
+              ? t("modal.deleteFolderText", { name: modal.target.name })
+              : t("modal.deleteText", { name: modal.target.name })}
+            {modal.target.kind === "folder" && (
+              <div style={{ marginTop: 6 }}>{t("modal.deleteFolderWarning")}</div>
+            )}
           </div>
         </Modal>
       )}
       {modal?.type === "demo" && (
         <Modal
-          title="生成演示案例"
+          title={t("modal.demoTitle")}
           onClose={() => void closeDemoModal(false)}
           footer={
             <>
               <button className="btn" onClick={() => void closeDemoModal(false)}>
-                不生成
+                {t("modal.demoSkip")}
               </button>
               <button className="btn primary" onClick={() => void closeDemoModal(demoCreate)}>
-                确定
+                {t("common.confirm")}
               </button>
             </>
           }
         >
           <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.7 }}>
-            检测到这是一个新的工作目录（根目录没有 __info.json）。可以自动生成几个演示接口和环境变量，方便快速体验。
+            {t("modal.demoDesc")}
           </div>
           <label className="demo-check">
             <input
@@ -1514,36 +1557,36 @@ export default function App() {
               checked={demoCreate}
               onChange={(e) => setDemoCreate(e.target.checked)}
             />
-            生成演示案例（用户管理 / 订单管理 分组 + 开发 / 生产环境）
+            {t("modal.demoLabel")}
           </label>
         </Modal>
       )}
       {modal?.type === "info" && modal.target && (
         <Modal
-          title={`分组信息 - ${modal.target.name}`}
+          title={`${t("modal.groupInfo")} - ${modal.target.name}`}
           onClose={() => setModal(null)}
           footer={
             <>
-              <button className="btn" onClick={() => setModal(null)}>取消</button>
-              <button className="btn primary" onClick={doSaveInfo}>保存</button>
+              <button className="btn" onClick={() => setModal(null)}>{t("common.cancel")}</button>
+              <button className="btn primary" onClick={doSaveInfo}>{t("common.save")}</button>
             </>
           }
         >
           <label>
-            名称
+            {t("modal.name")}
             <input
               autoFocus
               value={infoForm.name}
               onChange={(e) => setInfoForm({ ...infoForm, name: e.target.value })}
-              placeholder="显示名称"
+              placeholder={t("modal.namePlaceholder")}
             />
           </label>
           <label>
-            描述
+            {t("modal.description")}
             <textarea
               value={infoForm.description}
               onChange={(e) => setInfoForm({ ...infoForm, description: e.target.value })}
-              placeholder="描述该分组的用途"
+              placeholder={t("modal.descPlaceholder")}
             />
           </label>
         </Modal>

@@ -346,6 +346,15 @@ async fn mock_handler(
     // 全局环境变量 {{key}}
     body = apply_env_vars(&body, &state.envs.read().unwrap_or_else(|e| e.into_inner()));
 
+    // 返回内容不为空：body 为空时给出提示（HEAD / 204 等本就无响应体的除外）
+    let is_head = method == Method::HEAD || method == Method::OPTIONS;
+    if body.trim().is_empty() && !is_head && route.status != 204 {
+        body = format!(
+            "{{\"code\":0,\"data\":{{}},\"message\":\"Mock 返回内容为空，请在接口的 Mock 页签填写响应内容\",\"path\":\"{}\"}}",
+            path.replace('\\', "\\\\")
+        );
+    }
+
     let mut builder = Response::builder()
         .status(StatusCode::from_u16(route.status).unwrap_or(StatusCode::OK));
     let mut has_content_type = false;
