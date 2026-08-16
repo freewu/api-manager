@@ -827,6 +827,14 @@ fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String> {
         write_pretty(&dir_path.join(file), value)
     };
 
+    // docParams 快捷构造：位置 + 字段名 + 类型 + 说明（children 可嵌套下级字段）
+    let d = |source: &str, key: &str, ty: &str, desc: &str, children: Vec<serde_json::Value>| -> serde_json::Value {
+        serde_json::json!({
+            "source": source, "key": key, "type": ty, "description": desc,
+            "itemType": "", "objectName": key, "children": children
+        })
+    };
+
     // 根信息 + 环境变量
     write("", INFO_FILE, &serde_json::json!({
         "name": "演示 API 集合",
@@ -860,16 +868,53 @@ fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String> {
     create_user["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "application/json", "enabled": true, "description": "" }]);
     create_user["body"] = serde_json::json!({ "mode": "json", "raw": "{\n  \"name\": \"张三\",\n  \"email\": \"zhangsan@example.com\",\n  \"role\": \"user\"\n}", "form": [] });
     create_user["mock"] = serde_json::json!({ "enabled": true, "status": 201, "headers": [], "delay": 0, "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"id\": 1001,\n    \"name\": \"张三\",\n    \"email\": \"zhangsan@example.com\"\n  },\n  \"message\": \"创建成功\"\n}" });
+    create_user["docParams"] = serde_json::json!([
+        d("body", "name", "String", "用户名", vec![]),
+        d("body", "email", "String", "邮箱地址", vec![]),
+        d("body", "role", "String", "用户角色（user / admin / vip）", vec![]),
+        d("resp_success", "code", "Integer", "状态码，0 表示成功", vec![]),
+        d("resp_success", "data", "Object", "创建成功的用户数据", vec![
+            d("resp_success", "id", "Integer", "用户ID", vec![]),
+            d("resp_success", "name", "String", "用户名", vec![]),
+            d("resp_success", "email", "String", "邮箱地址", vec![]),
+        ]),
+        d("resp_success", "message", "String", "提示信息", vec![]),
+        d("resp_fail", "code", "Integer", "错误码，非 0 表示失败", vec![]),
+        d("resp_fail", "message", "String", "错误描述", vec![]),
+        d("resp_fail", "errors", "Object", "字段校验错误明细", vec![
+            d("resp_fail", "field", "String", "出错的字段名", vec![]),
+            d("resp_fail", "reason", "String", "出错原因", vec![]),
+        ]),
+    ]);
     write("用户管理", "创建用户.json", &create_user)?;
 
     let mut get_user = api_file("获取用户信息", "GET", "/api/users/{id}", "查询单个用户信息");
     get_user["params"] = serde_json::json!([{ "key": "id", "value": "1", "enabled": true, "description": "用户ID" }]);
     get_user["mock"] = serde_json::json!({ "enabled": true, "status": 200, "headers": [], "delay": 0, "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"张三\",\n    \"email\": \"zhangsan@example.com\"\n  },\n  \"message\": \"成功\"\n}" });
+    get_user["docParams"] = serde_json::json!([
+        d("path", "id", "Integer", "用户ID", vec![]),
+        d("resp_success", "code", "Integer", "状态码，0 表示成功", vec![]),
+        d("resp_success", "data", "Object", "用户信息", vec![
+            d("resp_success", "id", "Integer", "用户ID", vec![]),
+            d("resp_success", "name", "String", "用户名", vec![]),
+            d("resp_success", "email", "String", "邮箱地址", vec![]),
+        ]),
+        d("resp_success", "message", "String", "提示信息", vec![]),
+        d("resp_fail", "code", "Integer", "错误码（404 表示用户不存在）", vec![]),
+        d("resp_fail", "message", "String", "错误描述", vec![]),
+    ]);
     write("用户管理", "获取用户信息.json", &get_user)?;
 
     let mut del_user = api_file("删除用户", "DELETE", "/api/users/{id}", "删除指定用户");
     del_user["params"] = serde_json::json!([{ "key": "id", "value": "1", "enabled": true, "description": "用户ID" }]);
     del_user["mock"] = serde_json::json!({ "enabled": true, "status": 200, "headers": [], "delay": 0, "body": "{\n  \"code\": 0,\n  \"message\": \"删除成功\"\n}" });
+    del_user["docParams"] = serde_json::json!([
+        d("path", "id", "Integer", "用户ID", vec![]),
+        d("resp_success", "code", "Integer", "状态码，0 表示成功", vec![]),
+        d("resp_success", "message", "String", "提示信息", vec![]),
+        d("resp_fail", "code", "Integer", "错误码（404 表示用户不存在）", vec![]),
+        d("resp_fail", "message", "String", "错误描述", vec![]),
+    ]);
     write("用户管理", "删除用户.json", &del_user)?;
 
     let mut update_user = api_file("更新用户", "PUT", "/api/users/{id}", "全量更新用户信息");
@@ -877,6 +922,22 @@ fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String> {
     update_user["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "application/json", "enabled": true, "description": "" }]);
     update_user["body"] = serde_json::json!({ "mode": "json", "raw": "{\n  \"name\": \"张三\",\n  \"email\": \"zhangsan@example.com\",\n  \"role\": \"admin\"\n}", "form": [] });
     update_user["mock"] = serde_json::json!({ "enabled": true, "status": 200, "headers": [], "delay": 0, "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"张三\",\n    \"email\": \"zhangsan@example.com\",\n    \"role\": \"admin\"\n  },\n  \"message\": \"更新成功\"\n}" });
+    update_user["docParams"] = serde_json::json!([
+        d("path", "id", "Integer", "用户ID", vec![]),
+        d("body", "name", "String", "用户名", vec![]),
+        d("body", "email", "String", "邮箱地址", vec![]),
+        d("body", "role", "String", "用户角色（user / admin / vip）", vec![]),
+        d("resp_success", "code", "Integer", "状态码，0 表示成功", vec![]),
+        d("resp_success", "data", "Object", "更新后的用户数据", vec![
+            d("resp_success", "id", "Integer", "用户ID", vec![]),
+            d("resp_success", "name", "String", "用户名", vec![]),
+            d("resp_success", "email", "String", "邮箱地址", vec![]),
+            d("resp_success", "role", "String", "用户角色", vec![]),
+        ]),
+        d("resp_success", "message", "String", "提示信息", vec![]),
+        d("resp_fail", "code", "Integer", "错误码（404 表示用户不存在）", vec![]),
+        d("resp_fail", "message", "String", "错误描述", vec![]),
+    ]);
     write("用户管理", "更新用户.json", &update_user)?;
 
     let mut patch_user = api_file("部分更新用户", "PATCH", "/api/users/{id}", "仅更新用户的指定字段");
@@ -884,6 +945,18 @@ fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String> {
     patch_user["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "application/json", "enabled": true, "description": "" }]);
     patch_user["body"] = serde_json::json!({ "mode": "json", "raw": "{\n  \"role\": \"vip\"\n}", "form": [] });
     patch_user["mock"] = serde_json::json!({ "enabled": true, "status": 200, "headers": [], "delay": 0, "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"id\": 1,\n    \"role\": \"vip\"\n  },\n  \"message\": \"更新成功\"\n}" });
+    patch_user["docParams"] = serde_json::json!([
+        d("path", "id", "Integer", "用户ID", vec![]),
+        d("body", "role", "String", "要更新的字段（仅传需要修改的字段）", vec![]),
+        d("resp_success", "code", "Integer", "状态码，0 表示成功", vec![]),
+        d("resp_success", "data", "Object", "更新后的用户数据（仅包含更新的字段）", vec![
+            d("resp_success", "id", "Integer", "用户ID", vec![]),
+            d("resp_success", "role", "String", "更新后的角色", vec![]),
+        ]),
+        d("resp_success", "message", "String", "提示信息", vec![]),
+        d("resp_fail", "code", "Integer", "错误码", vec![]),
+        d("resp_fail", "message", "String", "错误描述", vec![]),
+    ]);
     write("用户管理", "部分更新用户.json", &patch_user)?;
 
     // 订单管理分组
@@ -894,6 +967,24 @@ fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String> {
         { "key": "pageSize", "value": "10", "enabled": true, "description": "每页数量" }
     ]);
     list_orders["mock"] = serde_json::json!({ "enabled": true, "status": 200, "headers": [], "delay": 0, "body": "{\n  \"code\": 0,\n  \"data\": {\n    \"list\": [\n      { \"id\": 1001, \"no\": \"SO20240101001\", \"amount\": 99.5 },\n      { \"id\": 1002, \"no\": \"SO20240101002\", \"amount\": 199.0 }\n    ],\n    \"total\": 2\n  },\n  \"message\": \"成功\"\n}" });
+    list_orders["docParams"] = serde_json::json!([
+        d("query", "page", "Integer", "页码，从 1 开始", vec![]),
+        d("query", "pageSize", "Integer", "每页数量，最大 100", vec![]),
+        d("resp_success", "code", "Integer", "状态码，0 表示成功", vec![]),
+        d("resp_success", "data", "Object", "分页数据", vec![
+            d("resp_success", "list", "List", "订单列表", vec![
+                d("resp_success", "items", "Object", "订单信息", vec![
+                    d("resp_success", "id", "Integer", "订单ID", vec![]),
+                    d("resp_success", "no", "String", "订单编号", vec![]),
+                    d("resp_success", "amount", "Float", "订单金额", vec![]),
+                ]),
+            ]),
+            d("resp_success", "total", "Integer", "总记录数", vec![]),
+        ]),
+        d("resp_success", "message", "String", "提示信息", vec![]),
+        d("resp_fail", "code", "Integer", "错误码", vec![]),
+        d("resp_fail", "message", "String", "错误描述", vec![]),
+    ]);
     write("订单管理", "获取订单列表.json", &list_orders)?;
 
     let mut head_order = api_file("检查订单状态", "HEAD", "/api/orders/{id}", "仅获取响应头，不返回响应体");
