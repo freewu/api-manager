@@ -11,12 +11,21 @@ use std::path::{Path, PathBuf};
 /// 返回 (分组路径段, ApiFile)：分组路径段为各层分组的显示名称（不含工作区根）。
 pub fn collect_apis(root: &Path, paths: &[String]) -> Result<Vec<(Vec<String>, ApiFile)>, String> {
     let mut out: Vec<(Vec<String>, ApiFile)> = Vec::new();
+    // 已选中的分组目录：其下接口由目录递归收集，单独的文件路径命中目录时跳过，避免重复
+    let dirs: Vec<PathBuf> = paths
+        .iter()
+        .filter(|p| Path::new(p).is_dir())
+        .map(PathBuf::from)
+        .collect();
     for p in paths {
         let abs = Path::new(p);
         if abs.is_dir() {
             let mut segs = Vec::new();
             walk_dir(abs, &mut segs, &mut out)?;
         } else if abs.is_file() {
+            if dirs.iter().any(|d| abs.starts_with(d)) {
+                continue; // 已随分组目录收集，跳过避免重复
+            }
             let api = read_api(p.clone())?;
             out.push((Vec::new(), api));
         }
@@ -209,7 +218,14 @@ pub fn to_openapi(title: &str, apis: &[(Vec<String>, ApiFile)]) -> Value {
         if !is_valid_method(&method) {
             continue;
         }
-        let entry = paths.entry(p.clone()).or_insert_with(|| json!({}));
+        // 同一路径 + 同一方法重复时追加序号（如 /api/users (2)），保证全部接口都导出
+        let mut key = p.clone();
+        let mut n = 2;
+        while paths.get(&key).and_then(|v| v.get(&method)).is_some() {
+            key = format!("{p} ({n})");
+            n += 1;
+        }
+        let entry = paths.entry(key).or_insert_with(|| json!({}));
         let obj = entry.as_object_mut().expect("paths 条目为对象");
         obj.insert(method, openapi_operation(segs, api));
     }
@@ -478,5 +494,48 @@ mod tests {
         assert!(names.contains(&"_sidebar.md".to_string()));
         let sidebar = files.iter().find(|(p, _)| p.to_string_lossy() == "_sidebar.md").unwrap().1.clone();
         assert!(sidebar.contains("[创建用户]"));
+    }
+
+    /// 勾选分组后前端会把分组目录 + 其下全部文件路径一起提交，后端应去重
+    #[test]
+    fn collect_apis_dedupes_dir_plus_files() {
+        let base = std::env::temp_dir().join(format!("apim-dedupe-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        let g = base.join("用户管理");
+        fs::create_dir_all(&g).unwrap();
+        for (name, method) in [("接口A", "GET"), ("接口B", "POST")] {
+            let mut a = sample();
+            a.name = name.into();
+            a.method = method.into();
+            fs::write(
+                g.join(format!("{name}.json")),
+                serde_json::to_string(&a).unwrap(),
+            )
+            .unwrap();
+        }
+        let paths = vec![
+            g.to_string_lossy().to_string(),
+            g.join("接口A.json").to_string_lossy().to_string(),
+            g.join("接口B.json").to_string_lossy().to_string(),
+        ];
+        let apis = collect_apis(&base, &paths).expect("collect");
+        // 目录已覆盖整棵子树，文件路径被跳过 → 恰好 2 个，不重复
+        assert_eq!(apis.len(), 2);
+        assert!(apis.iter().all(|(s, _)| s == &vec!["用户管理".to_string()]));
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    /// 同路径同方法的不同接口（如重名文件）在 OpenAPI 中不应互相覆盖，追加序号保留全部
+    #[test]
+    fn openapi_keeps_duplicate_path_method() {
+        let mut a2 = sample();
+        a2.name = "创建用户(2)".into();
+        let apis = vec![
+            (vec!["用户管理".to_string()], sample()),
+            (vec!["用户管理".to_string()], a2),
+        ];
+        let v = to_openapi("测试", &apis);
+        assert_eq!(v["paths"]["/api/users"]["post"]["summary"], "创建用户");
+        assert_eq!(v["paths"]["/api/users (2)"]["post"]["summary"], "创建用户(2)");
     }
 }

@@ -506,7 +506,7 @@ export function Sidebar(props: Props) {
         {onExport && (
           <button className="icon-btn" onClick={onExport} title="导出（Postman / OpenAPI / Docsify）" aria-label="导出">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-              <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+              <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z" />
             </svg>
           </button>
         )}

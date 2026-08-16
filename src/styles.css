@@ -2542,11 +2542,23 @@ body {
 .md-modal {
   width: min(880px, 92vw);
   height: min(620px, 82vh);
+  display: flex;
+  flex-direction: column;
 }
 .md-modal .modal-body {
-  height: calc(100% - 90px);
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 14px 18px;
+}
+.md-modal .modal-foot {
+  flex-shrink: 0;
+  padding: 16px 18px 18px;
+  align-items: center;
+}
+.md-modal .modal-foot .btn {
+  padding: 8px 18px;
+  font-size: 13px;
 }
 .md-preview {
   font-size: 13px;

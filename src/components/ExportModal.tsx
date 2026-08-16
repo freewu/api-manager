@@ -11,33 +11,51 @@ interface Props {
   onClose: () => void;
 }
 
+/** 收集节点子树全部路径 */
+function subtreePaths(node: TreeNode, out: string[] = []): string[] {
+  out.push(node.path);
+  for (const c of node.children || []) subtreePaths(c, out);
+  return out;
+}
+
+/** 在树中查找指定路径的节点 */
+function findNode(node: TreeNode, path: string): TreeNode | null {
+  if (node.path === path) return node;
+  for (const c of node.children || []) {
+    const r = findNode(c, path);
+    if (r) return r;
+  }
+  return null;
+}
+
 /** 导出弹窗：勾选接口/分组（勾选分组 = 整棵子树），选择格式后导出 */
 export function ExportModal({ tree, preselect, onExport, onClose }: Props) {
   const [selected, setSelected] = useState<Set<string>>(() => {
     const s = new Set<string>();
-    if (preselect?.length) {
-      for (const p of preselect) s.add(p);
+    if (preselect?.length && tree) {
+      for (const p of preselect) {
+        const n = findNode(tree, p);
+        // 预选的是分组 → 整棵子树全部选中，与勾选行为一致
+        if (n?.kind === "folder") {
+          for (const q of subtreePaths(n)) s.add(q);
+        } else {
+          s.add(p);
+        }
+      }
     }
     return s;
   });
   const [format, setFormat] = useState<ExportFormat>("postman");
   const [busy, setBusy] = useState(false);
 
-  // 收集子树全部路径
-  const collectPaths = (node: TreeNode, out: string[] = []) => {
-    out.push(node.path);
-    for (const c of node.children || []) collectPaths(c, out);
-    return out;
-  };
-
-  const allPaths = useMemo(() => (tree ? collectPaths(tree) : []), [tree]);
+  const allPaths = useMemo(() => (tree ? subtreePaths(tree) : []), [tree]);
 
   const allSelected = allPaths.length > 0 && allPaths.every((p) => selected.has(p));
 
   const toggleNode = (node: TreeNode, on: boolean) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      for (const p of collectPaths(node)) {
+      for (const p of subtreePaths(node)) {
         if (on) next.add(p);
         else next.delete(p);
       }
