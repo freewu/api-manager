@@ -325,18 +325,25 @@ pub fn docsify_files(apis: &[(Vec<String>, ApiFile)]) -> Vec<(PathBuf, String)> 
     // 接口 .md 文件：<分组路径>/<接口名>.md（重名自动加序号）
     let mut tree: SideNode = SideNode {
         name: String::new(),
+        display: String::new(),
         apis: Vec::new(),
         children: BTreeMap::new(),
     };
     for (segs, api) in apis {
         let mut cur = &mut tree;
         for s in segs {
-            let name = sanitize_filename(s);
-            cur = cur.children.entry(name.clone()).or_insert_with(|| SideNode {
-                name,
-                apis: Vec::new(),
-                children: BTreeMap::new(),
-            });
+            // 分组目录名去掉空格（docsify 链接更稳定），显示名保留原样
+            let display = s.trim().to_string();
+            let name = slug_group(s);
+            cur = cur
+                .children
+                .entry(name.clone())
+                .or_insert_with(|| SideNode {
+                    name,
+                    display,
+                    apis: Vec::new(),
+                    children: BTreeMap::new(),
+                });
         }
         cur.apis.push(api);
     }
@@ -389,9 +396,30 @@ fn index_html() -> String {
 }
 
 struct SideNode<'a> {
+    /// 目录名（已去空格、去非法字符）
     name: String,
+    /// 显示名（保留原样，用于标题与链接文字）
+    display: String,
     apis: Vec<&'a ApiFile>,
     children: BTreeMap<String, SideNode<'a>>,
+}
+
+/// 分组目录名：去掉全部空白字符（空格/制表/全角空格），其余非法字符替换为 _
+fn slug_group(name: &str) -> String {
+    sanitize_filename(name)
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect()
+}
+
+/// 转成 Docsify 根目录绝对链接（前导 /，Windows 分隔符转 /）
+fn root_link(dir: &Path) -> String {
+    let s = dir.to_string_lossy().replace('\\', "/");
+    if s.is_empty() {
+        "/".to_string()
+    } else {
+        format!("/{s}")
+    }
 }
 
 /// 递归生成分组 README.md 与接口 .md
@@ -415,23 +443,33 @@ fn write_side(
             i += 1;
         }
         used.push(rel.clone());
-        files.push((rel, crate::markdown::render(api, &n.name)));
+        files.push((rel, crate::markdown::render(api, &n.display)));
     }
     // 子分组
     for (_, c) in &n.children {
         let sub = dir.join(&c.name);
-        // 分组 README.md：标题 + 子项链接
-        let mut readme = format!("# {}\n\n", c.name);
+        // 分组 README.md：标题 + 子项链接（根目录绝对链接，避免 docsify 相对路径解析出错）
+        let mut readme = format!("# {}\n\n", c.display);
         for api in &c.apis {
             let base = if api.name.trim().is_empty() {
                 "未命名接口".to_string()
             } else {
                 sanitize_filename(api.name.trim())
             };
-            readme.push_str(&format!("- [{}]({}.md)\n", api.name, base));
+            readme.push_str(&format!(
+                "- [{}]({}/{}.md)\n",
+                api.name,
+                root_link(&sub),
+                base
+            ));
         }
-        for (name, _) in &c.children {
-            readme.push_str(&format!("- [{}]({}/)\n", name, name));
+        for (_, c2) in &c.children {
+            readme.push_str(&format!(
+                "- [{}]({}/{}/)\n",
+                c2.display,
+                root_link(&sub),
+                c2.name
+            ));
         }
         files.push((sub.join("README.md"), readme));
         write_side(c, sub, files, used);
@@ -453,7 +491,7 @@ fn side_bullets(n: &SideNode, dir: PathBuf, depth: usize) -> String {
         out.push_str(&format!(
             "{indent}- [{}]({})\n",
             api.name,
-            rel.to_string_lossy().replace('\\', "/")
+            root_link(&rel)
         ));
     }
     // 子分组
@@ -461,8 +499,8 @@ fn side_bullets(n: &SideNode, dir: PathBuf, depth: usize) -> String {
         let sub = dir.join(&c.name);
         out.push_str(&format!(
             "{indent}- [{}]({}/)\n",
-            c.name,
-            sub.to_string_lossy().replace('\\', "/")
+            c.display,
+            root_link(&sub)
         ));
         out.push_str(&side_bullets(c, sub, depth + 1));
     }
@@ -523,14 +561,15 @@ mod tests {
     #[test]
     fn docsify_files_ok() {
         let apis = vec![
-            (vec!["用户管理".to_string()], sample()),
-            (vec!["用户管理".to_string()], sample()), // 同名接口 → 加序号
+            (vec!["用户 管理".to_string()], sample()),
+            (vec!["用户 管理".to_string()], sample()), // 同名接口 → 加序号
         ];
         let files = docsify_files(&apis);
         let names: Vec<String> = files
             .iter()
             .map(|(p, _)| p.to_string_lossy().replace('\\', "/"))
             .collect();
+        // 分组名去掉空格：目录/链接里不含空格
         assert!(names.contains(&"用户管理/创建用户.md".to_string()));
         assert!(names.contains(&"用户管理/创建用户(2).md".to_string()));
         assert!(names.contains(&"用户管理/README.md".to_string()));
@@ -538,11 +577,15 @@ mod tests {
         assert!(names.contains(&"README.md".to_string()));
         assert!(names.contains(&"index.html".to_string()));
         let sidebar = files.iter().find(|(p, _)| p.to_string_lossy() == "_sidebar.md").unwrap().1.clone();
-        assert!(sidebar.contains("[创建用户]"));
+        assert!(sidebar.contains("[创建用户](/用户管理/创建用户.md)"), "sidebar: {sidebar}");
+        // 分组 README 标题保留原名称（含空格），链接为根目录绝对链接
+        let gre = files.iter().find(|(p, _)| p.to_string_lossy().replace('\\', "/") == "用户管理/README.md").unwrap().1.clone();
+        assert!(gre.starts_with("# 用户 管理"), "group readme: {gre}");
+        assert!(gre.contains("[创建用户](/用户管理/创建用户.md)"), "group readme: {gre}");
         let index = files.iter().find(|(p, _)| p.to_string_lossy() == "index.html").unwrap().1.clone();
         assert!(index.contains("loadSidebar: true"));
         let readme = files.iter().find(|(p, _)| p.to_string_lossy() == "README.md").unwrap().1.clone();
-        assert!(readme.contains("[创建用户]"));
+        assert!(readme.contains("[创建用户](/用户管理/创建用户.md)"), "readme: {readme}");
     }
 
     /// 勾选分组后前端会把分组目录 + 其下全部文件路径一起提交，后端应去重

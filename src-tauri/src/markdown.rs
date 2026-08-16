@@ -363,7 +363,10 @@ fn guess_val(v: &Value) -> (String, Option<Value>) {
             };
             ("List".into(), children)
         }
-        Value::Object(_) => ("Object".into(), None),
+        Value::Object(map) => {
+            // Object 类型展开下级字段（否则表格中只显示 Object 一行，值/子字段不显示）
+            ("Object".into(), Some(Value::Object(map.clone())))
+        }
         Value::String(_) => ("String".into(), None),
     }
 }
@@ -1226,6 +1229,35 @@ mod tests {
         assert_eq!(a.method, "PUT");
         assert_eq!(a.path, "/old");
         assert_eq!(a.description, "描述内容");
+    }
+
+    #[test]
+    fn render_expands_object_children() {
+        // 回归：类型为 Object 的字段必须展开下级字段（否则「值/子字段不显示」）
+        let mut api = crate::ApiFile {
+            uuid: "u1".into(),
+            name: "创建用户".into(),
+            method: "POST".into(),
+            path: "/api/users".into(),
+            url: "http://example.com/api/users".into(),
+            description: String::new(),
+            headers: vec![],
+            query: vec![],
+            params: vec![],
+            body: crate::BodyData {
+                mode: "json".into(),
+                raw: String::new(),
+                form: vec![],
+            },
+            mock: crate::MockConfig::default(),
+            examples: vec![],
+            doc_params: vec![],
+        };
+        api.mock.body = r#"{"data":{"name":"张三","id":1},"code":0}"#.into();
+        let md = render(&api, "");
+        assert!(md.contains("| data | Object |"), "md: {md}");
+        assert!(md.contains("| data.name | String |"), "md: {md}");
+        assert!(md.contains("| data.id | Integer |"), "md: {md}");
     }
 
     #[test]
