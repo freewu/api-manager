@@ -54,7 +54,7 @@
       "stack.vite.desc": "前端构建工具",
       "stack.backend": "后端 · Axum Mock 服务 + reqwest 请求",
       "stack.just.desc": "命令运行器",
-      "stack.visit": "官网 ↗",
+      
       "cap.main": "主界面 —— Postman 风格布局：左侧接口树、中间请求编辑器、下方响应面板",
       "cap.mock": "Mock 服务 —— 一键启动本地 Mock，支持路径参数、延迟与模板变量",
       "cap.export": "一键导出 —— Postman Collection / OpenAPI / Docsify 三种格式",
@@ -123,7 +123,7 @@
       "stack.vite.desc": "Frontend build tool",
       "stack.backend": "Backend · Axum Mock server + reqwest",
       "stack.just.desc": "Command runner",
-      "stack.visit": "Official site ↗",
+      
       "cap.main": "Main UI — Postman-style layout: API tree, request editor, response panel",
       "cap.mock": "Mock Server — one-click local Mock with path params, delay & template variables",
       "cap.export": "One-click Export — Postman Collection / OpenAPI / Docsify formats",

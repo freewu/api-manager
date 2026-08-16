@@ -283,15 +283,6 @@ img { max-width: 100%; display: block; }
 }
 .stack-row .stack-icon { font-size: 30px; }
 .stack-info h3 { font-size: 15px; }
-.stack-go {
-  font-size: 11px;
-  color: var(--primary);
-  background: var(--primary-light);
-  padding: 2px 8px;
-  border-radius: 999px;
-  margin-left: 4px;
-  white-space: nowrap;
-}
 .stack-info p {
   color: var(--muted);
   font-size: 12px;
