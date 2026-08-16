@@ -15,6 +15,7 @@ interface Props {
   onNewApi: (parent: string) => void;
   onNewFolder: (parent: string) => void;
   onRename: (node: TreeNode) => void;
+  onCopy: (node: TreeNode) => void;
   onDelete: (node: TreeNode) => void;
   onEditInfo: (node: TreeNode) => void;
   onVersions: (node: TreeNode) => void;
@@ -77,6 +78,7 @@ function NodeRow({
   onNewApi,
   onNewFolder,
   onRename,
+  onCopy,
   onDelete,
   onEditInfo,
   onVersions,
@@ -100,6 +102,7 @@ function NodeRow({
   onNewApi: (parent: string) => void;
   onNewFolder: (parent: string) => void;
   onRename: (node: TreeNode) => void;
+  onCopy: (node: TreeNode) => void;
   onDelete: (node: TreeNode) => void;
   onEditInfo: (node: TreeNode) => void;
   onVersions: (node: TreeNode) => void;
@@ -271,6 +274,7 @@ function NodeRow({
               onNewApi={onNewApi}
               onNewFolder={onNewFolder}
               onRename={onRename}
+              onCopy={onCopy}
               onDelete={onDelete}
               onEditInfo={onEditInfo}
               onVersions={onVersions}
@@ -305,7 +309,7 @@ function NodeRow({
 }
 
 export function Sidebar(props: Props) {
-  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
+  const { tree, onNewApi, onNewFolder, onRename, onCopy, onEditInfo, onDelete, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
   const [importMenu, setImportMenu] = useState(false);
   const [filter, setFilter] = useState("");
   const [menu, setMenu] = useState<CtxMenu | null>(null);
@@ -419,6 +423,7 @@ export function Sidebar(props: Props) {
                 onNewApi={onNewApi}
                 onNewFolder={onNewFolder}
                 onRename={onRename}
+                onCopy={onCopy}
                 onDelete={onDelete}
                 onEditInfo={onEditInfo}
                 onVersions={onVersions}
@@ -590,6 +595,14 @@ export function Sidebar(props: Props) {
               </button>
               <button
                 onClick={() => {
+                  onCopy(menu.node);
+                  setMenu(null);
+                }}
+              >
+                📋 复制
+              </button>
+              <button
+                onClick={() => {
                   onStats?.(menu.node);
                   setMenu(null);
                 }}
@@ -651,6 +664,14 @@ export function Sidebar(props: Props) {
                 }}
               >
                 📤 导出
+              </button>
+              <button
+                onClick={() => {
+                  onCopy(menu.node);
+                  setMenu(null);
+                }}
+              >
+                📋 复制
               </button>
               <div className="node-ctx-sep" />
               <button

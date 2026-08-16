@@ -164,6 +164,10 @@ export function deleteEntry(path: string): Promise<void> {
   return invoke<void>("delete_entry", { path });
 }
 
+export function copyEntry(path: string): Promise<string> {
+  return invoke<string>("copy_entry", { path });
+}
+
 export function moveEntry(src: string, dstDir: string): Promise<string> {
   return invoke<string>("move_entry", { src, dstDir });
 }

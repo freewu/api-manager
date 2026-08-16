@@ -5,6 +5,7 @@ import {
   createApi,
   createDemo,
   createFolder,
+  copyEntry,
   deleteEntry,
   getAppVersion,
   getWorkspace,
@@ -932,6 +933,16 @@ export default function App() {
     }
   };
 
+  const handleCopy = async (node: TreeNode) => {
+    try {
+      const p = await copyEntry(node.path);
+      await reloadTree();
+      showToast(`已复制: ${p}`);
+    } catch (e) {
+      showToast("复制失败: " + e);
+    }
+  };
+
   const doDelete = async () => {
     if (!modal?.target) return;
     try {
@@ -1143,6 +1154,7 @@ export default function App() {
           onNewApi={(parent) => openModal("newApi", parent)}
           onNewFolder={(parent) => openModal("newFolder", parent)}
           onRename={(node) => openModal("rename", "", node)}
+          onCopy={handleCopy}
           onDelete={(node) => openModal("delete", "", node)}
           onEditInfo={(node) => openInfoModal(node)}
           onVersions={openVersions}

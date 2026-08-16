@@ -2254,6 +2254,96 @@ fn delete_entry(state: State<'_, WorkspaceState>, path: String) -> Result<(), St
     }
 }
 
+/// 复制接口/分组到其所在目录：接口重新生成 uuid（分组则递归复制整棵树，
+/// 其中每个接口都重新生成 uuid），名称追加「 副本」，重名自动加序号。
+#[tauri::command]
+fn copy_entry(state: State<'_, WorkspaceState>, path: String) -> Result<String, String> {
+    let root = workspace_root(&state)?;
+    let src = PathBuf::from(&path);
+    ensure_inside_workspace(&root, &src)?;
+    if src == root {
+        return Err("不能复制工作区根目录".into());
+    }
+    let parent = src.parent().ok_or("无上级目录")?;
+    let fs_name = src
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let copy_base = format!("{fs_name} 副本");
+    let (base, ext) = if src.is_dir() {
+        (sanitize_filename(&copy_base), String::new())
+    } else {
+        let ext = src
+            .extension()
+            .map(|e| format!(".{}", e.to_string_lossy()))
+            .unwrap_or_else(|| ".json".into());
+        (sanitize_filename(&copy_base), ext)
+    };
+    let dst = unique_path(parent, &base, &ext);
+
+    if src.is_dir() {
+        copy_dir_with_new_uuids(&src, &dst)?;
+    } else {
+        copy_api_file(&src, &dst)?;
+    }
+    Ok(dst.to_string_lossy().to_string())
+}
+
+/// 复制单个接口文件：重新生成 uuid，显示名追加「 副本」
+fn copy_api_file(src: &Path, dst: &Path) -> Result<(), String> {
+    let content = fs::read_to_string(src).map_err(|e| format!("读取失败: {e}"))?;
+    let mut v: Value = serde_json::from_str(&content).map_err(|e| format!("JSON 解析失败: {e}"))?;
+    if let Some(obj) = v.as_object_mut() {
+        obj.insert("uuid".into(), Value::String(uuid::Uuid::new_v4().to_string()));
+        if let Some(Some(n)) = obj.get("name").map(|x| x.as_str()) {
+            if !n.trim().is_empty() {
+                obj.insert("name".into(), Value::String(format!("{n} 副本")));
+            }
+        }
+    }
+    write_pretty(dst, &v)
+}
+
+/// 递归复制目录：所有接口 JSON 重新生成 uuid，分组 __info.json 的 name 追加「 副本」，
+/// 跳过 .examples / .version 等点开头目录（内容与旧 uuid 绑定，不随复制携带）
+fn copy_dir_with_new_uuids(src: &Path, dst: &Path) -> Result<(), String> {
+    fs::create_dir_all(dst).map_err(|e| format!("创建目录失败: {e}"))?;
+    for entry in fs::read_dir(src).map_err(|e| format!("读取目录失败: {e}"))? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let sp = entry.path();
+        let file_name = entry.file_name().to_string_lossy().to_string();
+        if file_name.starts_with('.') {
+            continue;
+        }
+        let dp = dst.join(&file_name);
+        if sp.is_dir() {
+            copy_dir_with_new_uuids(&sp, &dp)?;
+        } else if file_name == INFO_FILE {
+            // 分组信息：name 追加「 副本」
+            if let Ok(content) = fs::read_to_string(&sp) {
+                if let Ok(mut v) = serde_json::from_str::<Value>(&content) {
+                    if let Some(obj) = v.as_object_mut() {
+                        if let Some(Some(n)) = obj.get("name").map(|x| x.as_str()) {
+                            obj.insert("name".into(), Value::String(format!("{n} 副本")));
+                        }
+                        let _ = write_pretty(&dp, &v);
+                        continue;
+                    }
+                }
+            }
+            fs::copy(&sp, &dp).map_err(|e| format!("复制失败: {e}"))?;
+        } else {
+            // 接口 JSON：重新生成 uuid 与显示名；其余文件原样复制
+            if file_name.ends_with(".json") && file_name != ENV_FILE {
+                copy_api_file(&sp, &dp)?;
+            } else {
+                fs::copy(&sp, &dp).map_err(|e| format!("复制失败: {e}"))?;
+            }
+        }
+    }
+    Ok(())
+}
+
 /// 移动接口/目录到目标目录（跨目录拖拽）。目录不能移入自身或其子目录。
 #[tauri::command]
 fn move_entry(
@@ -3312,6 +3402,7 @@ pub fn run() {
             create_api,
             create_folder,
             rename_entry,
+            copy_entry,
             move_entry,
             delete_entry,
             read_info,
@@ -3992,6 +4083,91 @@ mod tests {
             .unwrap_err();
         assert!(err.contains("子目录"));
 
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    /// 复制接口：uuid 重新生成、名称追加「 副本」、同目录重名自动加序号
+    #[test]
+    fn copy_api_regenerates_uuid() {
+        let root = std::env::temp_dir().join(format!("apim-copy-api-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let src = root.join("创建用户.json");
+        let api = ApiFile {
+            uuid: "old-uuid".into(),
+            name: "创建用户".into(),
+            method: "POST".into(),
+            path: "/api/users".into(),
+            url: String::new(),
+            description: String::new(),
+            headers: vec![],
+            query: vec![],
+            params: vec![],
+            body: BodyData::default(),
+            mock: MockConfig::default(),
+            examples: vec![],
+            doc_params: vec![],
+        };
+        write_pretty(&src, &api).unwrap();
+
+        let dst = root.join("创建用户 副本.json");
+        copy_api_file(&src, &dst).unwrap();
+        let copied: ApiFile = serde_json::from_str(&fs::read_to_string(&dst).unwrap()).unwrap();
+        assert_ne!(copied.uuid, "old-uuid");
+        assert_eq!(copied.name, "创建用户 副本");
+        assert_eq!(copied.method, "POST");
+        assert_eq!(copied.path, "/api/users");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    /// 复制分组：递归复制整棵树，每个接口 uuid 重新生成，分组 __info.json 名称追加「 副本」
+    #[test]
+    fn copy_dir_regenerates_all_uuids() {
+        let root = std::env::temp_dir().join(format!("apim-copy-dir-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let g = root.join("用户管理");
+        let sub = g.join("子分组");
+        fs::create_dir_all(&sub).unwrap();
+        fs::write(
+            g.join(INFO_FILE),
+            r#"{"name":"用户管理","description":""}"#,
+        )
+        .unwrap();
+        let mk = |p: &std::path::Path, uuid: &str, name: &str| {
+            let api = ApiFile {
+                uuid: uuid.into(),
+                name: name.into(),
+                method: "GET".into(),
+                path: "/x".into(),
+                url: String::new(),
+                description: String::new(),
+                headers: vec![],
+                query: vec![],
+                params: vec![],
+                body: BodyData::default(),
+                mock: MockConfig::default(),
+                examples: vec![],
+                doc_params: vec![],
+            };
+            write_pretty(p, &api).unwrap();
+        };
+        mk(&g.join("接口A.json"), "uuid-a", "接口A");
+        mk(&sub.join("接口B.json"), "uuid-b", "接口B");
+        // 点目录不应被复制（.examples 与旧 uuid 绑定）
+        fs::create_dir_all(g.join(".examples")).unwrap();
+        fs::write(g.join(".examples").join("x.json"), "{}").unwrap();
+
+        let dst = root.join("用户管理 副本");
+        copy_dir_with_new_uuids(&g, &dst).unwrap();
+
+        let a: ApiFile = serde_json::from_str(&fs::read_to_string(dst.join("接口A.json")).unwrap()).unwrap();
+        assert_ne!(a.uuid, "uuid-a");
+        assert_eq!(a.name, "接口A 副本");
+        let b: ApiFile = serde_json::from_str(&fs::read_to_string(dst.join("子分组").join("接口B.json")).unwrap()).unwrap();
+        assert_ne!(b.uuid, "uuid-b");
+        assert!(!dst.join(".examples").exists());
+        let info: Value = serde_json::from_str(&fs::read_to_string(dst.join(INFO_FILE)).unwrap()).unwrap();
+        assert_eq!(info["name"], "用户管理 副本");
         let _ = fs::remove_dir_all(&root);
     }
 }
