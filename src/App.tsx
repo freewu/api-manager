@@ -12,6 +12,10 @@ import {
   openWorkspace,
   importOpenApi,
   importPostman,
+  importMarkdown,
+  renderApiMarkdown,
+  exportApiMarkdown,
+  type MarkdownDoc,
   listVersions,
   loadSettings,
   mockReload,
@@ -47,6 +51,7 @@ import { HistoryDetail } from "./components/HistoryDetail";
 import { AppView } from "./components/Sidebar";
 import { useHistory } from "./hooks/useHistory";
 import { Modal } from "./components/Modal";
+import { MarkdownModal } from "./components/MarkdownModal";
 import { Response } from "./components/Response";
 import { SettingsModal } from "./components/SettingsModal";
 import { Sidebar } from "./components/Sidebar";
@@ -121,6 +126,8 @@ export default function App() {
   const [versionModal, setVersionModal] = useState<{ api: ApiFile; versions: VersionInfo[] } | null>(null);
   const [statsNode, setStatsNode] = useState<TreeNode | null>(null);
   const [emptyMenu, setEmptyMenu] = useState<{ x: number; y: number } | null>(null);
+  /** 接口 Markdown 文档预览弹窗 */
+  const [mdView, setMdView] = useState<{ node: TreeNode; doc: MarkdownDoc } | null>(null);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [view, setView] = useState<AppView>("api");
@@ -431,6 +438,39 @@ export default function App() {
       if (!result) return; // 用户取消
       await loadAll(workspace!);
       showToast(`已导入 OpenAPI 规范：${result.count} 个接口`);
+    } catch (e) {
+      showToast("导入失败: " + e);
+    }
+  };
+
+  /** 查看接口的 Markdown 格式（预览弹窗，可保存 .md / .html） */
+  const handleViewMarkdown = async (node: TreeNode) => {
+    try {
+      const doc = await renderApiMarkdown(node.path);
+      setMdView({ node, doc });
+    } catch (e) {
+      showToast("生成 Markdown 失败: " + e);
+    }
+  };
+
+  /** 保存 Markdown / HTML 文件到用户选择的目录 */
+  const handleExportMarkdown = async (format: "md" | "html") => {
+    if (!mdView) return;
+    try {
+      const saved = await exportApiMarkdown(mdView.node.path, format);
+      if (saved) showToast(`已保存: ${saved}`);
+    } catch (e) {
+      showToast("保存失败: " + e);
+    }
+  };
+
+  /** 导入 Markdown 接口文档：自动新建分组并导入全部接口 */
+  const handleImportMarkdown = async () => {
+    try {
+      const result = await importMarkdown();
+      if (!result) return; // 用户取消
+      await loadAll(workspace!);
+      showToast(`已导入 Markdown 文档：${result.count} 个接口`);
     } catch (e) {
       showToast("导入失败: " + e);
     }
@@ -1047,6 +1087,8 @@ export default function App() {
           onOpenSettings={() => setSettingsOpen(true)}
           onImportPostman={() => void handleImportPostman()}
           onImportOpenApi={() => void handleImportOpenApi()}
+          onImportMarkdown={() => void handleImportMarkdown()}
+          onViewMarkdown={(node) => void handleViewMarkdown(node)}
           vcs={null} // 同步远程功能暂时隐藏（后端命令保留，恢复时改回 vcs && settings.syncRemote ? vcs : null）
           onVcsSync={() => void handleVcsSync()}
           onVcsCommitPush={() => void handleVcsCommitPush()}
@@ -1188,6 +1230,16 @@ export default function App() {
       )}
 
       {statsNode && <StatsModal node={statsNode} onClose={() => setStatsNode(null)} />}
+
+      {mdView && (
+        <MarkdownModal
+          name={mdView.doc.name}
+          html={mdView.doc.html}
+          md={mdView.doc.md}
+          onSave={(fmt) => handleExportMarkdown(fmt)}
+          onClose={() => setMdView(null)}
+        />
+      )}
 
       {settingsOpen && (
         <SettingsModal

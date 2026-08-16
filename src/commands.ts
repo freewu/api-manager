@@ -79,6 +79,32 @@ export function importOpenApi(): Promise<OpenApiImportResult | null> {
   return invoke<OpenApiImportResult | null>("import_openapi");
 }
 
+export interface MarkdownDoc {
+  name: string;
+  md: string;
+  html: string;
+}
+
+/** 渲染接口的 Markdown 文档（含 HTML 预览） */
+export function renderApiMarkdown(path: string): Promise<MarkdownDoc> {
+  return invoke<MarkdownDoc>("render_api_markdown", { path });
+}
+
+/** 导出接口为 .md / .html 文件（弹窗选目录），返回保存路径或 null（用户取消） */
+export function exportApiMarkdown(path: string, format: "md" | "html"): Promise<string | null> {
+  return invoke<string | null>("export_api_markdown", { path, format });
+}
+
+export interface MarkdownImportResult {
+  folder: string;
+  count: number;
+}
+
+/** 导入 Markdown 接口文档（弹窗选 .md 文件） */
+export function importMarkdown(): Promise<MarkdownImportResult | null> {
+  return invoke<MarkdownImportResult | null>("import_markdown");
+}
+
 export function readTree(): Promise<TreeNode> {
   return invoke<TreeNode>("read_tree");
 }

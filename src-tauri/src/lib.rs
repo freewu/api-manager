@@ -1,4 +1,5 @@
 mod mock;
+mod markdown;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -361,6 +362,11 @@ fn sanitize_filename(name: &str) -> String {
         .collect::<String>()
         .trim()
         .to_string()
+}
+
+/// 转义 HTML 特殊字符（用于导出的 .html 标题）
+fn escape_html(s: &str) -> String {
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
 }
 
 /// 生成不冲突的文件路径：xxx.json / xxx (2).json ...
@@ -1302,6 +1308,133 @@ pub struct OpenApiImportResult {
     folder: String,
     count: usize,
 }
+
+/// 接口 Markdown 文档（供前端预览）
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarkdownDoc {
+    name: String,
+    md: String,
+    html: String,
+}
+
+/// 渲染接口的 Markdown 文档（含 HTML 预览版）
+#[tauri::command]
+fn render_api_markdown(path: String) -> Result<MarkdownDoc, String> {
+    let api = read_api(path)?;
+    let md = markdown::render(&api);
+    let html = markdown::md_to_html(&md);
+    Ok(MarkdownDoc { name: api.name, md, html })
+}
+
+/// 导出接口 Markdown / HTML：弹出目录选择框，写入 <接口名>.md 或 <接口名>.html
+#[tauri::command]
+fn export_api_markdown(app: AppHandle, path: String, format: String) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let api = read_api(path)?;
+    let md = markdown::render(&api);
+    let fmt = if format.eq_ignore_ascii_case("html") { "html" } else { "md" };
+    let picked = app
+        .dialog()
+        .file()
+        .set_title("选择保存目录")
+        .blocking_pick_folder();
+    let Some(dir) = picked else {
+        return Ok(None);
+    };
+    let dir = dir.into_path().map_err(|e| e.to_string())?;
+    let base = sanitize_filename(&api.name);
+    let base = if base.trim().is_empty() {
+        "未命名接口".to_string()
+    } else {
+        base
+    };
+    let target = unique_path(&dir, &base, &format!(".{fmt}"));
+    let content = if fmt == "html" {
+        let html = markdown::md_to_html(&md);
+        let title = escape_html(&api.name);
+        format!(
+            "<!doctype html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>{title}</title>\n<style>\nbody{{font-family:-apple-system,'Segoe UI','Microsoft YaHei',sans-serif;max-width:860px;margin:32px auto;padding:0 20px;color:#24292f;line-height:1.6}}\nh1,h2,h3{{border-bottom:1px solid #e5e7eb;padding-bottom:6px}}\ntable{{border-collapse:collapse;width:100%;margin:8px 0}}\nth,td{{border:1px solid #d0d7de;padding:6px 10px;font-size:13px;text-align:left}}\nth{{background:#f6f8fa}}\npre{{background:#f6f8fa;border:1px solid #d0d7de;border-radius:6px;padding:10px;overflow:auto}}\ncode{{font-family:Consolas,Menlo,monospace;font-size:12.5px}}\nblockquote{{border-left:4px solid #d0d7de;margin:8px 0;padding:2px 12px;color:#57606a}}\nul{{padding-left:22px}}\n</style>\n</head>\n<body>\n<article>{html}</article>\n</body>\n</html>\n"
+        )
+    } else {
+        md
+    };
+    fs::write(&target, content).map_err(|e| format!("写入失败: {e}"))?;
+    Ok(Some(target.to_string_lossy().to_string()))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarkdownImportResult {
+    folder: String,
+    count: usize,
+}
+
+/// 导入 Markdown 接口文档：弹窗选 .md 文件，在工作区根新建分组并逐个保存接口
+#[tauri::command]
+fn import_markdown(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+) -> Result<Option<MarkdownImportResult>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("Markdown", &["md", "markdown"])
+        .blocking_pick_file();
+    let Some(p) = picked else {
+        return Ok(None);
+    };
+    let file = p.into_path().map_err(|e| e.to_string())?;
+    let root = workspace_root(&state)?;
+    let content = fs::read_to_string(&file).map_err(|e| format!("读取文件失败: {e}"))?;
+    let apis = markdown::parse(&content)?;
+    if apis.is_empty() {
+        return Err("文档中没有解析到接口".into());
+    }
+    let first = apis.first().map(|a| a.name.clone()).unwrap_or_default();
+    let dir_name = sanitize_filename(&first);
+    let dir_name = if dir_name.is_empty() {
+        "Markdown 导入".to_string()
+    } else {
+        dir_name
+    };
+    let folder = unique_path(&root, &dir_name, "");
+    fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
+    let src_name = file
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    write_pretty(
+        &folder.join(INFO_FILE),
+        &InfoJson {
+            name: Some(first.clone()),
+            description: format!("从 Markdown 文档导入（{src_name}）"),
+            base_url: None,
+            mock_port: None,
+            order: None,
+            collapsed: None,
+        },
+    )?;
+    let mut count = 0usize;
+    for mut api in apis {
+        api.uuid = uuid::Uuid::new_v4().to_string();
+        let fname = sanitize_filename(&api.name);
+        let fname = if fname.is_empty() {
+            "未命名接口".to_string()
+        } else {
+            fname
+        };
+        let target = unique_path(&folder, &fname, ".json");
+        write_pretty(&target, &api)?;
+        count += 1;
+    }
+    Ok(Some(MarkdownImportResult {
+        folder: folder.to_string_lossy().to_string(),
+        count,
+    }))
+}
+
 
 #[tauri::command]
 fn import_openapi(
@@ -3043,6 +3176,9 @@ pub fn run() {
             create_demo,
             import_postman,
             import_openapi,
+            render_api_markdown,
+            export_api_markdown,
+            import_markdown,
             vcs_info,
             vcs_sync,
             vcs_commit_push,

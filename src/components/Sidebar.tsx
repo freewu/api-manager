@@ -19,9 +19,11 @@ interface Props {
   onEditInfo: (node: TreeNode) => void;
   onVersions: (node: TreeNode) => void;
   onStats?: (node: TreeNode) => void;
+  onViewMarkdown?: (node: TreeNode) => void;
   onOpenSettings?: () => void;
   onImportPostman?: () => void;
   onImportOpenApi?: () => void;
+  onImportMarkdown?: () => void;
   /** 工作目录版本控制类型（.git / .svn），为空时不显示同步/提交按钮 */
   vcs?: "git" | "svn" | null;
   onVcsSync?: () => void;
@@ -77,6 +79,7 @@ function NodeRow({
   onEditInfo,
   onVersions,
   onStats,
+  onViewMarkdown,
   enableVersion,
   onContextMenu,
   filter,
@@ -99,6 +102,7 @@ function NodeRow({
   onEditInfo: (node: TreeNode) => void;
   onVersions: (node: TreeNode) => void;
   onStats?: (node: TreeNode) => void;
+  onViewMarkdown?: (node: TreeNode) => void;
   enableVersion: boolean;
   tree: null;
   onContextMenu: (e: React.MouseEvent, node: TreeNode) => void;
@@ -269,6 +273,7 @@ function NodeRow({
               onEditInfo={onEditInfo}
               onVersions={onVersions}
               onStats={onStats}
+              onViewMarkdown={onViewMarkdown}
               enableVersion={enableVersion}
               onContextMenu={onContextMenu}
               filter={filter}
@@ -298,7 +303,7 @@ function NodeRow({
 }
 
 export function Sidebar(props: Props) {
-  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions, onStats, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
+  const { tree, onNewApi, onNewFolder, onRename, onEditInfo, onDelete, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
   const [importMenu, setImportMenu] = useState(false);
   const [filter, setFilter] = useState("");
   const [menu, setMenu] = useState<CtxMenu | null>(null);
@@ -501,7 +506,7 @@ export function Sidebar(props: Props) {
             <button
               className="icon-btn import-btn"
               onClick={() => setImportMenu(!importMenu)}
-              title="导入（Postman Collection / OpenAPI Swagger）"
+              title="导入（Postman Collection / OpenAPI Swagger / Markdown 文档）"
               aria-label="导入"
             >
               <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
@@ -528,6 +533,16 @@ export function Sidebar(props: Props) {
                   >
                     📖 OpenAPI / Swagger（JSON / YAML）
                   </button>
+                  {onImportMarkdown && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportMarkdown();
+                      }}
+                    >
+                      📄 Markdown 文档
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -600,6 +615,16 @@ export function Sidebar(props: Props) {
                   }}
                 >
                   📑 查看版本信息
+                </button>
+              )}
+              {onViewMarkdown && (
+                <button
+                  onClick={() => {
+                    onViewMarkdown(menu.node);
+                    setMenu(null);
+                  }}
+                >
+                  📝 查看 Markdown
                 </button>
               )}
               <div className="node-ctx-sep" />
