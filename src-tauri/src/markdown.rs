@@ -337,8 +337,8 @@ pub fn md_to_html(md: &str) -> String {
             let _ = write!(out, "<pre{cls}><code>{}</code></pre>\n", escape_html(buf.trim_end()));
             continue;
         }
-        // 标题
-        if line.trim_start().starts_with('#') && !line.trim_start().starts_with("##") {
+        // 标题：支持 # ~ ####（注意去掉旧的 `!starts_with("##")` 限制，否则 ## 行会落入段落分支导致死循环）
+        if line.trim_start().starts_with('#') {
             let trimmed = line.trim_start();
             let mut level = 0;
             for ch in trimmed.chars() {
@@ -348,7 +348,7 @@ pub fn md_to_html(md: &str) -> String {
                     break;
                 }
             }
-            if (1..=4).contains(&level) {
+            if (1..=6).contains(&level) {
                 let text = trimmed[level..].trim();
                 if !text.is_empty() {
                     let _ = writeln!(out, "<h{level}>{}</h{level}>", inline(text));
@@ -420,28 +420,38 @@ pub fn md_to_html(md: &str) -> String {
             i += 1;
             continue;
         }
-        // 段落：收集连续非空且非块起始的行
+        // 段落：收集连续非空且非块起始的行（必须保证至少前进一行，避免死循环）
         if !line.trim().is_empty() {
             let mut buf = String::new();
+            let mut advanced = false;
             while i < lines.len()
                 && !lines[i].trim().is_empty()
-                && !lines[i].trim_start().starts_with('#')
-                && !lines[i].trim_start().starts_with('>')
-                && !lines[i].trim_start().starts_with('|')
-                && !lines[i].trim_start().starts_with('-')
-                && !lines[i].trim_start().starts_with("```")
-                && lines[i].trim() != "---"
+                && !is_block_start(lines[i])
             {
                 buf.push_str(lines[i].trim());
                 buf.push(' ');
                 i += 1;
+                advanced = true;
             }
-            let _ = writeln!(out, "<p>{}</p>", inline(buf.trim_end()));
-            continue;
+            if advanced {
+                let _ = writeln!(out, "<p>{}</p>", inline(buf.trim_end()));
+                continue;
+            }
         }
         i += 1;
     }
     out
+}
+
+/// 是否为 Markdown 块起始行（标题/引用/表格/列表/代码块/分隔线）
+fn is_block_start(line: &str) -> bool {
+    let t = line.trim_start();
+    t.starts_with('#')
+        || t.starts_with('>')
+        || t.starts_with('|')
+        || t.starts_with('-')
+        || t.starts_with("```")
+        || t.trim() == "---"
 }
 
 fn is_table_sep(line: &str) -> bool {
@@ -902,6 +912,17 @@ mod tests {
         assert!(html.contains("<ul>"));
         assert!(html.contains("<table>"));
         assert!(html.contains("<pre"));
+    }
+
+    #[test]
+    fn md_html_no_hang_on_subheadings() {
+        // 回归：渲染结果含 ## / ### 子标题与单行表格，必须能正常退出（曾因段落分支不前进导致死循环卡死应用）
+        let html = md_to_html(
+            "# 创建用户\n\n## 基本信息\n\n- 方法: POST\n\n## 响应\n\n### 请求成功\n\n| 字段名 | 类型 | 说明 |\n| --- | --- | --- |\n| code | Integer | 状态码 |\n| 孤立 | 行 | 表 |\n\n## Mock\n",
+        );
+        assert!(html.contains("<h2>基本信息</h2>"));
+        assert!(html.contains("<h3>请求成功</h3>"));
+        assert!(html.contains("<table>"));
     }
 
     #[test]
