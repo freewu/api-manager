@@ -1319,21 +1319,43 @@ pub struct MarkdownDoc {
     html: String,
 }
 
+/// 从接口文件路径推导分组名（父目录名；接口直接在工作区根目录下时为空）
+fn group_of(path: &str, root: &str) -> String {
+    let parent = Path::new(path).parent().unwrap_or(Path::new(""));
+    let norm = |p: &str| p.trim_end_matches(['/', '\\']).trim_end_matches('/').to_string();
+    if norm(&parent.to_string_lossy()) == norm(root) {
+        return String::new();
+    }
+    parent
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default()
+}
+
 /// 渲染接口的 Markdown 文档（含 HTML 预览版）
 #[tauri::command]
-fn render_api_markdown(path: String) -> Result<MarkdownDoc, String> {
+fn render_api_markdown(state: State<'_, WorkspaceState>, path: String) -> Result<MarkdownDoc, String> {
+    let root = workspace_root(&state)?;
+    let group = group_of(&path, &root.to_string_lossy());
     let api = read_api(path)?;
-    let md = markdown::render(&api);
+    let md = markdown::render(&api, &group);
     let html = markdown::md_to_html(&md);
     Ok(MarkdownDoc { name: api.name, md, html })
 }
 
 /// 导出接口 Markdown / HTML：弹出目录选择框，写入 <接口名>.md 或 <接口名>.html
 #[tauri::command]
-fn export_api_markdown(app: AppHandle, path: String, format: String) -> Result<Option<String>, String> {
+fn export_api_markdown(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+    path: String,
+    format: String,
+) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
+    let root = workspace_root(&state)?;
+    let group = group_of(&path, &root.to_string_lossy());
     let api = read_api(path)?;
-    let md = markdown::render(&api);
+    let md = markdown::render(&api, &group);
     let fmt = if format.eq_ignore_ascii_case("html") { "html" } else { "md" };
     let picked = app
         .dialog()
@@ -1463,12 +1485,38 @@ fn import_markdown(
     let file = p.into_path().map_err(|e| e.to_string())?;
     let root = workspace_root(&state)?;
     let content = fs::read_to_string(&file).map_err(|e| format!("读取文件失败: {e}"))?;
-    let apis = markdown::parse(&content)?;
-    if apis.is_empty() {
+    let parsed = markdown::parse(&content)?;
+    if parsed.apis.is_empty() {
         return Err("文档中没有解析到接口".into());
     }
-    let first = apis.first().map(|a| a.name.clone()).unwrap_or_default();
-    let dir_name = sanitize_filename(&first);
+    let group = parsed.group.trim().to_string();
+    let src_name = file
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+
+    // 无分组（# 标题留空）：接口直接写到工作区根目录
+    if group.is_empty() {
+        let mut count = 0usize;
+        for mut api in parsed.apis {
+            api.uuid = uuid::Uuid::new_v4().to_string();
+            let fname = sanitize_filename(&api.name);
+            let fname = if fname.is_empty() {
+                "未命名接口".to_string()
+            } else {
+                fname
+            };
+            let target = unique_path(&root, &fname, ".json");
+            write_pretty(&target, &api)?;
+            count += 1;
+        }
+        return Ok(Some(MarkdownImportResult {
+            folder: root.to_string_lossy().to_string(),
+            count,
+        }));
+    }
+
+    let dir_name = sanitize_filename(&group);
     let dir_name = if dir_name.is_empty() {
         "Markdown 导入".to_string()
     } else {
@@ -1476,14 +1524,10 @@ fn import_markdown(
     };
     let folder = unique_path(&root, &dir_name, "");
     fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
-    let src_name = file
-        .file_name()
-        .map(|s| s.to_string_lossy().to_string())
-        .unwrap_or_default();
     write_pretty(
         &folder.join(INFO_FILE),
         &InfoJson {
-            name: Some(first.clone()),
+            name: Some(group),
             description: format!("从 Markdown 文档导入（{src_name}）"),
             base_url: None,
             mock_port: None,
@@ -1492,7 +1536,7 @@ fn import_markdown(
         },
     )?;
     let mut count = 0usize;
-    for mut api in apis {
+    for mut api in parsed.apis {
         api.uuid = uuid::Uuid::new_v4().to_string();
         let fname = sanitize_filename(&api.name);
         let fname = if fname.is_empty() {
@@ -3951,3 +3995,5 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
     }
 }
+
+

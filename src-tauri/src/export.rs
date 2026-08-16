@@ -358,7 +358,7 @@ fn write_side(
             i += 1;
         }
         used.push(rel.clone());
-        files.push((rel, crate::markdown::render(api)));
+        files.push((rel, crate::markdown::render(api, &n.name)));
     }
     // 子分组
     for (_, c) in &n.children {
