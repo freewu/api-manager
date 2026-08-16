@@ -19,10 +19,11 @@ pub fn render(api: &ApiFile, group: &str) -> String {
     let name = if name.is_empty() { "未命名接口" } else { name };
     let _ = writeln!(s, "## {name}\n");
 
-    // > Method url
+    // > Method url（url 为空时回退到 path，保证导出文档不丢 URL）
     let method = api.method.trim();
     let method = if method.is_empty() { "GET" } else { method };
     let url = api.url.trim();
+    let url = if url.is_empty() { api.path.trim() } else { url };
     let bline = if url.is_empty() {
         format!("> {method}")
     } else {
@@ -228,7 +229,10 @@ fn sample_val(ty: &str, desc: &str) -> Value {
 fn curl_example(api: &ApiFile) -> String {
     let method = api.method.trim();
     let method = if method.is_empty() { "GET" } else { method };
-    let mut parts = vec![format!("curl -X {method} {}", api.url.trim())];
+    // url 为空时回退到 path，避免 curl 示例缺 URL
+    let url = api.url.trim();
+    let url = if url.is_empty() { api.path.trim() } else { url };
+    let mut parts = vec![format!("curl -X {method} {url}")];
     for h in &api.headers {
         let k = h.key.trim();
         if !k.is_empty() {
@@ -1203,6 +1207,23 @@ mod tests {
         assert_eq!(a.body.mode, "json");
         assert!(a.body.raw.contains("张三"));
         assert!(a.mock.body.contains("code"));
+    }
+
+    #[test]
+    fn render_falls_back_to_path_when_url_empty() {
+        // 回归：url 为空但 path 有值时，导出 Markdown 必须带上 URL（否则文档只有方法没地址）
+        let mut api = sample_api();
+        api.url = String::new();
+        api.path = "/api/users".into();
+        let md = render(&api, "用户管理");
+        assert!(md.contains("> POST /api/users"), "url 为空时回退 path");
+        assert!(md.contains("curl -X POST /api/users"), "curl 示例同样回退 path");
+
+        // 回读自洽：`> POST /api/users` 能还原 path
+        let parsed = parse(&md).expect("parse ok");
+        let a = &parsed.apis[0];
+        assert_eq!(a.method, "POST");
+        assert_eq!(a.path, "/api/users");
     }
 
     #[test]
