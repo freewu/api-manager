@@ -1,5 +1,6 @@
 mod mock;
 mod markdown;
+mod export;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -1368,6 +1369,80 @@ fn export_api_markdown(app: AppHandle, path: String, format: String) -> Result<O
 pub struct MarkdownImportResult {
     folder: String,
     count: usize,
+}
+
+/// 导出选中接口/分组为 Postman / OpenAPI / Docsify 格式：弹窗选择保存位置并写入
+#[tauri::command]
+fn export_selection(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+    paths: Vec<String>,
+    format: String,
+) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let root = workspace_root(&state)?;
+    let apis = export::collect_apis(&root, &paths)?;
+    if apis.is_empty() {
+        return Err("所选内容中没有接口".into());
+    }
+    match format.as_str() {
+        "postman" => {
+            let v = export::to_postman(&apis);
+            let content = serde_json::to_string_pretty(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 Postman Collection")
+                .set_file_name("api-collection.postman_collection.json")
+                .add_filter("Postman Collection", &["json"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "openapi" => {
+            let ws_name = read_info_file(&root).name.unwrap_or_default();
+            let v = export::to_openapi(&ws_name, &apis);
+            let content = serde_json::to_string_pretty(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 OpenAPI 规范")
+                .set_file_name("openapi.json")
+                .add_filter("OpenAPI", &["json"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "docsify" => {
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("选择 Docsify 文档目录")
+                .blocking_pick_folder();
+            let Some(dir) = picked else {
+                return Ok(None);
+            };
+            let dir = dir.into_path().map_err(|e| e.to_string())?;
+            let files = export::docsify_files(&apis);
+            for (rel, content) in &files {
+                let target = dir.join(rel);
+                if let Some(parent) = target.parent() {
+                    fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {e}"))?;
+                }
+                fs::write(&target, content).map_err(|e| format!("写入失败: {e}"))?;
+            }
+            Ok(Some(dir.to_string_lossy().to_string()))
+        }
+        _ => Err(format!("不支持的导出格式: {format}")),
+    }
 }
 
 /// 导入 Markdown 接口文档：弹窗选 .md 文件，在工作区根新建分组并逐个保存接口
@@ -3179,6 +3254,7 @@ pub fn run() {
             render_api_markdown,
             export_api_markdown,
             import_markdown,
+            export_selection,
             vcs_info,
             vcs_sync,
             vcs_commit_push,

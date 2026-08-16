@@ -2636,6 +2636,140 @@ body {
   color: var(--text-dim);
 }
 
+/* 导出弹窗 */
+.export-modal {
+  width: min(520px, 90vw);
+  height: min(560px, 80vh);
+  display: flex;
+  flex-direction: column;
+}
+.export-modal .modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 14px 12px;
+}
+.export-modal .modal-foot {
+  flex-shrink: 0;
+}
+.export-formats {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px 0;
+}
+.export-format {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--bg-panel);
+  transition: border-color 0.15s, background 0.15s;
+}
+.export-format.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.export-format input {
+  accent-color: var(--accent);
+  margin: 0;
+}
+.export-format-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.export-format-ext {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-faint);
+  background: var(--bg-input);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.export-tree-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.export-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.export-all input {
+  accent-color: var(--accent);
+  margin: 0;
+}
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.btn-link:hover {
+  text-decoration: underline;
+}
+.export-tree {
+  flex: 1;
+  overflow: auto;
+  padding: 6px 4px 10px;
+}
+.export-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+.export-row:hover {
+  background: var(--bg-hover);
+}
+.export-row input {
+  accent-color: var(--accent);
+  margin: 0;
+  flex-shrink: 0;
+}
+.export-row-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.export-row-name {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.export-row-method {
+  margin-left: 8px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.export-row-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+.export-tip {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
 /* 请求代码生成页签 */
 .codegen-root {
   display: flex;

@@ -15,7 +15,9 @@ import {
   importMarkdown,
   renderApiMarkdown,
   exportApiMarkdown,
+  exportSelection,
   type MarkdownDoc,
+  type ExportFormat,
   listVersions,
   loadSettings,
   mockReload,
@@ -52,6 +54,7 @@ import { AppView } from "./components/Sidebar";
 import { useHistory } from "./hooks/useHistory";
 import { Modal } from "./components/Modal";
 import { MarkdownModal } from "./components/MarkdownModal";
+import { ExportModal } from "./components/ExportModal";
 import { Response } from "./components/Response";
 import { SettingsModal } from "./components/SettingsModal";
 import { Sidebar } from "./components/Sidebar";
@@ -128,6 +131,9 @@ export default function App() {
   const [emptyMenu, setEmptyMenu] = useState<{ x: number; y: number } | null>(null);
   /** 接口 Markdown 文档预览弹窗 */
   const [mdView, setMdView] = useState<{ node: TreeNode; doc: MarkdownDoc } | null>(null);
+  /** 导出弹窗：preselect 为右键节点预选路径 */
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportPreselect, setExportPreselect] = useState<string[] | undefined>(undefined);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [view, setView] = useState<AppView>("api");
@@ -489,6 +495,26 @@ export default function App() {
     } catch (e) {
       showToast("导入失败: " + e);
     }
+  };
+
+  /** 导出选中接口/分组为 Postman / OpenAPI / Docsify 格式 */
+  const handleExport = async (paths: string[], format: ExportFormat) => {
+    try {
+      const saved = await exportSelection(paths, format);
+      if (!saved) return; // 用户取消
+      const kind = format === "docsify" ? "目录" : "文件";
+      showToast(`已导出 ${kind}: ${saved}`);
+      setExportOpen(false);
+      setExportPreselect(undefined);
+    } catch (e) {
+      showToast("导出失败: " + e);
+    }
+  };
+
+  /** 打开导出弹窗（可选预选某个节点） */
+  const openExport = (node?: TreeNode) => {
+    setExportPreselect(node ? [node.path] : undefined);
+    setExportOpen(true);
   };
 
   /** 同步（git pull / svn update） */
@@ -1126,6 +1152,8 @@ export default function App() {
           onImportOpenApi={() => void handleImportOpenApi()}
           onImportMarkdown={() => void handleImportMarkdown()}
           onViewMarkdown={(node) => void handleViewMarkdown(node)}
+          onExport={() => openExport()}
+          onExportNode={(node) => openExport(node)}
           vcs={null} // 同步远程功能暂时隐藏（后端命令保留，恢复时改回 vcs && settings.syncRemote ? vcs : null）
           onVcsSync={() => void handleVcsSync()}
           onVcsCommitPush={() => void handleVcsCommitPush()}
@@ -1275,6 +1303,18 @@ export default function App() {
           md={mdView.doc.md}
           onSave={(fmt) => handleExportMarkdown(fmt)}
           onClose={() => setMdView(null)}
+        />
+      )}
+
+      {exportOpen && (
+        <ExportModal
+          tree={tree}
+          preselect={exportPreselect}
+          onExport={(paths, fmt) => handleExport(paths, fmt)}
+          onClose={() => {
+            setExportOpen(false);
+            setExportPreselect(undefined);
+          }}
         />
       )}
 
