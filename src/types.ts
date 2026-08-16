@@ -172,6 +172,8 @@ export interface AppSettings {
   exportFormat: ExportFormat;
   /** 界面语言（zh / en） */
   language: "zh" | "zh-tw" | "en";
+  /** 最近打开的工作目录数量上限（最少 3） */
+  recentLimit: number;
 }
 
 export const defaultSettings = (): AppSettings => ({
@@ -186,6 +188,7 @@ export const defaultSettings = (): AppSettings => ({
   defaultHeaders: [],
   exportFormat: "postman",
   language: "zh",
+  recentLimit: 5,
 });
 
 export interface HttpRequestData {

@@ -418,9 +418,12 @@ export default function App() {
     }
   };
 
+  /** 最近打开的工作目录数量（设置项，最少 3） */
+  const recentLimit = Math.max(3, settings.recentLimit || 5);
+
   /** 把目录加入最近打开列表（本地即时更新，后端已持久化） */
   const pushRecent = (ws: string) => {
-    setRecent((r) => [ws, ...r.filter((x) => x !== ws)].slice(0, 8));
+    setRecent((r) => [ws, ...r.filter((x) => x !== ws)].slice(0, recentLimit));
   };
 
   const handlePickWorkspace = async () => {
@@ -1114,7 +1117,7 @@ export default function App() {
           {recent.length > 0 && (
             <div className="recent-workspaces">
               <div className="recent-title">{t("start.recent")}</div>
-              {recent.map((p) => (
+              {recent.slice(0, recentLimit).map((p) => (
                 <button key={p} className="recent-item" title={p} onClick={() => void handleOpenRecent(p)}>
                   📁 {p}
                 </button>
@@ -1160,7 +1163,7 @@ export default function App() {
                 {recent.length === 0 ? (
                   <div className="recent-dropdown-empty">{t("toolbar.recentEmpty")}</div>
                 ) : (
-                  recent.map((p) => (
+                  recent.slice(0, recentLimit).map((p) => (
                     <button
                       key={p}
                       className="recent-dropdown-item"

@@ -534,6 +534,8 @@ pub struct AppSettings {
     pub export_format: String,
     /// 界面语言（zh / zh-tw / en，设置页与托盘菜单同步切换）
     pub language: String,
+    /// 最近打开的工作目录数量上限（最少 3）
+    pub recent_limit: usize,
 }
 
 impl Default for AppSettings {
@@ -550,6 +552,7 @@ impl Default for AppSettings {
             default_headers: vec![],
             export_format: "postman".into(),
             language: "zh".into(),
+            recent_limit: 5,
         }
     }
 }
@@ -700,8 +703,15 @@ fn vcs_commit_push(state: State<'_, WorkspaceState>, remote: bool) -> Result<Str
 
 // ==================== 最近打开的工作目录 ====================
 
-/// 最近打开工作目录数量上限
-const MAX_RECENT: usize = 8;
+/// 最近打开工作目录数量下限
+const MIN_RECENT: usize = 3;
+
+/// 最近打开工作目录数量（读设置，最少 MIN_RECENT 个）
+fn recent_limit(app: &AppHandle) -> usize {
+    load_settings(app.clone())
+        .map(|s| s.recent_limit.clamp(MIN_RECENT, 100))
+        .unwrap_or(MIN_RECENT)
+}
 
 fn recent_path(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app
@@ -719,13 +729,13 @@ fn read_recent(app: &AppHandle) -> Vec<String> {
     }
 }
 
-/// 记录最近打开的工作目录（去重、最新的排最前、最多保留 MAX_RECENT 个）
+/// 记录最近打开的工作目录（去重、最新的排最前、最多保留 recent_limit 个）
 fn record_recent(app: &AppHandle, path: &str) {
     let Ok(p) = recent_path(app) else { return };
     let mut list = read_recent(app);
     list.retain(|x| x != path);
     list.insert(0, path.to_string());
-    list.truncate(MAX_RECENT);
+    list.truncate(recent_limit(app));
     if let Some(parent) = p.parent() {
         let _ = fs::create_dir_all(parent);
     }
@@ -734,7 +744,9 @@ fn record_recent(app: &AppHandle, path: &str) {
 
 #[tauri::command]
 fn get_recent_workspaces(app: AppHandle) -> Vec<String> {
-    read_recent(&app)
+    let mut list = read_recent(&app);
+    list.truncate(recent_limit(&app));
+    list
 }
 
 /// 按路径直接打开工作目录（开始页「最近打开」点击时调用）

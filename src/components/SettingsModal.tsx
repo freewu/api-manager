@@ -162,6 +162,20 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
               />
             </div>
             <div className="settings-desc">{t("settings.wsDesc")}</div>
+            <div className="settings-row settings-port-row">
+              <span className="settings-label">{t("settings.recentLimit")}</span>
+              <input
+                className="settings-port-input"
+                type="number"
+                min={3}
+                value={settings.recentLimit}
+                onChange={(e) =>
+                  patch({ recentLimit: Math.max(3, Number(e.target.value.replace(/\D/g, "")) || 3) })
+                }
+              />
+              <span className="settings-desc-inline">≥3</span>
+            </div>
+            <div className="settings-desc">{t("settings.recentLimitDesc")}</div>
           </section>
 
           <section id="settings-language" className="settings-section">
