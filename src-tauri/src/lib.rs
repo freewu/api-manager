@@ -159,7 +159,8 @@ pub struct ApiFile {
     pub doc_params: Vec<DocParam>,
 }
 
-/// 入参文档条目：位置（query / path / body）+ 参数名 + 类型 + 说明
+/// 入参/出参文档条目：位置（header / query / path / body / resp_success / resp_fail）
+/// + 参数名 + 类型 + 说明；List 可带元素类型，Object 可带对象名称与下级字段（树状）
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DocParam {
@@ -167,6 +168,15 @@ pub struct DocParam {
     pub key: String,
     pub r#type: String,
     pub description: String,
+    /// List 类型的元素类型
+    #[serde(default)]
+    pub item_type: String,
+    /// Object 类型的对象名称
+    #[serde(default)]
+    pub object_name: String,
+    /// 下级字段（树状，递归）
+    #[serde(default)]
+    pub children: Vec<DocParam>,
 }
 
 impl Default for DocParam {
@@ -176,6 +186,9 @@ impl Default for DocParam {
             key: String::new(),
             r#type: String::new(),
             description: String::new(),
+            item_type: String::new(),
+            object_name: String::new(),
+            children: vec![],
         }
     }
 }

@@ -90,6 +90,8 @@ const emptyInfoForm = (): InfoForm => ({
 export default function App() {
   const [workspace, setWorkspace] = useState<string | null>(null);
   const [recent, setRecent] = useState<string[]>([]);
+  const [showRecent, setShowRecent] = useState(false);
+  const recentBtnRef = useRef<HTMLDivElement | null>(null);
   const [tree, setTree] = useState<TreeNode | null>(null);
   const [rootInfo, setRootInfo] = useState<InfoJson>({});
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
@@ -172,6 +174,15 @@ export default function App() {
     getRecentWorkspaces()
       .then(setRecent)
       .catch(() => {});
+
+    // 点击「最近目录」按钮外部时关闭下拉
+    const closeRecent = (e: MouseEvent) => {
+      if (recentBtnRef.current && !recentBtnRef.current.contains(e.target as Node)) {
+        setShowRecent(false);
+      }
+    };
+    document.addEventListener("mousedown", closeRecent);
+    return () => document.removeEventListener("mousedown", closeRecent);
     loadSettings().then(setSettings).catch(() => {});
     mockStatus().then(setMock).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -947,6 +958,37 @@ export default function App() {
         </div>
         <div className="toolbar-spacer" />
         <div className="env-box">
+          <div className="recent-btn-wrap" ref={recentBtnRef}>
+            <button
+              className={`btn ${showRecent ? "active" : ""}`}
+              title="选择之前打开过的目录"
+              onClick={() => setShowRecent((s) => !s)}
+            >
+              🕘
+            </button>
+            {showRecent && (
+              <div className="recent-dropdown">
+                <div className="recent-dropdown-title">最近打开的目录</div>
+                {recent.length === 0 ? (
+                  <div className="recent-dropdown-empty">暂无记录</div>
+                ) : (
+                  recent.map((p) => (
+                    <button
+                      key={p}
+                      className="recent-dropdown-item"
+                      title={p}
+                      onClick={() => {
+                        setShowRecent(false);
+                        void handleOpenRecent(p);
+                      }}
+                    >
+                      📁 {p}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
           <span style={{ fontSize: 12, color: "var(--text-dim)" }}>环境</span>
           <select
             className="env-select"

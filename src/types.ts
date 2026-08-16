@@ -40,11 +40,26 @@ export interface ApiFile {
   docParams: DocParam[];
 }
 
+export type DocSource = "header" | "query" | "path" | "body" | "resp_success" | "resp_fail";
+
+/** 接口文档字段类型选项 */
+export const DOC_TYPES = ["String", "Integer", "Float", "Boolean", "List", "Object"];
+
 export interface DocParam {
-  source: "query" | "path" | "body";
+  source: DocSource;
   key: string;
   type: string;
   description: string;
+  /** List 类型的元素类型 */
+  itemType: string;
+  /** Object 类型的对象名称 */
+  objectName: string;
+  /** 下级字段（树状） */
+  children: DocParam[];
+}
+
+export function emptyDocParam(source: DocSource): DocParam {
+  return { source, key: "", type: "", description: "", itemType: "", objectName: "", children: [] };
 }
 
 /** 请求示例文件内容（.examples/<接口uuid>/<示例名称hash值>.json） */
