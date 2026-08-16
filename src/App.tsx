@@ -1095,7 +1095,6 @@ export default function App() {
         <div className="logo">
           <img className="logo-img" src={logoUrl} alt="API Manager" />
           <span>API Manager</span>
-          {version && <span className="logo-version">v{version}</span>}
         </div>
         <div className="workspace-chip" title="点击更换工作目录" onClick={handlePickWorkspace}>
           📁 {workspace}
