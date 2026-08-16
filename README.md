@@ -2,6 +2,17 @@
 
 使用 **Tauri 2** 开发的 API 接口文档、接口测试与 Mock 工具，界面布局参考 Postman。
 
+## 界面预览
+
+| | |
+| --- | --- |
+| ![主界面](docs/images/main.png) | ![Mock 服务](docs/images/mock.png) |
+| ![一键导出](docs/images/export.png) | ![代码生成](docs/images/code-generator.png) |
+| ![全局环境变量](docs/images/global-env.png) | ![请求历史](docs/images/history.png) |
+| ![多格式导入](docs/images/import.png) | ![目录即集合](docs/images/examples.png) |
+| ![演示接口](docs/images/demo.png) | ![版本对比](docs/images/version-diff.png) |
+| ![统计](docs/images/stat.png) | ![设置](docs/images/setting.png) |
+
 ## 功能特性
 
 - 📁 **目录即集合**：打开应用时选择一个工作目录，目录结构即接口集合结构
@@ -16,7 +27,7 @@
 - 🗂️ **Postman 风格布局**：左侧接口树（支持搜索、分组、增删改、复制）、中间请求编辑器、下方响应面板
 - 🌐 **路径参数 / Query / Headers / Body** 完整支持
 - 🧩 接口支持 `{参数名}` 路径模板、模板变量 `{{path.id}}`、`{{query.page}}`
-- 📥 **Postman 导入**：一键导入 Postman Collection 全部接口，集合级 `variable` 自动合并到环境变量集
+- 📥 **多格式导入**：支持 Postman Collection、OpenAPI (Swagger) 协议、Markdown 接口文档一键导入；Postman 集合级 `variable` 自动合并到环境变量集
 
 ## 目录结构约定
 

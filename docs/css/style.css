@@ -133,12 +133,70 @@ img { max-width: 100%; display: block; }
   position: relative;
   z-index: 5;
 }
-.shot-img {
+.shot-img { width: 100%; display: block; }
+
+/* ---------- Hero 轮播 ---------- */
+.carousel {
+  position: relative;
+  overflow: hidden;
   border-radius: 16px 16px 0 0;
   border: 6px solid rgba(255, 255, 255, 0.35);
   border-bottom: none;
   box-shadow: 0 -12px 50px rgba(0, 0, 0, 0.28);
+  background: #fff;
 }
+.carousel-track { display: flex; transition: transform 0.5s ease; }
+.carousel-slide { position: relative; min-width: 100%; }
+.carousel-cap {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  background: rgba(15, 23, 42, 0.55);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  backdrop-filter: blur(4px);
+}
+.carousel-nav {
+  position: absolute;
+  top: 44%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(15, 23, 42, 0.45);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.carousel-nav:hover { background: rgba(15, 23, 42, 0.7); }
+.carousel-prev { left: 12px; }
+.carousel-next { right: 12px; }
+.carousel-dots {
+  position: absolute;
+  right: 14px;
+  bottom: 16px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+.carousel-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  padding: 0;
+}
+.carousel-dot.active { background: #fff; }
 
 /* ---------- 通用分区 ---------- */
 .sec-inner { max-width: 1100px; margin: 0 auto; padding: 64px 24px; }

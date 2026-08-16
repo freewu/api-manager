@@ -53,8 +53,62 @@
       </div>
     </div>
     <div class="hero-shot">
-      <img src="images/main.png" alt="API Manager 主界面" class="shot-img" />
-    </div>
+        <div class="carousel" id="heroCarousel">
+          <div class="carousel-track" id="carouselTrack">
+            <div class="carousel-slide">
+              <img src="images/main.png" alt="API Manager 主界面" class="shot-img" />
+              <div class="carousel-cap" data-i18n="cap.main">主界面</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/mock.png" alt="Mock 服务" class="shot-img" />
+              <div class="carousel-cap" data-i18n="cap.mock">Mock 服务</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/export.png" alt="一键导出" class="shot-img" />
+              <div class="carousel-cap" data-i18n="cap.export">一键导出</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/code-generator.png" alt="代码生成" class="shot-img" />
+              <div class="carousel-cap" data-i18n="cap.codegen">代码生成</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/global-env.png" alt="全局环境变量" class="shot-img" />
+              <div class="carousel-cap" data-i18n="cap.env">全局环境变量</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/history.png" alt="请求历史" class="shot-img" />
+              <div class="carousel-cap" data-i18n="cap.history">请求历史</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/import.png" alt="多种格式导入" class="shot-img" />
+              <div class="carousel-cap" data-i18n="cap.import">多种格式导入</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/examples.png" alt="目录即集合" class="shot-img" />
+              <div class="carousel-cap" data-i18n="cap.examples">目录即集合</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/demo.png" alt="演示接口" class="shot-img" />
+              <div class="carousel-cap" data-i18n="cap.demo">演示接口</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/version-diff.png" alt="版本对比" class="shot-img" />
+              <div class="carousel-cap" data-i18n="cap.version">版本对比</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/stat.png" alt="统计" class="shot-img" />
+              <div class="carousel-cap" data-i18n="cap.stat">统计</div>
+            </div>
+            <div class="carousel-slide">
+              <img src="images/setting.png" alt="设置" class="shot-img" />
+              <div class="carousel-cap" data-i18n="cap.setting">设置</div>
+            </div>
+          </div>
+          <button class="carousel-nav carousel-prev" type="button" aria-label="上一张">‹</button>
+          <button class="carousel-nav carousel-next" type="button" aria-label="下一张">›</button>
+          <div class="carousel-dots" id="carouselDots"></div>
+        </div>
+      </div>
   </section>
 
   <!-- 功能特性 -->
@@ -113,9 +167,9 @@
         </div>
 
         <div class="feat-card">
-          <div class="feat-shot"><img src="images/import.png" alt="Postman 导入" /></div>
-          <h3 data-i18n="f9.title">Postman 导入</h3>
-          <p data-i18n="f9.desc">一键导入 Postman Collection，集合级 variable 自动合并到环境变量集，迁移零成本。</p>
+          <div class="feat-shot"><img src="images/import.png" alt="多种格式导入" /></div>
+          <h3 data-i18n="f9.title">多格式导入</h3>
+          <p data-i18n="f9.desc">支持 Postman Collection、OpenAPI (Swagger) 协议、Markdown 文档导入，接口与集合变量一键迁移。</p>
         </div>
 
         <div class="feat-card">

@@ -31,8 +31,8 @@
       "f7.desc": "开发 / 测试 / 生产多环境一键切换，{{变量名}} 自动替换到 URL、Headers、Query、Body 与 Mock 响应。",
       "f8.title": "请求历史",
       "f8.desc": "自动记录历史请求，随时回看、一键回填重发，调试效率翻倍。",
-      "f9.title": "Postman 导入",
-      "f9.desc": "一键导入 Postman Collection，集合级 variable 自动合并到环境变量集，迁移零成本。",
+      "f9.title": "多格式导入",
+      "f9.desc": "支持 Postman Collection、OpenAPI (Swagger) 协议、Markdown 文档导入，接口与集合变量一键迁移。",
       "f10.title": "版本管理",
       "f10.desc": "接口可保存多个版本，左右对比差异，随时回退到任意历史版本。",
       "f11.title": "统计",
@@ -54,6 +54,18 @@
       "stack.vite.desc": "前端构建工具",
       "stack.backend": "后端 · Axum 提供 Mock 服务，reqwest 发送测试请求",
       "stack.just.desc": "命令运行器 · 统一开发与构建命令",
+      "cap.main": "主界面",
+      "cap.mock": "Mock 服务",
+      "cap.export": "一键导出",
+      "cap.codegen": "代码生成",
+      "cap.env": "全局环境变量",
+      "cap.history": "请求历史",
+      "cap.import": "多种格式导入",
+      "cap.examples": "目录即集合",
+      "cap.demo": "演示接口",
+      "cap.version": "版本对比",
+      "cap.stat": "统计",
+      "cap.setting": "设置",
       "cta.title": "现在就试试 API Manager",
       "cta.desc": "轻量 · 高效 · 开源 —— API 开发调试从未如此简单",
       "footer.text": "基于 Tauri 2 的 API 文档、测试与 Mock 工具 · 开源项目",
@@ -87,8 +99,8 @@
       "f7.desc": "Switch dev / test / prod environments instantly; {{variable}} placeholders resolve in URL, Headers, Query, Body, and Mock responses.",
       "f8.title": "Request History",
       "f8.desc": "Every request is recorded automatically; revisit or re-run past requests with one click.",
-      "f9.title": "Postman Import",
-      "f9.desc": "Import an entire Postman Collection in one click; collection-level variables merge into environment sets automatically.",
+      "f9.title": "Multi-format Import",
+      "f9.desc": "Import Postman Collection, OpenAPI (Swagger), or Markdown docs — APIs and collection variables migrate in one click.",
       "f10.title": "Versioning",
       "f10.desc": "Save multiple versions of an API, diff them side by side, and roll back to any historical version.",
       "f11.title": "Statistics",
@@ -110,6 +122,18 @@
       "stack.vite.desc": "Frontend build tool",
       "stack.backend": "Backend · Axum powers the Mock server, reqwest sends test requests",
       "stack.just.desc": "Command runner · unified dev & build commands",
+      "cap.main": "Main UI",
+      "cap.mock": "Mock Server",
+      "cap.export": "One-click Export",
+      "cap.codegen": "Code Generation",
+      "cap.env": "Environment Variables",
+      "cap.history": "Request History",
+      "cap.import": "Multi-format Import",
+      "cap.examples": "Directories as Collections",
+      "cap.demo": "Demo APIs",
+      "cap.version": "Version Diff",
+      "cap.stat": "Statistics",
+      "cap.setting": "Settings",
       "cta.title": "Try API Manager Now",
       "cta.desc": "Lightweight · Efficient · Open source — API development and debugging made simple",
       "footer.text": "A Tauri 2 based API documentation, testing & Mock tool · Open source",
@@ -145,4 +169,51 @@
   });
 
   apply(lang);
+
+  // ---------- Hero 轮播（12 张截图自动切换 + 左右按钮 + 圆点指示） ----------
+  const track = document.getElementById("carouselTrack");
+  const dotsBox = document.getElementById("carouselDots");
+  const box = document.getElementById("heroCarousel");
+  const slides = track ? Array.from(track.children) : [];
+  let idx = 0;
+  let timer = null;
+
+  function show(i) {
+    if (!slides.length) return;
+    idx = (i + slides.length) % slides.length;
+    track.style.transform = "translateX(-" + idx * 100 + "%)";
+    if (dotsBox) {
+      Array.from(dotsBox.children).forEach((d, k) => {
+        d.classList.toggle("active", k === idx);
+      });
+    }
+  }
+
+  function restart() {
+    if (timer) clearInterval(timer);
+    timer = setInterval(() => show(idx + 1), 4000);
+  }
+
+  if (slides.length && dotsBox) {
+    slides.forEach((_, k) => {
+      const dot = document.createElement("button");
+      dot.type = "button";
+      dot.className = "carousel-dot" + (k === 0 ? " active" : "");
+      dot.setAttribute("aria-label", "第 " + (k + 1) + " 张");
+      dot.addEventListener("click", () => {
+        show(k);
+        restart();
+      });
+      dotsBox.appendChild(dot);
+    });
+    const prev = document.querySelector(".carousel-prev");
+    const next = document.querySelector(".carousel-next");
+    if (prev) prev.addEventListener("click", () => { show(idx - 1); restart(); });
+    if (next) next.addEventListener("click", () => { show(idx + 1); restart(); });
+    if (box) {
+      box.addEventListener("mouseenter", () => timer && clearInterval(timer));
+      box.addEventListener("mouseleave", restart);
+    }
+    restart();
+  }
 })();
