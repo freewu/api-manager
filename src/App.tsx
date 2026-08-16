@@ -663,6 +663,30 @@ export default function App() {
     if (!api || !lastRequest || !response) return;
     const snap = lastApiSnapshot || api;
     try {
+      // 从最终请求 URL 解析出 query 参数（用户在 URL 里直接写的 ?a=1&b=2 也要收录）
+      const urlQuery: [string, string][] = [];
+      const qi = lastRequest.url.indexOf("?");
+      if (qi >= 0) {
+        for (const part of lastRequest.url.slice(qi + 1).split("&")) {
+          if (!part) continue;
+          try {
+            const eq = part.indexOf("=");
+            const k = eq >= 0 ? decodeURIComponent(part.slice(0, eq)) : decodeURIComponent(part);
+            const v = eq >= 0 ? decodeURIComponent(part.slice(eq + 1)) : "";
+            if (k) urlQuery.push([k, v]);
+          } catch {
+            // 编码异常的参数跳过
+          }
+        }
+      }
+      // 表格 query 优先，URL 中表格没有的参数补充进来（避免遗漏 URL 上直接写的参数）
+      const reqQuery: [string, string][] = snap.query
+        .filter((q) => q.enabled && q.key.trim())
+        .map((q) => [q.key, q.value]);
+      const seen = new Set(reqQuery.map(([k]) => k));
+      for (const [k, v] of urlQuery) {
+        if (!seen.has(k)) reqQuery.push([k, v]);
+      }
       await saveExample(api.uuid || crypto.randomUUID(), name, {
         name,
         time: Math.floor(Date.now() / 1000),
@@ -672,9 +696,7 @@ export default function App() {
         reqPath: snap.params
           .filter((p) => p.enabled && p.key.trim())
           .map((p) => [p.key, p.value]),
-        reqQuery: snap.query
-          .filter((q) => q.enabled && q.key.trim())
-          .map((q) => [q.key, q.value]),
+        reqQuery,
         reqBody: lastRequest.body,
         status: response.status,
         statusText: response.statusText,
