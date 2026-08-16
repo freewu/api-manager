@@ -315,10 +315,25 @@ export default function App() {
     return node;
   }
 
+  // 递归更新树中指定路径节点的 mock 状态（切换 Mock 开关时即时刷新左侧圆点）
+  function patchNodeMock(node: TreeNode, path: string, mockEnabled: boolean): TreeNode {
+    if (node.path === path) return { ...node, mockEnabled };
+    if (node.children) {
+      return { ...node, children: node.children.map((c) => patchNodeMock(c, path, mockEnabled)) };
+    }
+    return node;
+  }
+
   useEffect(() => {
     if (!api || !selectedPath) return;
     setTree((t) => (t ? patchNodeMethod(t, selectedPath, api.method) : t));
   }, [selectedPath, api?.method]);
+
+  // Mock 开关变化时同步刷新左侧列表的 Mock 圆点
+  useEffect(() => {
+    if (!api || !selectedPath) return;
+    setTree((t) => (t ? patchNodeMock(t, selectedPath, !!api.mock?.enabled) : t));
+  }, [selectedPath, api?.mock?.enabled]);
 
   const selectNode = useCallback(
     async (node: TreeNode) => {
