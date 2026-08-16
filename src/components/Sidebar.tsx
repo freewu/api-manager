@@ -8,6 +8,8 @@ export type AppView = "api" | "history";
 interface Props {
   width?: number;
   tree: TreeNode | null;
+  /** 工作目录树加载中（显示加载动画） */
+  loading?: boolean;
   selectedPath: string | null;
   view: AppView;
   onSwitchView: (v: AppView) => void;
@@ -313,7 +315,7 @@ function NodeRow({
 }
 
 export function Sidebar(props: Props) {
-  const { tree, onNewApi, onNewFolder, onRename, onCopy, onEditInfo, onDelete, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
+  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onEditInfo, onDelete, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
   const [importMenu, setImportMenu] = useState(false);
   const [filter, setFilter] = useState("");
   const [menu, setMenu] = useState<CtxMenu | null>(null);
@@ -452,7 +454,18 @@ export function Sidebar(props: Props) {
             ＋ 新建分组
           </div>
         )}
-        {!tree && <div className="tree-root">暂无数据</div>}
+        {loading && tree && (
+          <div className="tree-loading-inline">
+            <span className="spinner" />
+          </div>
+        )}
+        {loading && !tree && (
+          <div className="tree-loading">
+            <span className="spinner" />
+            <span>正在加载工作目录…</span>
+          </div>
+        )}
+        {!loading && !tree && <div className="tree-root">暂无数据</div>}
       </div>
       {view === "history" && (
         <HistoryList

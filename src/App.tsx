@@ -102,6 +102,8 @@ export default function App() {
   const [showRecent, setShowRecent] = useState(false);
   const recentBtnRef = useRef<HTMLDivElement | null>(null);
   const [tree, setTree] = useState<TreeNode | null>(null);
+  // 工作目录树加载中（首次加载 / 打开工作区 / 手动刷新时显示加载动画）
+  const [treeLoading, setTreeLoading] = useState(false);
   const [rootInfo, setRootInfo] = useState<InfoJson>({});
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [api, setApi] = useState<ApiFile | null>(null);
@@ -276,26 +278,31 @@ export default function App() {
   }, []);
 
   async function loadAll(ws: string) {
-    const [t, info, e] = await Promise.all([readTree(), readInfo(ws), readEnv()]);
-    setTree(t);
-    setRootInfo(info || {});
-    const envData = e || emptyEnv();
-    setEnvs(envData);
-    updateTrayEnv(envData.active || "").catch(() => {});
-    // 检测工作目录版本控制（.git / .svn）
-    vcsInfo().then((r) => setVcs(r.vcs)).catch(() => setVcs(null));
-    // 自动选中第一个接口
-    const first = findFirstApi(t);
-    if (first) {
-      setSelectedPath(first.path);
-      const data = await readApi(first.path);
-      setApi(data);
-      setDirty(false);
-      void refreshVersion(data.uuid);
-    } else {
-      setSelectedPath(null);
-      setApi(null);
-      setCurrentVersion(0);
+    setTreeLoading(true);
+    try {
+      const [t, info, e] = await Promise.all([readTree(), readInfo(ws), readEnv()]);
+      setTree(t);
+      setRootInfo(info || {});
+      const envData = e || emptyEnv();
+      setEnvs(envData);
+      updateTrayEnv(envData.active || "").catch(() => {});
+      // 检测工作目录版本控制（.git / .svn）
+      vcsInfo().then((r) => setVcs(r.vcs)).catch(() => setVcs(null));
+      // 自动选中第一个接口
+      const first = findFirstApi(t);
+      if (first) {
+        setSelectedPath(first.path);
+        const data = await readApi(first.path);
+        setApi(data);
+        setDirty(false);
+        void refreshVersion(data.uuid);
+      } else {
+        setSelectedPath(null);
+        setApi(null);
+        setCurrentVersion(0);
+      }
+    } finally {
+      setTreeLoading(false);
     }
   }
 
@@ -308,9 +315,14 @@ export default function App() {
     return null;
   }
 
-  async function reloadTree() {
-    const t = await readTree();
-    setTree(t);
+  async function reloadTree(showLoading = false) {
+    if (showLoading) setTreeLoading(true);
+    try {
+      const t = await readTree();
+      setTree(t);
+    } finally {
+      if (showLoading) setTreeLoading(false);
+    }
   }
 
   // 递归更新树中指定路径节点的 method（修改 HTTP 方法时即时刷新左侧徽标）
@@ -1138,7 +1150,7 @@ export default function App() {
             </span>
           </div>
         )}
-        <button className="btn" onClick={async () => { await reloadTree(); showToast("已刷新"); }}>
+        <button className="btn" onClick={async () => { await reloadTree(true); showToast("已刷新"); }}>
           🔄
         </button>
       </div>
@@ -1147,6 +1159,7 @@ export default function App() {
         <Sidebar
           width={sidebarWidth}
           tree={tree}
+          loading={treeLoading}
           selectedPath={selectedPath}
           view={view}
           onSwitchView={switchView}

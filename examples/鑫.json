@@ -1,0 +1,25 @@
+{
+  "uuid": "01607ba7-196e-48cf-baeb-de883dffac8f",
+  "name": "鑫",
+  "method": "GET",
+  "path": "/",
+  "url": "",
+  "description": "",
+  "headers": [],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "",
+    "raw": "",
+    "form": []
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": [],
+  "docParams": []
+}

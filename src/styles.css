@@ -410,6 +410,41 @@ body {
   justify-content: space-between;
 }
 
+/* 工作目录加载动画 */
+.spinner {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.tree-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 16px;
+  color: var(--text-dim);
+  font-size: 13px;
+  user-select: none;
+}
+.tree-loading-inline {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 2px;
+}
+.tree-loading-inline .spinner {
+  width: 14px;
+  height: 14px;
+}
+
 .node {
   display: flex;
   align-items: center;
@@ -2896,15 +2931,19 @@ body {
 }
 
 .codegen-lang-select {
-  height: 30px;
-  padding: 0 8px;
+  height: 34px;
+  min-width: 230px;
+  padding: 0 12px;
   cursor: pointer;
   color: var(--text);
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-size: 12.5px;
+  font-size: 13px;
   outline: none;
+}
+.codegen-lang-select:hover {
+  border-color: var(--accent);
 }
 
 .kv-filetype select {
