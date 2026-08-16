@@ -577,7 +577,6 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
                   <th>字段名</th>
                   <th style={{ width: 130 }}>值</th>
                   <th style={{ width: 108 }}>类型</th>
-                  <th style={{ width: 108 }}>元素类型</th>
                   <th style={{ width: 120 }}>对象名</th>
                   <th>说明</th>
                   <th style={{ width: 62 }}>操作</th>
@@ -586,12 +585,12 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
               <tbody>
                 {failDocs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="doc-empty">
+                    <td colSpan={6} className="doc-empty">
                       暂无字段，点击「＋ 添加字段」开始编写请求失败响应字段
                     </td>
                   </tr>
                 ) : (
-                  failDocs.map((d) => renderRow(manualView(d, "resp_fail", []), 0, "resp_fail", true))
+                  failDocs.map((d) => renderRow(manualView(d, "resp_fail", []), 0, "resp_fail", true, true))
                 )}
               </tbody>
             </table>
@@ -609,8 +608,6 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
     value: string;
     type: string;
     typeAuto: boolean;
-    itemType: string;
-    itemAuto: boolean;
     objectName: string;
     description: string;
     children: RowView[];
@@ -628,8 +625,6 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
       value: node.value,
       type: storedType || node.guess || "",
       typeAuto: !storedType,
-      itemType: doc?.itemType || node.guessItem || "",
-      itemAuto: !doc?.itemType,
       objectName: doc?.objectName || node.key,
       description: doc?.description || "",
       children: (node.children || []).map((c) => derivedView(c, source, keys)),
@@ -647,8 +642,6 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
       value: "",
       type: t,
       typeAuto: false,
-      itemType: d.itemType || "",
-      itemAuto: false,
       objectName: d.objectName || d.key,
       description: d.description || "",
       children: (d.children || []).map((c) => manualView(c, source, keys)),
@@ -658,8 +651,6 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
 
   const updateType = (source: DocSource, keys: string[], v: string) =>
     updateDocAt(source, keys, { type: v });
-  const updateItem = (source: DocSource, keys: string[], v: string) =>
-    updateDocAt(source, keys, { itemType: v });
   const updateName = (source: DocSource, keys: string[], v: string) =>
     updateDocAt(source, keys, { objectName: v });
   const updateDesc = (source: DocSource, keys: string[], v: string) =>
@@ -667,8 +658,7 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
   const updateKey = (source: DocSource, keys: string[], v: string) =>
     updateDocAt(source, keys, { key: v });
 
-  const renderRow = (row: RowView, depth: number, source: DocSource, manual: boolean) => {
-    const isList = row.type === "List";
+  const renderRow = (row: RowView, depth: number, source: DocSource, manual: boolean, showObjectName: boolean) => {
     const isObject = row.type === "Object";
     return (
       <Fragment key={row.keys.join("/")}>
@@ -706,35 +696,20 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
               ))}
             </select>
           </td>
-          <td>
-            {isList && (
-              <select
-                className={`doc-type-select${row.itemAuto ? " doc-type-auto" : ""}`}
-                value={row.itemType}
-                title="List 元素类型"
-                onChange={(e) => updateItem(source, row.keys, e.target.value)}
-              >
-                <option value="">元素类型</option>
-                {DOC_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            )}
-          </td>
-          <td>
-            {isObject && (
-              <input
-                className="doc-name-input"
-                value={row.objectName}
-                placeholder={row.key}
-                title="对象名称"
-                spellCheck={false}
-                onChange={(e) => updateName(source, row.keys, e.target.value)}
-              />
-            )}
-          </td>
+          {showObjectName && (
+            <td>
+              {isObject && (
+                <input
+                  className="doc-name-input"
+                  value={row.objectName}
+                  placeholder={row.key}
+                  title="对象名称"
+                  spellCheck={false}
+                  onChange={(e) => updateName(source, row.keys, e.target.value)}
+                />
+              )}
+            </td>
+          )}
           <td>
             <input
               value={row.description}
@@ -756,12 +731,12 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
             )}
           </td>
         </tr>
-        {row.children.map((c) => renderRow(c, depth + 1, source, manual))}
+        {row.children.map((c) => renderRow(c, depth + 1, source, manual, showObjectName))}
       </Fragment>
     );
   };
 
-  const renderBlock = (title: string, badgeClass: string, rows: RowView[], source: DocSource, manual: boolean) => (
+  const renderBlock = (title: string, badgeClass: string, rows: RowView[], source: DocSource, manual: boolean, showObjectName: boolean) => (
     <div className="doc-block">
       <div className="doc-block-title">
         <span className={`doc-source ${badgeClass}`}>{title}</span>
@@ -777,13 +752,12 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
             <th>字段名</th>
             <th style={{ width: 130 }}>值</th>
             <th style={{ width: 108 }}>类型</th>
-            <th style={{ width: 108 }}>元素类型</th>
-            <th style={{ width: 120 }}>对象名</th>
+            {showObjectName && <th style={{ width: 120 }}>对象名</th>}
             <th>说明</th>
             {manual && <th style={{ width: 62 }}>操作</th>}
           </tr>
         </thead>
-        <tbody>{rows.map((r) => renderRow(r, 0, source, manual))}</tbody>
+        <tbody>{rows.map((r) => renderRow(r, 0, source, manual, showObjectName))}</tbody>
       </table>
     </div>
   );
@@ -807,7 +781,14 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
         接口文档 <span className="help">按请求 Header / Query / Path / Body / 响应分块；响应区分请求成功与请求失败</span>
       </div>
       {blocks.map((b) =>
-        renderBlock(b.title, badgeFor(b.source), b.nodes.map((n) => derivedView(n, b.source, [])), b.source, false)
+        renderBlock(
+          b.title,
+          badgeFor(b.source),
+          b.nodes.map((n) => derivedView(n, b.source, [])),
+          b.source,
+          false,
+          b.source === "body"
+        )
       )}
       {(respSuccessNodes.length > 0 || failDocs.length > 0) && (
         <div className="doc-block doc-block-resp">
@@ -823,13 +804,14 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
                     <th>字段名</th>
                     <th style={{ width: 130 }}>值</th>
                     <th style={{ width: 108 }}>类型</th>
-                    <th style={{ width: 108 }}>元素类型</th>
                     <th style={{ width: 120 }}>对象名</th>
                     <th>说明</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {respSuccessNodes.map((n) => renderRow(derivedView(n, "resp_success", []), 0, "resp_success", false))}
+                  {respSuccessNodes.map((n) =>
+                    renderRow(derivedView(n, "resp_success", []), 0, "resp_success", false, true)
+                  )}
                 </tbody>
               </table>
             </div>
@@ -847,7 +829,6 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
                   <th>字段名</th>
                   <th style={{ width: 130 }}>值</th>
                   <th style={{ width: 108 }}>类型</th>
-                  <th style={{ width: 108 }}>元素类型</th>
                   <th style={{ width: 120 }}>对象名</th>
                   <th>说明</th>
                   <th style={{ width: 62 }}>操作</th>
@@ -856,12 +837,12 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
               <tbody>
                 {failDocs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="doc-empty">
+                    <td colSpan={6} className="doc-empty">
                       暂无字段，点击「＋ 添加字段」开始编写请求失败响应字段
                     </td>
                   </tr>
                 ) : (
-                  failDocs.map((d) => renderRow(manualView(d, "resp_fail", []), 0, "resp_fail", true))
+                  failDocs.map((d) => renderRow(manualView(d, "resp_fail", []), 0, "resp_fail", true, true))
                 )}
               </tbody>
             </table>
