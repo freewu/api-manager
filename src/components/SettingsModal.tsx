@@ -11,6 +11,10 @@ interface Props {
   appVersion: string;
   /** 工作目录版本控制类型（.git / .svn），为空时不显示「同步远程」设置 */
   vcs?: "git" | "svn" | null;
+  /** 当前工作区名称（根 __info.json 的 name，无则取目录名） */
+  workspaceName: string;
+  /** 保存工作区名称（写入根 __info.json） */
+  onSaveWorkspaceName: (name: string) => Promise<void>;
   onClose: () => void;
   onSave: (s: AppSettings) => void;
 }
@@ -26,6 +30,7 @@ const ISSUE_URL = "https://github.com/freewu/api-manager/issues/new";
 
 /** 左侧导航（目录）项：点击滚动到对应分区 */
 const NAV = [
+  { id: "workspace", icon: "📁", title: "工作区", desc: "名称 · 路径" },
   { id: "appearance", icon: "🎨", title: "外观", desc: "显示模式 · 预览" },
   { id: "version", icon: "📦", title: "接口版本", desc: "版本快照开关" },
   { id: "mock", icon: "🛡️", title: "Mock 服务", desc: "本地 Mock · 端口" },
@@ -65,8 +70,12 @@ function LinkRow({ icon, title, desc, url }: { icon: string; title: string; desc
   );
 }
 
-export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Props) {
+export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSaveWorkspaceName, onClose, onSave }: Props) {
   const [active, setActive] = useState<string>("appearance");
+  const [wsName, setWsName] = useState(workspaceName);
+  // 保存工作区名称后（props 更新）同步本地输入框
+  useEffect(() => setWsName(workspaceName), [workspaceName]);
+  const [wsSaving, setWsSaving] = useState(false);
   const patch = (p: Partial<AppSettings>) => onSave({ ...settings, ...p });
 
   // 点击导航 -> 平滑滚动到对应分区
@@ -122,6 +131,35 @@ export function SettingsModal({ settings, appVersion, vcs, onClose, onSave }: Pr
         </div>
 
         <div className="settings-panel" id="settings-panel">
+          <section id="settings-workspace" className="settings-section">
+            <div className="settings-panel-title">工作区</div>
+            <div className="settings-row settings-port-row">
+              <span className="settings-label">工作区名称</span>
+              <input
+                className="settings-port-input settings-ws-input"
+                value={wsName}
+                placeholder="工作区名称"
+                onChange={(e) => setWsName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void onSaveWorkspaceName(wsName).finally(() => setWsSaving(false));
+                }}
+              />
+              <button
+                className="btn"
+                disabled={wsSaving || !wsName.trim() || wsName.trim() === workspaceName}
+                onClick={() => {
+                  setWsSaving(true);
+                  void onSaveWorkspaceName(wsName).finally(() => setWsSaving(false));
+                }}
+              >
+                {wsSaving ? "保存中…" : "保存名称"}
+              </button>
+            </div>
+            <div className="settings-desc">
+              工作区名称即根目录 __info.json 的 name，显示于应用各处；不设置时使用目录名
+            </div>
+          </section>
+
           <section id="settings-appearance" className="settings-section">
             <div className="settings-panel-title">外观</div>
             <div className="settings-row">

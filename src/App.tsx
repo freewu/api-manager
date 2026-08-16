@@ -999,6 +999,24 @@ export default function App() {
     }
   };
 
+  // 修改工作区名称（写入根目录 __info.json）
+  const saveWorkspaceName = async (name: string) => {
+    const n = name.trim();
+    if (!n) {
+      showToast("工作区名称不能为空");
+      return;
+    }
+    if (!workspace) return;
+    try {
+      await saveInfo(workspace, { name: n });
+      setRootInfo((prev) => ({ ...prev, name: n }));
+      await reloadTree();
+      showToast("工作区名称已更新");
+    } catch (e) {
+      showToast("保存失败: " + e);
+    }
+  };
+
   // 设置即时生效：每次修改直接持久化，无需点保存
   const handleSaveSettings = async (s: AppSettings) => {
     setSettings(s);
@@ -1349,6 +1367,11 @@ export default function App() {
           settings={settings}
           appVersion={version}
           vcs={null} // 同步远程设置暂时隐藏
+          workspaceName={
+            rootInfo.name ||
+            (workspace ? workspace.split(/[\\/]/).filter(Boolean).pop() || workspace : "")
+          }
+          onSaveWorkspaceName={saveWorkspaceName}
           onClose={() => setSettingsOpen(false)}
           onSave={handleSaveSettings}
         />
