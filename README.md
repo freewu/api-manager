@@ -8,9 +8,12 @@
 - 📄 **一个接口一个 JSON 文件**：接口定义、请求参数、Mock 数据全部以 JSON 文件形式管理，天然支持 Git 版本管理
 - 🧪 **接口测试**：发送 GET/POST/PUT/DELETE/PATCH 等请求，查看响应状态、耗时、大小、Headers、Body（带 JSON 语法高亮）
 - 🎭 **Mock 服务**：一键启动本地 Mock 服务（默认端口 5050），自动扫描所有启用 Mock 的接口，支持路径参数、延迟、模板变量、全局环境变量
+- 📝 **接口文档**：内置接口文档页，自动从请求配置与 Mock 响应体推导参数（类型、嵌套字段、说明），支持手动补充与修正；可导出 Markdown 文档
+- 📤 **一键导出**：支持 Postman Collection / OpenAPI 3.0 / Docsify 文档站点三种格式导出
+- 💻 **代码生成**：一键生成 20+ 种语言 / 框架的请求代码（curl、JavaScript、Python、Java、Go、Rust 等）
 - 🌐 **全局环境变量**：多环境配置（开发/测试/生产）一键切换，请求时 `{{变量名}}` 自动替换到 URL / Headers / Query / Body / Mock 响应体
 - 🖥️ **系统托盘**：关闭窗口最小化到托盘，托盘菜单可显示/隐藏窗口、快速启停 Mock、退出
-- 🗂️ **Postman 风格布局**：左侧接口树（支持搜索、分组、增删改）、中间请求编辑器、下方响应面板
+- 🗂️ **Postman 风格布局**：左侧接口树（支持搜索、分组、增删改、复制）、中间请求编辑器、下方响应面板
 - 🌐 **路径参数 / Query / Headers / Body** 完整支持
 - 🧩 接口支持 `{参数名}` 路径模板、模板变量 `{{path.id}}`、`{{query.page}}`
 - 📥 **Postman 导入**：一键导入 Postman Collection 全部接口，集合级 `variable` 自动合并到环境变量集
@@ -74,8 +77,6 @@
 **① 环境变量集管理**：新增整套变量配置，支持**拖动排序**；**右键**集名称弹出菜单可 编辑（重命名）/ 复制 / 删除，多套配置（如 开发 / 测试 / 生产）并存；
 **② 环境变量值管理**：选中具体的环境变量集后，点击「✏ 管理变量值」打开，维护该集合内的变量（新增 / 编辑 / 删除）。每个变量包含**现有值**、**默认值**（现值为空时自动使用）和**描述说明**。
 
-当前环境由工具栏**环境**下拉框切换。
-
 - 请求发送时，URL / Headers / Query / Body 中的 `{{变量名}}` 会被替换为激活环境的值
 - Mock 响应体同样支持 `{{变量名}}`（启动/刷新 Mock 后生效）
 - 配置保存在工作区根目录 `__envs.json`，可纳入 Git 管理
@@ -95,12 +96,12 @@
 
 ### 环境要求
 
-- Node.js ≥ 18（本机位于 `D:\env\nodejs`）
-- Rust（Windows MSVC 工具链，`C:\Users\24358\.cargo`）
+- Node.js ≥ 18
+- Rust（Windows MSVC 工具链）
 - WebView2（Windows 10/11 自带）
-- [just](https://github.com/casey/just)（命令运行器，Windows / WSL 均已安装）
+- [just](https://github.com/casey/just)（命令运行器）
 
-### 常用命令（just，Windows / WSL 通用）
+### 常用命令（just）
 
 ```bash
 just dev         # 开发模式运行（前端热更新 + Rust dev）
@@ -116,15 +117,12 @@ just push "信息" # 提交并推送到远程
 just             # 列出全部命令
 ```
 
-> **跨平台说明**：justfile 同时支持 Windows 与 WSL——
-> Windows 下自动使用 `cmd` 作为 shell（node/npm/cargo 取自系统 PATH）；
-> WSL 下使用 `bash`，`node` / `cargo` 由 `~/bin` 下的包装脚本指向 Windows 可执行文件（PATH 已由 justfile 自动处理）。
-> 若 Windows 命令行下中文参数乱码，可先执行 `chcp 65001` 切换 UTF-8 代码页。
+> justfile 同时支持 Windows（cmd）与 WSL（bash）环境；Windows 命令行下中文参数乱码时，可先执行 `chcp 65001` 切换 UTF-8 代码页。
 
 ### 构建产物
 
 - `just release` 产物：`release/api-manager.exe` — 单体可执行文件，无需安装，拷到任意 Windows 机器直接运行（Win10/11 自带 WebView2 运行时）
-- `just build`（可选）产物：`src-tauri/target/release/bundle/nsis/API Manager_0.1.0_x64-setup.exe` — NSIS 安装包；`bundle/msi/API Manager_0.1.0_x64_en-US.msi` — MSI
+- `just build`（可选）产物：`src-tauri/target/release/bundle/nsis/API Manager_0.1.5_x64-setup.exe` — NSIS 安装包；`bundle/msi/API Manager_0.1.5_x64_en-US.msi` — MSI
 
 ### 运行测试
 
