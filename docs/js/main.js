@@ -53,6 +53,7 @@
       "stack.backend": "后端 · Axum Mock 服务 + reqwest 请求",
       "stack.just.desc": "命令运行器",
       "cap.main": "主界面 —— Postman 风格布局：左侧接口树、中间请求编辑器、下方响应面板",
+      "cap.start": "开始页 —— 最近打开工作区、示例工作区与快捷入口",
       "cap.mock": "Mock 服务 —— 一键启动本地 Mock，支持路径参数、延迟与模板变量",
       "cap.export": "一键导出 —— Postman Collection / OpenAPI / Docsify 三种格式",
       "cap.codegen": "代码生成 —— 20+ 种语言 / 框架的请求代码一键生成",
@@ -120,6 +121,7 @@
       "stack.backend": "後端 · Axum Mock 服務 + reqwest 請求",
       "stack.just.desc": "命令運行器",
       "cap.main": "主界面 —— Postman 風格佈局：左側接口樹、中間請求編輯器、下方響應面板",
+      "cap.start": "開始頁 —— 最近打開工作區、示例工作區與快捷入口",
       "cap.mock": "Mock 服務 —— 一鍵啟動本地 Mock，支持路徑參數、延遲與模板變量",
       "cap.export": "一鍵導出 —— Postman Collection / OpenAPI / Docsify 三種格式",
       "cap.codegen": "代碼生成 —— 20+ 種語言 / 框架的請求代碼一鍵生成",
@@ -187,6 +189,7 @@
       "stack.backend": "Backend · Axum Mock server + reqwest",
       "stack.just.desc": "Command runner",
       "cap.main": "Main UI — Postman-style layout: API tree, request editor, response panel",
+      "cap.start": "Start Page — recent workspaces, sample workspace & quick actions",
       "cap.mock": "Mock Server — one-click local Mock with path params, delay & template variables",
       "cap.export": "One-click Export — Postman Collection / OpenAPI / Docsify formats",
       "cap.codegen": "Code Generation — request code for 20+ languages & frameworks",
@@ -206,12 +209,8 @@
     },
   };
   const KEY = "api-manager-site-lang";
-  const detect = () => {
-    const l = (navigator.language || "zh").toLowerCase();
-    if (l.startsWith("zh")) return /hant|tw|hk|mo/.test(l) ? "tw" : "zh";
-    return "en";
-  };
-  let lang = localStorage.getItem(KEY) || detect();
+  // 官网默认英语；用户手动切换后记住选择
+  let lang = localStorage.getItem(KEY) || "en";
 
   function apply(l) {
     lang = l;
@@ -220,6 +219,11 @@
     document.querySelectorAll("[data-i18n]").forEach((el) => {
       const key = el.dataset.i18n;
       if (dict[key] !== undefined) el.textContent = dict[key];
+    });
+    // 截图按语言切换：cn 简体 / tc 繁体 / en 英文
+    const LANG_DIR = { zh: "cn", tw: "tc", en: "en" };
+    document.querySelectorAll("[data-shot]").forEach((img) => {
+      img.src = "images/" + (LANG_DIR[l] || "en") + "/" + img.dataset.shot + ".png";
     });
     document.title =
       l === "zh"

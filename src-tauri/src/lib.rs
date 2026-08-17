@@ -48,10 +48,12 @@ pub struct TrayState {
     pub issue_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
     /// 退出菜单项
     pub quit_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
-    /// 语言菜单项（简体中文 / 繁體中文 / English），当前语言带 ✓ 前缀
-    pub lang_zh_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
-    pub lang_tw_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
-    pub lang_en_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
+    /// 语言子菜单（单行入口，展开后勾选简体中文 / 繁體中文 / English）
+    pub lang_submenu: Mutex<Option<tauri::menu::Submenu<tauri::Wry>>>,
+    /// 语言子菜单项（CheckMenuItem，勾选态表示当前语言）
+    pub lang_zh_item: Mutex<Option<tauri::menu::CheckMenuItem<tauri::Wry>>>,
+    pub lang_tw_item: Mutex<Option<tauri::menu::CheckMenuItem<tauri::Wry>>>,
+    pub lang_en_item: Mutex<Option<tauri::menu::CheckMenuItem<tauri::Wry>>>,
     /// 「检查更新」菜单项，发现新版本后文字改为「发现新版本 vX.Y.Z」
     pub update_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
     /// 最近一次发现的最新版本号（Some 时点击「检查更新」直接打开发布页）
@@ -3456,32 +3458,23 @@ pub fn update_tray_language(app: &AppHandle) {
     if let Some(i) = st.quit_item.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
         let _ = i.set_text(&tray_text(&lang, "退出", "退出", "Quit"));
     }
-    // 当前语言带 ✓ 前缀高亮，其余项保持可点击（点击任意项即可切换）
-    let mark = |item: &Option<tauri::menu::IconMenuItem<tauri::Wry>>, label: &str, active: bool| {
-        if let Some(i) = item.as_ref() {
-            let _ = i.set_text(&if active {
-                format!("✓ {label}")
-            } else {
-                label.to_string()
-            });
-            let _ = i.set_enabled(true);
+    // 语言子菜单标题 + 子项勾选态（单行入口，展开后勾选当前语言）
+    if let Some(m) = st
+        .lang_submenu
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+    {
+        let _ = m.set_text(&tray_text(&lang, "语言", "語言", "Language"));
+    }
+    let set_checked = |item: &Mutex<Option<tauri::menu::CheckMenuItem<tauri::Wry>>>, active: bool| {
+        if let Some(i) = item.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
+            let _ = i.set_checked(active);
         }
     };
-    mark(
-        &st.lang_zh_item.lock().unwrap_or_else(|e| e.into_inner()),
-        "简体中文",
-        lang == "zh",
-    );
-    mark(
-        &st.lang_tw_item.lock().unwrap_or_else(|e| e.into_inner()),
-        "繁體中文",
-        lang == "zh-tw",
-    );
-    mark(
-        &st.lang_en_item.lock().unwrap_or_else(|e| e.into_inner()),
-        "English",
-        lang == "en",
-    );
+    set_checked(&st.lang_zh_item, lang == "zh");
+    set_checked(&st.lang_tw_item, lang == "zh-tw");
+    set_checked(&st.lang_en_item, lang == "en");
     update_tray_env_item(app);
     update_tray_mock_item(app);
     update_tray_update_item(app);
@@ -3589,7 +3582,7 @@ pub fn tray_check_update(app: &AppHandle) {
 
 /// 创建系统托盘图标与菜单
 fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
-    use tauri::menu::{IconMenuItem, Menu, PredefinedMenuItem};
+    use tauri::menu::{CheckMenuItem, IconMenuItem, Menu, PredefinedMenuItem, Submenu};
     use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
     use tauri_plugin_opener::OpenerExt;
 
@@ -3600,6 +3593,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         github_item: Mutex::new(None),
         issue_item: Mutex::new(None),
         quit_item: Mutex::new(None),
+        lang_submenu: Mutex::new(None),
         lang_zh_item: Mutex::new(None),
         lang_tw_item: Mutex::new(None),
         lang_en_item: Mutex::new(None),
@@ -3661,31 +3655,11 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         None::<&str>,
     )?;
     let quit = IconMenuItem::with_id(app, "quit", "退出", true, Some(icon_quit), None::<&str>)?;
-    // 语言切换（简体中文 / 繁體中文 / English）：点击任意项即可切换，当前语言带 ✓ 前缀
-    let lang_zh = IconMenuItem::with_id(
-        app,
-        "lang_zh",
-        "简体中文",
-        true,
-        None::<tauri::image::Image>,
-        None::<&str>,
-    )?;
-    let lang_tw = IconMenuItem::with_id(
-        app,
-        "lang_tw",
-        "繁體中文",
-        true,
-        None::<tauri::image::Image>,
-        None::<&str>,
-    )?;
-    let lang_en = IconMenuItem::with_id(
-        app,
-        "lang_en",
-        "English",
-        true,
-        None::<tauri::image::Image>,
-        None::<&str>,
-    )?;
+    // 语言切换：单行「语言」子菜单，内含简体中文 / 繁體中文 / English 勾选项
+    let lang_zh = CheckMenuItem::with_id(app, "lang_zh", "简体中文", true, false, None::<&str>)?;
+    let lang_tw = CheckMenuItem::with_id(app, "lang_tw", "繁體中文", true, false, None::<&str>)?;
+    let lang_en = CheckMenuItem::with_id(app, "lang_en", "English", true, false, None::<&str>)?;
+    let lang_menu = Submenu::with_items(app, "语言", true, &[&lang_zh, &lang_tw, &lang_en])?;
     // 检查更新（异步访问 GitHub Releases；发现新版本时文字变为「发现新版本 vX.Y.Z」）
     let check_update = IconMenuItem::with_id(
         app,
@@ -3711,9 +3685,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
             &github,
             &issue,
             &PredefinedMenuItem::separator(app)?,
-            &lang_zh,
-            &lang_tw,
-            &lang_en,
+            &lang_menu,
             &PredefinedMenuItem::separator(app)?,
             &quit,
         ],
@@ -3725,6 +3697,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     *app.state::<TrayState>().github_item.lock().unwrap() = Some(github.clone());
     *app.state::<TrayState>().issue_item.lock().unwrap() = Some(issue.clone());
     *app.state::<TrayState>().quit_item.lock().unwrap() = Some(quit.clone());
+    *app.state::<TrayState>().lang_submenu.lock().unwrap() = Some(lang_menu.clone());
     *app.state::<TrayState>().lang_zh_item.lock().unwrap() = Some(lang_zh.clone());
     *app.state::<TrayState>().lang_tw_item.lock().unwrap() = Some(lang_tw.clone());
     *app.state::<TrayState>().lang_en_item.lock().unwrap() = Some(lang_en.clone());

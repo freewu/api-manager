@@ -1,52 +1,53 @@
 # API Manager
 
-使用 **Tauri 2** 开发的 API 接口文档、接口测试与 Mock 工具，界面布局参考 Postman。
+An API documentation, testing, and Mock tool built with **Tauri 2**, with a Postman-inspired layout.
 
-## 界面预览
+## Screenshots
 
 | | |
 | --- | --- |
-| ![主界面](docs/images/main.png) | ![Mock 服务](docs/images/mock.png) |
-| ![一键导出](docs/images/export.png) | ![代码生成](docs/images/code-generator.png) |
-| ![全局环境变量](docs/images/global-env.png) | ![请求历史](docs/images/history.png) |
-| ![多格式导入](docs/images/import.png) | ![目录即集合](docs/images/examples.png) |
-| ![演示接口](docs/images/demo.png) | ![版本对比](docs/images/version-diff.png) |
-| ![统计](docs/images/stat.png) | ![设置](docs/images/setting.png) |
+| ![Start page](docs/images/en/start.png) | ![Main UI](docs/images/en/main.png) |
+| ![Mock server](docs/images/en/mock.png) | ![One-click export](docs/images/en/export.png) |
+| ![Code generation](docs/images/en/code-generator.png) | ![Environment variables](docs/images/en/global-env.png) |
+| ![Request history](docs/images/en/history.png) | ![Multi-format import](docs/images/en/import.png) |
+| ![Directories as collections](docs/images/en/examples.png) | ![Demo APIs](docs/images/en/demo.png) |
+| ![Version diff](docs/images/en/version-diff.png) | ![Statistics](docs/images/en/stat.png) |
+| ![Settings](docs/images/en/setting.png) | |
 
-## 功能特性
+## Features
 
-- 📁 **目录即集合**：打开应用时选择一个工作目录，目录结构即接口集合结构
-- 📄 **一个接口一个 JSON 文件**：接口定义、请求参数、Mock 数据全部以 JSON 文件形式管理，天然支持 Git 版本管理
-- 🧪 **接口测试**：发送 GET/POST/PUT/DELETE/PATCH 等请求，查看响应状态、耗时、大小、Headers、Body（带 JSON 语法高亮）
-- 🎭 **Mock 服务**：一键启动本地 Mock 服务（默认端口 5050），自动扫描所有启用 Mock 的接口，支持路径参数、延迟、模板变量、全局环境变量
-- 📝 **接口文档**：内置接口文档页，自动从请求配置与 Mock 响应体推导参数（类型、嵌套字段、说明），支持手动补充与修正；可导出 Markdown 文档
-- 📤 **一键导出**：支持 Postman Collection / OpenAPI 3.0 / Docsify 文档站点三种格式导出
-- 💻 **代码生成**：一键生成 20+ 种语言 / 框架的请求代码（curl、JavaScript、Python、Java、Go、Rust 等）
-- 🌐 **全局环境变量**：多环境配置（开发/测试/生产）一键切换，请求时 `{{变量名}}` 自动替换到 URL / Headers / Query / Body / Mock 响应体
-- 🖥️ **系统托盘**：关闭窗口最小化到托盘，托盘菜单可显示/隐藏窗口、快速启停 Mock、退出
-- 🗂️ **Postman 风格布局**：左侧接口树（支持搜索、分组、增删改、复制）、中间请求编辑器、下方响应面板
-- 🌐 **路径参数 / Query / Headers / Body** 完整支持
-- 🧩 接口支持 `{参数名}` 路径模板、模板变量 `{{path.id}}`、`{{query.page}}`
-- 📥 **多格式导入**：支持 Postman Collection、OpenAPI (Swagger) 协议、Markdown 接口文档一键导入；Postman 集合级 `variable` 自动合并到环境变量集
+- 📁 **Directories as collections**: pick a working directory when launching the app; its folder structure is your API collection structure
+- 📄 **One API per JSON file**: API definitions, request parameters, and Mock data are all managed as JSON files — Git-friendly by nature
+- 🧪 **Request testing**: send GET/POST/PUT/DELETE/PATCH requests; inspect status, latency, size, headers, and body (with JSON syntax highlighting)
+- 🎭 **Mock server**: start a local Mock server with one click (default port 5050); automatically scans all APIs with Mock enabled; supports path parameters, delay, template variables, and global environment variables
+- 📝 **API docs**: built-in documentation view that derives parameters (types, nested fields, descriptions) from request config and Mock bodies, with manual overrides; exportable as Markdown
+- 📤 **One-click export**: export to Postman Collection, OpenAPI 3.0, or a Docsify documentation site
+- 💻 **Code generation**: generate request code for 20+ languages / frameworks in one click (curl, JavaScript, Python, Java, Go, Rust, …)
+- 🌐 **Global environment variables**: switch between multiple environments (dev / test / prod); `{{variable}}` placeholders are resolved in URL / Headers / Query / Body / Mock response
+- 🖥️ **System tray**: closing the window minimizes to tray; tray menu can show/hide the window, start/stop the Mock server, check for updates, switch language (single submenu), or quit
+- 🗂️ **Postman-style layout**: API tree on the left (search, groups, CRUD, duplicate), request editor in the middle, response panel below
+- 🌐 Full support for **path params / Query / Headers / Body** (Body modes: raw / JSON / XML / form / binary file)
+- 🧩 `{param}` path templates and template variables like `{{path.id}}`, `{{query.page}}`
+- 📥 **Postman import**: import an entire Postman Collection with one click; collection-level `variable`s are merged into environment sets automatically
 
-## 目录结构约定
+## Directory Conventions
 
 ```
-工作目录/
-├── __info.json                  # 根目录描述（集合信息）
-│                                # 字段：name, description, baseUrl, mockPort
-├── __envs.json                  # 全局环境变量（可选）
-│                                # 字段：active, environments[{name, variables[]}]
-├── 用户管理/                    # 分组 = 目录
-│   ├── __info.json              # 分组描述：name, description, order
-│   ├── 获取用户信息.json         # 一个接口 = 一个 JSON 文件
-│   └── 创建用户.json
-└── 订单管理/
+workspace/
+├── __info.json                  # root description (collection info)
+│                                # fields: name, description, baseUrl, mockPort
+├── __envs.json                  # global environment variables (optional)
+│                                # fields: active, environments[{name, variables[]}]
+├── user-management/             # group = directory
+│   ├── __info.json              # group description: name, description, order
+│   ├── get-user.json            # one API = one JSON file
+│   └── create-user.json
+└── order-management/
     ├── __info.json
-    └── 获取订单列表.json
+    └── list-orders.json
 ```
 
-### 接口 JSON 文件格式
+### API JSON File Format
 
 ```json
 {
@@ -70,85 +71,85 @@
 }
 ```
 
-> `url` 为空时，请求地址 = 根 `__info.json` 的 `baseUrl` + `path`；
-> 填写 `url` 则优先使用完整地址。
+> When `url` is empty, the request URL = root `__info.json` `baseUrl` + `path`;
+> when `url` is set, it takes priority.
 
-### Mock 模板变量
+### Mock Template Variables
 
-- `{{path.id}}` — 路径参数（对应 path 中的 `{id}`）
-- `{{query.page}}` — Query 参数
-- `{{method}}` — 请求方法
-- `{{path}}` — 完整路径
-- `{{变量名}}` — 全局环境变量（来自激活环境，`path`/`method`/`path.*`/`query.*` 保留给系统变量）
+- `{{path.id}}` — path parameter (matches `{id}` in path)
+- `{{query.page}}` — Query parameter
+- `{{method}}` — request method
+- `{{path}}` — full path
+- `{{variable}}` — global environment variable (from the active environment; `path` / `method` / `path.*` / `query.*` are reserved for system variables)
 
-### 全局环境变量
+### Global Environment Variables
 
-工具栏的**环境**下拉框可快速切换当前环境；点击 🌐 进入环境变量管理，分**两个弹出框**：
+The **environment** dropdown in the toolbar switches the active environment; click 🌐 to open environment management, split into **two dialogs**:
 
-**① 环境变量集管理**：新增整套变量配置，支持**拖动排序**；**右键**集名称弹出菜单可 编辑（重命名）/ 复制 / 删除，多套配置（如 开发 / 测试 / 生产）并存；
-**② 环境变量值管理**：选中具体的环境变量集后，点击「✏ 管理变量值」打开，维护该集合内的变量（新增 / 编辑 / 删除）。每个变量包含**现有值**、**默认值**（现值为空时自动使用）和**描述说明**。
+**① Environment set management**: create full variable sets, reorder by **drag-and-drop**; **right-click** a set name to edit (rename) / duplicate / delete — multiple sets (e.g. dev / test / prod) can coexist.
+**② Variable value management**: select a set, click "✏ 管理变量值" to add / edit / delete variables within it. Each variable has a **current value**, a **default value** (used automatically when the current value is empty), and a **description**.
 
-- 请求发送时，URL / Headers / Query / Body 中的 `{{变量名}}` 会被替换为激活环境的值
-- Mock 响应体同样支持 `{{变量名}}`（启动/刷新 Mock 后生效）
-- 配置保存在工作区根目录 `__envs.json`，可纳入 Git 管理
+- When sending requests, `{{variable}}` in URL / Headers / Query / Body is replaced with the active environment's value
+- Mock response bodies support `{{variable}}` too (applied after starting/refreshing the Mock server)
+- Configuration is stored in `__envs.json` at the workspace root and can be version-controlled with Git
 
-示例：`__info.json` 的 `baseUrl` 可设为 `{{baseUrl}}`，在不同环境间切换时请求目标随之变化。
+Example: set `baseUrl` in `__info.json` to `{{baseUrl}}` and the request target changes when you switch environments.
 
-> **Postman 导入**：导入 Collection 时，文件顶层的 `variable` 数组会按 key 合并到同名环境变量集（不存在则新建，命名同集合名；无激活环境时自动激活），无需手动逐个录入。
+> **Postman import**: when importing a Collection, the top-level `variable` array is merged by key into the environment set with the same name (created if missing, named after the collection; auto-activated if no environment is active) — no manual entry needed.
 
-### 系统托盘
+### System Tray
 
-- 点击窗口关闭按钮：隐藏到托盘（应用继续运行）
-- 托盘图标左键单击：显示窗口；右键：菜单
-- 托盘菜单：显示窗口 / 隐藏窗口 / 启动·停止 Mock 服务 / 退出
-- 托盘菜单中的 Mock 项文字会随 Mock 服务状态自动更新
+- Clicking the window close button hides the app to the tray (the app keeps running)
+- Left-click the tray icon: show the window; right-click: menu
+- Tray menu: show window / hide window / start·stop Mock server / check for updates / language (single submenu, check to switch) / quit
+- The Mock menu item text updates with the Mock server status
 
-## 开发与构建
+## Development & Build
 
-### 环境要求
+### Prerequisites
 
 - Node.js ≥ 18
-- Rust（Windows MSVC 工具链）
-- WebView2（Windows 10/11 自带）
-- [just](https://github.com/casey/just)（命令运行器）
+- Rust (Windows MSVC toolchain)
+- WebView2 (bundled with Windows 10/11)
+- [just](https://github.com/casey/just) (command runner)
 
-### 常用命令（just）
+### Common Commands (just)
 
 ```bash
-just dev         # 开发模式运行（前端热更新 + Rust dev）
-just test        # 运行全部测试（Rust 单测 + 前端类型检查 + 前端构建）
-just build       # 完整打包：exe + NSIS / MSI 安装程序（可选）
-just release     # 仅生成单体可执行文件并收集到 ./release/（无需安装，拷走即用）
-just exe         # 仅构建 release 可执行文件（快速，release 的构建部分）
-just tsc         # 前端类型检查
-just check       # Rust 编译检查
-just icon        # 重新生成应用图标（群青主题）
-just clean       # 清理构建产物
-just push "信息" # 提交并推送到远程
-just             # 列出全部命令
+just dev         # run in dev mode (frontend HMR + Rust dev)
+just test        # run all tests (Rust unit tests + frontend type check + frontend build)
+just build       # full package: exe + NSIS / MSI installer (optional)
+just release     # build the standalone executable and collect it into ./release/ (no install needed)
+just exe         # build only the release executable (fast)
+just tsc         # frontend type check
+just check       # Rust compile check
+just icon        # regenerate app icons (ultramarine theme)
+just clean       # clean build artifacts
+just push "msg"  # commit and push to remote
+just             # list all commands
 ```
 
-> justfile 同时支持 Windows（cmd）与 WSL（bash）环境；Windows 命令行下中文参数乱码时，可先执行 `chcp 65001` 切换 UTF-8 代码页。
+> The justfile supports both Windows (cmd) and WSL (bash). If Chinese arguments look garbled on a Windows console, run `chcp 65001` first to switch to UTF-8.
 
-### 构建产物
+### Build Artifacts
 
-- `just release` 产物：`release/api-manager.exe` — 单体可执行文件，无需安装，拷到任意 Windows 机器直接运行（Win10/11 自带 WebView2 运行时）
-- `just build`（可选）产物：`src-tauri/target/release/bundle/nsis/API Manager_0.1.5_x64-setup.exe` — NSIS 安装包；`bundle/msi/API Manager_0.1.5_x64_en-US.msi` — MSI
+- `just release` output: `release/api-manager.exe` — a standalone executable; no installation needed, copy it to any Windows machine and run (Win10/11 ships the WebView2 runtime)
+- `just build` (optional) output: `src-tauri/target/release/bundle/nsis/API Manager_0.1.5_x64-setup.exe` — NSIS installer; `bundle/msi/API Manager_0.1.5_x64_en-US.msi` — MSI
 
-### 运行测试
+### Running Tests
 
 ```bash
 just test
 ```
 
-### 示例工作区
+### Sample Workspace
 
-`examples/demo-workspace/` 提供了一个完整示例，包含用户管理、订单管理两个分组。
-启动应用后选择该目录即可体验全部功能（内置 Mock 已启用）。
+`examples/demo-workspace/` provides a complete example with two groups: user management and order management.
+Open the app and pick this directory to try every feature (built-in Mock is enabled).
 
-## 技术栈
+## Tech Stack
 
-- **前端**：React 18 + TypeScript + Vite 5
-- **后端**：Tauri 2（Rust），Axum 提供 Mock 服务，reqwest 发送测试请求
-- **主题色**：群青 `#2E59A7`
-- **插件**：`tauri-plugin-dialog`（目录选择）
+- **Frontend**: React 18 + TypeScript + Vite 5
+- **Backend**: Tauri 2 (Rust), Axum powers the Mock server, reqwest sends test requests
+- **Theme color**: Ultramarine `#2E59A7`
+- **Plugins**: `tauri-plugin-dialog` (directory picker)
