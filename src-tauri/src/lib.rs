@@ -52,6 +52,12 @@ pub struct TrayState {
     pub lang_zh_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
     pub lang_tw_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
     pub lang_en_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
+    /// 「检查更新」菜单项，发现新版本后文字改为「发现新版本 vX.Y.Z」
+    pub update_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
+    /// 最近一次发现的最新版本号（Some 时点击「检查更新」直接打开发布页）
+    pub latest_version: Mutex<Option<String>>,
+    /// 「模拟发现新版本」菜单项（仅预览提醒效果，下个版本移除）
+    pub sim_update_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
     /// 是否正在退出（退出时不拦截窗口关闭）
     pub exiting: AtomicBool,
 }
@@ -2565,6 +2571,98 @@ fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
+// ==================== 检查更新（GitHub Releases） ====================
+
+/// GitHub 仓库与发布页地址
+const RELEASES_PAGE: &str = "https://github.com/freewu/api-manager/releases";
+const LATEST_RELEASE_API: &str = "https://api.github.com/repos/freewu/api-manager/releases/latest";
+
+/// 更新检查结果
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateInfo {
+    /// 最新版本号（去掉 v 前缀，如 "0.2.0"）
+    pub latest: String,
+    /// 当前应用版本号
+    pub current: String,
+    /// 是否发现更新（latest > current）
+    pub has_update: bool,
+    /// 最新版本发布页地址
+    pub url: String,
+}
+
+/// 解析版本号 "v0.1.5" / "0.1.5-beta" -> 数字段 [0, 1, 5]；忽略非数字部分
+fn parse_version(v: &str) -> Vec<u32> {
+    v.trim()
+        .trim_start_matches(['v', 'V'])
+        .split(|c: char| !c.is_ascii_digit())
+        .filter(|s| !s.is_empty())
+        .filter_map(|s| s.parse::<u32>().ok())
+        .collect()
+}
+
+/// 比较两个版本号，a 大于 b 返回 true（数值逐段比较，段数多的更大）
+fn version_gt(a: &str, b: &str) -> bool {
+    let pa = parse_version(a);
+    let pb = parse_version(b);
+    for (x, y) in pa.iter().zip(pb.iter()) {
+        if x != y {
+            return x > y;
+        }
+    }
+    pa.len() > pb.len()
+}
+
+/// 异步访问 GitHub Releases API，获取最新版本号并判断是否有更新
+async fn fetch_latest_release() -> Result<UpdateInfo, String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .user_agent("api-manager/update-check")
+        .build()
+        .map_err(|e| format!("创建 HTTP 客户端失败: {e}"))?;
+    let resp = client
+        .get(LATEST_RELEASE_API)
+        .send()
+        .await
+        .map_err(|e| format!("访问 GitHub Releases 失败: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!(
+            "GitHub Releases 接口返回 {}",
+            resp.status().as_u16()
+        ));
+    }
+    let json: Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("解析响应失败: {e}"))?;
+    let tag = json
+        .get("tag_name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .trim_start_matches(['v', 'V'])
+        .to_string();
+    let current = env!("CARGO_PKG_VERSION").to_string();
+    let has_update = !tag.is_empty() && version_gt(&tag, &current);
+    let url = json
+        .get("html_url")
+        .and_then(|v| v.as_str())
+        .unwrap_or(RELEASES_PAGE)
+        .to_string();
+    Ok(UpdateInfo {
+        latest: tag,
+        current,
+        has_update,
+        url,
+    })
+}
+
+/// 前端手动触发检查更新
+#[tauri::command]
+async fn check_update() -> Result<UpdateInfo, String> {
+    fetch_latest_release().await
+}
+
 // ==================== 全局环境变量命令 ====================
 
 #[tauri::command]
@@ -3379,6 +3477,31 @@ pub fn update_tray_language(app: &AppHandle) {
     );
     update_tray_env_item(app);
     update_tray_mock_item(app);
+    update_tray_update_item(app);
+}
+
+/// 按当前语言刷新「检查更新」菜单项文字（无待提醒版本时显示默认文字）
+pub fn update_tray_update_item(app: &AppHandle) {
+    let lang = settings_lang(app);
+    let st = app.state::<TrayState>();
+    let pending = st
+        .latest_version
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
+    let guard = st.update_item.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(i) = guard.as_ref() {
+        let text = match pending {
+            Some(v) => tray_text(
+                &lang,
+                &format!("发现新版本 v{v}"),
+                &format!("發現新版本 v{v}"),
+                &format!("New version v{v} available"),
+            ),
+            None => tray_text(&lang, "检查更新", "檢查更新", "Check for Updates"),
+        };
+        let _ = i.set_text(&text);
+    }
 }
 
 /// 切换界面语言：保存设置 + 刷新托盘菜单 + 通知前端刷新文案
@@ -3426,6 +3549,48 @@ fn tray_toggle_mock(app: &AppHandle) {
     });
 }
 
+/// 标记发现新版本：刷新托盘菜单文字 + 记录版本号 + 通知前端弹窗提醒
+fn mark_update_available(app: &AppHandle, info: &UpdateInfo) {
+    *app.state::<TrayState>()
+        .latest_version
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = Some(info.latest.clone());
+    update_tray_update_item(app);
+    let _ = app.emit("update-available", info);
+}
+
+/// 清除「发现新版本」状态，恢复默认「检查更新」文字
+fn reset_update_item(app: &AppHandle) {
+    *app.state::<TrayState>()
+        .latest_version
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = None;
+    update_tray_update_item(app);
+}
+
+/// 托盘菜单：检查更新（异步访问 GitHub Releases，发现新版本时提醒）
+pub fn tray_check_update(app: &AppHandle) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        match fetch_latest_release().await {
+            Ok(info) if info.has_update => mark_update_available(&app, &info),
+            // 已是最新或检查失败：恢复默认文字
+            _ => reset_update_item(&app),
+        }
+    });
+}
+
+/// 模拟发现新版本（仅用于预览提醒效果，下个版本移除）
+pub fn tray_simulate_update(app: &AppHandle) {
+    let info = UpdateInfo {
+        latest: "9.9.9".into(),
+        current: env!("CARGO_PKG_VERSION").to_string(),
+        has_update: true,
+        url: RELEASES_PAGE.to_string(),
+    };
+    mark_update_available(app, &info);
+}
+
 /// 创建系统托盘图标与菜单
 fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     use tauri::menu::{IconMenuItem, Menu, PredefinedMenuItem};
@@ -3442,6 +3607,9 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         lang_zh_item: Mutex::new(None),
         lang_tw_item: Mutex::new(None),
         lang_en_item: Mutex::new(None),
+        update_item: Mutex::new(None),
+        latest_version: Mutex::new(None),
+        sim_update_item: Mutex::new(None),
         exiting: AtomicBool::new(false),
     });
 
@@ -3461,7 +3629,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         "tray_version",
         format!("API Manager v{}", env!("CARGO_PKG_VERSION")),
         false,
-        Some(icon_info),
+        Some(icon_info.clone()),
         None::<&str>,
     )?;
     let show = IconMenuItem::with_id(app, "show", "显示窗口", true, Some(icon_window), None::<&str>)?;
@@ -3523,6 +3691,24 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         None::<tauri::image::Image>,
         None::<&str>,
     )?;
+    // 检查更新（异步访问 GitHub Releases；发现新版本时文字变为「发现新版本 vX.Y.Z」）
+    let check_update = IconMenuItem::with_id(
+        app,
+        "check_update",
+        "检查更新",
+        true,
+        Some(icon_info.clone()),
+        None::<&str>,
+    )?;
+    // 模拟发现新版本（预览提醒效果用，下个版本移除）
+    let sim_update = IconMenuItem::with_id(
+        app,
+        "sim_update",
+        "模拟发现新版本（预览）",
+        true,
+        Some(icon_info.clone()),
+        None::<&str>,
+    )?;
     let menu = Menu::with_items(
         app,
         &[
@@ -3533,6 +3719,9 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
             &env_item,
             &PredefinedMenuItem::separator(app)?,
             &toggle_mock,
+            &PredefinedMenuItem::separator(app)?,
+            &check_update,
+            &sim_update,
             &PredefinedMenuItem::separator(app)?,
             &github,
             &issue,
@@ -3554,6 +3743,8 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     *app.state::<TrayState>().lang_zh_item.lock().unwrap() = Some(lang_zh.clone());
     *app.state::<TrayState>().lang_tw_item.lock().unwrap() = Some(lang_tw.clone());
     *app.state::<TrayState>().lang_en_item.lock().unwrap() = Some(lang_en.clone());
+    *app.state::<TrayState>().update_item.lock().unwrap() = Some(check_update.clone());
+    *app.state::<TrayState>().sim_update_item.lock().unwrap() = Some(sim_update.clone());
     // 用当前设置语言 + 工作区环境名刷新托盘文字
     update_tray_language(app.handle());
 
@@ -3571,6 +3762,23 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
                 let _ = app.emit("open-env-editor", ());
             }
             "toggle_mock" => tray_toggle_mock(app),
+            "check_update" => {
+                // 已发现新版本时点击直接打开 GitHub 发布页；否则发起检查
+                let pending = app
+                    .state::<TrayState>()
+                    .latest_version
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .is_some();
+                if pending {
+                    use tauri_plugin_opener::OpenerExt;
+                    let _ = app.opener().open_url(RELEASES_PAGE, None::<&str>);
+                } else {
+                    tray_check_update(app);
+                }
+            }
+            // 模拟发现新版本（预览提醒效果用，下个版本移除）
+            "sim_update" => tray_simulate_update(app),
             "open_github" => {
                 // 打开项目 GitHub 仓库
                 let _ = app
@@ -3626,6 +3834,12 @@ pub fn run() {
         .manage(MockRunState::default())
         .setup(|app| {
             setup_tray(app)?;
+            // 启动后异步检查 GitHub Releases（延迟 3 秒避免与启动抢资源，失败静默）
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                tray_check_update(&handle);
+            });
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -3681,6 +3895,7 @@ pub fn run() {
             save_envs,
             update_tray_env,
             get_app_version,
+            check_update,
             send_request,
             pick_file,
             save_history,
@@ -4099,6 +4314,27 @@ mod tests {
             "版本目录不应出现在接口所在子目录中"
         );
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_parse_version() {
+        assert_eq!(parse_version("v0.1.5"), vec![0, 1, 5]);
+        assert_eq!(parse_version("0.2.0"), vec![0, 2, 0]);
+        assert_eq!(parse_version("V1.2.3-beta.4"), vec![1, 2, 3, 4]);
+        assert_eq!(parse_version("9.9.9"), vec![9, 9, 9]);
+        assert_eq!(parse_version(""), Vec::<u32>::new());
+    }
+
+    #[test]
+    fn test_version_gt() {
+        assert!(version_gt("0.2.0", "0.1.5"));
+        assert!(version_gt("1.0.0", "0.9.9"));
+        assert!(version_gt("0.1.10", "0.1.9"));
+        assert!(version_gt("0.2", "0.1.9")); // 段数多
+        assert!(!version_gt("0.1.5", "0.1.5"));
+        assert!(!version_gt("0.1.4", "0.1.5"));
+        assert!(!version_gt("0.1.9", "0.2.0"));
+        assert!(!version_gt("", "0.1.5")); // 空版本不视为更新
     }
 
     #[test]

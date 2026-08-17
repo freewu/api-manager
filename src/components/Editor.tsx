@@ -33,6 +33,8 @@ interface Props {
 export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, enableMock = true, codegenLang = "bash", onTabChange, currentVersion = 0 }: Props) {
   const t = useT();
   const [tab, setTab] = useState<Tab>("params");
+  /** JSON 格式化失败提示（body / mock 页签共用） */
+  const [formatError, setFormatError] = useState<string | null>(null);
   const effectiveUrl = api.url || (baseUrl + api.path);
 
   const switchTab = (t: Tab) => {
@@ -43,6 +45,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   // 切换接口时回到 Query 页签
   useEffect(() => {
     setTab("params");
+    setFormatError(null);
     onTabChange?.("params");
   }, [api.uuid]);
 
@@ -80,6 +83,18 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   const set = (patch: Partial<ApiFile>) => onChange({ ...api, ...patch });
 
   const enabledCount = (rows: KeyValue[]) => rows.filter((r) => r.enabled && r.key).length;
+
+  /** 将原始文本按 JSON 格式化（2 空格缩进）；非 JSON 时提示错误 */
+  const formatJson = (raw: string, onFormatted: (text: string) => void) => {
+    setFormatError(null);
+    const text = raw.trim();
+    if (!text) return;
+    try {
+      onFormatted(JSON.stringify(JSON.parse(text), null, 2));
+    } catch {
+      setFormatError(t("editor.formatJsonFailed"));
+    }
+  };
 
   return (
     <div className="editor" style={style}>
@@ -258,13 +273,29 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               </>
             )}
             {(api.body.mode === "raw" || api.body.mode === "json") && (
-              <textarea
-                className="code-area"
-                value={api.body.raw}
-                placeholder={api.body.mode === "json" ? '{\n  "key": "value"\n}' : t("editor.bodyRaw")}
-                onChange={(e) => set({ body: { ...api.body, raw: e.target.value } })}
-                spellCheck={false}
-              />
+              <div className="body-raw-wrap">
+                <div className="body-raw-toolbar">
+                  <button
+                    className="btn small"
+                    onClick={() =>
+                      formatJson(api.body.raw, (text) =>
+                        set({ body: { ...api.body, raw: text } })
+                      )
+                    }
+                    title={t("editor.formatJsonTip")}
+                  >
+                    {t("editor.formatJson")}
+                  </button>
+                  {formatError && <span className="body-format-error">{formatError}</span>}
+                </div>
+                <textarea
+                  className="code-area"
+                  value={api.body.raw}
+                  placeholder={api.body.mode === "json" ? '{\n  "key": "value"\n}' : t("editor.bodyRaw")}
+                  onChange={(e) => set({ body: { ...api.body, raw: e.target.value } })}
+                  spellCheck={false}
+                />
+              </div>
             )}
           </div>
         )}

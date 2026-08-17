@@ -322,6 +322,9 @@ const ZH: Record<string, string> = {
   "editor.fieldName": "字段名",
   "editor.fileTypeHint": "选择字段类型（文本或文件）",
   "editor.form": "表单",
+  "editor.formatJson": "格式化 JSON",
+  "editor.formatJsonFailed": "JSON 格式错误，无法格式化",
+  "editor.formatJsonTip": "将内容按 JSON 格式化（2 空格缩进）",
   "editor.headerName": "Header 名称",
   "editor.noBody": "该请求没有请求体",
   "editor.noFailFields": "暂无失败响应字段",
@@ -482,6 +485,10 @@ const ZH: Record<string, string> = {
   "version.history": "历史版本（{count}）",
   "version.loading": "加载中…",
   "version.title": "版本信息",
+  "update.title": "发现新版本",
+  "update.desc": "当前版本 v{current}，发现新版本 v{latest}，点击下方按钮前往 GitHub 查看下载。",
+  "update.download": "前往 GitHub 下载",
+  "update.later": "稍后再说",
 };
 
 const TW: Record<string, string> = {
@@ -752,6 +759,9 @@ const TW: Record<string, string> = {
   "editor.fieldName": "字段名",
   "editor.fileTypeHint": "選擇字段類型（文本或文件）",
   "editor.form": "表單",
+  "editor.formatJson": "格式化 JSON",
+  "editor.formatJsonFailed": "JSON 格式錯誤，無法格式化",
+  "editor.formatJsonTip": "將內容按 JSON 格式化（2 空格縮進）",
   "editor.headerName": "Header 名稱",
   "editor.noBody": "該請求沒有請求體",
   "editor.noFailFields": "暫無失敗響應字段",
@@ -912,6 +922,10 @@ const TW: Record<string, string> = {
   "version.history": "歷史版本（{count}）",
   "version.loading": "加載中…",
   "version.title": "版本信息",
+  "update.title": "發現新版本",
+  "update.desc": "當前版本 v{current}，發現新版本 v{latest}，點擊下方按鈕前往 GitHub 查看下載。",
+  "update.download": "前往 GitHub 下載",
+  "update.later": "稍後再說",
 };
 
 const EN: Record<string, string> = {
@@ -1193,6 +1207,9 @@ const EN: Record<string, string> = {
   "editor.fieldName": "Field name",
   "editor.fileTypeHint": "Choose a field type (text or file)",
   "editor.form": "Form",
+  "editor.formatJson": "Format JSON",
+  "editor.formatJsonFailed": "Invalid JSON, could not format",
+  "editor.formatJsonTip": "Pretty-print the content as JSON (2-space indent)",
   "editor.headerName": "Header Name",
   "editor.noBody": "This request has no body",
   "editor.noFailFields": "No failure response fields",
@@ -1353,6 +1370,10 @@ const EN: Record<string, string> = {
   "version.history": "History ({count})",
   "version.loading": "Loading…",
   "version.title": "Version Info",
+  "update.title": "New Version Available",
+  "update.desc": "Current version v{current}, a new version v{latest} is available. Click the button below to open GitHub Releases.",
+  "update.download": "Open GitHub Releases",
+  "update.later": "Later",
 };
 
 const DICT: Record<Lang, Record<string, string>> = { zh: ZH, "zh-tw": TW, en: EN };

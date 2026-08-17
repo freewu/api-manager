@@ -11,6 +11,7 @@ import type {
   InfoJson,
   MockStatus,
   TreeNode,
+  UpdateInfo,
   VersionInfo,
 } from "./types";
 export type { ExportFormat };
@@ -316,6 +317,11 @@ export function mockReload(): Promise<MockStatus> {
 
 export function getAppVersion(): Promise<string> {
   return invoke<string>("get_app_version");
+}
+
+/** 异步检查 GitHub Releases 是否有新版本 */
+export function checkUpdate(): Promise<UpdateInfo> {
+  return invoke<UpdateInfo>("check_update");
 }
 
 /** 在系统浏览器中打开外部链接 */

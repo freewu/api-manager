@@ -213,6 +213,14 @@ export interface HttpResult {
   error?: string;
 }
 
+/** 更新检查结果（来自 GitHub Releases） */
+export interface UpdateInfo {
+  latest: string;
+  current: string;
+  hasUpdate: boolean;
+  url: string;
+}
+
 export interface MockStatus {
   running: boolean;
   url?: string;

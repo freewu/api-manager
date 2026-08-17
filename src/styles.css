@@ -863,6 +863,29 @@ body {
   border-bottom-color: var(--accent);
 }
 
+.body-raw-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.body-raw-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 26px;
+}
+.body-format-error {
+  color: var(--err);
+  font-size: 12px;
+}
+
+.update-desc {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--text);
+  padding: 4px 2px 8px;
+}
+
 .code-area {
   width: 100%;
   min-height: 240px;

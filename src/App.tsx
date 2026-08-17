@@ -46,6 +46,7 @@ import {
   vcsSync,
   hasWorkspaceInfo,
   getCurrentVersion,
+  openExternal,
 } from "./commands";
 import { Editor } from "./components/Editor";
 import { EnvModal } from "./components/EnvModal";
@@ -84,6 +85,7 @@ import {
   InfoJson,
   MockStatus,
   TreeNode,
+  UpdateInfo,
   VersionInfo,
   defaultSettings,
   emptyEnv,
@@ -131,6 +133,8 @@ export default function App() {
   const [modalText, setModalText] = useState("");
   const [infoForm, setInfoForm] = useState<InfoForm>(emptyInfoForm());
   const [toast, setToast] = useState<string | null>(null);
+  /** 发现新版本信息（托盘检查更新后通过事件推送，弹窗提醒） */
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   /** 右下角持久弹窗（不自动消失），用于同步/提交等错误提示 */
   const [notify, setNotify] = useState<{ title: string; body: string } | null>(null);
   const [version, setVersion] = useState("");
@@ -227,6 +231,17 @@ export default function App() {
         const l = normalizeLang(e.payload);
         setLang(l);
         setSettings((s) => ({ ...s, language: l }));
+      });
+    })();
+    return () => unlisten?.();
+  }, []);
+
+  // 托盘检查更新发现新版本后，弹出更新提醒弹窗
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      unlisten = await listen("update-available", (e) => {
+        setUpdateInfo(e.payload as UpdateInfo);
       });
     })();
     return () => unlisten?.();
@@ -1386,6 +1401,35 @@ export default function App() {
       )}
 
       {statsNode && <StatsModal node={statsNode} onClose={() => setStatsNode(null)} />}
+
+      {updateInfo && (
+        <Modal
+          title={`🎉 ${t("update.title")}`}
+          onClose={() => setUpdateInfo(null)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setUpdateInfo(null)}>
+                {t("update.later")}
+              </button>
+              <button
+                className="btn primary"
+                onClick={() => {
+                  openExternal(updateInfo.url || "https://github.com/freewu/api-manager/releases");
+                }}
+              >
+                {t("update.download")}
+              </button>
+            </>
+          }
+        >
+          <div className="update-desc">
+            {t("update.desc", {
+              current: updateInfo.current,
+              latest: updateInfo.latest,
+            })}
+          </div>
+        </Modal>
+      )}
 
       {mdView && (
         <MarkdownModal
