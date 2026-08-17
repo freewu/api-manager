@@ -56,8 +56,6 @@ pub struct TrayState {
     pub update_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
     /// 最近一次发现的最新版本号（Some 时点击「检查更新」直接打开发布页）
     pub latest_version: Mutex<Option<String>>,
-    /// 「模拟发现新版本」菜单项（仅预览提醒效果，下个版本移除）
-    pub sim_update_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
     /// 是否正在退出（退出时不拦截窗口关闭）
     pub exiting: AtomicBool,
 }
@@ -3589,17 +3587,6 @@ pub fn tray_check_update(app: &AppHandle) {
     });
 }
 
-/// 模拟发现新版本（仅用于预览提醒效果，下个版本移除）
-pub fn tray_simulate_update(app: &AppHandle) {
-    let info = UpdateInfo {
-        latest: "9.9.9".into(),
-        current: env!("CARGO_PKG_VERSION").to_string(),
-        has_update: true,
-        url: RELEASES_PAGE.to_string(),
-    };
-    mark_update_available(app, &info);
-}
-
 /// 创建系统托盘图标与菜单
 fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     use tauri::menu::{IconMenuItem, Menu, PredefinedMenuItem};
@@ -3618,7 +3605,6 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         lang_en_item: Mutex::new(None),
         update_item: Mutex::new(None),
         latest_version: Mutex::new(None),
-        sim_update_item: Mutex::new(None),
         exiting: AtomicBool::new(false),
     });
 
@@ -3709,15 +3695,6 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         Some(icon_info.clone()),
         None::<&str>,
     )?;
-    // 模拟发现新版本（预览提醒效果用，下个版本移除）
-    let sim_update = IconMenuItem::with_id(
-        app,
-        "sim_update",
-        "模拟发现新版本（预览）",
-        true,
-        Some(icon_info.clone()),
-        None::<&str>,
-    )?;
     let menu = Menu::with_items(
         app,
         &[
@@ -3730,7 +3707,6 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
             &toggle_mock,
             &PredefinedMenuItem::separator(app)?,
             &check_update,
-            &sim_update,
             &PredefinedMenuItem::separator(app)?,
             &github,
             &issue,
@@ -3753,7 +3729,6 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     *app.state::<TrayState>().lang_tw_item.lock().unwrap() = Some(lang_tw.clone());
     *app.state::<TrayState>().lang_en_item.lock().unwrap() = Some(lang_en.clone());
     *app.state::<TrayState>().update_item.lock().unwrap() = Some(check_update.clone());
-    *app.state::<TrayState>().sim_update_item.lock().unwrap() = Some(sim_update.clone());
     // 用当前设置语言 + 工作区环境名刷新托盘文字
     update_tray_language(app.handle());
 
@@ -3786,8 +3761,6 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
                     tray_check_update(app);
                 }
             }
-            // 模拟发现新版本（预览提醒效果用，下个版本移除）
-            "sim_update" => tray_simulate_update(app),
             "open_github" => {
                 // 打开项目 GitHub 仓库
                 let _ = app
