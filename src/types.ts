@@ -10,9 +10,11 @@ export interface KeyValue {
 }
 
 export interface BodyData {
-  mode: "none" | "raw" | "json" | "form";
+  mode: "none" | "raw" | "json" | "xml" | "form" | "binary";
   raw: string;
   form: KeyValue[];
+  /** 二进制模式：本地文件路径（发送时读取文件字节） */
+  binaryPath: string;
 }
 
 export interface MockConfig {
@@ -196,6 +198,8 @@ export interface HttpRequestData {
   url: string;
   headers: KeyValue[];
   body?: string;
+  /** 二进制模式：本地文件路径，存在时按原始字节发送 */
+  bodyFile?: string | null;
   /** 表单字段（含文件字段 isFile=true，值为文件路径），存在时按 multipart/form-data 发送 */
   form?: KeyValue[] | null;
   timeoutMs: number;
@@ -238,14 +242,14 @@ export const METHODS = [
   "OPTIONS",
 ] as const;
 
-export const BODY_MODES = ["none", "raw", "json", "form"] as const;
+export const BODY_MODES = ["none", "raw", "json", "xml", "form", "binary"] as const;
 
 export function emptyKV(): KeyValue {
   return { key: "", value: "", enabled: true, description: "" };
 }
 
 export function emptyBody(): BodyData {
-  return { mode: "none", raw: "", form: [] };
+  return { mode: "none", raw: "", form: [], binaryPath: "" };
 }
 
 export function emptyMock(): MockConfig {

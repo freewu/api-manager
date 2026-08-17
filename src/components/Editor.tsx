@@ -4,6 +4,60 @@ import { KeyValueEditor } from "./KeyValueEditor";
 import { CodeTab } from "./CodeTab";
 import { ExamplesTab } from "./ExamplesTab";
 import { useT } from "../i18n";
+import { pickFile } from "../commands";
+
+/** 简易 XML 格式化：按标签层级缩进（支持注释 / CDATA / 声明 / 自闭合标签） */
+function prettyXml(src: string): string {
+  const re =
+    /<!--[\s\S]*?-->|<![CDATA\[[\s\S]*?\]\]>|<\?[\s\S]*?\?>|<!DOCTYPE[\s\S]*?(?:\[[\s\S]*?\]\s*)?>|<\/?[^>]*>/g;
+  const tokens: string[] = [];
+  let last = 0;
+  for (const m of src.matchAll(re)) {
+    if (m.index !== undefined && m.index > last) tokens.push(src.slice(last, m.index));
+    tokens.push(m[0]);
+    last = (m.index ?? 0) + m[0].length;
+  }
+  if (last < src.length) tokens.push(src.slice(last));
+
+  const out: string[] = [];
+  const stack: string[] = [];
+  let depth = 0;
+  const indent = () => "  ".repeat(depth);
+
+  for (const tok of tokens) {
+    if (!tok.startsWith("<")) {
+      const s = tok.trim();
+      if (s) out.push(indent() + s);
+      continue;
+    }
+    if (
+      tok.startsWith("<!--") ||
+      tok.startsWith("<![CDATA[") ||
+      tok.startsWith("<?") ||
+      tok.startsWith("<!DOCTYPE")
+    ) {
+      out.push(indent() + tok.trim());
+      continue;
+    }
+    if (tok.startsWith("</")) {
+      const name = tok.slice(2, -1).trim().split(/\s/)[0];
+      if (stack.pop() !== name) throw new Error("mismatched tag");
+      depth = Math.max(0, depth - 1);
+      out.push(indent() + tok);
+      continue;
+    }
+    const selfClose = /\/\s*>$/.test(tok);
+    if (selfClose) {
+      out.push(indent() + tok);
+    } else {
+      out.push(indent() + tok);
+      stack.push(tok.slice(1).trim().split(/[\s/>]/)[0]);
+      depth++;
+    }
+  }
+  if (stack.length) throw new Error("unclosed tag");
+  return out.join("\n");
+}
 
 type Tab = "params" | "path" | "headers" | "body" | "mock" | "desc" | "doc" | "code" | "examples";
 
@@ -96,6 +150,28 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
     }
   };
 
+  /** 将原始文本按 XML 格式化（缩进排版）；非合法 XML 时提示错误 */
+  const formatXml = (raw: string, onFormatted: (text: string) => void) => {
+    setFormatError(null);
+    const text = raw.trim();
+    if (!text) return;
+    try {
+      onFormatted(prettyXml(text));
+    } catch {
+      setFormatError(t("editor.formatXmlFailed"));
+    }
+  };
+
+  /** 二进制模式：弹出系统文件选择框，记录文件路径 */
+  const pickBinaryFile = async () => {
+    try {
+      const p = await pickFile();
+      if (p) set({ body: { ...api.body, binaryPath: p } });
+    } catch {
+      /* 用户取消或出错时忽略 */
+    }
+  };
+
   return (
     <div className="editor" style={style}>
       <div className="editor-head">
@@ -163,7 +239,12 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           className={`tab ${tab === "body" ? "active" : ""}`}
           onClick={() => switchTab("body")}
         >
-          Body{api.body.mode !== "none" && api.body.raw && <span className="count">•</span>}
+          Body
+          {api.body.mode !== "none" &&
+            ((api.body.mode === "binary" && api.body.binaryPath) ||
+              (api.body.mode !== "binary" && api.body.raw)) && (
+              <span className="count">•</span>
+            )}
         </div>
         {enableMock && (
           <div className={`tab ${tab === "mock" ? "active" : ""}`} onClick={() => switchTab("mock")}>
@@ -251,7 +332,11 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                       ? t("editor.raw")
                       : m === "json"
                         ? "JSON"
-                        : t("editor.form")}
+                        : m === "xml"
+                          ? "XML"
+                          : m === "binary"
+                            ? t("editor.binary")
+                            : t("editor.form")}
                 </div>
               ))}
             </div>
@@ -272,29 +357,73 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                 </div>
               </>
             )}
-            {(api.body.mode === "raw" || api.body.mode === "json") && (
+            {(api.body.mode === "raw" || api.body.mode === "json" || api.body.mode === "xml") && (
               <div className="body-raw-wrap">
                 <div className="body-raw-toolbar">
-                  <button
-                    className="btn small"
-                    onClick={() =>
-                      formatJson(api.body.raw, (text) =>
-                        set({ body: { ...api.body, raw: text } })
-                      )
-                    }
-                    title={t("editor.formatJsonTip")}
-                  >
-                    {t("editor.formatJson")}
-                  </button>
+                  {api.body.mode === "json" ? (
+                    <button
+                      className="btn small"
+                      onClick={() =>
+                        formatJson(api.body.raw, (text) =>
+                          set({ body: { ...api.body, raw: text } })
+                        )
+                      }
+                      title={t("editor.formatJsonTip")}
+                    >
+                      {t("editor.formatJson")}
+                    </button>
+                  ) : api.body.mode === "xml" ? (
+                    <button
+                      className="btn small"
+                      onClick={() =>
+                        formatXml(api.body.raw, (text) =>
+                          set({ body: { ...api.body, raw: text } })
+                        )
+                      }
+                      title={t("editor.formatXmlTip")}
+                    >
+                      {t("editor.formatXml")}
+                    </button>
+                  ) : null}
                   {formatError && <span className="body-format-error">{formatError}</span>}
                 </div>
                 <textarea
                   className="code-area"
                   value={api.body.raw}
-                  placeholder={api.body.mode === "json" ? '{\n  "key": "value"\n}' : t("editor.bodyRaw")}
+                  placeholder={
+                    api.body.mode === "json"
+                      ? '{\n  "key": "value"\n}'
+                      : api.body.mode === "xml"
+                        ? '<root>\n  <item>value</item>\n</root>'
+                        : t("editor.bodyRaw")
+                  }
                   onChange={(e) => set({ body: { ...api.body, raw: e.target.value } })}
                   spellCheck={false}
                 />
+              </div>
+            )}
+            {api.body.mode === "binary" && (
+              <div className="binary-picker">
+                <button className="btn" onClick={pickBinaryFile}>
+                  📁 {t("editor.pickFile")}
+                </button>
+                {api.body.binaryPath ? (
+                  <div className="binary-file">
+                    <span className="binary-file-path" title={api.body.binaryPath}>
+                      📄 {api.body.binaryPath}
+                    </span>
+                    <button
+                      className="btn small"
+                      onClick={() => set({ body: { ...api.body, binaryPath: "" } })}
+                    >
+                      {t("editor.clearFile")}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ color: "var(--text-faint)", fontSize: 12 }}>
+                    {t("editor.binaryHint")}
+                  </div>
+                )}
               </div>
             )}
           </div>

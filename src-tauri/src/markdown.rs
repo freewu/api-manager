@@ -1143,6 +1143,7 @@ mod tests {
                 mode: "json".into(),
                 raw: "{\"name\":\"张三\",\"age\":18,\"tags\":[\"a\",\"b\"],\"address\":{\"city\":\"北京\"}}".into(),
                 form: vec![],
+                binary_path: String::new(),
             },
             mock: MockConfig {
                 enabled: true,
@@ -1269,6 +1270,7 @@ mod tests {
                 mode: "json".into(),
                 raw: String::new(),
                 form: vec![],
+                binary_path: String::new(),
             },
             mock: crate::MockConfig::default(),
             examples: vec![],

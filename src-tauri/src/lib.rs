@@ -117,6 +117,9 @@ pub struct BodyData {
     pub raw: String,
     #[serde(default)]
     pub form: Vec<KeyValue>,
+    /// 二进制模式：本地文件路径（发送时读取文件字节）
+    #[serde(default)]
+    pub binary_path: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -260,6 +263,9 @@ pub struct HttpRequestData {
     pub headers: Vec<KeyValue>,
     #[serde(default)]
     pub body: Option<String>,
+    /// 二进制模式：本地文件路径，存在时按原始字节发送
+    #[serde(default)]
+    pub body_file: Option<String>,
     /// 表单字段（含文件字段 isFile=true，值为文件路径），存在时按 multipart/form-data 发送
     #[serde(default)]
     pub form: Option<Vec<KeyValue>>,
@@ -709,16 +715,6 @@ fn vcs_commit_push(state: State<'_, WorkspaceState>, remote: bool) -> Result<Str
 
 // ==================== 最近打开的工作目录 ====================
 
-/// 最近打开工作目录数量下限
-const MIN_RECENT: usize = 3;
-
-/// 最近打开工作目录数量（读设置，最少 MIN_RECENT 个）
-fn recent_limit(app: &AppHandle) -> usize {
-    load_settings(app.clone())
-        .map(|s| s.recent_limit.clamp(MIN_RECENT, 100))
-        .unwrap_or(MIN_RECENT)
-}
-
 fn recent_path(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app
         .path()
@@ -735,13 +731,12 @@ fn read_recent(app: &AppHandle) -> Vec<String> {
     }
 }
 
-/// 记录最近打开的工作目录（去重、最新的排最前、最多保留 recent_limit 个）
+/// 记录最近打开的工作目录（去重、最新的排最前；保留全部历史，数量只影响前端展示）
 fn record_recent(app: &AppHandle, path: &str) {
     let Ok(p) = recent_path(app) else { return };
     let mut list = read_recent(app);
     list.retain(|x| x != path);
     list.insert(0, path.to_string());
-    list.truncate(recent_limit(app));
     if let Some(parent) = p.parent() {
         let _ = fs::create_dir_all(parent);
     }
@@ -750,9 +745,8 @@ fn record_recent(app: &AppHandle, path: &str) {
 
 #[tauri::command]
 fn get_recent_workspaces(app: AppHandle) -> Vec<String> {
-    let mut list = read_recent(&app);
-    list.truncate(recent_limit(&app));
-    list
+    // 返回全部记录，由前端按设置限制展示数量（历史记录不删除）
+    read_recent(&app)
 }
 
 /// 按路径直接打开工作目录（开始页「最近打开」点击时调用）
@@ -2761,6 +2755,21 @@ async fn send_request(req: HttpRequestData) -> Result<HttpResult, String> {
             }
             rb = rb.multipart(mp);
         }
+    } else if let Some(path) = &req.body_file {
+        // 二进制模式：读取本地文件字节作为请求体
+        if !path.trim().is_empty() {
+            let bytes = tokio::fs::read(path.trim())
+                .await
+                .map_err(|e| format!("读取文件失败 [{path}]: {e}"))?;
+            let has_ct = req
+                .headers
+                .iter()
+                .any(|h| h.enabled && h.key.eq_ignore_ascii_case("content-type"));
+            if !has_ct {
+                rb = rb.header("Content-Type", "application/octet-stream");
+            }
+            rb = rb.body(bytes);
+        }
     } else if let Some(body) = &req.body {
         if !body.is_empty() {
             let has_ct = req
@@ -3970,6 +3979,7 @@ mod tests {
             url: format!("http://{addr}/api/users/1001?page=1"),
             headers: vec![],
             body: None,
+            body_file: None,
             form: None,
             timeout_ms: 5000,
         };
@@ -4019,6 +4029,7 @@ mod tests {
             url: format!("http://{addr}/upload"),
             headers: vec![],
             body: None,
+            body_file: None,
             form: Some(vec![
                 KeyValue {
                     key: "name".into(),
@@ -4049,6 +4060,46 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_send_request_binary_file() {
+        // 二进制模式：读取本地文件字节作为请求体发送
+        async fn echo_body(body: axum::body::Bytes) -> impl axum::response::IntoResponse {
+            format!("bytes:{}", String::from_utf8_lossy(&body))
+        }
+
+        let app = axum::Router::new().route("/echo", axum::routing::post(echo_body));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+
+        let file = std::env::temp_dir().join(format!("binary-test-{}.bin", std::process::id()));
+        fs::write(&file, b"\x00\x01binary-body\xff").unwrap();
+
+        let req = HttpRequestData {
+            method: "POST".into(),
+            url: format!("http://{addr}/echo"),
+            headers: vec![],
+            body: None,
+            body_file: Some(file.to_string_lossy().to_string()),
+            form: None,
+            timeout_ms: 5000,
+        };
+        let res = send_request(req).await.unwrap();
+        server.abort();
+        let _ = server.await;
+        let _ = fs::remove_file(&file);
+
+        assert!(res.ok, "二进制请求应成功: {:?}", res.error);
+        assert_eq!(res.status, 200);
+        assert!(
+            res.body.contains("binary-body"),
+            "应发送文件字节: {}",
+            res.body
+        );
+    }
+
+    #[tokio::test]
     async fn test_send_request_bad_url() {
         // 未替换的 {{变量}} 会产生 reqwest builder error，应给出中文提示而不是裸的 builder error
         for url in ["http://{{host}}:8080/api", "127.0.0.1:8080/api"] {
@@ -4057,6 +4108,7 @@ mod tests {
                 url: url.to_string(),
                 headers: vec![],
                 body: None,
+                body_file: None,
                 form: None,
                 timeout_ms: 3000,
             };
@@ -4081,6 +4133,7 @@ mod tests {
             url: format!("http://{addr}/"),
             headers: vec![],
             body: None,
+            body_file: None,
             form: None,
             timeout_ms: 3000,
         };

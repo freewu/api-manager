@@ -135,6 +135,8 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   /** 发现新版本信息（托盘检查更新后通过事件推送，弹窗提醒） */
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  /** 更新提醒弹窗是否显示（关闭弹窗后 logo 上的「新版本」徽标仍在） */
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   /** 右下角持久弹窗（不自动消失），用于同步/提交等错误提示 */
   const [notify, setNotify] = useState<{ title: string; body: string } | null>(null);
   const [version, setVersion] = useState("");
@@ -242,6 +244,7 @@ export default function App() {
     (async () => {
       unlisten = await listen("update-available", (e) => {
         setUpdateInfo(e.payload as UpdateInfo);
+        setShowUpdateModal(true);
       });
     })();
     return () => unlisten?.();
@@ -433,12 +436,12 @@ export default function App() {
     }
   };
 
-  /** 最近打开的工作目录数量（设置项，最少 3） */
+  /** 最近打开的工作目录展示数量（设置项，仅影响显示，历史记录不删除） */
   const recentLimit = Math.max(3, settings.recentLimit || 5);
 
-  /** 把目录加入最近打开列表（本地即时更新，后端已持久化） */
+  /** 把目录加入最近打开列表（本地即时更新，后端已持久化；保留全部记录） */
   const pushRecent = (ws: string) => {
-    setRecent((r) => [ws, ...r.filter((x) => x !== ws)].slice(0, recentLimit));
+    setRecent((r) => [ws, ...r.filter((x) => x !== ws)]);
   };
 
   const handlePickWorkspace = async () => {
@@ -679,6 +682,13 @@ export default function App() {
       const headers = api.headers
         .filter((h) => h.enabled && h.key.trim())
         .map((h) => ({ ...h, key: sub(h.key), value: sub(h.value) }));
+      // XML 模式：未手动设置 Content-Type 时默认 application/xml（避免后端默认按 JSON 处理）
+      if (
+        api.body.mode === "xml" &&
+        !headers.some((h) => h.key.toLowerCase() === "content-type")
+      ) {
+        headers.push({ key: "Content-Type", value: "application/xml; charset=utf-8", enabled: true, description: "" });
+      }
       let url = sub(api.url || rootInfo.baseUrl + api.path);
       // 替换路径参数（多个示例值逗号分隔，发送时取第一个）；
       // 仅替换单大括号 {变量名}，不触碰 {{变量名}} 全局环境变量
@@ -707,12 +717,16 @@ export default function App() {
 
       // 表单：含文件字段时走 multipart（req.form），否则拼 urlencoded body
       const formRows = api.body.form.filter((f) => f.enabled && f.key);
+      // 二进制模式：未选择文件时直接报错
+      if (api.body.mode === "binary" && !api.body.binaryPath.trim()) {
+        throw new Error(t("app.bodyBinaryEmpty"));
+      }
       const body =
         api.body.mode === "form"
           ? formRows
               .map((f) => `${encodeURIComponent(sub(f.key))}=${encodeURIComponent(sub(f.value))}`)
               .join("&")
-          : api.body.mode === "raw" || api.body.mode === "json"
+          : api.body.mode === "raw" || api.body.mode === "json" || api.body.mode === "xml"
           ? sub(api.body.raw)
           : undefined;
       const hasFile = api.body.mode === "form" && formRows.some((f) => f.isFile);
@@ -722,6 +736,7 @@ export default function App() {
         url,
         headers,
         body: hasFile ? undefined : body,
+        bodyFile: api.body.mode === "binary" ? api.body.binaryPath.trim() : undefined,
         form: hasFile
           ? formRows.map((f) => ({ ...f, key: sub(f.key), value: sub(f.value) }))
           : undefined,
@@ -1116,6 +1131,15 @@ export default function App() {
           <div className="logo">
             <img className="logo-img" src={logoUrl} alt="API Manager" />
             <span>API Manager</span>
+            {updateInfo?.hasUpdate && (
+              <button
+                className="logo-update-badge"
+                title={t("update.badgeTip")}
+                onClick={() => setShowUpdateModal(true)}
+              >
+                {t("update.badge")}
+              </button>
+            )}
           </div>
           <div className="toolbar-spacer" />
           <span style={{ color: "var(--text-faint)", fontSize: 12 }}>
@@ -1158,6 +1182,15 @@ export default function App() {
         <div className="logo">
           <img className="logo-img" src={logoUrl} alt="API Manager" />
           <span>API Manager</span>
+          {updateInfo?.hasUpdate && (
+            <button
+              className="logo-update-badge"
+              title={t("update.badgeTip")}
+              onClick={() => setShowUpdateModal(true)}
+            >
+              {t("update.badge")}
+            </button>
+          )}
         </div>
         <div className="workspace-chip" title={t("toolbar.workspaceTip")} onClick={handlePickWorkspace}>
           📁 {workspace}
@@ -1402,13 +1435,13 @@ export default function App() {
 
       {statsNode && <StatsModal node={statsNode} onClose={() => setStatsNode(null)} />}
 
-      {updateInfo && (
+      {showUpdateModal && updateInfo && (
         <Modal
           title={`🎉 ${t("update.title")}`}
-          onClose={() => setUpdateInfo(null)}
+          onClose={() => setShowUpdateModal(false)}
           footer={
             <>
-              <button className="btn" onClick={() => setUpdateInfo(null)}>
+              <button className="btn" onClick={() => setShowUpdateModal(false)}>
                 {t("update.later")}
               </button>
               <button

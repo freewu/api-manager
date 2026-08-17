@@ -529,6 +529,7 @@ mod tests {
                 mode: "json".into(),
                 raw: "{\"name\":\"张三\"}".into(),
                 form: vec![],
+                binary_path: String::new(),
             },
             mock: crate::MockConfig::default(),
             examples: vec![],
