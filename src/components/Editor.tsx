@@ -731,51 +731,17 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
     set({ docParams: next });
   };
 
-  const addDocRow = (source: DocSource, parentKeys: string[]) => {
-    const next = [...api.docParams];
-    let arr = next;
-    for (const pk of parentKeys) {
-      const idx = arr.findIndex((d) => d.source === source && d.key === pk);
-      if (idx >= 0) {
-        if (!arr[idx].children) arr[idx].children = [];
-        arr = arr[idx].children;
-      } else {
-        const n = emptyDocParam(source);
-        n.key = pk;
-        arr.push(n);
-        arr = n.children;
-      }
-    }
-    arr.push(emptyDocParam(source));
-    set({ docParams: next });
-  };
-
-  const removeDocRow = (source: DocSource, keys: string[]) => {
-    const parentKeys = keys.slice(0, -1);
-    const key = keys[keys.length - 1];
-    const next = [...api.docParams];
-    let arr = next;
-    for (const pk of parentKeys) {
-      const idx = arr.findIndex((d) => d.source === source && d.key === pk);
-      if (idx < 0) return;
-      arr = arr[idx].children || [];
-    }
-    const idx = arr.findIndex((d) => d.source === source && d.key === key);
-    if (idx >= 0) arr.splice(idx, 1);
-    set({ docParams: next });
-  };
-
   // ---- 分块推导（请求侧来自真实配置，响应侧来自 Mock 体 / 手动条目） ----
-  type Block = { source: DocSource; title: string; nodes: RNode[]; manual: boolean };
+  type Block = { source: DocSource; title: string; nodes: RNode[] };
 
   const blocks = useMemo<Block[]>(() => {
     const out: Block[] = [];
     const headerNodes = kvNodes(api.headers);
-    if (headerNodes.length) out.push({ source: "header", title: T("editor.requestHeader"), nodes: headerNodes, manual: false });
+    if (headerNodes.length) out.push({ source: "header", title: T("editor.requestHeader"), nodes: headerNodes });
     const queryNodes = kvNodes(api.query);
-    if (queryNodes.length) out.push({ source: "query", title: "Query", nodes: queryNodes, manual: false });
+    if (queryNodes.length) out.push({ source: "query", title: "Query", nodes: queryNodes });
     const pathNodes = kvNodes(api.params);
-    if (pathNodes.length) out.push({ source: "path", title: "Path", nodes: pathNodes, manual: false });
+    if (pathNodes.length) out.push({ source: "path", title: "Path", nodes: pathNodes });
     let bodyNodes: RNode[] = [];
     if (api.body.mode === "form") {
       bodyNodes = kvNodes(api.body.form);
@@ -786,7 +752,7 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
         /* JSON 无法解析时不生成 */
       }
     }
-    if (bodyNodes.length) out.push({ source: "body", title: "Body", nodes: bodyNodes, manual: false });
+    if (bodyNodes.length) out.push({ source: "body", title: "Body", nodes: bodyNodes });
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api]);
@@ -866,7 +832,7 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
   const updateKey = (source: DocSource, keys: string[], v: string) =>
     updateDocAt(source, keys, { key: v });
 
-  const renderRow = (row: RowView, depth: number, source: DocSource, manual: boolean, showObjectName: boolean) => {
+  const renderRow = (row: RowView, depth: number, source: DocSource, showObjectName: boolean) => {
     const isObject = row.type === "Object";
     return (
       <Fragment key={row.keys.join("/")}>
@@ -926,33 +892,16 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
               onChange={(e) => updateDesc(source, row.keys, e.target.value)}
             />
           </td>
-          <td className="doc-ops">
-            {manual && isObject && (
-              <button className="doc-op" title={T("editor.addSubField")} onClick={() => addDocRow(source, row.keys)}>
-                ＋
-              </button>
-            )}
-            {manual && (
-              <button className="doc-op doc-op-del" title={T("editor.delField")} onClick={() => removeDocRow(source, row.keys)}>
-                ✕
-              </button>
-            )}
-          </td>
         </tr>
-        {row.children.map((c) => renderRow(c, depth + 1, source, manual, showObjectName))}
+        {row.children.map((c) => renderRow(c, depth + 1, source, showObjectName))}
       </Fragment>
     );
   };
 
-  const renderBlock = (title: string, badgeClass: string, rows: RowView[], source: DocSource, manual: boolean, showObjectName: boolean) => (
+  const renderBlock = (title: string, badgeClass: string, rows: RowView[], source: DocSource, showObjectName: boolean) => (
     <div className="doc-block">
       <div className="doc-block-title">
         <span className={`doc-source ${badgeClass}`}>{title}</span>
-        {manual && (
-          <button className="btn btn-sm" onClick={() => addDocRow(source, [])}>
-            {T("editor.addField")}
-          </button>
-        )}
       </div>
       <table className="kv-table doc-params-table">
         <thead>
@@ -962,10 +911,9 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
             <th style={{ width: 108 }}>{T("kv.type")}</th>
             {showObjectName && <th style={{ width: 120 }}>{T("editor.objectName")}</th>}
             <th>{T("kv.desc")}</th>
-            {manual && <th style={{ width: 62 }}>{T("common.operation")}</th>}
           </tr>
         </thead>
-        <tbody>{rows.map((r) => renderRow(r, 0, source, manual, showObjectName))}</tbody>
+        <tbody>{rows.map((r) => renderRow(r, 0, source, showObjectName))}</tbody>
       </table>
     </div>
   );
@@ -999,7 +947,6 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
           badgeFor(b.source),
           b.nodes.map((n) => derivedView(n, b.source, [])),
           b.source,
-          false,
           b.source === "body"
         )
       )}
@@ -1016,9 +963,6 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
                 <div className="doc-sub-title">
                   {entry.name || T("editor.response")}
                   {entry.status > 0 && <span className="resp-status-badge">HTTP {entry.status}</span>}
-                  <button className="btn btn-sm" onClick={() => addDocRow(source, [])}>
-                    {T("editor.addField")}
-                  </button>
                 </div>
                 <table className="kv-table doc-params-table">
                   <thead>
@@ -1028,14 +972,13 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
                       <th style={{ width: 108 }}>{T("kv.type")}</th>
                       <th style={{ width: 120 }}>{T("editor.objectName")}</th>
                       <th>{T("kv.desc")}</th>
-                      <th style={{ width: 62 }}>{T("common.operation")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {nodes.length > 0 ? (
-                      nodes.map((n) => renderRow(derivedView(n, source, []), 0, source, false, true))
+                      nodes.map((n) => renderRow(derivedView(n, source, []), 0, source, true))
                     ) : docs.length > 0 ? (
-                      docs.map((d) => renderRow(manualView(d, source, []), 0, source, true, true))
+                      docs.map((d) => renderRow(manualView(d, source, []), 0, source, true))
                     ) : (
                       <tr>
                         <td colSpan={6} className="doc-empty">
