@@ -15,6 +15,12 @@ function fmtDay(secs: number): string {
   ).padStart(2, "0")}`;
 }
 
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+
 function statusClass(status: number) {
   if (status >= 200 && status < 300) return "status-2xx";
   if (status >= 300 && status < 400) return "status-3xx";
@@ -69,6 +75,20 @@ export function HistoryList({
 
   const dayCount = useMemo(() => new Map(days.map((d) => [d.day, d.count])), [days]);
 
+  /** 今天 / 昨天 / 前天 用文字提示替换日期 */
+  const dayLabel = (day: string) => {
+    const now = new Date();
+    const today = ymd(now);
+    const y = new Date(now);
+    y.setDate(now.getDate() - 1);
+    const by = new Date(now);
+    by.setDate(now.getDate() - 2);
+    if (day === today) return t("history.today");
+    if (day === ymd(y)) return t("history.yesterday");
+    if (day === ymd(by)) return t("history.beforeYesterday");
+    return day;
+  };
+
   return (
     <div className="history-list-side">
       <div className="history-side-toolbar">
@@ -112,8 +132,8 @@ export function HistoryList({
         )}
         {groups.map(([day, list]) => (
           <div key={day}>
-            <div className="history-day">
-              {day}
+            <div className="history-day" title={day}>
+              {dayLabel(day)}
               {dayCount.has(day) && (
                 <span className="history-day-count">{dayCount.get(day)} {t("history.items")}</span>
               )}
