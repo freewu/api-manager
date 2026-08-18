@@ -32,6 +32,8 @@ export type CodeLang =
 export interface CodeLibOption {
   value: string;
   label: string;
+  /** 选中该库时的提示文案（i18n key，可选） */
+  hint?: string;
 }
 
 /** 支持库切换的语言 → 库列表（第一个为默认） */
@@ -76,6 +78,11 @@ export const CODE_LIBS: Partial<Record<CodeLang, CodeLibOption[]>> = {
   r: [
     { value: "httr", label: "httr" },
     { value: "rcurl", label: "RCurl" },
+  ],
+  lua: [
+    { value: "luasocket", label: "lua-httpclient", hint: "codegen.luaHttpHint" },
+    { value: "luacurl", label: "lua-curl" },
+    { value: "resty", label: "lua-resty-httpclient", hint: "codegen.luaRestyHint" },
   ],
 };
 
@@ -1504,7 +1511,7 @@ function genRRCurl(r: Req): string {
   return out.join("\n");
 }
 
-/* ==================== Lua（LuaSocket） ==================== */
+/* ==================== Lua：lua-httpclient / lua-curl / lua-resty-httpclient ==================== */
 
 function genLua(r: Req): string {
   const out: string[] = [];
@@ -1535,6 +1542,69 @@ function genLua(r: Req): string {
   out.push("");
   out.push("print(code)");
   out.push("print(table.concat(response_body))");
+  return out.join("\n");
+}
+
+function genLuaCurl(r: Req): string {
+  const out: string[] = [];
+  out.push('local curl = require("lcurl")');
+  out.push("");
+  out.push("local c = curl.easy()");
+  out.push(`c:setopt(curl.OPT_URL, "${esc(r.url, '"')}")`);
+  out.push(`c:setopt(curl.OPT_CUSTOMREQUEST, "${r.method}")`);
+  if (r.headers.length || r.bodyKind === "json") {
+    out.push("c:setopt(curl.OPT_HTTPHEADER, {");
+    for (const h of r.headers) out.push(`    "${esc(h.key, '"')}: ${esc(h.value, '"')}",`);
+    if (r.bodyKind === "json" && !r.headers.some((h) => h.key.toLowerCase() === "content-type")) {
+      out.push('    "Content-Type: application/json",');
+    }
+    out.push("})");
+  }
+  if (r.files.length) {
+    out.push("// 注意：lua-curl 文件上传请使用 OPT_HTTPPOST / OPT_MIMEPOST 构造 multipart");
+    for (const f of r.files) out.push(`c:setopt(curl.OPT_HTTPPOST, { "${esc(f.key, '"')}" = { file = "${esc(f.path, '"')}" } })`);
+  } else if (r.body) {
+    out.push(`c:setopt(curl.OPT_POSTFIELDS, "${esc(r.body, '"')}")`);
+  }
+  out.push("c:setopt(curl.OPT_WRITEFUNCTION, function(buffer)");
+  out.push("    io.write(buffer)");
+  out.push("    return #buffer");
+  out.push("end)");
+  out.push("");
+  out.push("local ok, err = c:perform()");
+  out.push("if not ok then");
+  out.push('    io.stderr:write(err .. "\\n")');
+  out.push("end");
+  out.push("c:close()");
+  return out.join("\n");
+}
+
+function genLuaResty(r: Req): string {
+  const out: string[] = [];
+  out.push("-- 需要 OpenResty / Nginx Lua 环境（ngx_lua + lua-resty-http）");
+  out.push('local http = require("resty.http")');
+  out.push("local httpc = http.new()");
+  out.push("");
+  out.push(`local res, err = httpc:request_uri("${esc(r.url, '"')}", {`);
+  out.push(`    method = "${r.method}",`);
+  if (r.headers.length || r.bodyKind === "json") {
+    out.push("    headers = {");
+    for (const h of r.headers) out.push(`        ["${esc(h.key, '"')}"] = "${esc(h.value, '"')}",`);
+    if (r.bodyKind === "json" && !r.headers.some((h) => h.key.toLowerCase() === "content-type")) {
+      out.push('        ["Content-Type"] = "application/json",');
+    }
+    out.push("    },");
+  }
+  if (r.body) out.push(`    body = "${esc(r.body, '"')}",`);
+  out.push("})");
+  out.push("");
+  out.push("if not res then");
+  out.push("    ngx.log(ngx.ERR, err)");
+  out.push("    return");
+  out.push("end");
+  out.push("ngx.say(res.status)");
+  out.push("ngx.say(res.body)");
+  out.push("httpc:close()");
   return out.join("\n");
 }
 
@@ -1617,7 +1687,7 @@ export function generateRequestCode(lang: CodeLang, api: ApiFile, baseUrl: strin
     case "erlang":
       return genErlang(r);
     case "lua":
-      return genLua(r);
+      return genLuaDispatch(lib, r);
     case "powershell":
       return genPowershell(r);
   }
@@ -1682,5 +1752,16 @@ function genPhpDispatch(lib: string | undefined, r: Req): string {
       return genPhpGuzzle(r);
     default:
       return genPhp(r);
+  }
+}
+
+function genLuaDispatch(lib: string | undefined, r: Req): string {
+  switch (lib) {
+    case "luacurl":
+      return genLuaCurl(r);
+    case "resty":
+      return genLuaResty(r);
+    default:
+      return genLua(r);
   }
 }

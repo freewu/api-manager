@@ -92,6 +92,7 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
   const [copied, setCopied] = useState(false);
 
   const libs = CODE_LIBS[lang];
+  const activeLib = libs?.find((l) => l.value === lib);
 
   const code = useMemo(() => generateRequestCode(lang, api, baseUrl, lib), [lang, lib, api, baseUrl]);
   const html = useMemo(() => {
@@ -151,6 +152,7 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
           ))}
         </div>
       )}
+      {activeLib?.hint && <div className="codegen-lib-hint">💡 {t(activeLib.hint)}</div>}
       <pre className="codegen-pre">
         <code
           className="hljs codegen-code"
