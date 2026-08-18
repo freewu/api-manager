@@ -1562,24 +1562,30 @@ fn render_api_markdown(state: State<'_, WorkspaceState>, path: String) -> Result
     Ok(MarkdownDoc { name: api.name, md, html })
 }
 
-/// 渲染分组（含其下全部子分组/接口）为单个 Markdown 文档
-#[tauri::command]
-fn render_group_markdown(state: State<'_, WorkspaceState>, path: String) -> Result<MarkdownDoc, String> {
-    let root = workspace_root(&state)?;
-    let apis = export::collect_apis(&root, &[path.clone()])?;
+/// 生成分组（含其下全部子分组/接口）的单个 Markdown：返回 (分组名, markdown)
+fn group_markdown_doc(root: &Path, path: &str) -> Result<(String, String), String> {
+    let apis = export::collect_apis(root, &[path.to_string()])?;
     if apis.is_empty() {
         return Err("所选内容中没有接口".into());
     }
-    let name = read_info_file(Path::new(&path))
+    let name = read_info_file(Path::new(path))
         .name
         .filter(|n| !n.trim().is_empty())
         .unwrap_or_else(|| {
-            Path::new(&path)
+            Path::new(path)
                 .file_name()
                 .map(|s| s.to_string_lossy().to_string())
                 .unwrap_or_default()
         });
     let md = export::markdown_single_file(&name, &apis);
+    Ok((name, md))
+}
+
+/// 渲染分组（含其下全部子分组/接口）为单个 Markdown 文档
+#[tauri::command]
+fn render_group_markdown(state: State<'_, WorkspaceState>, path: String) -> Result<MarkdownDoc, String> {
+    let root = workspace_root(&state)?;
+    let (name, md) = group_markdown_doc(&root, &path)?;
     let html = markdown::md_to_html(&md);
     Ok(MarkdownDoc { name, md, html })
 }
@@ -1594,9 +1600,14 @@ fn export_api_markdown(
 ) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
     let root = workspace_root(&state)?;
-    let group = group_of(&path, &root.to_string_lossy());
-    let api = read_api(path)?;
-    let md = markdown::render(&api, &group);
+    // 分组（目录）走分组 Markdown；接口文件走单接口 Markdown
+    let (name, md) = if Path::new(&path).is_dir() {
+        group_markdown_doc(&root, &path)?
+    } else {
+        let group = group_of(&path, &root.to_string_lossy());
+        let api = read_api(path)?;
+        (api.name.clone(), markdown::render(&api, &group))
+    };
     let fmt = if format.eq_ignore_ascii_case("html") { "html" } else { "md" };
     let picked = app
         .dialog()
@@ -1607,15 +1618,15 @@ fn export_api_markdown(
         return Ok(None);
     };
     let dir = dir.into_path().map_err(|e| e.to_string())?;
-    let base = sanitize_filename(&api.name);
+    let base = sanitize_filename(&name);
     let base = if base.trim().is_empty() {
-        "未命名接口".to_string()
+        "未命名文档".to_string()
     } else {
         base
     };
     let target = unique_path(&dir, &base, &format!(".{fmt}"));
     let content = if fmt == "html" {
-        markdown::wrap_html(&api.name, &md)
+        markdown::wrap_html(&name, &md)
     } else {
         md
     };
@@ -4548,6 +4559,52 @@ mod tests {
         assert!(api.responses[1].body.contains("message"), "fail body: {}", api.responses[1].body);
         // docParams 已重键到新条目 id
         assert!(api.doc_params.iter().all(|d| d.source == format!("resp:{}", api.responses[1].id)));
+    }
+
+    /// 分组目录保存 .md/.html：export_api_markdown 的分支走 group_markdown_doc，目录不再是 read_api 目标
+    #[test]
+    fn group_markdown_doc_renders_group_dir() {
+        let base = std::env::temp_dir().join(format!("apim-gmdoc-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        let g = base.join("用户管理");
+        fs::create_dir_all(&g).unwrap();
+        let mut a = ApiFile {
+            uuid: "u".into(),
+            name: "接口A".into(),
+            method: "GET".into(),
+            path: "/a".into(),
+            url: String::new(),
+            description: String::new(),
+            headers: vec![],
+            query: vec![],
+            params: vec![],
+            body: BodyData::default(),
+            mock: MockConfig {
+                enabled: false,
+                status: 200,
+                headers: vec![],
+                delay: 0,
+                body: String::new(),
+            },
+            examples: vec![],
+            responses: vec![],
+            doc_params: vec![],
+        };
+        fs::write(
+            g.join("接口A.json"),
+            serde_json::to_string(&a).unwrap(),
+        )
+        .unwrap();
+        // 空分组直接报错（与导出逻辑一致）
+        let empty = base.join("空分组");
+        fs::create_dir_all(&empty).unwrap();
+        assert!(group_markdown_doc(&base, &empty.to_string_lossy()).is_err());
+        let (name, md) = group_markdown_doc(&base, &g.to_string_lossy()).expect("group doc");
+        assert_eq!(name, "用户管理");
+        assert!(md.contains("## 接口A"), "md: {md}");
+        // 分组名即标题：不再重复输出 # 用户管理
+        assert_eq!(md.matches("# 用户管理").count(), 1, "md: {md}");
+        let _ = fs::remove_dir_all(&base);
     }
 
     #[test]
