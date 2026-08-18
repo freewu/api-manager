@@ -134,7 +134,7 @@ just             # 列出全部命令
 ### 構建產物
 
 - `just release` 產物：`release/api-manager.exe` — 單體可執行文件，無需安裝，拷到任意 Windows 機器直接運行（Win10/11 自帶 WebView2 運行時）
-- `just build`（可選）產物：`src-tauri/target/release/bundle/nsis/API Manager_0.1.5_x64-setup.exe` — NSIS 安裝包；`bundle/msi/API Manager_0.1.5_x64_en-US.msi` — MSI
+- `just build`（可選）產物：`src-tauri/target/release/bundle/nsis/API Manager_0.1.6_x64-setup.exe` — NSIS 安裝包；`bundle/msi/API Manager_0.1.6_x64_en-US.msi` — MSI
 
 ### 運行測試
 

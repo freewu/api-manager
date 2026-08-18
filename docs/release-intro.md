@@ -1,6 +1,6 @@
 # API Manager 应用功能介绍（应用发布用）
 
-> 版本：v0.1.5 · 平台：Windows 10/11（x64）· 语言：简体中文 / 繁體中文 / English
+> 版本：v0.1.6 · 平台：Windows 10/11（x64）· 语言：简体中文 / 繁體中文 / English
 
 ---
 
@@ -83,7 +83,7 @@ A lightweight Tauri 2 API workbench where directories are collections and every 
 ## 五、Release 发布说明模板（GitHub Releases）
 
 ```markdown
-## API Manager v0.1.5
+## API Manager v0.1.6
 
 轻量级 API 文档 · 测试 · Mock 工作台（Tauri 2 / React / Rust）。
 
@@ -112,7 +112,7 @@ A lightweight Tauri 2 API workbench where directories are collections and every 
 ## 六、English Release Notes (GitHub Releases)
 
 ```markdown
-## API Manager v0.1.5
+## API Manager v0.1.6
 
 A lightweight API documentation · testing · Mock workbench (Tauri 2 / React / Rust).
 

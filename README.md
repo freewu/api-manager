@@ -134,7 +134,7 @@ just             # list all commands
 ### Build Artifacts
 
 - `just release` output: `release/api-manager.exe` — a standalone executable; no installation needed, copy it to any Windows machine and run (Win10/11 ships the WebView2 runtime)
-- `just build` (optional) output: `src-tauri/target/release/bundle/nsis/API Manager_0.1.5_x64-setup.exe` — NSIS installer; `bundle/msi/API Manager_0.1.5_x64_en-US.msi` — MSI
+- `just build` (optional) output: `src-tauri/target/release/bundle/nsis/API Manager_0.1.6_x64-setup.exe` — NSIS installer; `bundle/msi/API Manager_0.1.6_x64_en-US.msi` — MSI
 
 ### Running Tests
 
