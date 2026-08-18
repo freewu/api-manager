@@ -177,9 +177,111 @@ pub struct ApiFile {
     pub mock: MockConfig,
     #[serde(default)]
     pub examples: Vec<Value>,
+    /// 响应页签条目：返回成功 / 返回失败 / 自定义错误返回（名称、状态码、示例体）
+    #[serde(default)]
+    pub responses: Vec<ResponseItem>,
     /// 入参文档：请求参数的补充说明（类型 / 说明），按 source+key 关联到请求配置
     #[serde(default)]
     pub doc_params: Vec<DocParam>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ResponseItem {
+    pub id: String,
+    /// 返回名称（返回成功 / 返回失败 / 自定义名称）
+    pub name: String,
+    /// HTTP 状态码，0 表示未填写
+    pub status: u16,
+    pub content_type: String,
+    /// 响应体示例（JSON / XML / 文本）
+    pub body: String,
+}
+
+impl Default for ResponseItem {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            name: String::new(),
+            status: 0,
+            content_type: "application/json".to_string(),
+            body: String::new(),
+        }
+    }
+}
+
+/// 新建接口的默认返回条目（返回成功 + 返回失败）
+pub(crate) fn default_responses() -> Vec<ResponseItem> {
+    vec![
+        ResponseItem {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: "返回成功".into(),
+            status: 200,
+            content_type: "application/json".into(),
+            body: "{\n  \"code\": 0,\n  \"message\": \"success\"\n}".into(),
+        },
+        ResponseItem {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: "返回失败".into(),
+            status: 400,
+            content_type: "application/json".into(),
+            body: "{\n  \"code\": 1,\n  \"message\": \"error\"\n}".into(),
+        },
+    ]
+}
+
+/// 旧文件兼容：无 responses 字段时按旧数据补全默认返回
+/// 返回成功取 mock.body（合法 JSON 时），返回失败由 resp_fail 文档条目生成示例；
+/// 同时把 docParams 的 resp_success / resp_fail 重键到对应条目 id
+pub(crate) fn ensure_responses(api: &mut ApiFile) {
+    if !api.responses.is_empty() {
+        return;
+    }
+    let success_id = uuid::Uuid::new_v4().to_string();
+    let fail_id = uuid::Uuid::new_v4().to_string();
+    let success_body = if serde_json::from_str::<Value>(&api.mock.body).is_ok() {
+        api.mock.body.clone()
+    } else {
+        String::new()
+    };
+    let fail_docs: Vec<DocParam> = api
+        .doc_params
+        .iter()
+        .filter(|d| d.source == "resp_fail")
+        .cloned()
+        .collect();
+    let mut flat: Vec<(String, String, String)> = Vec::new();
+    for d in &fail_docs {
+        crate::markdown::flatten_doc(d, "", &mut flat);
+    }
+    let fail_body = if flat.is_empty() {
+        String::new()
+    } else {
+        crate::markdown::sample_json_from_rows(&flat)
+    };
+    api.responses = vec![
+        ResponseItem {
+            id: success_id.clone(),
+            name: "返回成功".into(),
+            status: 200,
+            content_type: "application/json".into(),
+            body: success_body,
+        },
+        ResponseItem {
+            id: fail_id.clone(),
+            name: "返回失败".into(),
+            status: 400,
+            content_type: "application/json".into(),
+            body: fail_body,
+        },
+    ];
+    for d in &mut api.doc_params {
+        if d.source == "resp_success" {
+            d.source = format!("resp:{success_id}");
+        } else if d.source == "resp_fail" {
+            d.source = format!("resp:{fail_id}");
+        }
+    }
 }
 
 /// 入参/出参文档条目：位置（header / query / path / body / resp_success / resp_fail）
@@ -1317,6 +1419,7 @@ fn postman_request_to_api(name: &str, request: &Value) -> Result<ApiFile, String
         body,
         mock: MockConfig::default(),
         examples: vec![],
+        responses: vec![],
         doc_params: vec![],
     })
 }
@@ -2006,6 +2109,7 @@ fn openapi_op_to_api(
         body,
         mock: MockConfig::default(),
         examples: vec![],
+        responses: vec![],
         doc_params: vec![],
     })
 }
@@ -2120,7 +2224,17 @@ fn read_tree(state: State<'_, WorkspaceState>) -> Result<TreeNode, String> {
 #[tauri::command]
 fn read_api(path: String) -> Result<ApiFile, String> {
     let content = fs::read_to_string(&path).map_err(|e| format!("读取失败: {e}"))?;
-    serde_json::from_str(&content).map_err(|e| format!("JSON 解析失败: {e}"))
+    // 仅旧文件（无 responses 字段）需要迁移补全；显式保存过空列表的接口保持原样
+    let has_responses = serde_json::from_str::<Value>(&content)
+        .ok()
+        .map(|v| v.get("responses").is_some())
+        .unwrap_or(false);
+    let mut api: ApiFile =
+        serde_json::from_str(&content).map_err(|e| format!("JSON 解析失败: {e}"))?;
+    if !has_responses {
+        ensure_responses(&mut api);
+    }
+    Ok(api)
 }
 
 #[tauri::command]
@@ -2324,6 +2438,7 @@ fn create_api(
         body: BodyData::default(),
         mock: MockConfig::default(),
         examples: vec![],
+        responses: default_responses(),
         doc_params: vec![],
     };
     write_pretty(&file_path, &data)?;
@@ -4353,6 +4468,7 @@ mod tests {
             body: BodyData::default(),
             mock: MockConfig::default(),
             examples: vec![],
+            responses: vec![],
             doc_params: vec![],
         };
         let rel = save_api_version_at(&root, api).unwrap();
@@ -4388,6 +4504,50 @@ mod tests {
         assert!(!version_gt("0.1.4", "0.1.5"));
         assert!(!version_gt("0.1.9", "0.2.0"));
         assert!(!version_gt("", "0.1.5")); // 空版本不视为更新
+    }
+
+    /// 旧文件无 responses 字段时：返回成功取 mock 体、返回失败由 resp_fail 文档生成，docParams 重键到 resp:<id>
+    #[test]
+    fn ensure_responses_migrates_old_files() {
+        let mut api = ApiFile {
+            uuid: "u".into(),
+            name: "测试".into(),
+            method: "GET".into(),
+            path: "/x".into(),
+            url: String::new(),
+            description: String::new(),
+            headers: vec![],
+            query: vec![],
+            params: vec![],
+            body: BodyData::default(),
+            mock: MockConfig {
+                enabled: false,
+                status: 200,
+                headers: vec![],
+                delay: 0,
+                body: r#"{"code":0}"#.into(),
+            },
+            examples: vec![],
+            responses: vec![],
+            doc_params: vec![DocParam {
+                source: "resp_fail".into(),
+                key: "message".into(),
+                r#type: "String".into(),
+                description: "错误描述".into(),
+                item_type: String::new(),
+                object_name: String::new(),
+                children: vec![],
+            }],
+        };
+        ensure_responses(&mut api);
+        assert_eq!(api.responses.len(), 2);
+        assert_eq!(api.responses[0].name, "返回成功");
+        assert_eq!(api.responses[0].status, 200);
+        assert_eq!(api.responses[0].body, r#"{"code":0}"#);
+        assert_eq!(api.responses[1].name, "返回失败");
+        assert!(api.responses[1].body.contains("message"), "fail body: {}", api.responses[1].body);
+        // docParams 已重键到新条目 id
+        assert!(api.doc_params.iter().all(|d| d.source == format!("resp:{}", api.responses[1].id)));
     }
 
     #[test]
@@ -4665,6 +4825,7 @@ mod tests {
             body: BodyData::default(),
             mock: MockConfig::default(),
             examples: vec![],
+            responses: vec![],
             doc_params: vec![],
         };
         write_pretty(&src, &api).unwrap();
@@ -4706,6 +4867,7 @@ mod tests {
                 body: BodyData::default(),
                 mock: MockConfig::default(),
                 examples: vec![],
+                responses: vec![],
                 doc_params: vec![],
             };
             write_pretty(p, &api).unwrap();

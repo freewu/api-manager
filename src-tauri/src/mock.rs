@@ -397,6 +397,7 @@ mod tests {
                 body: "{\"id\": \"{{path.id}}\"}".into(),
             },
             examples: vec![],
+            responses: vec![],
             doc_params: vec![],
         };
         let route = parse_route(&api).unwrap();

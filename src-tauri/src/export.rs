@@ -271,13 +271,40 @@ fn openapi_operation(segs: &[String], api: &ApiFile) -> Value {
             "schema": { "type": "string" }
         }));
     }
+    let mut responses = Map::new();
+    // 优先使用「响应」页签条目（名称 + 状态码 + 示例体）；旧数据回退到 Mock 响应
+    for r in &api.responses {
+        let status = if r.status > 0 {
+            r.status.to_string()
+        } else {
+            "default".to_string()
+        };
+        let mut desc = r.name.trim().to_string();
+        if desc.is_empty() {
+            desc = "响应".to_string();
+        }
+        let mut content = Map::new();
+        if !r.body.trim().is_empty() {
+            let example = serde_json::from_str::<Value>(&r.body)
+                .unwrap_or_else(|_| Value::String(r.body.clone()));
+            content.insert(
+                r.content_type.trim().to_string(),
+                json!({ "example": example }),
+            );
+        }
+        responses.insert(status, json!({ "description": desc, "content": content }));
+    }
+    if responses.is_empty() {
+        responses.insert(
+            "200".to_string(),
+            json!({ "description": format!("Mock 响应（状态码 {}）", api.mock.status) }),
+        );
+    }
     let mut op = json!({
         "summary": api.name,
         "description": api.description,
         "parameters": params,
-        "responses": {
-            "200": { "description": format!("Mock 响应（状态码 {}）", api.mock.status) }
-        }
+        "responses": responses
     });
     if !segs.is_empty() {
         op["tags"] = json!([segs.join("/")]);
@@ -549,6 +576,7 @@ mod tests {
             },
             mock: crate::MockConfig::default(),
             examples: vec![],
+            responses: vec![],
             doc_params: vec![],
         }
     }

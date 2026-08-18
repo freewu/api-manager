@@ -25,6 +25,33 @@ export interface MockConfig {
   body: string;
 }
 
+/** 响应页签中的一条返回：名称（如 返回成功 / 返回失败）、HTTP 状态码、内容类型与示例体 */
+export interface ResponseItem {
+  id: string;
+  /** 返回名称，可编辑（错误返回可命名为 参数错误 / 未授权 等） */
+  name: string;
+  /** HTTP 状态码，0 表示未填写 */
+  status: number;
+  contentType: string;
+  /** 响应体示例（JSON / XML / 文本） */
+  body: string;
+}
+
+export function emptyResponse(name: string, status = 0): ResponseItem {
+  return {
+    id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
+    name,
+    status,
+    contentType: "application/json",
+    body: "",
+  };
+}
+
+/** 响应文档字段的 docParams source（resp:<响应条目 id>） */
+export function respSource(id: string): DocSource {
+  return `resp:${id}` as DocSource;
+}
+
 export interface ApiFile {
   uuid: string;
   name: string;
@@ -38,11 +65,20 @@ export interface ApiFile {
   body: BodyData;
   mock: MockConfig;
   examples: unknown[];
+  /** 响应页签条目：返回成功 / 返回失败 / 自定义错误返回 */
+  responses: ResponseItem[];
   /** 入参文档：请求参数的补充说明（类型 / 说明），按 source+key 关联 */
   docParams: DocParam[];
 }
 
-export type DocSource = "header" | "query" | "path" | "body" | "resp_success" | "resp_fail";
+export type DocSource =
+  | "header"
+  | "query"
+  | "path"
+  | "body"
+  | "resp_success"
+  | "resp_fail"
+  | `resp:${string}`;
 
 /** 接口文档字段类型选项 */
 export const DOC_TYPES = ["String", "Integer", "Float", "Boolean", "List", "Object"];
@@ -270,6 +306,7 @@ export function emptyApi(): ApiFile {
     body: emptyBody(),
     mock: emptyMock(),
     examples: [],
+    responses: [emptyResponse("返回成功", 200), emptyResponse("返回失败", 400)],
     docParams: [],
   };
 }

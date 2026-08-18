@@ -9,6 +9,18 @@ use std::fmt::Write as _;
 
 /// 把接口渲染为 Markdown 文档（新格式：# 分组名 → ## 接口名 → > 方法 URL → header/请求参数/响应参数）
 pub fn render(api: &ApiFile, group: &str) -> String {
+    // 旧文件没有 responses 时按 mock 体 / resp_fail 文档补全，保证响应部分不丢
+    let mut ensured = api.clone();
+    let legacy = ensured.responses.is_empty()
+        && (!ensured.mock.body.trim().is_empty()
+            || ensured
+                .doc_params
+                .iter()
+                .any(|d| d.source == "resp_success" || d.source == "resp_fail"));
+    if legacy {
+        crate::ensure_responses(&mut ensured);
+    }
+    let api = &ensured;
     let mut s = String::new();
     let g = group.trim();
     if !g.is_empty() {
@@ -70,28 +82,36 @@ pub fn render(api: &ApiFile, group: &str) -> String {
         s.push_str(&req);
     }
 
-    // ## 响应参数：### 成功响应 / ### 失败响应 / ### 请求示例
+    // ## 响应参数：每个「响应」页签条目一节（名称 + HTTP 状态码）+ 请求示例
     let mut resp = String::new();
-    let mut success_rows: Vec<(String, String, String)> = Vec::new();
-    if let Ok(v) = serde_json::from_str::<Value>(&api.mock.body) {
-        walk_json(v, "", api, "resp_success", &mut success_rows);
-    }
-    if !success_rows.is_empty() {
-        let _ = writeln!(resp, "### 成功响应\n");
-        resp.push_str(&three_col_table(&success_rows));
-        resp.push('\n');
-        let _ = writeln!(resp, "```json\n{}\n```\n", pretty_json(&api.mock.body));
-    }
-    let fail_docs: Vec<&DocParam> = api.doc_params.iter().filter(|d| d.source == "resp_fail").collect();
-    if !fail_docs.is_empty() {
-        let _ = writeln!(resp, "### 失败响应\n");
-        let mut flat: Vec<(String, String, String)> = Vec::new();
-        for d in fail_docs {
-            flatten_doc(d, "", &mut flat);
+    for r in &api.responses {
+        if r.name.trim().is_empty() && r.body.trim().is_empty() {
+            continue;
         }
-        resp.push_str(&three_col_table(&flat));
-        resp.push('\n');
-        let _ = writeln!(resp, "```json\n{}\n```\n", sample_json_from_rows(&flat));
+        let mut rows: Vec<(String, String, String)> = Vec::new();
+        let body = r.body.trim();
+        if let Ok(v) = serde_json::from_str::<Value>(body) {
+            walk_json(v, "", api, &format!("resp:{}", r.id), &mut rows);
+        } else {
+            let src = format!("resp:{}", r.id);
+            let docs: Vec<&DocParam> = api.doc_params.iter().filter(|d| d.source == src).collect();
+            for d in docs {
+                flatten_doc(d, "", &mut rows);
+            }
+        }
+        let title = if r.status > 0 {
+            format!("{}（HTTP {}）", r.name, r.status)
+        } else {
+            r.name.clone()
+        };
+        let _ = writeln!(resp, "### {}\n", title);
+        if !rows.is_empty() {
+            resp.push_str(&three_col_table(&rows));
+            resp.push('\n');
+        }
+        if !body.is_empty() {
+            let _ = writeln!(resp, "```json\n{}\n```\n", pretty_json(body));
+        }
     }
     let _ = writeln!(resp, "### 请求示例\n");
     let _ = writeln!(resp, "```bash\n{}\n```\n", curl_example(api));
@@ -190,7 +210,7 @@ fn form_sample_json(api: &ApiFile, rows: &[&KeyValue]) -> String {
 }
 
 /// 由响应字段（点分路径 + 类型 + 说明）生成示例 JSON（按类型给样例值）
-fn sample_json_from_rows(rows: &[(String, String, String)]) -> String {
+pub(crate) fn sample_json_from_rows(rows: &[(String, String, String)]) -> String {
     let mut root = serde_json::Map::new();
     for (k, t, d) in rows {
         let parts: Vec<&str> = k.split('.').map(|p| p.trim()).filter(|p| !p.is_empty()).collect();
@@ -271,7 +291,7 @@ fn doc_at<'a>(api: &'a ApiFile, source: &str, keys: &[&str]) -> Option<&'a DocPa
 }
 
 /// 递归展开 docParams 树为「点分路径」行
-fn flatten_doc(d: &DocParam, prefix: &str, out: &mut Vec<(String, String, String)>) {
+pub(crate) fn flatten_doc(d: &DocParam, prefix: &str, out: &mut Vec<(String, String, String)>) {
     let key = if prefix.is_empty() {
         d.key.clone()
     } else {
@@ -284,7 +304,7 @@ fn flatten_doc(d: &DocParam, prefix: &str, out: &mut Vec<(String, String, String
 }
 
 /// 递归把 JSON 值展开为「点分路径」行，类型按值推导，并合并 docParams 覆盖
-fn walk_json(v: Value, prefix: &str, api: &ApiFile, source: &str, out: &mut Vec<(String, String, String)>) {
+pub(crate) fn walk_json(v: Value, prefix: &str, api: &ApiFile, source: &str, out: &mut Vec<(String, String, String)>) {
     match v {
         Value::Object(map) => {
             let mut entries: Vec<(String, Value)> = map.into_iter().collect();
@@ -804,6 +824,7 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
         body: BodyData::default(),
         mock: MockConfig::default(),
         examples: vec![],
+        responses: vec![],
         doc_params: vec![],
     };
 
@@ -869,7 +890,26 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
                 }
                 "失败响应" => parse_doc_section(&mut api, "resp_fail", text),
                 "请求示例" => {}
-                _ => {}
+                other => {
+                    // 新版：响应页签条目（### 返回成功（HTTP 200））
+                    let mut entry = crate::ResponseItem::default();
+                    entry.id = uuid::Uuid::new_v4().to_string();
+                    let (name, status) = split_status_name(other);
+                    entry.name = name;
+                    entry.status = status;
+                    if let Some(fence) = first_fence(text) {
+                        entry.body = match serde_json::from_str::<Value>(&fence) {
+                            Ok(v) => serde_json::to_string_pretty(&v).unwrap_or(fence),
+                            Err(_) => fence,
+                        };
+                        // 返回成功同步到 Mock 响应体（保持导入 → Mock 可用）
+                        if entry.status == 200 || entry.name.contains("返回成功") {
+                            api.mock.body = entry.body.clone();
+                        }
+                    }
+                    parse_doc_section(&mut api, &format!("resp:{}", entry.id), text);
+                    api.responses.push(entry);
+                }
             },
             "请求 Header" | "Query" | "Path" | "Body" => {
                 let source = match sec {
@@ -1092,6 +1132,22 @@ fn parse_table_rows(text: &str) -> Vec<TableRow> {
     out
 }
 
+/// 从「名称（HTTP 200）」中拆出名称与状态码（兼容无状态码的名称）
+fn split_status_name(raw: &str) -> (String, u16) {
+    let t = raw.trim();
+    if let Some(idx) = t.rfind('（') {
+        let tail = &t[idx + '（'.len_utf8()..];
+        if let Some(end) = tail.find('）') {
+            if let Some(code) = tail[..end].strip_prefix("HTTP ") {
+                if let Ok(n) = code.trim().parse::<u16>() {
+                    return (t[..idx].trim().to_string(), n);
+                }
+            }
+        }
+    }
+    (t.to_string(), 0)
+}
+
 /// 取第一个 ``` 围栏代码块内容
 fn first_fence(text: &str) -> Option<String> {
     let mut in_fence = false;
@@ -1168,6 +1224,7 @@ mod tests {
                 body: "{\"code\":0,\"data\":{\"name\":\"张三\"}}".into(),
             },
             examples: vec![],
+            responses: vec![],
             doc_params: vec![DocParam {
                 source: "resp_fail".into(),
                 key: "code".into(),
@@ -1178,6 +1235,39 @@ mod tests {
                 children: vec![],
             }],
         }
+    }
+
+    /// 响应页签条目 → 文档：每个条目一节（名称 + HTTP 状态码），字段由示例体推导
+    #[test]
+    fn render_uses_response_tab_entries() {
+        let mut api = sample_api();
+        api.responses = vec![
+            crate::ResponseItem {
+                id: "r1".into(),
+                name: "返回成功".into(),
+                status: 200,
+                content_type: "application/json".into(),
+                body: r#"{"code":0,"data":{"name":"张三"}}"#.into(),
+            },
+            crate::ResponseItem {
+                id: "r2".into(),
+                name: "参数校验失败".into(),
+                status: 422,
+                content_type: "application/json".into(),
+                body: r#"{"code":422,"message":"name 不能为空"}"#.into(),
+            },
+        ];
+        let md = render(&api, "");
+        assert!(md.contains("### 返回成功（HTTP 200）\n"), "md: {md}");
+        assert!(md.contains("### 参数校验失败（HTTP 422）\n"), "md: {md}");
+        assert!(md.contains("| data.name | String |"), "md: {md}");
+        // 自定义错误返回名导入回读
+        let parsed = parse(&md).expect("parse ok");
+        let a = &parsed.apis[0];
+        assert_eq!(a.responses.len(), 2);
+        assert_eq!(a.responses[1].name, "参数校验失败");
+        assert_eq!(a.responses[1].status, 422);
+        assert!(a.responses[1].body.contains("name 不能为空"));
     }
 
     #[test]
@@ -1195,8 +1285,8 @@ mod tests {
         assert!(md.contains("### query\n"));
         assert!(md.contains("### body\n"));
         assert!(md.contains("## 响应参数\n"));
-        assert!(md.contains("### 成功响应\n"));
-        assert!(md.contains("### 失败响应\n"));
+        assert!(md.contains("### 返回成功（HTTP 200）\n"));
+        assert!(md.contains("### 返回失败（HTTP 400）\n"));
         assert!(md.contains("### 请求示例\n"));
         assert!(md.contains("curl -X POST http://example.com/api/users"));
         assert!(md.contains("-H \"Content-Type: application/json\""));
@@ -1283,6 +1373,7 @@ mod tests {
             },
             mock: crate::MockConfig::default(),
             examples: vec![],
+            responses: vec![],
             doc_params: vec![],
         };
         api.mock.body = r#"{"data":{"name":"张三","id":1},"code":0}"#.into();

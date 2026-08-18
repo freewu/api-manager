@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { ApiFile, BODY_MODES, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, emptyDocParam } from "../types";
+import { ApiFile, BODY_MODES, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { CodeTab } from "./CodeTab";
 import { ExamplesTab } from "./ExamplesTab";
@@ -59,7 +59,7 @@ function prettyXml(src: string): string {
   return out.join("\n");
 }
 
-type Tab = "params" | "path" | "headers" | "body" | "mock" | "desc" | "doc" | "code" | "examples";
+type Tab = "params" | "path" | "headers" | "body" | "response" | "mock" | "desc" | "doc" | "code" | "examples";
 
 interface Props {
   api: ApiFile;
@@ -135,6 +135,16 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   }, [pathSource]);
 
   const set = (patch: Partial<ApiFile>) => onChange({ ...api, ...patch });
+
+  /** 响应页签：更新某条返回（名称 / 状态码 / 内容类型 / 示例体） */
+  const updateResponse = (id: string, patch: Partial<ResponseItem>) =>
+    set({ responses: (api.responses || []).map((r) => (r.id === id ? { ...r, ...patch } : r)) });
+  /** 响应页签：新增一条返回（默认命名为「返回失败」，可改名） */
+  const addResponse = () =>
+    set({ responses: [...(api.responses || []), emptyResponse(t("editor.responseErrorName"))] });
+  /** 响应页签：删除一条返回 */
+  const removeResponse = (id: string) =>
+    set({ responses: (api.responses || []).filter((r) => r.id !== id) });
 
   const enabledCount = (rows: KeyValue[]) => rows.filter((r) => r.enabled && r.key).length;
 
@@ -245,6 +255,13 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               (api.body.mode !== "binary" && api.body.raw)) && (
               <span className="count">•</span>
             )}
+        </div>
+        <div
+          className={`tab ${tab === "response" ? "active" : ""}`}
+          onClick={() => switchTab("response")}
+        >
+          {t("editor.responseTab")}
+          {(api.responses?.length ?? 0) > 0 && <span className="count">{api.responses.length}</span>}
         </div>
         {enableMock && (
           <div className={`tab ${tab === "mock" ? "active" : ""}`} onClick={() => switchTab("mock")}>
@@ -426,6 +443,68 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {tab === "response" && (
+          <div className="response-list">
+            <div className="section-title">
+              {t("editor.responseTab")}{" "}
+              <span className="help">{t("editor.responseTabHint")}</span>
+            </div>
+            {(api.responses || []).map((r) => (
+              <div className="response-item" key={r.id}>
+                <div className="response-item-head">
+                  <input
+                    className="response-name-input"
+                    value={r.name}
+                    placeholder={t("editor.responseName")}
+                    spellCheck={false}
+                    onChange={(e) => updateResponse(r.id, { name: e.target.value })}
+                  />
+                  <input
+                    className="response-status-input"
+                    type="number"
+                    min={100}
+                    max={599}
+                    value={r.status || ""}
+                    placeholder={t("editor.responseStatus")}
+                    onChange={(e) =>
+                      updateResponse(r.id, { status: parseInt(e.target.value || "0", 10) || 0 })
+                    }
+                  />
+                  <select
+                    className="response-content-type"
+                    value={r.contentType}
+                    onChange={(e) => updateResponse(r.id, { contentType: e.target.value })}
+                  >
+                    <option>application/json</option>
+                    <option>text/plain</option>
+                    <option>application/xml</option>
+                    <option>text/html</option>
+                  </select>
+                  <button
+                    className="btn small"
+                    title={t("editor.removeResponse")}
+                    onClick={() => removeResponse(r.id)}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <textarea
+                  className="code-area response-body-input"
+                  value={r.body}
+                  placeholder={t("editor.responseBodyPlaceholder")}
+                  spellCheck={false}
+                  onChange={(e) => updateResponse(r.id, { body: e.target.value })}
+                />
+              </div>
+            ))}
+            <div className="response-actions">
+              <button className="btn btn-sm" onClick={addResponse}>
+                ＋ {t("editor.addResponse")}
+              </button>
+            </div>
           </div>
         )}
 
@@ -712,70 +791,22 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api]);
 
-  let mockJson: unknown = null;
-  try {
-    mockJson = JSON.parse(api.mock.body);
-  } catch {
-    /* 非 JSON 响应体则无法推导 */
-  }
-  const respSuccessNodes: RNode[] = useMemo(() => {
-    if (mockJson === null) return [];
-    const nodes = jsonToNodes(mockJson);
-    // JSON 根节点是普通对象时展开成字段列表；数组根会生成一个 items 节点
-    return nodes;
+  // 响应页签条目 → 文档块：每个条目从示例体推导字段（docParams 按 resp:<id> 覆盖）
+  const respBlocks = useMemo(
+    () =>
+      (api.responses || []).map((r) => {
+        let nodes: RNode[] = [];
+        try {
+          nodes = jsonToNodes(JSON.parse(r.body));
+        } catch {
+          /* 非 JSON 响应体则走手动条目 */
+        }
+        return { entry: r, nodes };
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api.mock.body]);
-  const failDocs: DocParam[] = api.docParams.filter((d) => d.source === "resp_fail");
-
-  if (blocks.length === 0 && respSuccessNodes.length === 0 && failDocs.length === 0) {
-    // 完全空时也保留「请求失败」添加入口，便于编写响应文档
-    return (
-      <div>
-        <div className="section-title">
-          {T("tab.doc")} <span className="help">{T("editor.docBlockHint")}</span>
-        </div>
-        <div style={{ color: "var(--text-faint)", fontSize: 12, padding: "0 2px 10px" }}>
-          {T("editor.noParams")}
-        </div>
-        <div className="doc-block doc-block-resp">
-          <div className="doc-block-title">
-            <span className="doc-source doc-source-resp">{T("editor.response")}</span>
-          </div>
-          <div className="doc-sub">
-            <div className="doc-sub-title">
-              {T("editor.requestFailed")}
-              <button className="btn btn-sm" onClick={() => addDocRow("resp_fail", [])}>
-                {T("editor.addField")}
-              </button>
-            </div>
-            <table className="kv-table doc-params-table">
-              <thead>
-                <tr>
-                  <th>{T("editor.fieldName")}</th>
-                  <th style={{ width: 130 }}>{T("common.value")}</th>
-                  <th style={{ width: 108 }}>{T("kv.type")}</th>
-                  <th style={{ width: 120 }}>{T("editor.objectName")}</th>
-                  <th>{T("kv.desc")}</th>
-                  <th style={{ width: 62 }}>{T("common.operation")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {failDocs.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="doc-empty">
-                      {T("editor.noFailFields")}
-                    </td>
-                  </tr>
-                ) : (
-                  failDocs.map((d) => renderRow(manualView(d, "resp_fail", []), 0, "resp_fail", true, true))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    [api.responses]
+  );
+  const respDocs = (id: string) => api.docParams.filter((d) => d.source === respSource(id));
 
   // ---- 行视图（统一 树形/手动 两种来源的渲染） ----
   type RowView = {
@@ -939,8 +970,14 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
     </div>
   );
 
-  const badgeFor = (source: DocSource) =>
-    source === "header"
+  const badgeFor = (source: DocSource) => {
+    if (source.startsWith("resp:")) {
+      const id = source.slice(5);
+      const entry = (api.responses || []).find((r) => r.id === id);
+      const ok = !entry || entry.status < 400;
+      return ok ? "doc-source-resp-ok" : "doc-source-resp-fail";
+    }
+    return source === "header"
       ? "doc-source-header"
       : source === "query"
         ? "doc-source-query"
@@ -948,9 +985,8 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
           ? "doc-source-path"
           : source === "body"
             ? "doc-source-body"
-            : source === "resp_success"
-              ? "doc-source-resp-ok"
-              : "doc-source-resp-fail";
+            : "doc-source-resp-fail";
+  };
 
   return (
     <div>
@@ -967,63 +1003,51 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
           b.source === "body"
         )
       )}
-      {(respSuccessNodes.length > 0 || failDocs.length > 0) && (
+      {respBlocks.length > 0 && (
         <div className="doc-block doc-block-resp">
           <div className="doc-block-title">
             <span className="doc-source doc-source-resp">{T("editor.response")}</span>
           </div>
-          {respSuccessNodes.length > 0 && (
-            <div className="doc-sub">
-              <div className="doc-sub-title">{T("editor.requestSuccess")}</div>
-              <table className="kv-table doc-params-table">
-                <thead>
-                  <tr>
-                    <th>{T("editor.fieldName")}</th>
-                    <th style={{ width: 130 }}>{T("common.value")}</th>
-                    <th style={{ width: 108 }}>{T("kv.type")}</th>
-                    <th style={{ width: 120 }}>{T("editor.objectName")}</th>
-                    <th>{T("kv.desc")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {respSuccessNodes.map((n) =>
-                    renderRow(derivedView(n, "resp_success", []), 0, "resp_success", false, true)
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <div className="doc-sub">
-            <div className="doc-sub-title">
-              {T("editor.requestFailed")}
-              <button className="btn btn-sm" onClick={() => addDocRow("resp_fail", [])}>
-                {T("editor.addField")}
-              </button>
-            </div>
-            <table className="kv-table doc-params-table">
-              <thead>
-                <tr>
-                  <th>{T("editor.fieldName")}</th>
-                  <th style={{ width: 130 }}>{T("common.value")}</th>
-                  <th style={{ width: 108 }}>{T("kv.type")}</th>
-                  <th style={{ width: 120 }}>{T("editor.objectName")}</th>
-                  <th>{T("kv.desc")}</th>
-                  <th style={{ width: 62 }}>{T("common.operation")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {failDocs.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="doc-empty">
-                      {T("editor.noFailFields")}
-                    </td>
-                  </tr>
-                ) : (
-                  failDocs.map((d) => renderRow(manualView(d, "resp_fail", []), 0, "resp_fail", true, true))
-                )}
-              </tbody>
-            </table>
-          </div>
+          {respBlocks.map(({ entry, nodes }) => {
+            const source = respSource(entry.id);
+            const docs = respDocs(entry.id);
+            return (
+              <div className="doc-sub" key={entry.id}>
+                <div className="doc-sub-title">
+                  {entry.name || T("editor.response")}
+                  {entry.status > 0 && <span className="resp-status-badge">HTTP {entry.status}</span>}
+                  <button className="btn btn-sm" onClick={() => addDocRow(source, [])}>
+                    {T("editor.addField")}
+                  </button>
+                </div>
+                <table className="kv-table doc-params-table">
+                  <thead>
+                    <tr>
+                      <th>{T("editor.fieldName")}</th>
+                      <th style={{ width: 130 }}>{T("common.value")}</th>
+                      <th style={{ width: 108 }}>{T("kv.type")}</th>
+                      <th style={{ width: 120 }}>{T("editor.objectName")}</th>
+                      <th>{T("kv.desc")}</th>
+                      <th style={{ width: 62 }}>{T("common.operation")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {nodes.length > 0 ? (
+                      nodes.map((n) => renderRow(derivedView(n, source, []), 0, source, false, true))
+                    ) : docs.length > 0 ? (
+                      docs.map((d) => renderRow(manualView(d, source, []), 0, source, true, true))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="doc-empty">
+                          {T("editor.noRespFields")}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
