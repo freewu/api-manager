@@ -8,10 +8,9 @@
 
 ## 版本发布（git tag）
 
-- 每次发布（打包安装程序）完成后，为当前提交打版本标签并推送：
+- 每次发布（打包安装程序）完成后，执行一条指令即可提交 git tag 并推送到远程（版本号与 `tauri.conf.json` 中的 version 保持一致，当前 v0.1.6）：
   ```bash
-  git tag v0.1.5                      # 版本号与 tauri.conf.json 中的 version 保持一致
-  git push origin v0.1.5
+  git tag v0.1.6 && git push origin v0.1.6
   ```
-- 版本号已存在时先删除再重打：`git tag -d v0.1.5 && git push origin :refs/tags/v0.1.5`
-- 查看标签列表：`git tag -l`；查看某标签指向的提交：`git show v0.1.5 --oneline -s`
+- 版本号已存在时先删除再重打：`git tag -d v0.1.6 && git push origin :refs/tags/v0.1.6`
+- 查看标签列表：`git tag -l`；查看某标签指向的提交：`git show v0.1.6 --oneline -s`
