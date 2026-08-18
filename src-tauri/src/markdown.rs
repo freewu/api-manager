@@ -599,6 +599,15 @@ fn bold(s: &str) -> String {
     out
 }
 
+/// 生成独立的 HTML 文档：由 Markdown 渲染而来，含内置样式（单文件可直接双击打开）
+pub fn wrap_html(title: &str, md: &str) -> String {
+    let html = md_to_html(md);
+    let title = escape_html(title);
+    format!(
+        "<!doctype html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>{title}</title>\n<style>\nbody{{font-family:-apple-system,'Segoe UI','Microsoft YaHei',sans-serif;max-width:860px;margin:32px auto;padding:0 20px;color:#24292f;line-height:1.6}}\nh1,h2,h3{{border-bottom:1px solid #e5e7eb;padding-bottom:6px}}\ntable{{border-collapse:collapse;width:100%;margin:8px 0}}\nth,td{{border:1px solid #d0d7de;padding:6px 10px;font-size:13px;text-align:left}}\nth{{background:#f6f8fa}}\npre{{background:#f6f8fa;border:1px solid #d0d7de;border-radius:6px;padding:10px;overflow:auto}}\ncode{{font-family:Consolas,Menlo,monospace;font-size:12.5px}}\nblockquote{{border-left:4px solid #d0d7de;margin:8px 0;padding:2px 12px;color:#57606a}}\nul{{padding-left:22px}}\n</style>\n</head>\n<body>\n<article>{html}</article>\n</body>\n</html>\n"
+    )
+}
+
 // ==================== 导入 ====================
 
 /// 解析结果：分组名 + 接口列表（新格式：# 分组名 → 多个 ## 接口名）

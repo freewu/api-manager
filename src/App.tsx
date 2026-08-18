@@ -15,6 +15,7 @@ import {
   importPostman,
   importMarkdown,
   renderApiMarkdown,
+  renderGroupMarkdown,
   exportApiMarkdown,
   exportSelection,
   type MarkdownDoc,
@@ -152,6 +153,7 @@ export default function App() {
   const [mdView, setMdView] = useState<{ node: TreeNode; doc: MarkdownDoc } | null>(null);
   /** 导出弹窗：preselect 为右键节点预选路径 */
   const [exportOpen, setExportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [exportPreselect, setExportPreselect] = useState<string[] | undefined>(undefined);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -526,10 +528,13 @@ export default function App() {
     }
   };
 
-  /** 查看接口的 Markdown 格式（预览弹窗，可保存 .md / .html） */
+  /** 查看接口 / 分组的 Markdown 格式（预览弹窗，可保存 .md / .html） */
   const handleViewMarkdown = async (node: TreeNode) => {
     try {
-      const doc = await renderApiMarkdown(node.path);
+      const doc =
+        node.kind === "folder"
+          ? await renderGroupMarkdown(node.path)
+          : await renderApiMarkdown(node.path);
       setMdView({ node, doc });
     } catch (e) {
       showToast(t("toast.markdownFailed", { err: String(e) }));
@@ -539,11 +544,14 @@ export default function App() {
   /** 保存 Markdown / HTML 文件到用户选择的目录 */
   const handleExportMarkdown = async (format: "md" | "html") => {
     if (!mdView) return;
+    setExporting(true);
     try {
       const saved = await exportApiMarkdown(mdView.node.path, format);
       if (saved) showToast(t("toast.savedTo", { path: saved }));
     } catch (e) {
       showToast(t("toast.saveFailed", { err: String(e) }));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -560,8 +568,9 @@ export default function App() {
     }
   };
 
-  /** 导出选中接口/分组为 Postman / OpenAPI / Docsify 格式 */
+  /** 导出选中接口/分组为 Postman / OpenAPI / Docsify / Markdown / HTML 格式 */
   const handleExport = async (paths: string[], format: ExportFormat) => {
+    setExporting(true);
     try {
       const saved = await exportSelection(paths, format);
       if (!saved) return; // 用户取消
@@ -571,6 +580,8 @@ export default function App() {
       setExportPreselect(undefined);
     } catch (e) {
       showToast(t("toast.exportFailed", { err: String(e) }));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -1677,6 +1688,14 @@ export default function App() {
             />
           </label>
         </Modal>
+      )}
+      {exporting && (
+        <div className="export-mask">
+          <div className="export-mask-box">
+            <span className="export-spinner" aria-hidden="true" />
+            <span className="export-mask-text">{t("export.busy")}</span>
+          </div>
+        </div>
       )}
     </div>
   );

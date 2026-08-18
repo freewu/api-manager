@@ -351,6 +351,8 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                   <option value="postman">Postman Collection（.json）</option>
                   <option value="openapi">OpenAPI 3.0（.json）</option>
                   <option value="docsify">Docsify（.md）</option>
+                  <option value="markdown">Markdown（.md）</option>
+                  <option value="html">HTML（.html）</option>
                 </select>
                 <span className="settings-desc-inline">{t("settings.exportFormatHint")}</span>
               </div>

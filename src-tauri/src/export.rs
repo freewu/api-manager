@@ -313,6 +313,22 @@ fn openapi_operation(segs: &[String], api: &ApiFile) -> Value {
 
 // ==================== Docsify 文档目录 ====================
 
+/// 生成单个 Markdown 文件（导出 / 分组查看用）：根标题 + 全部接口，
+/// 分组路径用「 / 」拼接显示（多级分组在单个文件里也能区分层级）
+pub fn markdown_single_file(title: &str, apis: &[(Vec<String>, ApiFile)]) -> String {
+    let mut s = String::new();
+    let title = title.trim();
+    if !title.is_empty() {
+        s.push_str(&format!("# {title}\n\n"));
+    }
+    for (segs, api) in apis {
+        let group = segs.join(" / ");
+        s.push_str(&crate::markdown::render(api, &group));
+        s.push('\n');
+    }
+    s
+}
+
 /// 生成 Docsify 文档目录：返回 (相对路径, 内容) 列表，
 /// 含 _sidebar.md、根 README.md（首页）与 index.html（开启 _sidebar 支持）
 pub fn docsify_files(apis: &[(Vec<String>, ApiFile)]) -> Vec<(PathBuf, String)> {
@@ -587,6 +603,20 @@ mod tests {
         assert!(index.contains("loadSidebar: true"));
         let readme = files.iter().find(|(p, _)| p.to_string_lossy() == "README.md").unwrap().1.clone();
         assert!(readme.contains("[创建用户](/用户管理/创建用户.md)"), "readme: {readme}");
+    }
+
+    /// 单个 Markdown 文件：根标题 + 分组路径拼接 + 全部接口（分组查看/单文件导出共用）
+    #[test]
+    fn markdown_single_file_shape() {
+        let apis = vec![
+            (vec!["用户管理".to_string()], sample()),
+            (vec!["用户管理".to_string(), "子组".to_string()], sample()),
+        ];
+        let md = markdown_single_file("接口文档", &apis);
+        assert!(md.starts_with("# 接口文档\n"), "md: {md}");
+        assert!(md.contains("# 用户管理"), "md: {md}");
+        assert!(md.contains("# 用户管理 / 子组"), "md: {md}");
+        assert!(md.contains("## 创建用户"), "md: {md}");
     }
 
     /// 勾选分组后前端会把分组目录 + 其下全部文件路径一起提交，后端应去重

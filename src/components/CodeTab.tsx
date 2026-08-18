@@ -11,9 +11,11 @@ import java from "highlight.js/lib/languages/java";
 import javascript from "highlight.js/lib/languages/javascript";
 import julia from "highlight.js/lib/languages/julia";
 import kotlin from "highlight.js/lib/languages/kotlin";
+import lua from "highlight.js/lib/languages/lua";
 import objectivec from "highlight.js/lib/languages/objectivec";
 import perl from "highlight.js/lib/languages/perl";
 import php from "highlight.js/lib/languages/php";
+import powershell from "highlight.js/lib/languages/powershell";
 import python from "highlight.js/lib/languages/python";
 import r from "highlight.js/lib/languages/r";
 import ruby from "highlight.js/lib/languages/ruby";
@@ -22,7 +24,7 @@ import swift from "highlight.js/lib/languages/swift";
 import typescript from "highlight.js/lib/languages/typescript";
 import "highlight.js/styles/github-dark.css";
 import { ApiFile } from "../types";
-import { CODE_LANGS, CodeLang, generateRequestCode } from "../utils/codegen";
+import { CODE_LANGS, CODE_LIBS, CodeLang, defaultLib, generateRequestCode } from "../utils/codegen";
 import { useT } from "../i18n";
 
 hljs.registerLanguage("bash", bash);
@@ -36,9 +38,11 @@ hljs.registerLanguage("java", java);
 hljs.registerLanguage("javascript", javascript);
 hljs.registerLanguage("julia", julia);
 hljs.registerLanguage("kotlin", kotlin);
+hljs.registerLanguage("lua", lua);
 hljs.registerLanguage("objectivec", objectivec);
 hljs.registerLanguage("perl", perl);
 hljs.registerLanguage("php", php);
+hljs.registerLanguage("powershell", powershell);
 hljs.registerLanguage("python", python);
 hljs.registerLanguage("r", r);
 hljs.registerLanguage("ruby", ruby);
@@ -69,6 +73,8 @@ const HLJS_LANG: Record<CodeLang, string> = {
   kotlin: "kotlin",
   typescript: "typescript",
   erlang: "erlang",
+  lua: "lua",
+  powershell: "powershell",
 };
 
 interface Props {
@@ -82,9 +88,12 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
   const [lang, setLang] = useState<CodeLang>(
     (CODE_LANGS.some((l) => l.value === defaultLang) ? defaultLang : "bash") as CodeLang
   );
+  const [lib, setLib] = useState<string | undefined>(() => defaultLib(lang));
   const [copied, setCopied] = useState(false);
 
-  const code = useMemo(() => generateRequestCode(lang, api, baseUrl), [lang, api, baseUrl]);
+  const libs = CODE_LIBS[lang];
+
+  const code = useMemo(() => generateRequestCode(lang, api, baseUrl, lib), [lang, lib, api, baseUrl]);
   const html = useMemo(() => {
     try {
       return hljs.highlight(code, { language: HLJS_LANG[lang] }).value;
@@ -110,7 +119,11 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
         <select
           className="codegen-lang"
           value={lang}
-          onChange={(e) => setLang(e.target.value as CodeLang)}
+          onChange={(e) => {
+            const next = e.target.value as CodeLang;
+            setLang(next);
+            setLib(defaultLib(next));
+          }}
           title={t("codegen.switchLang")}
         >
           {CODE_LANGS.map((l) => (
@@ -123,6 +136,21 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
           {copied ? t("resp.copied") : "📋 " + t("common.copy")}
         </button>
       </div>
+      {libs && (
+        <div className="codegen-libs" role="tablist" aria-label={t("codegen.library")}>
+          {libs.map((l) => (
+            <button
+              key={l.value}
+              role="tab"
+              aria-selected={lib === l.value}
+              className={`codegen-lib ${lib === l.value ? "active" : ""}`}
+              onClick={() => setLib(l.value)}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+      )}
       <pre className="codegen-pre">
         <code
           className="hljs codegen-code"

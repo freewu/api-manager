@@ -389,11 +389,6 @@ fn sanitize_filename(name: &str) -> String {
         .to_string()
 }
 
-/// 转义 HTML 特殊字符（用于导出的 .html 标题）
-fn escape_html(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
-}
-
 /// 生成不冲突的文件路径：xxx.json / xxx (2).json ...
 fn unique_path(dir: &Path, base: &str, ext: &str) -> PathBuf {
     let mut candidate = dir.join(format!("{base}{ext}"));
@@ -1464,6 +1459,28 @@ fn render_api_markdown(state: State<'_, WorkspaceState>, path: String) -> Result
     Ok(MarkdownDoc { name: api.name, md, html })
 }
 
+/// 渲染分组（含其下全部子分组/接口）为单个 Markdown 文档
+#[tauri::command]
+fn render_group_markdown(state: State<'_, WorkspaceState>, path: String) -> Result<MarkdownDoc, String> {
+    let root = workspace_root(&state)?;
+    let apis = export::collect_apis(&root, &[path.clone()])?;
+    if apis.is_empty() {
+        return Err("所选内容中没有接口".into());
+    }
+    let name = read_info_file(Path::new(&path))
+        .name
+        .filter(|n| !n.trim().is_empty())
+        .unwrap_or_else(|| {
+            Path::new(&path)
+                .file_name()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_default()
+        });
+    let md = export::markdown_single_file(&name, &apis);
+    let html = markdown::md_to_html(&md);
+    Ok(MarkdownDoc { name, md, html })
+}
+
 /// 导出接口 Markdown / HTML：弹出目录选择框，写入 <接口名>.md 或 <接口名>.html
 #[tauri::command]
 fn export_api_markdown(
@@ -1495,11 +1512,7 @@ fn export_api_markdown(
     };
     let target = unique_path(&dir, &base, &format!(".{fmt}"));
     let content = if fmt == "html" {
-        let html = markdown::md_to_html(&md);
-        let title = escape_html(&api.name);
-        format!(
-            "<!doctype html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>{title}</title>\n<style>\nbody{{font-family:-apple-system,'Segoe UI','Microsoft YaHei',sans-serif;max-width:860px;margin:32px auto;padding:0 20px;color:#24292f;line-height:1.6}}\nh1,h2,h3{{border-bottom:1px solid #e5e7eb;padding-bottom:6px}}\ntable{{border-collapse:collapse;width:100%;margin:8px 0}}\nth,td{{border:1px solid #d0d7de;padding:6px 10px;font-size:13px;text-align:left}}\nth{{background:#f6f8fa}}\npre{{background:#f6f8fa;border:1px solid #d0d7de;border-radius:6px;padding:10px;overflow:auto}}\ncode{{font-family:Consolas,Menlo,monospace;font-size:12.5px}}\nblockquote{{border-left:4px solid #d0d7de;margin:8px 0;padding:2px 12px;color:#57606a}}\nul{{padding-left:22px}}\n</style>\n</head>\n<body>\n<article>{html}</article>\n</body>\n</html>\n"
-        )
+        markdown::wrap_html(&api.name, &md)
     } else {
         md
     };
@@ -1583,6 +1596,46 @@ fn export_selection(
                 fs::write(&target, content).map_err(|e| format!("写入失败: {e}"))?;
             }
             Ok(Some(dir.to_string_lossy().to_string()))
+        }
+        "markdown" | "html" => {
+            // 单个 Markdown 文件（html 由该 Markdown 渲染生成）：含全部选中接口
+            let title = read_info_file(&root).name.unwrap_or_default();
+            let title = if title.trim().is_empty() {
+                "接口文档".to_string()
+            } else {
+                title.trim().to_string()
+            };
+            let md = export::markdown_single_file(&title, &apis);
+            let is_html = format == "html";
+            let picked = app
+                .dialog()
+                .file()
+                .set_title(if is_html {
+                    "导出 HTML 文档"
+                } else {
+                    "导出 Markdown 文档"
+                })
+                .set_file_name(if is_html {
+                    "api-docs.html"
+                } else {
+                    "接口文档.md"
+                })
+                .add_filter(
+                    if is_html { "HTML" } else { "Markdown" },
+                    if is_html { &["html"] } else { &["md"] },
+                )
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            let content = if is_html {
+                markdown::wrap_html(&title, &md)
+            } else {
+                md
+            };
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
         }
         _ => Err(format!("不支持的导出格式: {format}")),
     }
@@ -3825,6 +3878,7 @@ pub fn run() {
             import_postman,
             import_openapi,
             render_api_markdown,
+            render_group_markdown,
             export_api_markdown,
             import_markdown,
             export_selection,

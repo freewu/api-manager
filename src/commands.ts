@@ -93,6 +93,11 @@ export function renderApiMarkdown(path: string): Promise<MarkdownDoc> {
   return invoke<MarkdownDoc>("render_api_markdown", { path });
 }
 
+/** 渲染分组（含其下全部接口）为单个 Markdown 文档（含 HTML 预览） */
+export function renderGroupMarkdown(path: string): Promise<MarkdownDoc> {
+  return invoke<MarkdownDoc>("render_group_markdown", { path });
+}
+
 /** 导出接口为 .md / .html 文件（弹窗选目录），返回保存路径或 null（用户取消） */
 export function exportApiMarkdown(path: string, format: "md" | "html"): Promise<string | null> {
   return invoke<string | null>("export_api_markdown", { path, format });

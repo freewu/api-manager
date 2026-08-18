@@ -1524,6 +1524,65 @@ body {
   justify-content: center;
   z-index: 50;
 }
+/* 导出时的蒙层动画 */
+.export-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  animation: export-mask-in 0.25s ease;
+  backdrop-filter: blur(2px);
+}
+.export-mask-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 26px 34px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  animation: export-mask-pop 0.25s ease;
+}
+.export-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: export-spin 0.8s linear infinite;
+}
+.export-mask-text {
+  color: var(--text);
+  font-size: 13px;
+}
+@keyframes export-mask-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes export-mask-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes export-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .modal {
   background: var(--bg-panel);
   border: 1px solid var(--border-light);
@@ -2940,6 +2999,32 @@ body {
 }
 .codegen-lang:focus {
   border-color: var(--accent);
+}
+.codegen-libs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+.codegen-lib {
+  background: var(--bg-input);
+  color: var(--text-faint);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.codegen-lib:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.codegen-lib.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 .codegen-pre {
   flex: 1;

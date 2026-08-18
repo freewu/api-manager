@@ -156,7 +156,7 @@ export interface VersionInfo {
   endpoint?: string;
 }
 
-export type ExportFormat = "postman" | "openapi" | "docsify";
+export type ExportFormat = "postman" | "openapi" | "docsify" | "markdown" | "html";
 
 export interface AppSettings {
   displayMode: string; // "dark" | "light" | "system"

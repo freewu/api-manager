@@ -24,7 +24,65 @@ export type CodeLang =
   | "julia"
   | "kotlin"
   | "typescript"
-  | "erlang";
+  | "erlang"
+  | "lua"
+  | "powershell";
+
+/** 某种语言可选的库调用方式（value 与 generateRequestCode 的 lib 参数对应） */
+export interface CodeLibOption {
+  value: string;
+  label: string;
+}
+
+/** 支持库切换的语言 → 库列表（第一个为默认） */
+export const CODE_LIBS: Partial<Record<CodeLang, CodeLibOption[]>> = {
+  bash: [
+    { value: "curl", label: "cURL" },
+    { value: "wget", label: "Wget" },
+    { value: "httpie", label: "HTTPie" },
+  ],
+  javascript: [
+    { value: "fetch", label: "Fetch" },
+    { value: "axios", label: "Axios" },
+    { value: "unirest", label: "Unirest" },
+    { value: "request", label: "Request" },
+    { value: "native", label: "Native" },
+  ],
+  typescript: [
+    { value: "fetch", label: "Fetch" },
+    { value: "axios", label: "Axios" },
+    { value: "unirest", label: "Unirest" },
+    { value: "request", label: "Request" },
+    { value: "native", label: "Native" },
+  ],
+  java: [
+    { value: "okhttp", label: "OkHttp" },
+    { value: "unirest", label: "Unirest" },
+    { value: "webclient", label: "WebClient" },
+    { value: "httpclient", label: "HttpClient" },
+    { value: "retrofit2", label: "Retrofit2" },
+    { value: "httpclient5", label: "HttpClient5" },
+  ],
+  php: [
+    { value: "curl", label: "cURL" },
+    { value: "pecl", label: "PECL" },
+    { value: "snoopy", label: "Snoopy" },
+    { value: "guzzle", label: "Guzzle" },
+  ],
+  python: [
+    { value: "httpclient", label: "http.client" },
+    { value: "requests", label: "Requests" },
+  ],
+  r: [
+    { value: "httr", label: "httr" },
+    { value: "rcurl", label: "RCurl" },
+  ],
+};
+
+/** 语言默认库：取 CODE_LIBS 第一项；不支持库切换的语言返回 undefined */
+export function defaultLib(lang: CodeLang): string | undefined {
+  return CODE_LIBS[lang]?.[0]?.value;
+}
 
 export const CODE_LANGS: { value: CodeLang; label: string }[] = [
   { value: "bash", label: "Bash" },
@@ -47,6 +105,8 @@ export const CODE_LANGS: { value: CodeLang; label: string }[] = [
   { value: "kotlin", label: "Kotlin" },
   { value: "typescript", label: "TypeScript" },
   { value: "erlang", label: "Erlang" },
+  { value: "lua", label: "Lua" },
+  { value: "powershell", label: "PowerShell" },
 ];
 
 /** 转义字符串内容为 "..." 内的转义文本（引号 / 反斜杠 / 换行等） */
@@ -848,32 +908,696 @@ function genErlang(r: Req): string {
   return out.join("\n");
 }
 
-export function generateRequestCode(lang: CodeLang, api: ApiFile, baseUrl: string): string {
+/* ==================== Bash：Wget / HTTPie ==================== */
+
+function genBashWget(r: Req): string {
+  const q = (s: string) => `'${s.replace(/'/g, "'\\''")}'`;
+  const parts = [`wget --method=${r.method} ${q(r.url)}`];
+  for (const h of r.headers) parts.push(`--header=${q(`${h.key}: ${h.value}`)}`);
+  if (r.body) parts.push(`--body-data=${q(r.body)}`);
+  parts.push("-O -");
+  const lines = parts.map((p, i) => (i < parts.length - 1 ? p + " \\" : p));
+  if (r.files.length) {
+    lines.unshift("# 注意：wget 不支持 multipart/form-data 文件上传");
+  }
+  return lines.join("\n");
+}
+
+function genBashHttpie(r: Req): string {
+  const q = (s: string) => `'${s.replace(/'/g, "'\\''")}'`;
+  const parts = [`http ${r.method} ${q(r.url)}`];
+  for (const h of r.headers) parts.push(q(`${h.key}: ${h.value}`));
+  if (r.files.length) {
+    for (const t of r.formText) parts.push(`${t.key}=${q(t.value)}`);
+    for (const f of r.files) parts.push(`${f.key}@${q(f.path)}`);
+  } else if (r.body) {
+    parts.push(`--raw=${q(r.body)}`);
+  }
+  return parts.map((p, i) => (i < parts.length - 1 ? p + " \\" : p)).join("\n");
+}
+
+/* ==================== Python：http.client ==================== */
+
+function genPythonHttpClient(r: Req): string {
+  const out: string[] = [];
+  out.push("import http.client");
+  out.push("import json");
+  out.push("from urllib.parse import urlparse");
+  out.push("");
+  out.push(`url = "${esc(r.url, '"')}"`);
+  if (r.headers.length) {
+    out.push("");
+    out.push("headers = {");
+    for (const h of r.headers) out.push(`    "${esc(h.key, '"')}": "${esc(h.value, '"')}",`);
+    out.push("}");
+  }
+  if (r.body) {
+    out.push("");
+    out.push(`payload = """${esc(r.body, '"')}"""`);
+  }
+  out.push("");
+  out.push("u = urlparse(url)");
+  out.push('conn = (http.client.HTTPSConnection if u.scheme == "https" else http.client.HTTPConnection)(');
+  out.push('    u.hostname, u.port or (443 if u.scheme == "https" else 80))');
+  out.push('path = u.path + (("?" + u.query) if u.query else "")');
+  const args: string[] = [`"${r.method}"`, "path"];
+  if (r.headers.length) args.push("headers=headers");
+  if (r.body) args.push("payload");
+  out.push(`conn.request(${args.join(", ")})`);
+  out.push("res = conn.getresponse()");
+  out.push("print(res.status, res.reason)");
+  out.push('print(res.read().decode("utf-8"))');
+  out.push("conn.close()");
+  return out.join("\n");
+}
+
+/* ==================== JavaScript：Axios / Unirest / Request / Native ==================== */
+
+function genJsAxios(r: Req): string {
+  const out: string[] = [];
+  out.push('const axios = require("axios");');
+  out.push("");
+  out.push(`const url = "${esc(r.url, '"')}";`);
+  if (r.headers.length) {
+    out.push("");
+    out.push("const headers = {");
+    for (const h of r.headers) out.push(`  "${esc(h.key, '"')}": "${esc(h.value, '"')}",`);
+    out.push("};");
+  }
+  if (r.bodyKind === "json") {
+    out.push("");
+    out.push(`const payload = ${r.body};`);
+  } else if (r.bodyKind === "text") {
+    out.push("");
+    out.push(`const payload = "${esc(r.body, '"')}";`);
+  }
+  out.push("");
+  out.push("axios({");
+  out.push(`  method: "${r.method}",`);
+  out.push("  url,");
+  if (r.headers.length) out.push("  headers,");
+  if (r.body) out.push("  data: payload,");
+  out.push("})");
+  out.push("  .then((res) => console.log(res.data))");
+  out.push("  .catch((err) => console.error(err));");
+  return out.join("\n");
+}
+
+function genJsUnirest(r: Req): string {
+  const out: string[] = [];
+  out.push('const unirest = require("unirest");');
+  out.push("");
+  out.push(`unirest("${r.method}", "${esc(r.url, '"')}")`);
+  if (r.headers.length) {
+    out.push("  .headers({");
+    for (const h of r.headers) out.push(`    "${esc(h.key, '"')}": "${esc(h.value, '"')}",`);
+    out.push("  })");
+  }
+  if (r.files.length) {
+    for (const f of r.files) out.push(`  .attach("${esc(f.key, '"')}", "${esc(f.path, '"')}")`);
+    for (const t of r.formText) out.push(`  .field("${esc(t.key, '"')}", "${esc(t.value, '"')}")`);
+  } else if (r.body) {
+    out.push(`  .send(${r.bodyKind === "json" ? r.body : `"${esc(r.body, '"')}"`})`);
+  }
+  out.push("  .then((res) => console.log(res.body));");
+  return out.join("\n");
+}
+
+function genJsRequest(r: Req): string {
+  const out: string[] = [];
+  out.push('const request = require("request");');
+  if (r.files.length) out.push('const fs = require("fs");');
+  out.push("");
+  out.push(`const url = "${esc(r.url, '"')}";`);
+  if (r.headers.length) {
+    out.push("");
+    out.push("const headers = {");
+    for (const h of r.headers) out.push(`  "${esc(h.key, '"')}": "${esc(h.value, '"')}",`);
+    out.push("};");
+  }
+  if (r.bodyKind === "json") {
+    out.push("");
+    out.push(`const payload = ${r.body};`);
+  }
+  out.push("");
+  out.push("request({");
+  out.push(`  method: "${r.method}",`);
+  out.push("  url,");
+  if (r.headers.length) out.push("  headers,");
+  if (r.files.length) {
+    out.push("  // 文件上传（multipart）");
+    out.push("  formData: {");
+    for (const t of r.formText) out.push(`    "${esc(t.key, '"')}": "${esc(t.value, '"')}",`);
+    for (const f of r.files) out.push(`    "${esc(f.key, '"')}": fs.createReadStream("${esc(f.path, '"')}"),`);
+    out.push("  },");
+  } else if (r.bodyKind === "json") {
+    out.push("  json: payload,");
+  } else if (r.body) {
+    out.push(`  body: "${esc(r.body, '"')}",`);
+  }
+  out.push("}, (error, response, body) => {");
+  out.push("  if (error) return console.error(error);");
+  out.push("  console.log(body);");
+  out.push("});");
+  return out.join("\n");
+}
+
+function genJsNative(r: Req): string {
+  const out: string[] = [];
+  out.push(`const url = "${esc(r.url, '"')}";`);
+  if (r.headers.length) {
+    out.push("");
+    out.push("const headers = {");
+    for (const h of r.headers) out.push(`  "${esc(h.key, '"')}": "${esc(h.value, '"')}",`);
+    out.push("};");
+  }
+  if (r.bodyKind === "json") {
+    out.push("");
+    out.push(`const payload = ${r.body};`);
+  } else if (r.bodyKind === "text") {
+    out.push("");
+    out.push(`const payload = "${esc(r.body, '"')}";`);
+  }
+  out.push("");
+  out.push("const xhr = new XMLHttpRequest();");
+  out.push(`xhr.open("${r.method}", url);`);
+  for (const h of r.headers) out.push(`xhr.setRequestHeader("${esc(h.key, '"')}", "${esc(h.value, '"')}");`);
+  out.push("xhr.onload = () => console.log(xhr.responseText);");
+  out.push("xhr.onerror = (e) => console.error(e);");
+  out.push(`xhr.send(${r.body ? (r.bodyKind === "json" ? "JSON.stringify(payload)" : "payload") : "null"});`);
+  return out.join("\n");
+}
+
+/* ==================== TypeScript：Axios / Unirest / Request / Native ==================== */
+
+function genTsAxios(r: Req): string {
+  const out: string[] = [];
+  out.push('import axios from "axios";');
+  out.push("");
+  out.push(`const url: string = "${esc(r.url, '"')}";`);
+  if (r.headers.length) {
+    out.push("");
+    out.push("const headers: Record<string, string> = {");
+    for (const h of r.headers) out.push(`  "${esc(h.key, '"')}": "${esc(h.value, '"')}",`);
+    out.push("};");
+  }
+  if (r.bodyKind === "json") {
+    out.push("");
+    out.push(`const payload: unknown = ${r.body};`);
+  } else if (r.bodyKind === "text") {
+    out.push("");
+    out.push(`const payload: string = "${esc(r.body, '"')}";`);
+  }
+  out.push("");
+  out.push("axios({");
+  out.push(`  method: "${r.method}",`);
+  out.push("  url,");
+  if (r.headers.length) out.push("  headers,");
+  if (r.body) out.push("  data: payload,");
+  out.push("})");
+  out.push("  .then((res) => console.log(res.data))");
+  out.push("  .catch((err) => console.error(err));");
+  return out.join("\n");
+}
+
+function genTsUnirest(r: Req): string {
+  const out: string[] = [];
+  out.push('import unirest from "unirest";');
+  out.push("");
+  out.push(`unirest("${r.method}", "${esc(r.url, '"')}")`);
+  if (r.headers.length) {
+    out.push("  .headers({");
+    for (const h of r.headers) out.push(`    "${esc(h.key, '"')}": "${esc(h.value, '"')}",`);
+    out.push("  })");
+  }
+  if (r.files.length) {
+    for (const f of r.files) out.push(`  .attach("${esc(f.key, '"')}", "${esc(f.path, '"')}")`);
+    for (const t of r.formText) out.push(`  .field("${esc(t.key, '"')}", "${esc(t.value, '"')}")`);
+  } else if (r.body) {
+    out.push(`  .send(${r.bodyKind === "json" ? r.body : `"${esc(r.body, '"')}"`})`);
+  }
+  out.push("  .then((res) => console.log(res.body));");
+  return out.join("\n");
+}
+
+function genTsRequest(r: Req): string {
+  const out: string[] = [];
+  out.push('import request from "request";');
+  if (r.files.length) out.push('import fs from "fs";');
+  out.push("");
+  out.push(`const url: string = "${esc(r.url, '"')}";`);
+  if (r.headers.length) {
+    out.push("");
+    out.push("const headers: Record<string, string> = {");
+    for (const h of r.headers) out.push(`  "${esc(h.key, '"')}": "${esc(h.value, '"')}",`);
+    out.push("};");
+  }
+  if (r.bodyKind === "json") {
+    out.push("");
+    out.push(`const payload: unknown = ${r.body};`);
+  }
+  out.push("");
+  out.push("request({");
+  out.push(`  method: "${r.method}",`);
+  out.push("  url,");
+  if (r.headers.length) out.push("  headers,");
+  if (r.files.length) {
+    out.push("  // 文件上传（multipart）");
+    out.push("  formData: {");
+    for (const t of r.formText) out.push(`    "${esc(t.key, '"')}": "${esc(t.value, '"')}",`);
+    for (const f of r.files) out.push(`    "${esc(f.key, '"')}": fs.createReadStream("${esc(f.path, '"')}"),`);
+    out.push("  },");
+  } else if (r.bodyKind === "json") {
+    out.push("  json: payload,");
+  } else if (r.body) {
+    out.push(`  body: "${esc(r.body, '"')}",`);
+  }
+  out.push("}, (error, response, body) => {");
+  out.push("  if (error) return console.error(error);");
+  out.push("  console.log(body);");
+  out.push("});");
+  return out.join("\n");
+}
+
+function genTsNative(r: Req): string {
+  const out: string[] = [];
+  out.push(`const url: string = "${esc(r.url, '"')}";`);
+  if (r.headers.length) {
+    out.push("");
+    out.push("const headers: Record<string, string> = {");
+    for (const h of r.headers) out.push(`  "${esc(h.key, '"')}": "${esc(h.value, '"')}",`);
+    out.push("};");
+  }
+  if (r.bodyKind === "json") {
+    out.push("");
+    out.push(`const payload: unknown = ${r.body};`);
+  } else if (r.bodyKind === "text") {
+    out.push("");
+    out.push(`const payload: string = "${esc(r.body, '"')}";`);
+  }
+  out.push("");
+  out.push("const xhr: XMLHttpRequest = new XMLHttpRequest();");
+  out.push(`xhr.open("${r.method}", url);`);
+  for (const h of r.headers) out.push(`xhr.setRequestHeader("${esc(h.key, '"')}", "${esc(h.value, '"')}");`);
+  out.push("xhr.onload = () => console.log(xhr.responseText);");
+  out.push("xhr.onerror = (e) => console.error(e);");
+  out.push(`xhr.send(${r.body ? (r.bodyKind === "json" ? "JSON.stringify(payload)" : "payload") : "null"});`);
+  return out.join("\n");
+}
+
+/* ==================== Java：OkHttp / Unirest / WebClient / Retrofit2 / HttpClient5 ==================== */
+
+function genJavaOkHttp(r: Req): string {
+  const out: string[] = [];
+  out.push("import okhttp3.MediaType;");
+  out.push("import okhttp3.OkHttpClient;");
+  out.push("import okhttp3.Request;");
+  out.push("import okhttp3.RequestBody;");
+  out.push("import okhttp3.Response;");
+  if (r.files.length) {
+    out.push("import okhttp3.MultipartBody;");
+    out.push("import java.io.File;");
+  }
+  out.push("");
+  out.push("public class Main {");
+  out.push("    public static void main(String[] args) throws Exception {");
+  out.push("        OkHttpClient client = new OkHttpClient();");
+  out.push("");
+  if (r.files.length) {
+    out.push("        // 文件上传：使用 MultipartBody.Builder 构造请求体");
+    out.push("        RequestBody body = new MultipartBody.Builder()");
+    out.push("                .setType(MultipartBody.FORM)");
+    for (const t of r.formText) out.push(`                .addFormDataPart("${esc(t.key, '"')}", "${esc(t.value, '"')}")`);
+    for (const f of r.files) {
+      const fname = (f.path.split(/[\\/]/).pop() || "file").replace(/"/g, "");
+      out.push(`                .addFormDataPart("${esc(f.key, '"')}", "${esc(fname, '"')}", RequestBody.create(new File("${esc(f.path, '"')}"), MediaType.parse("application/octet-stream")))`);
+    }
+    out.push("                .build();");
+  } else if (r.body) {
+    const mt = r.bodyKind === "json" ? "application/json; charset=utf-8" : "text/plain; charset=utf-8";
+    out.push(`        RequestBody body = RequestBody.create("${esc(r.body, '"')}", MediaType.parse("${mt}"));`);
+  } else {
+    out.push("        RequestBody body = null;");
+  }
+  out.push("");
+  out.push("        Request request = new Request.Builder()");
+  out.push(`                .url("${esc(r.url, '"')}")`);
+  for (const h of r.headers) out.push(`                .addHeader("${esc(h.key, '"')}", "${esc(h.value, '"')}")`);
+  out.push(`                .method("${r.method}", body)`);
+  out.push("                .build();");
+  out.push("");
+  out.push("        try (Response response = client.newCall(request).execute()) {");
+  out.push("            System.out.println(response.body().string());");
+  out.push("        }");
+  out.push("    }");
+  out.push("}");
+  return out.join("\n");
+}
+
+function genJavaUnirest(r: Req): string {
+  const out: string[] = [];
+  out.push("import kong.unirest.HttpResponse;");
+  out.push("import kong.unirest.Unirest;");
+  if (r.files.length) out.push("import java.io.File;");
+  out.push("");
+  out.push("public class Main {");
+  out.push("    public static void main(String[] args) {");
+  out.push(`        HttpResponse<String> response = Unirest.${r.method.toLowerCase()}(${JSON.stringify(r.url)})`);
+  for (const h of r.headers) out.push(`                .header("${esc(h.key, '"')}", "${esc(h.value, '"')}")`);
+  if (r.files.length) {
+    for (const t of r.formText) out.push(`                .field("${esc(t.key, '"')}", "${esc(t.value, '"')}")`);
+    for (const f of r.files) out.push(`                .field("${esc(f.key, '"')}", new File("${esc(f.path, '"')}"))`);
+  } else if (r.body) {
+    out.push(`                .body("${esc(r.body, '"')}")`);
+  }
+  out.push("                .asString();");
+  out.push("        System.out.println(response.getBody());");
+  out.push("    }");
+  out.push("}");
+  return out.join("\n");
+}
+
+function genJavaWebClient(r: Req): string {
+  const out: string[] = [];
+  out.push("import org.springframework.web.reactive.function.client.WebClient;");
+  out.push("");
+  out.push("public class Main {");
+  out.push("    public static void main(String[] args) {");
+  out.push("        WebClient client = WebClient.builder().build();");
+  out.push("");
+  out.push(`        String response = client.${r.method.toLowerCase()}()`);
+  out.push(`                .uri("${esc(r.url, '"')}")`);
+  for (const h of r.headers) out.push(`                .header("${esc(h.key, '"')}", "${esc(h.value, '"')}")`);
+  if (r.body) out.push(`                .bodyValue("${esc(r.body, '"')}")`);
+  out.push("                .retrieve()");
+  out.push("                .bodyToMono(String.class)");
+  out.push("                .block();");
+  out.push("        System.out.println(response);");
+  out.push("    }");
+  out.push("}");
+  return out.join("\n");
+}
+
+function genJavaRetrofit2(r: Req): string {
+  let basePart = r.url;
+  let pathPart = r.url;
+  try {
+    const u = new URL(r.url);
+    pathPart = u.pathname + u.search;
+    basePart = u.origin + "/";
+  } catch {
+    /* URL 解析失败时保留原始值 */
+  }
+  const out: string[] = [];
+  out.push("import retrofit2.Call;");
+  out.push("import retrofit2.Response;");
+  out.push("import retrofit2.Retrofit;");
+  out.push("import retrofit2.converter.scalars.ScalarsConverterFactory;");
+  out.push("import retrofit2.http.Body;");
+  out.push("import retrofit2.http.DELETE;");
+  out.push("import retrofit2.http.GET;");
+  out.push("import retrofit2.http.Header;");
+  out.push("import retrofit2.http.POST;");
+  out.push("import retrofit2.http.PUT;");
+  out.push("");
+  out.push("public interface ApiService {");
+  out.push(`    @${r.method}("${pathPart}")`);
+  const params: string[] = [];
+  r.headers.forEach((h, i) => params.push(`@Header("${esc(h.key, '"')}") String h${i}`));
+  if (r.body) params.push("@Body String body");
+  out.push(`    Call<String> request(${params.join(", ")});`);
+  out.push("}");
+  out.push("");
+  out.push("// 使用示例");
+  out.push("public class Main {");
+  out.push("    public static void main(String[] args) throws Exception {");
+  out.push("        Retrofit retrofit = new Retrofit.Builder()");
+  out.push(`                .baseUrl("${basePart}")`);
+  out.push("                .addConverterFactory(ScalarsConverterFactory.create())");
+  out.push("                .build();");
+  out.push("        ApiService service = retrofit.create(ApiService.class);");
+  const callArgs: string[] = [];
+  for (const h of r.headers) callArgs.push(JSON.stringify(h.value));
+  if (r.body) callArgs.push(r.bodyKind === "json" ? r.body : JSON.stringify(r.body));
+  out.push(`        Call<String> call = service.request(${callArgs.join(", ")});`);
+  out.push("        Response<String> response = call.execute();");
+  out.push("        System.out.println(response.body());");
+  out.push("    }");
+  out.push("}");
+  return out.join("\n");
+}
+
+function genJavaHttpClient5(r: Req): string {
+  const M5: Record<string, string> = {
+    GET: "HttpGet",
+    POST: "HttpPost",
+    PUT: "HttpPut",
+    DELETE: "HttpDelete",
+    PATCH: "HttpPatch",
+    HEAD: "HttpHead",
+    OPTIONS: "HttpOptions",
+  };
+  const cls = M5[r.method] || "HttpPost";
+  const out: string[] = [];
+  out.push(`import org.apache.hc.client5.http.classic.methods.${cls};`);
+  out.push("import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;");
+  out.push("import org.apache.hc.client5.http.impl.classic.HttpClients;");
+  out.push("import org.apache.hc.core5.http.io.entity.EntityUtils;");
+  if (r.body) out.push("import org.apache.hc.core5.http.io.entity.StringEntity;");
+  out.push("");
+  out.push("public class Main {");
+  out.push("    public static void main(String[] args) throws Exception {");
+  out.push("        try (CloseableHttpClient client = HttpClients.createDefault()) {");
+  out.push(`            ${cls} request = new ${cls}(${JSON.stringify(r.url)});`);
+  for (const h of r.headers) out.push(`            request.setHeader("${esc(h.key, '"')}", "${esc(h.value, '"')}");`);
+  if (r.body) out.push(`            request.setEntity(new StringEntity(${JSON.stringify(r.body)}));`);
+  out.push("            client.execute(request, response -> {");
+  out.push("                System.out.println(EntityUtils.toString(response.getEntity()));");
+  out.push("                return null;");
+  out.push("            });");
+  out.push("        }");
+  out.push("    }");
+  out.push("}");
+  return out.join("\n");
+}
+
+/* ==================== PHP：PECL / Snoopy / Guzzle ==================== */
+
+function genPhpPecl(r: Req): string {
+  const out: string[] = [];
+  out.push("<?php");
+  out.push("");
+  out.push("$client = new http\\Client;");
+  out.push(`$request = new http\\Client\\Request("${r.method}", '${esc(r.url, "'")}');`);
+  if (r.headers.length || r.bodyKind === "json") {
+    out.push("$request->setOptions([");
+    out.push("    'headers' => [");
+    for (const h of r.headers) out.push(`        '${esc(h.key, "'")}' => '${esc(h.value, "'")}',`);
+    if (r.bodyKind === "json" && !r.headers.some((h) => h.key.toLowerCase() === "content-type")) {
+      out.push("        'Content-Type' => 'application/json',");
+    }
+    out.push("    ],");
+    out.push("]);");
+  }
+  if (r.body) out.push(`$request->setBody('${esc(r.body, "'")}');`);
+  out.push("$client->enqueue($request)->send();");
+  out.push("$response = $request->getResponse();");
+  out.push("");
+  out.push('echo $response->getStatusCode() . "\\n";');
+  out.push("echo $response->getBody();");
+  return out.join("\n");
+}
+
+function genPhpSnoopy(r: Req): string {
+  const out: string[] = [];
+  out.push("<?php");
+  out.push("");
+  out.push("require_once 'Snoopy.class.php';");
+  out.push("");
+  out.push("$snoopy = new Snoopy;");
+  if (r.headers.length || r.bodyKind === "json") {
+    out.push("$snoopy->rawheaders = [");
+    for (const h of r.headers) out.push(`    '${esc(h.key, "'")}' => '${esc(h.value, "'")}',`);
+    if (r.bodyKind === "json" && !r.headers.some((h) => h.key.toLowerCase() === "content-type")) {
+      out.push("    'Content-Type' => 'application/json',");
+    }
+    out.push("];");
+  }
+  if (r.files.length) {
+    out.push("// 注意：Snoopy 不支持 multipart 文件上传，请改用 cURL / Guzzle");
+  } else if (r.body) {
+    out.push(`$snoopy->submit('${esc(r.url, "'")}', ['payload' => '${esc(r.body, "'")}']);`);
+  } else {
+    out.push(`$snoopy->fetch('${esc(r.url, "'")}');`);
+  }
+  out.push("");
+  out.push('echo $snoopy->status . "\\n";');
+  out.push("echo $snoopy->results;");
+  return out.join("\n");
+}
+
+function genPhpGuzzle(r: Req): string {
+  const out: string[] = [];
+  out.push("<?php");
+  out.push("");
+  out.push("require 'vendor/autoload.php';");
+  out.push("");
+  out.push("use GuzzleHttp\\Client;");
+  out.push("");
+  out.push("$client = new Client();");
+  out.push("$options = [");
+  if (r.headers.length || (r.bodyKind === "json" && !r.headers.some((h) => h.key.toLowerCase() === "content-type"))) {
+    out.push("    'headers' => [");
+    for (const h of r.headers) out.push(`        '${esc(h.key, "'")}' => '${esc(h.value, "'")}',`);
+    if (r.bodyKind === "json" && !r.headers.some((h) => h.key.toLowerCase() === "content-type")) {
+      out.push("        'Content-Type' => 'application/json',");
+    }
+    out.push("    ],");
+  }
+  if (r.files.length) {
+    out.push("    // 文件上传（multipart）");
+    out.push("    'multipart' => [");
+    for (const t of r.formText) out.push(`        ['name' => '${esc(t.key, "'")}', 'contents' => '${esc(t.value, "'")}'],`);
+    for (const f of r.files) out.push(`        ['name' => '${esc(f.key, "'")}', 'contents' => fopen('${esc(f.path, "'")}', 'r')],`);
+    out.push("    ],");
+  } else if (r.body) {
+    out.push(`    'body' => '${esc(r.body, "'")}',`);
+  }
+  out.push("];");
+  out.push(`$response = $client->request('${r.method}', '${esc(r.url, "'")}', $options);`);
+  out.push("");
+  out.push('echo $response->getStatusCode() . "\\n";');
+  out.push("echo $response->getBody();");
+  return out.join("\n");
+}
+
+/* ==================== R：RCurl ==================== */
+
+function genRRCurl(r: Req): string {
+  const out: string[] = [];
+  out.push("library(RCurl)");
+  out.push("");
+  out.push(`url <- "${esc(r.url, '"')}"`);
+  const hdrs: string[] = r.headers.map((h) => `  "${esc(h.key, '"')}" = "${esc(h.value, '"')}"`);
+  if (r.bodyKind === "json" && !r.headers.some((h) => h.key.toLowerCase() === "content-type")) {
+    hdrs.push('  "Content-Type" = "application/json"');
+  }
+  if (hdrs.length) {
+    out.push("");
+    out.push("headers <- c(");
+    out.push(hdrs.join(",\n"));
+    out.push(")");
+  }
+  if (r.body) {
+    out.push("");
+    out.push(`body <- "${esc(r.body, '"')}"`);
+  }
+  out.push("");
+  const args: string[] = ["url"];
+  if (hdrs.length) args.push("httpheader = headers");
+  if (r.body) args.push("postfields = body");
+  args.push(`customrequest = "${r.method}"`);
+  args.push("ssl.verifypeer = FALSE");
+  out.push(`resp <- getURL(${args.join(", ")})`);
+  out.push("");
+  out.push("cat(resp)");
+  return out.join("\n");
+}
+
+/* ==================== Lua（LuaSocket） ==================== */
+
+function genLua(r: Req): string {
+  const out: string[] = [];
+  out.push('local http = require("socket.http")');
+  out.push('local ltn12 = require("ltn12")');
+  out.push("");
+  out.push(`local url = "${esc(r.url, '"')}"`);
+  if (r.body) {
+    out.push("");
+    out.push(`local payload = "${esc(r.body, '"')}"`);
+  }
+  out.push("");
+  out.push("local response_body = {}");
+  out.push("local res, code, headers = http.request{");
+  out.push("    url = url,");
+  out.push(`    method = "${r.method}",`);
+  if (r.headers.length || r.bodyKind === "json") {
+    out.push("    headers = {");
+    for (const h of r.headers) out.push(`        ["${esc(h.key, '"')}"] = "${esc(h.value, '"')}",`);
+    if (r.bodyKind === "json" && !r.headers.some((h) => h.key.toLowerCase() === "content-type")) {
+      out.push('        ["Content-Type"] = "application/json",');
+    }
+    out.push("    },");
+  }
+  if (r.body) out.push("    source = ltn12.source.string(payload),");
+  out.push("    sink = ltn12.sink.table(response_body),");
+  out.push("}");
+  out.push("");
+  out.push("print(code)");
+  out.push("print(table.concat(response_body))");
+  return out.join("\n");
+}
+
+/* ==================== PowerShell ==================== */
+
+function genPowershell(r: Req): string {
+  const out: string[] = [];
+  if (r.headers.length) {
+    out.push("$headers = @{");
+    for (const h of r.headers) out.push(`    "${esc(h.key, '"')}" = "${esc(h.value, '"')}"`);
+    out.push("}");
+  }
+  if (r.body) {
+    out.push("");
+    out.push(`$body = '${esc(r.body, "'")}'`);
+  }
+  if (r.files.length) {
+    out.push("");
+    out.push("# 文件上传（PowerShell 7+）：使用 -Form 参数");
+    out.push("$form = @{");
+    for (const t of r.formText) out.push(`    "${esc(t.key, '"')}" = "${esc(t.value, '"')}"`);
+    for (const f of r.files) out.push(`    "${esc(f.key, '"')}" = Get-Item "${esc(f.path, '"')}"`);
+    out.push("}");
+  }
+  out.push("");
+  const args: string[] = [`-Uri "${esc(r.url, '"')}"`, `-Method ${r.method}`];
+  if (r.headers.length) args.push("-Headers $headers");
+  if (r.files.length) args.push("-Form $form");
+  else if (r.body) args.push("-Body $body");
+  out.push(`$response = Invoke-RestMethod ${args.join(" ")}`);
+  out.push("");
+  out.push("$response | ConvertTo-Json -Depth 10");
+  return out.join("\n");
+}
+
+export function generateRequestCode(lang: CodeLang, api: ApiFile, baseUrl: string, lib?: string): string {
   const r = buildReq(api, baseUrl);
   switch (lang) {
     case "bash":
     case "curl":
+      if (lib === "wget") return genBashWget(r);
+      if (lib === "httpie") return genBashHttpie(r);
       return genCurl(r);
     case "python":
-      return genPython(r);
+      return lib === "httpclient" ? genPythonHttpClient(r) : genPython(r);
     case "c":
       return genC(r);
     case "cpp":
       return genCpp(r);
     case "java":
-      return genJava(r);
+      return genJavaDispatch(lib, r);
     case "csharp":
       return genCsharp(r);
     case "javascript":
-      return genJavaScript(r);
+      return genJsDispatch(lib, r);
     case "r":
-      return genR(r);
+      return lib === "rcurl" ? genRRCurl(r) : genR(r);
     case "rust":
       return genRust(r);
     case "delphi":
       return genDelphi(r);
     case "php":
-      return genPhp(r);
+      return genPhpDispatch(lib, r);
     case "go":
       return genGo(r);
     case "ruby":
@@ -889,8 +1613,74 @@ export function generateRequestCode(lang: CodeLang, api: ApiFile, baseUrl: strin
     case "kotlin":
       return genKotlin(r);
     case "typescript":
-      return genTypeScript(r);
+      return genTsDispatch(lib, r);
     case "erlang":
       return genErlang(r);
+    case "lua":
+      return genLua(r);
+    case "powershell":
+      return genPowershell(r);
+  }
+}
+
+/* ==================== 库分发 ==================== */
+
+function genJsDispatch(lib: string | undefined, r: Req): string {
+  switch (lib) {
+    case "axios":
+      return genJsAxios(r);
+    case "unirest":
+      return genJsUnirest(r);
+    case "request":
+      return genJsRequest(r);
+    case "native":
+      return genJsNative(r);
+    default:
+      return genJavaScript(r);
+  }
+}
+
+function genTsDispatch(lib: string | undefined, r: Req): string {
+  switch (lib) {
+    case "axios":
+      return genTsAxios(r);
+    case "unirest":
+      return genTsUnirest(r);
+    case "request":
+      return genTsRequest(r);
+    case "native":
+      return genTsNative(r);
+    default:
+      return genTypeScript(r);
+  }
+}
+
+function genJavaDispatch(lib: string | undefined, r: Req): string {
+  switch (lib) {
+    case "okhttp":
+      return genJavaOkHttp(r);
+    case "unirest":
+      return genJavaUnirest(r);
+    case "webclient":
+      return genJavaWebClient(r);
+    case "retrofit2":
+      return genJavaRetrofit2(r);
+    case "httpclient5":
+      return genJavaHttpClient5(r);
+    default:
+      return genJava(r);
+  }
+}
+
+function genPhpDispatch(lib: string | undefined, r: Req): string {
+  switch (lib) {
+    case "pecl":
+      return genPhpPecl(r);
+    case "snoopy":
+      return genPhpSnoopy(r);
+    case "guzzle":
+      return genPhpGuzzle(r);
+    default:
+      return genPhp(r);
   }
 }

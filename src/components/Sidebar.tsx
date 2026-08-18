@@ -609,6 +609,16 @@ export function Sidebar(props: Props) {
               >
                 📤 {t("sidebar.exportNode")}
               </button>
+              {onViewMarkdown && (
+                <button
+                  onClick={() => {
+                    onViewMarkdown(menu.node);
+                    setMenu(null);
+                  }}
+                >
+                  📝 {t("sidebar.viewMarkdown")}
+                </button>
+              )}
               <button
                 onClick={() => {
                   onCopy(menu.node);
