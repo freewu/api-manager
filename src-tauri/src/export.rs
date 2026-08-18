@@ -348,9 +348,16 @@ pub fn markdown_single_file(title: &str, apis: &[(Vec<String>, ApiFile)]) -> Str
     if !title.is_empty() {
         s.push_str(&format!("# {title}\n\n"));
     }
+    // 同一分组只生成一次分组信息；分组名与文档标题相同时不再重复（避免 # 标题 与 # 分组 叠两行）
+    let mut seen_groups: Vec<String> = Vec::new();
     for (segs, api) in apis {
         let group = segs.join(" / ");
-        s.push_str(&crate::markdown::render(api, &group));
+        let g = group.trim();
+        let emit = !g.is_empty() && g != title && !seen_groups.iter().any(|x| x == g);
+        if emit {
+            seen_groups.push(g.to_string());
+        }
+        s.push_str(&crate::markdown::render(api, if emit { &g } else { "" }));
         s.push('\n');
     }
     s
@@ -645,6 +652,30 @@ mod tests {
         assert!(md.contains("# 用户管理"), "md: {md}");
         assert!(md.contains("# 用户管理 / 子组"), "md: {md}");
         assert!(md.contains("## 创建用户"), "md: {md}");
+    }
+
+    /// 同一分组下的多个接口：分组信息只生成一次
+    #[test]
+    fn markdown_single_file_group_heading_once() {
+        let mut a = sample();
+        a.name = "接口A".into();
+        let mut b = sample();
+        b.name = "接口B".into();
+        let apis = vec![
+            (vec!["用户管理".to_string()], a.clone()),
+            (vec!["用户管理".to_string()], b.clone()),
+        ];
+        let md = markdown_single_file("用户管理", &apis);
+        // 标题即分组名：不再重复输出 # 用户管理
+        assert_eq!(md.matches("# 用户管理").count(), 1, "md: {md}");
+        assert!(md.contains("## 接口A"), "md: {md}");
+        assert!(md.contains("## 接口B"), "md: {md}");
+
+        // 标题为文档名（整库导出）时：分组信息仍只出现一次
+        let md2 = markdown_single_file("接口文档", &apis);
+        assert_eq!(md2.matches("# 用户管理").count(), 1, "md: {md2}");
+        assert!(md2.contains("## 接口A"), "md: {md2}");
+        assert!(md2.contains("## 接口B"), "md: {md2}");
     }
 
     /// 勾选分组后前端会把分组目录 + 其下全部文件路径一起提交，后端应去重
