@@ -28,6 +28,7 @@ import {
   mockStop,
   pickWorkspace,
   readApi,
+  readApiVersion,
   readEnv,
   readInfo,
   readTree,
@@ -862,11 +863,38 @@ export default function App() {
           setDirty(false);
         }
       }
+      // 与最新历史版本对比：无改动则提示已是最新版本，不再重复保存
+      const versions = await listVersions(data.uuid);
+      if (versions.length > 0) {
+        const latest = await readApiVersion(versions[0].path);
+        if (JSON.stringify(data) === JSON.stringify(JSON.parse(latest))) {
+          showToast(t("toast.alreadyLatest"));
+          return;
+        }
+      }
       const rel = await saveApiVersion(data);
       showToast(t("toast.savedVersion", { rel }));
       void refreshVersion(data.uuid);
     } catch (e) {
       showToast(t("toast.saveVersionFailed", { err: String(e) }));
+    }
+  };
+
+  /** 版本恢复成功后：重新加载接口内容并刷新左侧树/版本号 */
+  const handleVersionRestored = async (path: string, version: number) => {
+    try {
+      const data = await readApi(path);
+      if (!data.uuid) data.uuid = crypto.randomUUID();
+      setSelectedPath(path);
+      setApi(data);
+      setDirty(false);
+      setResponse(null);
+      void refreshVersion(data.uuid);
+      void reloadTree();
+      setVersionModal(null);
+      showToast(t("version.restored", { version }));
+    } catch (e) {
+      showToast(t("toast.saveFailed", { err: String(e) }));
     }
   };
 
@@ -1440,6 +1468,7 @@ export default function App() {
         <VersionModal
           api={versionModal.api}
           versions={versionModal.versions}
+          onRestored={handleVersionRestored}
           onClose={() => setVersionModal(null)}
         />
       )}

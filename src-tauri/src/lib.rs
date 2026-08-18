@@ -2411,6 +2411,85 @@ fn read_api_version(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|e| format!("读取版本失败: {e}"))
 }
 
+/// 遍历工作区内的接口 json 文件（跳过 .version / .examples 等点开头目录），返回首个满足条件的路径
+fn walk_api_files<F: FnMut(&Path, &Value) -> bool>(root: &Path, mut pred: F) -> Option<PathBuf> {
+    let mut stack: Vec<PathBuf> = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else { continue };
+        for entry in entries.flatten() {
+            let p = entry.path();
+            let fname = entry.file_name().to_string_lossy().to_string();
+            if fname.starts_with('.') {
+                continue;
+            }
+            if p.is_dir() {
+                stack.push(p);
+                continue;
+            }
+            if p.extension().map(|e| e == "json").unwrap_or(false) {
+                if let Ok(content) = fs::read_to_string(&p) {
+                    if let Ok(v) = serde_json::from_str::<Value>(&content) {
+                        if pred(&p, &v) {
+                            return Some(p);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// 按 uuid 查找接口主文件路径
+fn find_api_path_by_uuid(root: &Path, uuid: &str) -> Option<PathBuf> {
+    if !valid_uuid(uuid) {
+        return None;
+    }
+    walk_api_files(root, |_, v| v.get("uuid").and_then(|x| x.as_str()) == Some(uuid))
+}
+
+/// 按名称查找接口主文件路径（旧文件未持久化 uuid 时的兜底）
+fn find_api_path_by_name(root: &Path, name: &str) -> Option<PathBuf> {
+    let name = name.trim();
+    if name.is_empty() {
+        return None;
+    }
+    walk_api_files(root, |_, v| {
+        v.get("name")
+            .and_then(|x| x.as_str())
+            .map(str::trim)
+            == Some(name)
+    })
+}
+
+/// 恢复到指定历史版本：先把当前状态默认保存为一个新版本（备份），再把版本内容写回接口主文件
+#[tauri::command]
+fn restore_api_version(
+    state: State<'_, WorkspaceState>,
+    version_path: String,
+    uuid: String,
+) -> Result<String, String> {
+    let root = workspace_root(&state)?;
+    restore_api_version_at(&root, &version_path, &uuid)
+}
+
+fn restore_api_version_at(root: &Path, version_path: &str, uuid: &str) -> Result<String, String> {
+    // 1. 读取选中版本内容
+    let raw = fs::read_to_string(version_path).map_err(|e| format!("读取版本失败: {e}"))?;
+    let restored: ApiFile =
+        serde_json::from_str(&raw).map_err(|e| format!("版本内容解析失败: {e}"))?;
+    // 2. 定位主文件：优先 uuid，其次版本文件自带的 uuid，最后按名称兜底
+    let main = find_api_path_by_uuid(root, uuid)
+        .or_else(|| find_api_path_by_uuid(root, restored.uuid.trim()))
+        .or_else(|| find_api_path_by_name(root, &restored.name))
+        .ok_or("未找到该接口文件".to_string())?;
+    // 3. 先把当前状态保存为新版本（备份），再写回版本内容
+    let current = read_api(main.to_string_lossy().to_string())?;
+    save_api_version_at(root, current)?;
+    save_api(main.to_string_lossy().to_string(), restored)?;
+    Ok(main.to_string_lossy().to_string())
+}
+
 #[tauri::command]
 fn create_api(
     state: State<'_, WorkspaceState>,
@@ -4018,6 +4097,7 @@ pub fn run() {
             list_versions,
             get_current_version,
             read_api_version,
+            restore_api_version,
             create_api,
             create_folder,
             rename_entry,
@@ -4604,6 +4684,72 @@ mod tests {
         assert!(md.contains("## 接口A"), "md: {md}");
         // 分组名即标题：不再重复输出 # 用户管理
         assert_eq!(md.matches("# 用户管理").count(), 1, "md: {md}");
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    /// 恢复到历史版本：先自动备份当前状态为新版本，再把版本内容写回主文件
+    #[test]
+    fn restore_api_version_backs_up_then_restores() {
+        let base = std::env::temp_dir().join(format!("apim-restore-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(base.join("接口"));
+        let uuid = "a1b2c3d4-1111-2222-3333-444455556666".to_string();
+        let make = |name: &str, desc: &str| ApiFile {
+            uuid: uuid.clone(),
+            name: name.into(),
+            method: "GET".into(),
+            path: "/x".into(),
+            url: String::new(),
+            description: desc.into(),
+            headers: vec![],
+            query: vec![],
+            params: vec![],
+            body: BodyData::default(),
+            mock: MockConfig {
+                enabled: false,
+                status: 200,
+                headers: vec![],
+                delay: 0,
+                body: String::new(),
+            },
+            examples: vec![],
+            responses: vec![],
+            doc_params: vec![],
+        };
+        let main = base.join("接口").join("接口A.json");
+        save_api(main.to_string_lossy().to_string(), make("接口A", "v1 描述"))
+            .unwrap();
+        // 保存两个版本：v1（描述 v1 描述）与 v2（描述 v2 描述）
+        save_api_version_at(&base, make("接口A", "v1 描述")).unwrap();
+        let v2 = save_api_version_at(&base, make("接口A", "v2 描述")).unwrap();
+        // 主文件当前是 v2 描述
+        let mut current = read_api(main.to_string_lossy().to_string()).unwrap();
+        current.description = "v2 描述".into();
+        save_api(main.to_string_lossy().to_string(), current).unwrap();
+        // 列出版本：v2、v1（从大到小）
+        let dir = base.join(".version").join(&uuid);
+        let files: Vec<String> = fs::read_dir(&dir)
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+        assert_eq!(files.len(), 2, "files: {files:?}");
+        // 恢复到 v1
+        let v1_path = dir.join("接口A.1.json");
+        let restored_main = restore_api_version_at(&base, &v1_path.to_string_lossy(), &uuid);
+        let main_str = restored_main.unwrap();
+        assert_eq!(main_str, main.to_string_lossy().to_string());
+        let restored = read_api(main_str).unwrap();
+        assert_eq!(restored.description, "v1 描述");
+        // 恢复前自动保存了当前（v2）为新版本 → 现在 3 个版本文件
+        let files2: Vec<String> = fs::read_dir(&dir)
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+        assert_eq!(files2.len(), 3, "files: {files2:?}");
+        let backup = read_api(dir.join("接口A.3.json").to_string_lossy().to_string()).unwrap();
+        assert_eq!(backup.description, "v2 描述");
         let _ = fs::remove_dir_all(&base);
     }
 

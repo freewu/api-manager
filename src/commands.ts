@@ -146,6 +146,11 @@ export function readApiVersion(path: string): Promise<string> {
   return invoke<string>("read_api_version", { path });
 }
 
+/** 恢复到指定历史版本：后端先自动备份当前状态为新版本，再写回主文件，返回主文件路径 */
+export function restoreApiVersion(versionPath: string, uuid: string): Promise<string> {
+  return invoke<string>("restore_api_version", { versionPath, uuid });
+}
+
 export function loadSettings(): Promise<AppSettings> {
   return invoke<AppSettings>("load_settings");
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { readApiVersion } from "../commands";
+import { readApiVersion, restoreApiVersion } from "../commands";
 import { ApiFile, VersionInfo } from "../types";
 import { Modal } from "./Modal";
 import { useT } from "../i18n";
@@ -7,6 +7,8 @@ import { useT } from "../i18n";
 interface Props {
   api: ApiFile;
   versions: VersionInfo[];
+  /** 恢复成功后回调（path: 主文件路径, version: 恢复到的版本号） */
+  onRestored: (path: string, version: number) => void;
   onClose: () => void;
 }
 
@@ -72,12 +74,14 @@ function fmtTime(sec: number): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export function VersionModal({ api, versions, onClose }: Props) {
+export function VersionModal({ api, versions, onRestored, onClose }: Props) {
   const t = useT();
   const [selIdx, setSelIdx] = useState(0);
   const [diff, setDiff] = useState<DiffRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [restoring, setRestoring] = useState(false);
+  const [restoreErr, setRestoreErr] = useState("");
 
   const sel = versions[selIdx];
 
@@ -106,6 +110,21 @@ export function VersionModal({ api, versions, onClose }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selIdx, sel?.path]);
 
+  /** 恢复到选中的历史版本：后端会先自动保存当前状态为新版本，再写回主文件 */
+  const handleRestore = async () => {
+    if (!sel || restoring) return;
+    setRestoring(true);
+    setRestoreErr("");
+    try {
+      const path = await restoreApiVersion(sel.path, api.uuid);
+      onRestored(path, sel.version);
+    } catch (e) {
+      setRestoreErr(String(e));
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   return (
     <Modal
       title={`📑 ${t("version.title")} - ${api.name}`}
@@ -119,7 +138,19 @@ export function VersionModal({ api, versions, onClose }: Props) {
     >
       <div className="version-body">
         <div className="version-list">
-          <div className="version-list-title">{t("version.history", { count: versions.length })}</div>
+          <div className="version-list-title">
+            {t("version.history", { count: versions.length })}
+            {sel && (
+              <button
+                className="btn btn-sm"
+                style={{ marginLeft: 8 }}
+                disabled={restoring}
+                onClick={handleRestore}
+              >
+                {restoring ? t("version.restoring") : t("version.restore", { version: sel.version })}
+              </button>
+            )}
+          </div>
           {versions.length === 0 && (
             <div className="version-empty">
               {t("version.empty")}
@@ -156,6 +187,7 @@ export function VersionModal({ api, versions, onClose }: Props) {
           <div className="diff-body">
             {loading && <div className="diff-hint">{t("version.loading")}</div>}
             {err && <div className="diff-error">{err}</div>}
+            {restoreErr && <div className="diff-error">{restoreErr}</div>}
             {diff &&
               diff.map((r, i) => (
                 <div key={i} className={`diff-row ${r.type}`}>
