@@ -1362,7 +1362,7 @@ export default function App() {
                 enableCodegen={settings.enableCodegen}
                 enableMock={settings.enableMock}
                 codegenLang={settings.codegenLang}
-                onTabChange={(t) => setHideResponse(["mock", "desc", "doc", "code", "examples"].includes(t))}
+                onTabChange={(t) => setHideResponse(["response", "mock", "desc", "doc", "code", "examples"].includes(t))}
               />
               {!hideResponse && (
                 <div
