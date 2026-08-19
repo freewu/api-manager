@@ -71,6 +71,8 @@ export interface ApiFile {
   docParams: DocParam[];
   /** 是否已标记废弃 */
   deprecated: boolean;
+  /** 接口协议：http（HTTP 接口）或 websocket（WebSocket 接口） */
+  protocol: "http" | "websocket";
 }
 
 export type DocSource =
@@ -186,6 +188,8 @@ export interface TreeNode {
   apiCount?: number;
   /** 是否已标记废弃（分组无此字段时默认未废弃） */
   deprecated?: boolean;
+  /** 接口协议（http / websocket，分组无此字段） */
+  protocol?: "http" | "websocket";
   children?: TreeNode[];
 }
 
@@ -315,5 +319,6 @@ export function emptyApi(): ApiFile {
     responses: [emptyResponse("返回成功", 200), emptyResponse("返回失败", 400)],
     docParams: [],
     deprecated: false,
+    protocol: "http",
   };
 }

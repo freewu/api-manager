@@ -521,6 +521,15 @@ body {
   font-size: 13px;
   width: 16px;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.node .node-type-icon {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  display: block;
 }
 .node .node-name {
   flex: 1;
@@ -751,6 +760,28 @@ body {
   outline: none;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.scheme-switch {
+  display: flex;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.scheme-btn {
+  background: var(--bg-input);
+  color: var(--text);
+  border: none;
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+.scheme-btn.active {
+  background: var(--accent);
+  color: #fff;
 }
 
 .url-input-wrap {

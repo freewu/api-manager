@@ -830,6 +830,7 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
         responses: vec![],
         doc_params: vec![],
         deprecated: false,
+        protocol: "http".into(),
     };
 
     for (sec, sub, text) in &sections {
@@ -1239,6 +1240,7 @@ mod tests {
                 children: vec![],
             }],
             deprecated: false,
+            protocol: "http".into(),
         }
     }
 
@@ -1381,6 +1383,7 @@ mod tests {
             responses: vec![],
             doc_params: vec![],
             deprecated: false,
+            protocol: "http".into(),
         };
 
         // 注册 types 模拟 openapi_tag 子字段

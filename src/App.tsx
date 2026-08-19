@@ -134,6 +134,7 @@ export default function App() {
   const [vcs, setVcs] = useState<"git" | "svn" | null>(null);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [modalText, setModalText] = useState("");
+  const [modalProtocol, setModalProtocol] = useState<"http" | "websocket">("http");
   const [infoForm, setInfoForm] = useState<InfoForm>(emptyInfoForm());
   const [toast, setToast] = useState<string | null>(null);
   /** 发现新版本信息（托盘检查更新后通过事件推送，弹窗提醒） */
@@ -989,6 +990,7 @@ export default function App() {
   // ---------- 弹窗操作 ----------
   const openModal = (type: ModalState["type"], parent = "", target?: TreeNode) => {
     setModalText(target?.name || (type === "newApi" ? t("app.unnamedApi") : type === "newFolder" ? t("app.newFolder") : ""));
+    setModalProtocol("http");
     setModal({ type, parent, target });
   };
 
@@ -1010,7 +1012,7 @@ export default function App() {
     const name = modalText.trim() || t("app.unnamedApi");
     try {
       const dir = modal.parent || workspace!;
-      const path = await createApi(dir, name);
+      const path = await createApi(dir, name, modalProtocol);
       setModal(null);
       await reloadTree();
       const data = await readApi(path);
@@ -1607,6 +1609,13 @@ export default function App() {
           <label>
             {t("modal.saveTo")}
             <input value={modal.parent || workspace!} disabled style={{ opacity: 0.6 }} />
+          </label>
+          <label>
+            {t("editor.protocol")}
+            <select value={modalProtocol} onChange={(e) => setModalProtocol(e.target.value as "http" | "websocket")}>
+              <option value="http">{t("editor.httpType")}</option>
+              <option value="websocket">{t("editor.wsType")}</option>
+            </select>
           </label>
         </Modal>
       )}

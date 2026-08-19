@@ -189,6 +189,13 @@ pub struct ApiFile {
     /// 是否已标记废弃
     #[serde(default)]
     pub deprecated: bool,
+    /// 接口协议：http（HTTP 接口）或 websocket（WebSocket 接口）
+    #[serde(default = "default_protocol")]
+    pub protocol: String,
+}
+
+pub(crate) fn default_protocol() -> String {
+    "http".to_string()
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -346,6 +353,9 @@ pub struct TreeNode {
     /// 是否已标记废弃（分组无此字段，接口对应其文件中的 deprecated 字段）
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deprecated: Option<bool>,
+    /// 接口协议：http / websocket（分组无此字段）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub children: Option<Vec<TreeNode>>,
 }
@@ -561,6 +571,7 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
         description: Some(info.description),
         collapsed: info.collapsed,
         deprecated: info.deprecated,
+        protocol: None,
         api_count: Some(api_count),
         children: Some(children),
     })
@@ -576,6 +587,7 @@ fn build_api_node(path: &Path) -> TreeNode {
     let mut endpoint = None;
     let mut mock_enabled = None;
     let mut deprecated = None;
+    let mut protocol = None;
 
     if let Ok(content) = fs::read_to_string(path) {
         if let Ok(v) = serde_json::from_str::<Value>(&content) {
@@ -591,6 +603,7 @@ fn build_api_node(path: &Path) -> TreeNode {
                 .and_then(|m| m.get("enabled"))
                 .and_then(|e| e.as_bool());
             deprecated = v.get("deprecated").and_then(|d| d.as_bool());
+            protocol = v.get("protocol").and_then(|x| x.as_str()).map(String::from);
         }
     }
 
@@ -604,6 +617,7 @@ fn build_api_node(path: &Path) -> TreeNode {
         description: None,
         collapsed: None,
         deprecated,
+        protocol,
         api_count: None,
         children: None,
     }
@@ -1437,6 +1451,7 @@ fn postman_request_to_api(name: &str, request: &Value) -> Result<ApiFile, String
         responses: vec![],
         doc_params: vec![],
         deprecated: false,
+        protocol: "http".into(),
     })
 }
 
@@ -2142,6 +2157,7 @@ fn openapi_op_to_api(
         responses: vec![],
         doc_params: vec![],
         deprecated: false,
+        protocol: "http".into(),
     })
 }
 
@@ -2515,6 +2531,7 @@ fn create_api(
     state: State<'_, WorkspaceState>,
     dir: String,
     name: String,
+    protocol: Option<String>,
 ) -> Result<String, String> {
     let root = workspace_root(&state)?;
     let dir_path = if dir.trim().is_empty() {
@@ -2551,6 +2568,10 @@ fn create_api(
         responses: default_responses(),
         doc_params: vec![],
         deprecated: false,
+        protocol: match protocol.as_deref() {
+            Some("websocket") => "websocket".into(),
+            _ => "http".into(),
+        },
     };
     write_pretty(&file_path, &data)?;
     Ok(file_path.to_string_lossy().to_string())
@@ -4619,6 +4640,7 @@ mod tests {
             responses: vec![],
             doc_params: vec![],
         deprecated: false,
+        protocol: "http".into(),
         };
         let rel = save_api_version_at(&root, api).unwrap();
         assert!(rel.starts_with(".version/11111111-2222-3333-4444-555555555555/"));
@@ -4688,6 +4710,7 @@ mod tests {
                 children: vec![],
             }],
             deprecated: false,
+            protocol: "http".into(),
         };
         ensure_responses(&mut api);
         assert_eq!(api.responses.len(), 2);
@@ -4729,6 +4752,7 @@ mod tests {
             responses: vec![],
             doc_params: vec![],
         deprecated: false,
+        protocol: "http".into(),
         };
         fs::write(
             g.join("接口A.json"),
@@ -4776,6 +4800,7 @@ mod tests {
             responses: vec![],
             doc_params: vec![],
         deprecated: false,
+        protocol: "http".into(),
         };
         let main = base.join("接口").join("接口A.json");
         save_api(main.to_string_lossy().to_string(), make("接口A", "v1 描述"))
@@ -5092,6 +5117,7 @@ mod tests {
             responses: vec![],
             doc_params: vec![],
         deprecated: false,
+        protocol: "http".into(),
         };
         write_pretty(&src, &api).unwrap();
 
@@ -5135,6 +5161,7 @@ mod tests {
                 responses: vec![],
                 doc_params: vec![],
         deprecated: false,
+        protocol: "http".into(),
             };
             write_pretty(p, &api).unwrap();
         };

@@ -164,8 +164,8 @@ export function setLanguage(lang: "zh" | "zh-tw" | "en"): Promise<void> {
   return invoke<void>("set_language", { lang });
 }
 
-export function createApi(dir: string, name: string): Promise<string> {
-  return invoke<string>("create_api", { dir, name });
+export function createApi(dir: string, name: string, protocol: "http" | "websocket" = "http"): Promise<string> {
+  return invoke<string>("create_api", { dir, name, protocol });
 }
 
 export function createFolder(parent: string, name: string): Promise<string> {

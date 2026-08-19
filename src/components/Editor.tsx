@@ -86,6 +86,8 @@ interface Props {
 
 export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, enableMock = true, codegenLang = "bash", onTabChange, currentVersion = 0 }: Props) {
   const t = useT();
+  /** 是否 WebSocket 接口 */
+  const isWs = api.protocol === "websocket";
   const [tab, setTab] = useState<Tab>("params");
   /** JSON 格式化失败提示（body / mock 页签共用） */
   const [formatError, setFormatError] = useState<string | null>(null);
@@ -105,12 +107,12 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
 
   // 设置中全局关闭 Mock 时，若当前停留在 Mock 页签则切回 Query
   useEffect(() => {
-    if (!enableMock && tab === "mock") {
+    if ((!enableMock || isWs) && tab === "mock") {
       setTab("params");
       onTabChange?.("params");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enableMock]);
+  }, [enableMock, isWs]);
 
   // URL / 路径中的 {xx} 占位符实时同步到 Path 页签（新增或删除）；
   // {{xx}} 是全局环境变量（双大括号），不会被当作路径参数
@@ -135,6 +137,14 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   }, [pathSource]);
 
   const set = (patch: Partial<ApiFile>) => onChange({ ...api, ...patch });
+
+  /** ws/wss 协议切换 */
+  const switchScheme = (scheme: "ws" | "wss") => {
+    const cur = effectiveUrl;
+    const replaced = cur.replace(/^(wss?:)\/\//, `${scheme}://`);
+    const next = cur.startsWith("http") ? cur.replace(/^(https?:)\/\//, `${scheme}://`) : replaced;
+    onChange({ ...api, url: next, path: api.path });
+  };
 
   /** 响应页签：更新某条返回（名称 / 状态码 / 内容类型 / 示例体） */
   const updateResponse = (id: string, patch: Partial<ResponseItem>) =>
@@ -185,27 +195,44 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   return (
     <div className="editor" style={style}>
       <div className="editor-head">
-        <select
-          className="method-select"
-          value={api.method}
-          onChange={(e) => set({ method: e.target.value })}
-        >
-          {METHODS.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
+        {isWs ? (
+          <div className="scheme-switch" title={t("editor.wsType")}>
+            <button
+              className={`scheme-btn${effectiveUrl.startsWith("wss://") ? " active" : ""}`}
+              onClick={() => switchScheme("wss")}
+            >
+              wss
+            </button>
+            <button
+              className={`scheme-btn${!effectiveUrl.startsWith("wss://") ? " active" : ""}`}
+              onClick={() => switchScheme("ws")}
+            >
+              ws
+            </button>
+          </div>
+        ) : (
+          <select
+            className="method-select"
+            value={api.method}
+            onChange={(e) => set({ method: e.target.value })}
+          >
+            {METHODS.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        )}
         <div className="url-input-wrap">
-          <span className="url-scheme">URL</span>
+          <span className="url-scheme">{isWs ? "WS" : "URL"}</span>
           <input
             className="url-input"
             value={effectiveUrl}
-            placeholder="https://api.example.com/v1/users"
+            placeholder={isWs ? t("editor.wsUrlPlaceholder") : "https://api.example.com/v1/users"}
             title={t("editor.urlTitle")}
             onChange={(e) => {
               const v = e.target.value;
-              if (v.startsWith(baseUrl) && baseUrl) {
+              if (!isWs && v.startsWith(baseUrl) && baseUrl) {
                 onChange({ ...api, url: "", path: v.slice(baseUrl.length) || "/" });
               } else {
                 onChange({ ...api, url: v, path: api.path });
@@ -217,9 +244,11 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             spellCheck={false}
           />
         </div>
-        <button className="send-btn" onClick={onSend} disabled={sending}>
-          {sending ? t("tab.sending") : t("tab.send")}
-        </button>
+        {!isWs && (
+          <button className="send-btn" onClick={onSend} disabled={sending}>
+            {sending ? t("tab.sending") : t("tab.send")}
+          </button>
+        )}
         {enableVersion && (
           <button
             className="save-btn"
@@ -249,12 +278,14 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           className={`tab ${tab === "body" ? "active" : ""}`}
           onClick={() => switchTab("body")}
         >
-          Body
-          {api.body.mode !== "none" &&
+          {isWs ? t("editor.message") : "Body"}
+          {!isWs &&
+            api.body.mode !== "none" &&
             ((api.body.mode === "binary" && api.body.binaryPath) ||
               (api.body.mode !== "binary" && api.body.raw)) && (
               <span className="count">•</span>
             )}
+          {isWs && api.body.raw.trim() && <span className="count">•</span>}
         </div>
         <div
           className={`tab ${tab === "response" ? "active" : ""}`}
@@ -263,7 +294,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           {t("editor.responseTab")}
           {(api.responses?.length ?? 0) > 0 && <span className="count">{api.responses.length}</span>}
         </div>
-        {enableMock && (
+        {enableMock && !isWs && (
           <div className={`tab ${tab === "mock" ? "active" : ""}`} onClick={() => switchTab("mock")}>
             Mock{api.mock.enabled && <span className="count">●</span>}
           </div>
@@ -334,7 +365,25 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           />
         )}
 
-        {tab === "body" && (
+        {tab === "body" && isWs && (
+          <div>
+            <div className="section-title">
+              {t("editor.message")} <span className="help">{t("editor.messagePlaceholder")}</span>
+            </div>
+            <textarea
+              className="code-area"
+              value={api.body.raw}
+              placeholder={t("editor.messagePlaceholder")}
+              spellCheck={false}
+              onChange={(e) => set({ body: { ...api.body, raw: e.target.value } })}
+            />
+            <div style={{ color: "var(--text-faint)", fontSize: 12, marginTop: 8 }}>
+              {t("editor.wsNoMock")}
+            </div>
+          </div>
+        )}
+
+        {tab === "body" && !isWs && (
           <div>
             <div className="body-modes">
               {BODY_MODES.map((m) => (

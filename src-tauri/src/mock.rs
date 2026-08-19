@@ -400,6 +400,7 @@ mod tests {
             responses: vec![],
             doc_params: vec![],
             deprecated: false,
+            protocol: "http".into(),
         };
         let route = parse_route(&api).unwrap();
         assert_eq!(route.segments.len(), 3);

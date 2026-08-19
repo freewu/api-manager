@@ -3,6 +3,8 @@ import { TreeNode } from "../types";
 import { HistoryDay, HistorySummary } from "../commands";
 import { HistoryList } from "./HistoryList";
 import { useT } from "../i18n";
+import iconHttp from "../assets/icon-http.png";
+import iconWs from "../assets/icon-websocket.png";
 
 export type AppView = "api" | "history";
 
@@ -249,7 +251,15 @@ function NodeRow({
         ) : (
           <span className="caret"></span>
         )}
-        <span className="node-icon">{isFolder ? "📁" : "🌐"}</span>
+        <span className="node-icon">
+          {isFolder ? (
+            "📁"
+          ) : node.protocol === "websocket" ? (
+            <img className="node-type-icon" src={iconWs} alt="WS" />
+          ) : (
+            <img className="node-type-icon" src={iconHttp} alt="HTTP" />
+          )}
+        </span>
         {deprecated && (
           <span className="node-dep-badge" title={t("sidebar.deprecatedBadge")}>
             {t("sidebar.deprecated")}
