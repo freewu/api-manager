@@ -42,6 +42,7 @@ import {
   sendRequest,
   saveHistory,
   saveExample,
+  toggleDeprecated,
   updateTrayEnv,
   vcsCommitPush,
   vcsInfo,
@@ -1160,6 +1161,27 @@ export default function App() {
     }
   };
 
+  // 标记 / 取消标记“已废弃”（接口或分组），成功后在左侧树与当前编辑的接口上即时生效
+  const handleToggleDeprecated = async (node: TreeNode) => {
+    try {
+      const now = await toggleDeprecated(node.path);
+      await reloadTree();
+      // 若是当前正编辑的接口，同步刷新编辑区内容
+      if (node.kind === "api" && selectedPath === node.path) {
+        const data = await readApi(node.path);
+        setApi(data);
+        setDirty(false);
+      }
+      showToast(
+        now
+          ? t("toast.markedDeprecated", { name: node.name })
+          : t("toast.unmarkedDeprecated", { name: node.name })
+      );
+    } catch (e) {
+      showToast(t("toast.failed", { err: String(e) }));
+    }
+  };
+
   const baseUrl = rootInfo.baseUrl || "";
 
   // ---------- 渲染 ----------
@@ -1321,6 +1343,7 @@ export default function App() {
           onRename={(node) => openModal("rename", "", node)}
           onCopy={handleCopy}
           onDelete={(node) => openModal("delete", "", node)}
+          onToggleDeprecated={(node) => void handleToggleDeprecated(node)}
           onEditInfo={(node) => openInfoModal(node)}
           onVersions={openVersions}
           onStats={setStatsNode}

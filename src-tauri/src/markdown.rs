@@ -826,6 +826,7 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
         examples: vec![],
         responses: vec![],
         doc_params: vec![],
+        deprecated: false,
     };
 
     for (sec, sub, text) in &sections {
@@ -1234,6 +1235,7 @@ mod tests {
                 object_name: String::new(),
                 children: vec![],
             }],
+            deprecated: false,
         }
     }
 
@@ -1375,7 +1377,10 @@ mod tests {
             examples: vec![],
             responses: vec![],
             doc_params: vec![],
+            deprecated: false,
         };
+
+        // 注册 types 模拟 openapi_tag 子字段
         api.mock.body = r#"{"data":{"name":"张三","id":1},"code":0}"#.into();
         let md = render(&api, "");
         assert!(md.contains("| data | Object |"), "md: {md}");

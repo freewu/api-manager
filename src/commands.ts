@@ -196,6 +196,11 @@ export function saveInfo(path: string, data: InfoJson): Promise<void> {
   return invoke<void>("save_info", { path, data });
 }
 
+/** 标记 / 取消标记“已废弃”（接口或分组），返回新的废弃状态 */
+export function toggleDeprecated(path: string): Promise<boolean> {
+  return invoke<boolean>("toggle_deprecated", { path });
+}
+
 export function readEnv(): Promise<EnvStore> {
   return invoke<EnvStore>("read_envs");
 }

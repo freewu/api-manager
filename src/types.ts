@@ -69,6 +69,8 @@ export interface ApiFile {
   responses: ResponseItem[];
   /** 入参文档：请求参数的补充说明（类型 / 说明），按 source+key 关联 */
   docParams: DocParam[];
+  /** 是否已标记废弃 */
+  deprecated: boolean;
 }
 
 export type DocSource =
@@ -140,6 +142,8 @@ export interface InfoJson {
   mockPort?: number;
   order?: number;
   collapsed?: boolean;
+  /** 分组是否已标记废弃 */
+  deprecated?: boolean;
 }
 
 // ---- 全局环境变量 ----
@@ -180,6 +184,8 @@ export interface TreeNode {
   description?: string;
   collapsed?: boolean;
   apiCount?: number;
+  /** 是否已标记废弃（分组无此字段时默认未废弃） */
+  deprecated?: boolean;
   children?: TreeNode[];
 }
 
@@ -308,5 +314,6 @@ export function emptyApi(): ApiFile {
     examples: [],
     responses: [emptyResponse("返回成功", 200), emptyResponse("返回失败", 400)],
     docParams: [],
+    deprecated: false,
   };
 }

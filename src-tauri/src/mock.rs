@@ -399,6 +399,7 @@ mod tests {
             examples: vec![],
             responses: vec![],
             doc_params: vec![],
+            deprecated: false,
         };
         let route = parse_route(&api).unwrap();
         assert_eq!(route.segments.len(), 3);

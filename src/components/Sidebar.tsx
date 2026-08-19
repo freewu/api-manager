@@ -20,6 +20,7 @@ interface Props {
   onRename: (node: TreeNode) => void;
   onCopy: (node: TreeNode) => void;
   onDelete: (node: TreeNode) => void;
+  onToggleDeprecated: (node: TreeNode) => void;
   onEditInfo: (node: TreeNode) => void;
   onVersions: (node: TreeNode) => void;
   onStats?: (node: TreeNode) => void;
@@ -73,6 +74,9 @@ function validDrop(dragSrc: string, dst: string): boolean {
   return true;
 }
 
+// 废弃状态筛选：all=全部 / active=未废弃 / deprecated=已废弃
+type DepFilter = "all" | "active" | "deprecated";
+
 function NodeRow({
   node,
   depth,
@@ -83,6 +87,7 @@ function NodeRow({
   onRename,
   onCopy,
   onDelete,
+  onToggleDeprecated,
   onEditInfo,
   onVersions,
   onStats,
@@ -90,6 +95,8 @@ function NodeRow({
   enableVersion,
   onContextMenu,
   filter,
+  depFilter,
+  depInherited,
   dragSrc,
   dragOver,
   onDragStart,
@@ -107,6 +114,7 @@ function NodeRow({
   onRename: (node: TreeNode) => void;
   onCopy: (node: TreeNode) => void;
   onDelete: (node: TreeNode) => void;
+  onToggleDeprecated: (node: TreeNode) => void;
   onEditInfo: (node: TreeNode) => void;
   onVersions: (node: TreeNode) => void;
   onStats?: (node: TreeNode) => void;
@@ -115,6 +123,10 @@ function NodeRow({
   tree: null;
   onContextMenu: (e: React.MouseEvent, node: TreeNode) => void;
   filter: string;
+  /** 废弃状态筛选选项 */
+  depFilter: DepFilter;
+  /** 父级分组是否已废弃（子节点继承渲染样式） */
+  depInherited: boolean;
   dragSrc: string | null;
   dragOver: string | null;
   onDragStart: (path: string) => void;
@@ -126,6 +138,8 @@ function NodeRow({
   const t = useT();
   const isFolder = node.kind === "folder";
   const [open, setOpen] = useState(node.collapsed !== true);
+  // 已废弃：自身标记或继承自上层已废弃分组
+  const deprecated = node.deprecated === true || depInherited;
 
   const matches =
     !filter ||
@@ -143,12 +157,31 @@ function NodeRow({
     return node.children.some(hit);
   }, [isFolder, node.children, filter]);
 
-  // 搜索时自动展开包含命中项的文件夹，保证结果可见
-  useEffect(() => {
-    if (filter && isFolder && childrenMatch) setOpen(true);
-  }, [filter, isFolder, childrenMatch]);
+  // 废弃状态筛选：自身命中 / 后代命中（递归，废弃分组视同其下内容均废弃）
+  const depSelf =
+    depFilter === "all" || (depFilter === "deprecated" ? deprecated : !deprecated);
+  const depChildrenMatch = useMemo(() => {
+    if (!isFolder || !node.children) return false;
+    if (depFilter === "all") return false;
+    const hit = (n: TreeNode, inherited: boolean): boolean => {
+      const ed = n.deprecated === true || inherited;
+      if (depFilter === "deprecated" ? ed : !ed) return true;
+      if (n.kind === "folder" && n.children) return n.children.some((c) => hit(c, ed));
+      return false;
+    };
+    return node.children.some((c) => hit(c, deprecated));
+  }, [isFolder, node.children, depFilter, deprecated]);
 
-  if (!matches && !childrenMatch && filter) return null;
+  const visible = (matches || childrenMatch) && (depSelf || depChildrenMatch);
+
+  // 搜索 / 废弃筛选命中时自动展开包含命中项的文件夹，保证结果可见
+  useEffect(() => {
+    if (isFolder && ((filter && childrenMatch) || (depFilter !== "all" && depChildrenMatch))) {
+      setOpen(true);
+    }
+  }, [filter, isFolder, childrenMatch, depFilter, depChildrenMatch]);
+
+  if (!visible) return null;
 
   const selected = selectedPath === node.path;
   const indent = depth * 14 + 6;
@@ -159,7 +192,7 @@ function NodeRow({
   return (
     <div>
       <div
-        className={`node ${selected ? "selected" : ""} ${canDrop && dragOver === dropTarget ? "drag-over" : ""} ${dragSrc === node.path ? "dragging" : ""} ${isFolder ? "folder-node" : ""}`}
+        className={`node ${selected ? "selected" : ""} ${canDrop && dragOver === dropTarget ? "drag-over" : ""} ${dragSrc === node.path ? "dragging" : ""} ${isFolder ? "folder-node" : ""} ${deprecated ? "deprecated" : ""}`}
         style={{ paddingLeft: indent }}
         draggable={true}
         onDragStart={(e) => {
@@ -202,11 +235,13 @@ function NodeRow({
           onContextMenu(e, node);
         }}
         title={
-          canDrop
-            ? t("sidebar.dropHere")
-            : isFolder
-              ? node.description || node.name
-              : `${node.method} ${node.endpoint}`
+          deprecated
+            ? `${t("sidebar.deprecated")} · ${canDrop ? t("sidebar.dropHere") : isFolder ? node.description || node.name : `${node.method} ${node.endpoint}`}`
+            : canDrop
+              ? t("sidebar.dropHere")
+              : isFolder
+                ? node.description || node.name
+                : `${node.method} ${node.endpoint}`
         }
       >
         {isFolder ? (
@@ -215,6 +250,11 @@ function NodeRow({
           <span className="caret"></span>
         )}
         <span className="node-icon">{isFolder ? "📁" : "🌐"}</span>
+        {deprecated && (
+          <span className="node-dep-badge" title={t("sidebar.deprecatedBadge")}>
+            {t("sidebar.deprecated")}
+          </span>
+        )}
         <span className="node-name">{node.name}</span>
         {isFolder && !!node.apiCount && (
           <span className="node-count" title={t("sidebar.apiCount", { count: node.apiCount })}>
@@ -280,6 +320,7 @@ function NodeRow({
               onRename={onRename}
               onCopy={onCopy}
               onDelete={onDelete}
+              onToggleDeprecated={onToggleDeprecated}
               onEditInfo={onEditInfo}
               onVersions={onVersions}
               onStats={onStats}
@@ -287,6 +328,8 @@ function NodeRow({
               enableVersion={enableVersion}
               onContextMenu={onContextMenu}
               filter={filter}
+              depFilter={depFilter}
+              depInherited={deprecated}
               tree={null}
               dragSrc={dragSrc}
               dragOver={dragOver}
@@ -297,7 +340,7 @@ function NodeRow({
               onDropTarget={onDropTarget}
             />
           ))}
-          {!filter && (
+          {!filter && depFilter === "all" && (
             <div
               className="node"
               style={{ paddingLeft: indent + depth * 14 + 10, color: "var(--text-faint)", fontSize: 12 }}
@@ -314,9 +357,10 @@ function NodeRow({
 
 export function Sidebar(props: Props) {
   const t = useT();
-  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onEditInfo, onDelete, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
+  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
   const [importMenu, setImportMenu] = useState(false);
   const [filter, setFilter] = useState("");
+  const [depFilter, setDepFilter] = useState<DepFilter>("all");
   const [menu, setMenu] = useState<CtxMenu | null>(null);
   const [bgMenu, setBgMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragSrc, setDragSrc] = useState<string | null>(null);
@@ -367,14 +411,26 @@ export function Sidebar(props: Props) {
     <div className="sidebar" style={{ width: props.width ?? 310 }}>
       <div className="sidebar-header">
         {view === "api" ? (
-          <div className="search-box">
-            <span className="icon">🔍</span>
-            <input
-              placeholder={t("sidebar.search")}
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              spellCheck={false}
-            />
+          <div className="sidebar-search-row">
+            <div className="search-box">
+              <span className="icon">🔍</span>
+              <input
+                placeholder={t("sidebar.search")}
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                spellCheck={false}
+              />
+            </div>
+            <select
+              className="dep-filter"
+              value={depFilter}
+              onChange={(e) => setDepFilter(e.target.value as DepFilter)}
+              title={t("sidebar.depFilterTip")}
+            >
+              <option value="all">{t("sidebar.depFilterAll")}</option>
+              <option value="active">{t("sidebar.depFilterActive")}</option>
+              <option value="deprecated">{t("sidebar.depFilterDeprecated")}</option>
+            </select>
           </div>
         ) : (
           <div className="history-side-header">
@@ -430,12 +486,15 @@ export function Sidebar(props: Props) {
                 onRename={onRename}
                 onCopy={onCopy}
                 onDelete={onDelete}
+                onToggleDeprecated={onToggleDeprecated}
                 onEditInfo={onEditInfo}
                 onVersions={onVersions}
                 onStats={props.onStats}
                 enableVersion={enableVersion}
                 onContextMenu={openMenu}
                 filter={filter.trim().toLowerCase()}
+                depFilter={depFilter}
+                depInherited={false}
                 tree={null}
                 dragSrc={dragSrc}
                 dragOver={dragOver}
@@ -446,7 +505,7 @@ export function Sidebar(props: Props) {
                 onDropTarget={handleDropTarget}
               />
             ))}
-            {!filter.trim() && (
+            {!filter.trim() && depFilter === "all" && (
               <div
                 className="node"
                 style={{ paddingLeft: 10, color: "var(--text-faint)", fontSize: 12 }}
@@ -603,6 +662,18 @@ export function Sidebar(props: Props) {
               <div className="node-ctx-sep" />
               <button
                 onClick={() => {
+                  onToggleDeprecated(menu.node);
+                  setMenu(null);
+                }}
+              >
+                {menu.node.deprecated ? "✅ " : "🚫 "}
+                {menu.node.deprecated
+                  ? t("sidebar.unmarkDeprecated")
+                  : t("sidebar.markDeprecated")}
+              </button>
+              <div className="node-ctx-sep" />
+              <button
+                onClick={() => {
                   onExportNode?.(menu.node);
                   setMenu(null);
                 }}
@@ -662,6 +733,17 @@ export function Sidebar(props: Props) {
                 }}
               >
                 ✎ {t("sidebar.rename")}
+              </button>
+              <button
+                onClick={() => {
+                  onToggleDeprecated(menu.node);
+                  setMenu(null);
+                }}
+              >
+                {menu.node.deprecated ? "✅ " : "🚫 "}
+                {menu.node.deprecated
+                  ? t("sidebar.unmarkDeprecated")
+                  : t("sidebar.markDeprecated")}
               </button>
               {enableVersion && (
                 <button

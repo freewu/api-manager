@@ -22,6 +22,8 @@ const FALLBACK_COLORS = ["#4f8ef7", "#37b26c", "#f0a63a", "#9a6cf0", "#e05561", 
 interface Stats {
   totalApis: number;
   totalFolders: number;
+  deprecatedApis: number;
+  deprecatedFolders: number;
   mockEnabled: number;
   methods: [string, number][];
   items: { name: string; kind: string; apis: number }[];
@@ -30,11 +32,14 @@ interface Stats {
 function computeStats(node: TreeNode): Stats {
   const methods = new Map<string, number>();
   let mockEnabled = 0;
+  let deprecatedApis = 0;
+  let deprecatedFolders = 0;
 
-  // 单次遍历：累计方法分布与 mock（有副作用，只调用一次）
+  // 单次遍历：累计方法分布、mock 与废弃接口数（有副作用，只调用一次）
   const countApis = (n: TreeNode): number => {
     if (n.kind === "api") {
       if (n.mockEnabled) mockEnabled++;
+      if (n.deprecated) deprecatedApis++;
       const m = (n.method || "GET").toUpperCase();
       methods.set(m, (methods.get(m) || 0) + 1);
       return 1;
@@ -49,6 +54,7 @@ function computeStats(node: TreeNode): Stats {
   let totalFolders = 0;
   const countFolders = (n: TreeNode) => {
     if (n.kind === "api") return;
+    if (n.deprecated) deprecatedFolders++;
     totalFolders++;
     for (const c of n.children || []) countFolders(c);
   };
@@ -68,7 +74,7 @@ function computeStats(node: TreeNode): Stats {
   }));
 
   const methodList = [...methods.entries()].sort((a, b) => b[1] - a[1]);
-  return { totalApis, totalFolders, mockEnabled, methods: methodList, items };
+  return { totalApis, totalFolders, deprecatedApis, deprecatedFolders, mockEnabled, methods: methodList, items };
 }
 
 /** 环形图：接口方法分布 */
@@ -139,6 +145,14 @@ export function StatsModal({ node, onClose }: Props) {
         <div className="stats-card">
           <div className="stats-card-num">{stats.mockEnabled}</div>
           <div className="stats-card-label">{t("stats.mockEnabled")}</div>
+        </div>
+        <div className="stats-card">
+          <div className="stats-card-num deprecated">{stats.deprecatedApis}</div>
+          <div className="stats-card-label">{t("stats.deprecatedApis")}</div>
+        </div>
+        <div className="stats-card">
+          <div className="stats-card-num deprecated">{stats.deprecatedFolders}</div>
+          <div className="stats-card-label">{t("stats.deprecatedFolders")}</div>
         </div>
       </div>
 

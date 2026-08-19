@@ -397,6 +397,16 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+.sidebar-search-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.sidebar-search-row .search-box {
+  flex: 1;
+  min-width: 0;
+}
+
 .search-box {
   display: flex;
   align-items: center;
@@ -516,6 +526,53 @@ body {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 废弃接口 / 分组：斜体 + 中间红色删除线 */
+.node.deprecated .node-name {
+  font-style: italic;
+  text-decoration: line-through;
+  text-decoration-color: var(--err);
+  text-decoration-thickness: 1.5px;
+  color: var(--text-dim);
+}
+.node.deprecated .node-endpoint {
+  font-style: italic;
+  text-decoration: line-through;
+  text-decoration-color: var(--err);
+}
+.node.deprecated .node-icon {
+  opacity: 0.65;
+}
+.node-dep-badge {
+  flex-shrink: 0;
+  margin-left: 2px;
+  padding: 0 5px;
+  font-size: 9px;
+  line-height: 14px;
+  border-radius: 999px;
+  background: rgba(242, 109, 109, 0.16);
+  color: var(--err);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* 侧栏废弃状态筛选下拉 */
+.dep-filter {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-dim);
+  border-radius: var(--radius);
+  font-size: 11px;
+  padding: 0 2px;
+  max-width: 66px;
+  height: 32px;
+  outline: none;
+  cursor: pointer;
+}
+.dep-filter:hover {
+  border-color: var(--border-light);
 }
 
 /* 分组接口数量角标 */
@@ -3266,6 +3323,9 @@ body {
   font-weight: 700;
   color: var(--accent);
   font-family: var(--font-mono);
+}
+.stats-card-num.deprecated {
+  color: var(--err);
 }
 .stats-card-label {
   margin-top: 4px;

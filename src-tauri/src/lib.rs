@@ -79,6 +79,9 @@ pub struct InfoJson {
     pub order: Option<i32>,
     #[serde(default)]
     pub collapsed: Option<bool>,
+    /// 标记该分组是否已废弃
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deprecated: Option<bool>,
 }
 
 fn default_method() -> String {
@@ -183,6 +186,9 @@ pub struct ApiFile {
     /// 入参文档：请求参数的补充说明（类型 / 说明），按 source+key 关联到请求配置
     #[serde(default)]
     pub doc_params: Vec<DocParam>,
+    /// 是否已标记废弃
+    #[serde(default)]
+    pub deprecated: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -337,6 +343,9 @@ pub struct TreeNode {
     /// 该分组下接口总数（含子分组），前端用于显示数量角标
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_count: Option<u32>,
+    /// 是否已标记废弃（分组无此字段，接口对应其文件中的 deprecated 字段）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deprecated: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub children: Option<Vec<TreeNode>>,
 }
@@ -551,6 +560,7 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
         mock_enabled: None,
         description: Some(info.description),
         collapsed: info.collapsed,
+        deprecated: info.deprecated,
         api_count: Some(api_count),
         children: Some(children),
     })
@@ -565,6 +575,7 @@ fn build_api_node(path: &Path) -> TreeNode {
     let mut method = None;
     let mut endpoint = None;
     let mut mock_enabled = None;
+    let mut deprecated = None;
 
     if let Ok(content) = fs::read_to_string(path) {
         if let Ok(v) = serde_json::from_str::<Value>(&content) {
@@ -579,6 +590,7 @@ fn build_api_node(path: &Path) -> TreeNode {
                 .get("mock")
                 .and_then(|m| m.get("enabled"))
                 .and_then(|e| e.as_bool());
+            deprecated = v.get("deprecated").and_then(|d| d.as_bool());
         }
     }
 
@@ -591,6 +603,7 @@ fn build_api_node(path: &Path) -> TreeNode {
         mock_enabled,
         description: None,
         collapsed: None,
+        deprecated,
         api_count: None,
         children: None,
     }
@@ -1191,6 +1204,7 @@ fn import_postman_file(root: &Path, file: &Path) -> Result<PostmanImportResult, 
             mock_port: None,
             order: None,
             collapsed: None,
+            deprecated: None,
         },
     )?;
     let items = json
@@ -1328,6 +1342,7 @@ fn import_postman_items(dir: &Path, items: &[Value]) -> Result<(), String> {
                     mock_port: None,
                     order: None,
                     collapsed: None,
+                    deprecated: None,
                 },
             )?;
             import_postman_items(&sub_dir, sub)?;
@@ -1421,6 +1436,7 @@ fn postman_request_to_api(name: &str, request: &Value) -> Result<ApiFile, String
         examples: vec![],
         responses: vec![],
         doc_params: vec![],
+        deprecated: false,
     })
 }
 
@@ -1821,6 +1837,7 @@ fn import_markdown(
             mock_port: None,
             order: None,
             collapsed: None,
+            deprecated: None,
         },
     )?;
     let mut count = 0usize;
@@ -1911,6 +1928,7 @@ fn import_openapi_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
             mock_port: None,
             order: None,
             collapsed: None,
+            deprecated: None,
         },
     )?;
 
@@ -1963,6 +1981,7 @@ fn import_openapi_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
                                 mock_port: None,
                                 order: None,
                                 collapsed: None,
+                                deprecated: None,
                             },
                         );
                         d
@@ -2122,6 +2141,7 @@ fn openapi_op_to_api(
         examples: vec![],
         responses: vec![],
         doc_params: vec![],
+        deprecated: false,
     })
 }
 
@@ -2530,6 +2550,7 @@ fn create_api(
         examples: vec![],
         responses: default_responses(),
         doc_params: vec![],
+        deprecated: false,
     };
     write_pretty(&file_path, &data)?;
     Ok(file_path.to_string_lossy().to_string())
@@ -2562,6 +2583,7 @@ fn create_folder(
         mock_port: None,
         order: None,
         collapsed: None,
+        deprecated: None,
     };
     write_pretty(&dir_path.join(INFO_FILE), &info)?;
     Ok(dir_path.to_string_lossy().to_string())
@@ -2815,7 +2837,41 @@ fn save_info(
     if data.mock_port.is_some() {
         merged.mock_port = data.mock_port;
     }
+    if data.deprecated.is_some() {
+        merged.deprecated = data.deprecated;
+    }
     write_pretty(&p.join(INFO_FILE), &merged)
+}
+
+/// 标记 / 取消标记“已废弃”：接口写入其 JSON 文件的 deprecated 字段，
+/// 分组写入其目录下 __info.json 的 deprecated 字段。返回新的废弃状态。
+#[tauri::command]
+fn toggle_deprecated(
+    state: State<'_, WorkspaceState>,
+    path: String,
+) -> Result<bool, String> {
+    let root = workspace_root(&state)?;
+    let target = PathBuf::from(&path);
+    ensure_inside_workspace(&root, &target)?;
+
+    if target.is_dir() {
+        let mut info = read_info_file(&target);
+        let next = !info.deprecated.unwrap_or(false);
+        info.deprecated = Some(next);
+        write_pretty(&target.join(INFO_FILE), &info)?;
+        Ok(next)
+    } else {
+        let content = fs::read_to_string(&target).map_err(|e| format!("读取失败: {e}"))?;
+        let mut v: Value =
+            serde_json::from_str(&content).map_err(|e| format!("JSON 解析失败: {e}"))?;
+        let cur = v.get("deprecated").and_then(|d| d.as_bool()).unwrap_or(false);
+        let next = !cur;
+        if let Some(obj) = v.as_object_mut() {
+            obj.insert("deprecated".into(), Value::Bool(next));
+        }
+        write_pretty(&target, &v)?;
+        Ok(next)
+    }
 }
 
 #[tauri::command]
@@ -4106,6 +4162,7 @@ pub fn run() {
             delete_entry,
             read_info,
             save_info,
+            toggle_deprecated,
             read_envs,
             save_envs,
             update_tray_env,
@@ -4561,6 +4618,7 @@ mod tests {
             examples: vec![],
             responses: vec![],
             doc_params: vec![],
+        deprecated: false,
         };
         let rel = save_api_version_at(&root, api).unwrap();
         assert!(rel.starts_with(".version/11111111-2222-3333-4444-555555555555/"));
@@ -4629,6 +4687,7 @@ mod tests {
                 object_name: String::new(),
                 children: vec![],
             }],
+            deprecated: false,
         };
         ensure_responses(&mut api);
         assert_eq!(api.responses.len(), 2);
@@ -4669,6 +4728,7 @@ mod tests {
             examples: vec![],
             responses: vec![],
             doc_params: vec![],
+        deprecated: false,
         };
         fs::write(
             g.join("接口A.json"),
@@ -4715,6 +4775,7 @@ mod tests {
             examples: vec![],
             responses: vec![],
             doc_params: vec![],
+        deprecated: false,
         };
         let main = base.join("接口").join("接口A.json");
         save_api(main.to_string_lossy().to_string(), make("接口A", "v1 描述"))
@@ -5030,6 +5091,7 @@ mod tests {
             examples: vec![],
             responses: vec![],
             doc_params: vec![],
+        deprecated: false,
         };
         write_pretty(&src, &api).unwrap();
 
@@ -5072,6 +5134,7 @@ mod tests {
                 examples: vec![],
                 responses: vec![],
                 doc_params: vec![],
+        deprecated: false,
             };
             write_pretty(p, &api).unwrap();
         };

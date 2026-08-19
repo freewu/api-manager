@@ -585,6 +585,7 @@ mod tests {
             examples: vec![],
             responses: vec![],
             doc_params: vec![],
+            deprecated: false,
         }
     }
 
