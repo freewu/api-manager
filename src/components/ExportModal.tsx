@@ -89,12 +89,13 @@ export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose 
     });
   };
 
-  const renderNode = (node: TreeNode, depth: number) => {
+  const renderNode = (node: TreeNode, depth: number, inheritedDep?: boolean) => {
     const isFolder = node.kind === "folder";
     const checked = selected.has(node.path);
     const kids = node.children || [];
     const isCollapsed = collapsed.has(node.path);
-    const isDeprecated = node.deprecated === true;
+    // 分组废弃会继承到其下所有接口/子分组（与侧栏行为一致）
+    const isDeprecated = node.deprecated === true || inheritedDep === true;
     return (
       <div key={node.path}>
         <div
@@ -136,7 +137,9 @@ export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose 
             </span>
           )}
         </div>
-        {isFolder && !isCollapsed && kids.map((c) => renderNode(c, depth + 1))}
+        {isFolder &&
+          !isCollapsed &&
+          kids.map((c) => renderNode(c, depth + 1, isDeprecated))}
       </div>
     );
   };
