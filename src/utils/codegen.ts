@@ -1640,6 +1640,321 @@ function genPowershell(r: Req): string {
   return out.join("\n");
 }
 
+/* ==================== WebSocket 客户端代码生成（无库切换） ==================== */
+
+export interface WsReq {
+  url: string;
+  headers: { key: string; value: string }[];
+  message: string;
+}
+
+/** 构造 WebSocket 请求参数：拼接 query、过滤启用的 header、取消息体 */
+export function buildWsReq(api: ApiFile, baseUrl: string): WsReq {
+  let url = api.url || baseUrl + (api.path || "/");
+  // 兼容把 ws 地址误填成 http 的情况
+  if (/^https?:\/\//i.test(url)) {
+    url = url.replace(/^https/i, "ws");
+  }
+  const qs = api.query
+    .filter((q) => q.enabled && q.key.trim())
+    .map((q) => `${encodeURIComponent(q.key)}=${encodeURIComponent(q.value)}`)
+    .join("&");
+  if (qs) url += (url.includes("?") ? "&" : "?") + qs;
+  const headers = api.headers
+    .filter((h) => h.enabled && h.key.trim())
+    .map((h) => ({ key: h.key, value: h.value }));
+  return { url, headers, message: api.body.raw ?? "" };
+}
+
+function genWsBash(r: WsReq): string {
+  const out: string[] = [];
+  out.push("# 需要安装 websocat: https://github.com/vi/websocat");
+  for (const h of r.headers) out.push(`# 请求头：${h.key}: ${h.value}`);
+  out.push(`printf '%s' ${JSON.stringify(r.message)} | websocat '${esc(r.url, "'")}'`);
+  return out.join("\n");
+}
+
+function genWsPython(r: WsReq): string {
+  const out: string[] = [];
+  out.push("import asyncio");
+  out.push("import json");
+  out.push("import websockets");
+  out.push("");
+  out.push("");
+  out.push("async def main():");
+  if (r.headers.length) {
+    out.push(`    headers = ${JSON.stringify(Object.fromEntries(r.headers.map((h) => [h.key, h.value])))}`);
+    out.push(`    async with websockets.connect(${JSON.stringify(r.url)}, additional_headers=headers) as ws:`);
+  } else {
+    out.push(`    async with websockets.connect(${JSON.stringify(r.url)}) as ws:`);
+  }
+  if (r.message) {
+    out.push(`    message = ${JSON.stringify(r.message)}`);
+    out.push("    print('>>> 发送:', message)");
+    out.push("    await ws.send(message)");
+    out.push("");
+    out.push("    # 循环接收服务器回传的信息（path / query / header / message）");
+    out.push("    try:");
+    out.push("        while True:");
+    out.push("            reply = await asyncio.wait_for(ws.recv(), timeout=5)");
+    out.push("            print('<<< 接收:', reply)");
+    out.push("    except asyncio.TimeoutError:");
+    out.push("        pass");
+  } else {
+    out.push("    # 建立连接后即可收发消息");
+    out.push("    async for reply in ws:");
+    out.push("        print('<<< 接收:', reply)");
+  }
+  out.push("");
+  out.push("");
+  out.push("asyncio.run(main())");
+  return out.join("\n");
+}
+
+function genWsJavaScript(r: WsReq): string {
+  const out: string[] = [];
+  out.push(`const ws = new WebSocket(${JSON.stringify(r.url)});`);
+  out.push("");
+  out.push("ws.onopen = () => {");
+  if (r.headers.length) {
+    out.push("  // 浏览器原生 WebSocket 无法自定义请求头，如需自定义请求头请使用 ws / websockets 等服务端库，");
+    out.push("  // 或在使用前通过 Cookie/鉴权参数（query）传递。");
+    for (const h of r.headers) out.push(`  // ${h.key}: ${h.value}`);
+  }
+  if (r.message) {
+    out.push(`  ws.send(${JSON.stringify(r.message)});`);
+  } else {
+    out.push("  console.log('连接成功，等待消息...');");
+  }
+  out.push("});");
+  out.push("");
+  out.push("ws.onmessage = (event) => {");
+  out.push("  console.log('<<< 接收:', event.data);");
+  out.push("});");
+  out.push("");
+  out.push("ws.onerror = (err) => { console.error('错误:', err); };");
+  out.push("ws.onclose = () => { console.log('连接已关闭'); };");
+  return out.join("\n");
+}
+
+function genWsTypeScript(r: WsReq): string {
+  const out: string[] = [];
+  out.push(`const ws: WebSocket = new WebSocket(${JSON.stringify(r.url)});`);
+  out.push("");
+  out.push("ws.onopen = (): void => {");
+  if (r.headers.length) {
+    out.push("  // 浏览器原生 WebSocket 无法自定义请求头，如需自定义请求头请使用 ws / websockets 等服务端库。");
+    for (const h of r.headers) out.push(`  // ${h.key}: ${h.value}`);
+  }
+  if (r.message) {
+    out.push(`  ws.send(${JSON.stringify(r.message)});`);
+  } else {
+    out.push("  console.log('连接成功，等待消息...');");
+  }
+  out.push("});");
+  out.push("");
+  out.push("ws.onmessage = (event: MessageEvent): void => {");
+  out.push("  console.log('<<< 接收:', event.data);");
+  out.push("});");
+  out.push("");
+  out.push("ws.onerror = (err: Event): void => { console.error('错误:', err); };");
+  out.push("ws.onclose = (): void => { console.log('连接已关闭'); };");
+  return out.join("\n");
+}
+
+function genWsGo(r: WsReq): string {
+  const hdrArg = r.headers.length ? ", httpHeader()" : ", nil";
+  const out: string[] = [];
+  out.push("package main");
+  out.push("");
+  out.push("import (");
+  out.push("    \"fmt\"");
+  out.push("    \"log\"");
+  if (r.headers.length) out.push("    \"net/http\"");
+  out.push("    \"github.com/gorilla/websocket\"");
+  out.push(")");
+  out.push("");
+  if (r.headers.length) {
+    out.push("func httpHeader() http.Header {");
+    out.push("    header := http.Header{}");
+    for (const h of r.headers) out.push(`    header.Set(${JSON.stringify(h.key)}, ${JSON.stringify(h.value)})`);
+    out.push("    return header");
+    out.push("}");
+    out.push("");
+  }
+  out.push("func main() {");
+  out.push(`    conn, _, err := websocket.DefaultDialer.Dial(${JSON.stringify(r.url)}${hdrArg})`);
+  out.push("    if err != nil {");
+  out.push("        log.Fatal(\"连接失败:\", err)");
+  out.push("    }");
+  out.push("    defer conn.Close()");
+  out.push("");
+  if (r.message) {
+    out.push(`    message := ${JSON.stringify(r.message)}`);
+    out.push("    fmt.Println(\">>> 发送:\", message)");
+    out.push("    if err := conn.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {");
+    out.push("        log.Fatal(\"发送失败:\", err)");
+    out.push("    }");
+    out.push("");
+    out.push("    if _, p, err := conn.ReadMessage(); err != nil {");
+    out.push("        log.Fatal(\"接收失败:\", err)");
+    out.push("    } else {");
+    out.push("        fmt.Println(\"<<< 接收:\", string(p))");
+    out.push("    }");
+  } else {
+    out.push("    if _, p, err := conn.ReadMessage(); err != nil {");
+    out.push("        log.Fatal(\"接收失败:\", err)");
+    out.push("    } else {");
+    out.push("        fmt.Println(\"<<< 接收:\", string(p))");
+    out.push("    }");
+  }
+  out.push("}");
+  return out.join("\n");
+}
+
+function genWsJava(r: WsReq): string {
+  const out: string[] = [];
+  out.push("import java.net.URI;");
+  out.push("import java.net.http.HttpClient;");
+  out.push("import java.net.http.WebSocket;");
+  out.push("import java.util.concurrent.CompletionStage;");
+  out.push("");
+  out.push("public class Main {");
+  out.push("    public static void main(String[] args) throws Exception {");
+  out.push("        HttpClient client = HttpClient.newHttpClient();");
+  if (r.headers.length) {
+    out.push("        HttpClient.Builder builder = HttpClient.newBuilder();");
+    out.push("        WebSocket.Builder wsBuilder = builder.build().newWebSocketBuilder();");
+    for (const h of r.headers) out.push(`        wsBuilder.header(${JSON.stringify(h.key)}, ${JSON.stringify(h.value)});`);
+    out.push("        WebSocket ws = wsBuilder.buildAsync(URI.create(" + JSON.stringify(r.url) + "), new Listener()).join();");
+  } else {
+    out.push("        WebSocket ws = client.newWebSocketBuilder()");
+    out.push("                .buildAsync(URI.create(" + JSON.stringify(r.url) + "), new Listener()).join();");
+  }
+  out.push("        Thread.sleep(5000);");
+  out.push("        ws.close(1000, \"bye\");");
+  out.push("    }");
+  out.push("");
+  out.push("    static class Listener implements WebSocket.Listener {");
+  out.push("        @Override");
+  out.push("        public void onOpen(WebSocket webSocket) {");
+  if (r.message) {
+    out.push("            webSocket.sendText(" + JSON.stringify(r.message) + ", true);");
+    out.push("            webSocket.request(1);");
+  }
+  out.push("        }");
+  out.push("");
+  out.push("        @Override");
+  out.push("        public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {");
+  out.push("            System.out.println(\"<<< 接收:\" + data);");
+  out.push("            webSocket.request(1);");
+  out.push("            return null;");
+  out.push("        }");
+  out.push("    }");
+  out.push("}");
+  return out.join("\n");
+}
+
+function genWsCsharp(r: WsReq): string {
+  const out: string[] = [];
+  out.push("using System;");
+  out.push("using System.Net.WebSockets;");
+  out.push("using System.Text;");
+  out.push("using System.Threading;");
+  out.push("using System.Threading.Tasks;");
+  out.push("");
+  out.push("class Program");
+  out.push("{");
+  out.push("    static async Task Main()");
+  out.push("    {");
+  out.push("        using var ws = new ClientWebSocket();");
+  if (r.headers.length) {
+    for (const h of r.headers) out.push(`        ws.Options.SetRequestHeader(${JSON.stringify(h.key)}, ${JSON.stringify(h.value)});`);
+  }
+  out.push(`        await ws.ConnectAsync(new Uri(${JSON.stringify(r.url)}), CancellationToken.None);`);
+  if (r.message) {
+    out.push("");
+    out.push(`        var message = ${JSON.stringify(r.message)};`);
+    out.push("        var bytes = Encoding.UTF8.GetBytes(message);");
+    out.push("        await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);");
+    out.push("");
+    out.push("        var buffer = new byte[4096];");
+    out.push("        var result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);");
+    out.push("        Console.WriteLine(\"<<< 接收:\" + Encoding.UTF8.GetString(buffer, 0, result.Count));");
+  } else {
+    out.push("");
+    out.push("        var buffer = new byte[4096];");
+    out.push("        var result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);");
+    out.push("        Console.WriteLine(\"<<< 接收:\" + Encoding.UTF8.GetString(buffer, 0, result.Count));");
+  }
+  out.push("    }");
+  out.push("}");
+  return out.join("\n");
+}
+
+function genWsRust(r: WsReq): string {
+  const out: string[] = [];
+  out.push("use futures_util::{SinkExt, StreamExt};");
+  out.push("use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};");
+  out.push("");
+  out.push("#[tokio::main]");
+  out.push("async fn main() -> Result<(), Box<dyn std::error::Error>> {");
+  if (r.headers.length) {
+    out.push("    let mut request = " + JSON.stringify(r.url) + ".to_string();");
+    for (const h of r.headers) out.push(`    // 请求头：${h.key}: ${h.value}（可通过 tungstenite 的 handshake 设置）`);
+    out.push("    let (mut ws, _) = connect_async(request).await?;");
+  } else {
+    out.push(`    let (mut ws, _) = connect_async(${JSON.stringify(r.url)}).await?;`);
+  }
+  out.push("");
+  if (r.message) {
+    out.push(`    let message = ${JSON.stringify(r.message)}.to_string();`);
+    out.push("    println!(\">>> 发送: {}\", message);");
+    out.push("    ws.send(Message::Text(message.into())).await?;");
+    out.push("");
+    out.push("    if let Some(Ok(msg)) = ws.next().await {");
+    out.push("        println!(\"<<< 接收: {}\", msg);");
+    out.push("    }");
+  } else {
+    out.push("    if let Some(Ok(msg)) = ws.next().await {");
+    out.push("        println!(\"<<< 接收: {}\", msg);");
+    out.push("    }");
+  }
+  out.push("    Ok(())");
+  out.push("}");
+  return out.join("\n");
+}
+
+function genWsUnsupported(lang: string): string {
+  return `// ${lang}：暂未内置 WebSocket 客户端代码生成`;
+}
+
+/** 生成 WebSocket 客户端代码（无库切换，直接按语言生成） */
+export function generateWebSocketCode(lang: CodeLang, api: ApiFile, baseUrl: string): string {
+  const r = buildWsReq(api, baseUrl);
+  switch (lang) {
+    case "bash":
+    case "curl":
+      return genWsBash(r);
+    case "python":
+      return genWsPython(r);
+    case "javascript":
+      return genWsJavaScript(r);
+    case "typescript":
+      return genWsTypeScript(r);
+    case "go":
+      return genWsGo(r);
+    case "java":
+      return genWsJava(r);
+    case "csharp":
+      return genWsCsharp(r);
+    case "rust":
+      return genWsRust(r);
+    default:
+      return genWsUnsupported(lang);
+  }
+}
+
 export function generateRequestCode(lang: CodeLang, api: ApiFile, baseUrl: string, lib?: string): string {
   const r = buildReq(api, baseUrl);
   switch (lang) {

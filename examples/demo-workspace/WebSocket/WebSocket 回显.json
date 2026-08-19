@@ -1,0 +1,52 @@
+{
+  "uuid": "6b1c1c44-c2d6-4c50-96c4-a1b2c3d4e501",
+  "name": "WebSocket 回显",
+  "method": "GET",
+  "path": "/echo",
+  "url": "ws://127.0.0.1:8765/echo?token={{token}}",
+  "description": "向 WebSocket 服务器发送消息，服务器回传获取到的 path / query / header / message 信息",
+  "headers": [
+    {
+      "key": "User-Agent",
+      "value": "API-Manager",
+      "enabled": true,
+      "description": "",
+      "isFile": false
+    }
+  ],
+  "query": [
+    {
+      "key": "token",
+      "value": "{{token}}",
+      "enabled": true,
+      "description": "鉴权令牌"
+    }
+  ],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "hello, this is a websocket echo message",
+    "form": [],
+    "binaryPath": ""
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": [],
+  "responses": [
+    {
+      "id": "6b1c1c44-c2d6-4c50-96c4-a1b2c3d4e502",
+      "name": "回显成功",
+      "status": 0,
+      "content_type": "application/json",
+      "body": "{\n  \"type\": \"message\",\n  \"path\": \"/echo\",\n  \"query\": {\"token\": \"dev-token-123456\"},\n  \"header\": {\"host\": \"127.0.0.1:8765\", \"user-agent\": \"API-Manager\"},\n  \"message\": \"hello, this is a websocket echo message\"\n}"
+    }
+  ],
+  "docParams": [],
+  "deprecated": false,
+  "protocol": "websocket"
+}

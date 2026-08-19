@@ -24,7 +24,7 @@ import swift from "highlight.js/lib/languages/swift";
 import typescript from "highlight.js/lib/languages/typescript";
 import "highlight.js/styles/github-dark.css";
 import { ApiFile } from "../types";
-import { CODE_LANGS, CODE_LIBS, CodeLang, defaultLib, generateRequestCode } from "../utils/codegen";
+import { CODE_LANGS, CODE_LIBS, CodeLang, defaultLib, generateRequestCode, generateWebSocketCode } from "../utils/codegen";
 import { useT } from "../i18n";
 
 hljs.registerLanguage("bash", bash);
@@ -85,16 +85,20 @@ interface Props {
 
 export function CodeTab({ api, baseUrl, defaultLang }: Props) {
   const t = useT();
+  const isWs = api.protocol === "websocket";
   const [lang, setLang] = useState<CodeLang>(
     (CODE_LANGS.some((l) => l.value === defaultLang) ? defaultLang : "bash") as CodeLang
   );
   const [lib, setLib] = useState<string | undefined>(() => defaultLib(lang));
   const [copied, setCopied] = useState(false);
 
-  const libs = CODE_LIBS[lang];
+  const libs = !isWs ? CODE_LIBS[lang] : undefined;
   const activeLib = libs?.find((l) => l.value === lib);
 
-  const code = useMemo(() => generateRequestCode(lang, api, baseUrl, lib), [lang, lib, api, baseUrl]);
+  const code = useMemo(
+    () => (isWs ? generateWebSocketCode(lang, api, baseUrl) : generateRequestCode(lang, api, baseUrl, lib)),
+    [isWs, lang, lib, api, baseUrl]
+  );
   const html = useMemo(() => {
     try {
       return hljs.highlight(code, { language: HLJS_LANG[lang] }).value;
@@ -123,7 +127,7 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
           onChange={(e) => {
             const next = e.target.value as CodeLang;
             setLang(next);
-            setLib(defaultLib(next));
+            setLib(isWs ? undefined : defaultLib(next));
           }}
           title={t("codegen.switchLang")}
         >
