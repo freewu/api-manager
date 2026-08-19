@@ -1147,6 +1147,41 @@ fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String> {
     options_orders["mock"] = serde_json::json!({ "enabled": true, "status": 204, "headers": [{ "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS", "enabled": true }], "delay": 0, "body": "" });
     write("订单管理", "订单接口预检.json", &options_orders)?;
 
+    // WebSocket 分组（与 tests/websocket-server.py 一一对应）
+    write("WebSocket", INFO_FILE, &serde_json::json!({ "name": "WebSocket", "description": "WebSocket 接口示例（与 tests/websocket-server.py 一一对应）" }))?;
+
+    let mut ws_echo = api_file("WebSocket 回显", "GET", "/echo", "向 WebSocket 服务器发送消息，服务器回传 path / query / header / message 信息");
+    ws_echo["protocol"] = serde_json::json!("websocket");
+    ws_echo["url"] = serde_json::json!("ws://127.0.0.1:8765/echo?token={{token}}");
+    ws_echo["query"] = serde_json::json!([{ "key": "token", "value": "{{token}}", "enabled": true, "description": "鉴权令牌" }]);
+    ws_echo["headers"] = serde_json::json!([{ "key": "User-Agent", "value": "API-Manager", "enabled": true, "description": "" }]);
+    ws_echo["body"] = serde_json::json!({ "mode": "raw", "raw": "hello, this is a websocket echo message", "form": [], "binaryPath": "" });
+    ws_echo["responses"] = serde_json::json!([
+        { "id": format!("ws-echo-{}", uuid::Uuid::new_v4()), "name": "回显成功", "status": 0, "content_type": "application/json", "body": "{\n  \"type\": \"message\",\n  \"path\": \"/echo\",\n  \"query\": {\"token\": \"dev-token-123456\"},\n  \"header\": {\"host\": \"127.0.0.1:8765\"},\n  \"message\": \"hello, this is a websocket echo message\"\n}" }
+    ]);
+    write("WebSocket", "WebSocket 回显.json", &ws_echo)?;
+
+    let mut ws_auth = api_file("WebSocket 授权校验", "GET", "/auth", "带自定义请求头：Authorization 与自定义 X-Client 头模拟鉴权");
+    ws_auth["protocol"] = serde_json::json!("websocket");
+    ws_auth["url"] = serde_json::json!("ws://127.0.0.1:8765/auth");
+    ws_auth["headers"] = serde_json::json!([
+        { "key": "Authorization", "value": "Bearer {{token}}", "enabled": true, "description": "鉴权令牌" },
+        { "key": "X-Client", "value": "API-Manager-Demo", "enabled": true, "description": "自定义业务请求头" }
+    ]);
+    ws_auth["body"] = serde_json::json!({ "mode": "raw", "raw": "{\"action\":\"auth\",\"scope\":\"read:ws\"}", "form": [], "binaryPath": "" });
+    ws_auth["responses"] = serde_json::json!([
+        { "id": format!("ws-auth-{}", uuid::Uuid::new_v4()), "name": "授权成功", "status": 0, "content_type": "application/json", "body": "{\n  \"type\": \"message\",\n  \"path\": \"/auth\",\n  \"query\": {},\n  \"header\": {\"authorization\": \"Bearer dev-token-123456\", \"x-client\": \"API-Manager-Demo\"},\n  \"message\": \"{\\\"action\\\":\\\"auth\\\"}\"\n}" }
+    ]);
+    write("WebSocket", "WebSocket 授权校验.json", &ws_auth)?;
+
+    let mut ws_room = api_file("WebSocket 房间订阅", "GET", "/rooms/{roomId}", "带路径参数的示例：订阅指定房间（{roomId} 同步到 Path 页签）");
+    ws_room["protocol"] = serde_json::json!("websocket");
+    ws_room["url"] = serde_json::json!("ws://127.0.0.1:8765/rooms/{roomId}");
+    ws_room["headers"] = serde_json::json!([{ "key": "User-Agent", "value": "API-Manager", "enabled": true, "description": "" }]);
+    ws_room["params"] = serde_json::json!([{ "key": "roomId", "value": "1001", "enabled": true, "description": "房间 ID（路径参数），如 1001" }]);
+    ws_room["body"] = serde_json::json!({ "mode": "raw", "raw": "{\"action\":\"subscribe\",\"room\":\"general\"}", "form": [], "binaryPath": "" });
+    write("WebSocket", "WebSocket 房间订阅.json", &ws_room)?;
+
     Ok(())
 }
 
