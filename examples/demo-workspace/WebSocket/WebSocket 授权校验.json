@@ -1,0 +1,52 @@
+{
+  "uuid": "6b1c1c44-c2d6-4c50-96c4-a1b2c3d4e531",
+  "name": "WebSocket 授权校验",
+  "method": "GET",
+  "path": "/auth",
+  "url": "ws://127.0.0.1:8765/auth",
+  "description": "带自定义请求头的示例：通过 Authorization 与自定义 X-Client 头模拟鉴权，服务器会在回传结果中展示收到的 header 信息",
+  "headers": [
+    {
+      "key": "Authorization",
+      "value": "Bearer {{token}}",
+      "enabled": true,
+      "description": "鉴权令牌",
+      "isFile": false
+    },
+    {
+      "key": "X-Client",
+      "value": "API-Manager-Demo",
+      "enabled": true,
+      "description": "自定义业务请求头",
+      "isFile": false
+    }
+  ],
+  "query": [],
+  "params": [],
+  "body": {
+    "mode": "raw",
+    "raw": "{\"action\":\"auth\",\"scope\":\"read:ws\"}",
+    "form": [],
+    "binaryPath": ""
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": [],
+  "responses": [
+    {
+      "id": "6b1c1c44-c2d6-4c50-96c4-a1b2c3d4e532",
+      "name": "授权成功",
+      "status": 0,
+      "content_type": "application/json",
+      "body": "{\n  \"type\": \"message\",\n  \"path\": \"/auth\",\n  \"query\": {},\n  \"header\": {\"host\": \"127.0.0.1:8765\", \"authorization\": \"Bearer dev-token-123456\", \"x-client\": \"API-Manager-Demo\"},\n  \"message\": \"{\\\"action\\\": \\\"auth\\\", \\\"scope\\\": \\\"read:ws\\\"}\"\n}"
+    }
+  ],
+  "docParams": [],
+  "deprecated": false,
+  "protocol": "websocket"
+}

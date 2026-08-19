@@ -1,0 +1,52 @@
+{
+  "uuid": "6b1c1c44-c2d6-4c50-96c4-a1b2c3d4e541",
+  "name": "WebSocket 房间订阅",
+  "method": "GET",
+  "path": "/rooms/{roomId}",
+  "url": "ws://127.0.0.1:8765/rooms/{roomId}",
+  "description": "带路径参数的示例：URL 中的 {roomId} 会同步到 Path 页签，订阅指定房间，服务器在回传结果中展示收到的 path / query / header / message 信息",
+  "headers": [
+    {
+      "key": "User-Agent",
+      "value": "API-Manager",
+      "enabled": true,
+      "description": "",
+      "isFile": false
+    }
+  ],
+  "query": [],
+  "params": [
+    {
+      "key": "roomId",
+      "value": "1001",
+      "enabled": true,
+      "description": "房间 ID（路径参数），如 1001"
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "raw": "{\"action\":\"subscribe\",\"room\":\"general\"}",
+    "form": [],
+    "binaryPath": ""
+  },
+  "mock": {
+    "enabled": false,
+    "status": 200,
+    "headers": [],
+    "delay": 0,
+    "body": ""
+  },
+  "examples": [],
+  "responses": [
+    {
+      "id": "6b1c1c44-c2d6-4c50-96c4-a1b2c3d4e542",
+      "name": "订阅成功",
+      "status": 0,
+      "content_type": "application/json",
+      "body": "{\n  \"type\": \"message\",\n  \"path\": \"/rooms/1001\",\n  \"query\": {},\n  \"header\": {\"host\": \"127.0.0.1:8765\"},\n  \"message\": \"{\\\"action\\\": \\\"subscribe\\\", \\\"room\\\": \\\"general\\\"}\"\n}"
+    }
+  ],
+  "docParams": [],
+  "deprecated": false,
+  "protocol": "websocket"
+}

@@ -1655,6 +1655,12 @@ export function buildWsReq(api: ApiFile, baseUrl: string): WsReq {
   if (/^https?:\/\//i.test(url)) {
     url = url.replace(/^https/i, "ws");
   }
+  // 仅替换单大括号 {变量名} 路径参数，不触碰 {{变量名}} 全局环境变量
+  for (const p of api.params.filter((x) => x.enabled && x.key)) {
+    const v = (p.value || "").split(",")[0].trim();
+    const rx = new RegExp(`(?<!\{)\{${escapeRe(p.key)}\}(?!\})`, "g");
+    url = url.replace(rx, v ? encodeURIComponent(v) : `{${p.key}}`);
+  }
   const qs = api.query
     .filter((q) => q.enabled && q.key.trim())
     .map((q) => `${encodeURIComponent(q.key)}=${encodeURIComponent(q.value)}`)
