@@ -12,5 +12,6 @@
   ```bash
   git tag v0.1.6 && git push origin v0.1.6
   ```
+- **版本号需同步修改 `package.json` 的 `version` 字段**，使其与 `src-tauri/tauri.conf.json` 中的 version 保持一致（当前两者都应为 v0.1.6）。修改版本号时两处要一起改。
 - 版本号已存在时先删除再重打：`git tag -d v0.1.6 && git push origin :refs/tags/v0.1.6`
 - 查看标签列表：`git tag -l`；查看某标签指向的提交：`git show v0.1.6 --oneline -s`
