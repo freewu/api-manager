@@ -130,7 +130,7 @@ export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose 
             {node.name}
             {!isFolder && node.method && <em className="export-row-method">{node.method}</em>}
           </span>
-          {isDeprecated && <span className="export-dep-badge">{t("sidebar.deprecatedBadge")}</span>}
+          {isDeprecated && <span className="export-dep-badge">{t("sidebar.deprecated")}</span>}
           {isFolder && (
             <span className="export-row-count">
               {node.apiCount != null ? `${node.apiCount} ${t("export.apis")}` : ""}

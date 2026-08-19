@@ -1573,7 +1573,7 @@ fn render_api_markdown(state: State<'_, WorkspaceState>, path: String) -> Result
     let root = workspace_root(&state)?;
     let group = group_of(&path, &root.to_string_lossy());
     let api = read_api(path)?;
-    let md = markdown::render(&api, &group);
+    let md = markdown::render(&api, &group, false);
     let html = markdown::md_to_html(&md);
     Ok(MarkdownDoc { name: api.name, md, html })
 }
@@ -1622,7 +1622,7 @@ fn export_api_markdown(
     } else {
         let group = group_of(&path, &root.to_string_lossy());
         let api = read_api(path)?;
-        (api.name.clone(), markdown::render(&api, &group))
+        (api.name.clone(), markdown::render(&api, &group, false))
     };
     let fmt = if format.eq_ignore_ascii_case("html") { "html" } else { "md" };
     let picked = app

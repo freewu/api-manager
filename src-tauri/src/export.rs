@@ -369,7 +369,9 @@ pub fn markdown_single_file(title: &str, apis: &[(Vec<(String, bool)>, ApiFile)]
         if emit {
             seen_groups.push(g.to_string());
         }
-        s.push_str(&crate::markdown::render(api, if emit { &g } else { "" }));
+        // 接口所在分组（或其祖先分组）废弃 → 接口标题带「（已废弃）」标注
+        let group_dep = segs.iter().any(|(_, d)| *d);
+        s.push_str(&crate::markdown::render(api, if emit { &g } else { "" }, group_dep));
         s.push('\n');
     }
     s
@@ -388,14 +390,18 @@ pub fn docsify_files(apis: &[(Vec<(String, bool)>, ApiFile)]) -> Vec<(PathBuf, S
     let mut tree: SideNode = SideNode {
         name: String::new(),
         display: String::new(),
+        deprecated: false,
         apis: Vec::new(),
         children: BTreeMap::new(),
     };
     for (segs, api) in apis {
         let mut cur = &mut tree;
+        let mut dep_inherit = false; // 祖先分组是否已废弃
         for (s, dep) in segs {
-            // 分组目录名去掉空格（docsify 链接更稳定），显示名保留原样；废弃分组名加标注
-            let display = if *dep {
+            // 分组目录名去掉空格（docsify 链接更稳定），显示名保留原样；
+            // 分组自身或其祖先分组已废弃 → 名称加标注
+            dep_inherit = dep_inherit || *dep;
+            let display = if dep_inherit {
                 format!("{}（已废弃）", s.trim())
             } else {
                 s.trim().to_string()
@@ -407,6 +413,7 @@ pub fn docsify_files(apis: &[(Vec<(String, bool)>, ApiFile)]) -> Vec<(PathBuf, S
                 .or_insert_with(|| SideNode {
                     name,
                     display,
+                    deprecated: dep_inherit,
                     apis: Vec::new(),
                     children: BTreeMap::new(),
                 });
@@ -466,6 +473,8 @@ struct SideNode<'a> {
     name: String,
     /// 显示名（保留原样，用于标题与链接文字）
     display: String,
+    /// 分组自身或其祖先分组是否已废弃（接口继承此标注）
+    deprecated: bool,
     apis: Vec<&'a ApiFile>,
     children: BTreeMap<String, SideNode<'a>>,
 }
@@ -509,7 +518,7 @@ fn write_side(
             i += 1;
         }
         used.push(rel.clone());
-        files.push((rel, crate::markdown::render(api, &n.display)));
+        files.push((rel, crate::markdown::render(api, &n.display, n.deprecated)));
     }
     // 子分组
     for (_, c) in &n.children {
@@ -677,15 +686,16 @@ mod tests {
         // 接口废弃 → 接口标题加标注
         let mut api = sample();
         api.deprecated = true;
-        let md = crate::markdown::render(&api, "");
+        let md = crate::markdown::render(&api, "", false);
         assert!(md.contains("## 创建用户（已废弃）"), "md: {md}");
 
-        // 分组废弃 → 单文件分组名加标注
+        // 分组废弃 → 单文件分组名加标注，且其下接口继承「（已废弃）」（接口自身未废弃）
         let apis = vec![(vec![("用户管理".to_string(), true)], sample())];
         let md = markdown_single_file("接口文档", &apis);
         assert!(md.contains("# 用户管理（已废弃）"), "md: {md}");
+        assert!(md.contains("## 创建用户（已废弃）"), "md: {md}");
 
-        // docsify：废弃分组名（README 标题 / 侧栏链接）带标注
+        // docsify：废弃分组名（README 标题 / 侧栏链接）带标注，接口 .md 内接口标题也带标注
         let files = docsify_files(&apis);
         let gre = files
             .iter()
@@ -703,6 +713,17 @@ mod tests {
             .1
             .clone();
         assert!(sidebar.contains("用户管理（已废弃）"), "sidebar: {sidebar}");
+        // 接口 .md 文件：分组标题带标注 + 接口标题继承标注
+        let api_md = files
+            .iter()
+            .find(|(p, _)| {
+                p.to_string_lossy().replace('\\', "/") == "用户管理/创建用户.md"
+            })
+            .unwrap()
+            .1
+            .clone();
+        assert!(api_md.contains("# 用户管理（已废弃）"), "api md: {api_md}");
+        assert!(api_md.contains("## 创建用户（已废弃）"), "api md: {api_md}");
 
         // openapi：废弃分组 tag 带标注
         let openapi = to_openapi("测试", &apis);

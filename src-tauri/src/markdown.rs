@@ -8,7 +8,8 @@ use std::fmt::Write as _;
 // ==================== 导出 ====================
 
 /// 把接口渲染为 Markdown 文档（新格式：# 分组名 → ## 接口名 → > 方法 URL → header/请求参数/响应参数）
-pub fn render(api: &ApiFile, group: &str) -> String {
+/// group_deprecated：所在分组（或其祖先分组）已废弃时传 true，接口继承「已废弃」标注
+pub fn render(api: &ApiFile, group: &str, group_deprecated: bool) -> String {
     // 旧文件没有 responses 时按 mock 体 / resp_fail 文档补全，保证响应部分不丢
     let mut ensured = api.clone();
     let legacy = ensured.responses.is_empty()
@@ -29,8 +30,8 @@ pub fn render(api: &ApiFile, group: &str) -> String {
 
     let name = api.name.trim();
     let name = if name.is_empty() { "未命名接口" } else { name };
-    // 已废弃接口：名称加标注，便于文档中识别
-    let dep_mark = if api.deprecated { "（已废弃）" } else { "" };
+    // 接口自身废弃，或其所在分组废弃 → 名称加标注，便于文档中识别
+    let dep_mark = if api.deprecated || group_deprecated { "（已废弃）" } else { "" };
     let _ = writeln!(s, "## {name}{dep_mark}\n");
 
     // > Method url（url 为空时回退到 path，保证导出文档不丢 URL）
@@ -1261,7 +1262,7 @@ mod tests {
                 body: r#"{"code":422,"message":"name 不能为空"}"#.into(),
             },
         ];
-        let md = render(&api, "");
+        let md = render(&api, "", false);
         assert!(md.contains("### 返回成功（HTTP 200）\n"), "md: {md}");
         assert!(md.contains("### 参数校验失败（HTTP 422）\n"), "md: {md}");
         assert!(md.contains("| data.name | String |"), "md: {md}");
@@ -1277,7 +1278,7 @@ mod tests {
     #[test]
     fn roundtrip() {
         let api = sample_api();
-        let md = render(&api, "用户管理");
+        let md = render(&api, "用户管理", false);
         // 新格式结构
         assert!(md.starts_with("# 用户管理\n"), "分组标题");
         assert!(md.contains("## 创建用户\n"), "接口标题");
@@ -1319,7 +1320,7 @@ mod tests {
         let mut api = sample_api();
         api.url = String::new();
         api.path = "/api/users".into();
-        let md = render(&api, "用户管理");
+        let md = render(&api, "用户管理", false);
         assert!(md.contains("> POST /api/users"), "url 为空时回退 path");
         assert!(md.contains("curl -X POST /api/users"), "curl 示例同样回退 path");
 
@@ -1384,7 +1385,7 @@ mod tests {
 
         // 注册 types 模拟 openapi_tag 子字段
         api.mock.body = r#"{"data":{"name":"张三","id":1},"code":0}"#.into();
-        let md = render(&api, "");
+        let md = render(&api, "", false);
         assert!(md.contains("| data | Object |"), "md: {md}");
         assert!(md.contains("| data.name | String |"), "md: {md}");
         assert!(md.contains("| data.id | Integer |"), "md: {md}");
