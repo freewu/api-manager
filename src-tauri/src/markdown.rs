@@ -29,7 +29,9 @@ pub fn render(api: &ApiFile, group: &str) -> String {
 
     let name = api.name.trim();
     let name = if name.is_empty() { "未命名接口" } else { name };
-    let _ = writeln!(s, "## {name}\n");
+    // 已废弃接口：名称加标注，便于文档中识别
+    let dep_mark = if api.deprecated { "（已废弃）" } else { "" };
+    let _ = writeln!(s, "## {name}{dep_mark}\n");
 
     // > Method url（url 为空时回退到 path，保证导出文档不丢 URL）
     let method = api.method.trim();

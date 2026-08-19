@@ -3098,6 +3098,27 @@ body {
   color: var(--text-faint);
   flex-shrink: 0;
 }
+
+/* 导出列表中已废弃的接口/分组：斜体 + 红色删除线 + 角标 */
+.export-row.deprecated {
+  opacity: 0.82;
+}
+.export-row-name.deprecated {
+  font-style: italic;
+  text-decoration: line-through;
+  text-decoration-color: var(--err);
+  color: var(--err);
+}
+.export-dep-badge {
+  font-size: 11px;
+  font-style: normal;
+  color: var(--err);
+  border: 1px solid var(--err);
+  border-radius: 4px;
+  padding: 0 4px;
+  flex-shrink: 0;
+  margin-left: 6px;
+}
 .export-tip {
   margin-right: auto;
   font-size: 12px;

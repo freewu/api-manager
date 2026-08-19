@@ -94,10 +94,11 @@ export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose 
     const checked = selected.has(node.path);
     const kids = node.children || [];
     const isCollapsed = collapsed.has(node.path);
+    const isDeprecated = node.deprecated === true;
     return (
       <div key={node.path}>
         <div
-          className="export-row"
+          className={`export-row${isDeprecated ? " deprecated" : ""}`}
           style={{ paddingLeft: 8 + depth * 20 }}
           onClick={() => toggleNode(node, !checked)}
         >
@@ -124,10 +125,11 @@ export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose 
           <span className={`export-row-icon ${isFolder ? "folder" : ""}`}>
             {isFolder ? "📁" : "🌐"}
           </span>
-          <span className="export-row-name">
+          <span className={`export-row-name${isDeprecated ? " deprecated" : ""}`}>
             {node.name}
             {!isFolder && node.method && <em className="export-row-method">{node.method}</em>}
           </span>
+          {isDeprecated && <span className="export-dep-badge">{t("sidebar.deprecatedBadge")}</span>}
           {isFolder && (
             <span className="export-row-count">
               {node.apiCount != null ? `${node.apiCount} ${t("export.apis")}` : ""}

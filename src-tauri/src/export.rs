@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 
 /// 收集选中路径下的全部接口。
 /// 返回 (分组路径段, ApiFile)：分组路径段为各层分组的显示名称（不含工作区根）。
-pub fn collect_apis(root: &Path, paths: &[String]) -> Result<Vec<(Vec<String>, ApiFile)>, String> {
-    let mut out: Vec<(Vec<String>, ApiFile)> = Vec::new();
+pub fn collect_apis(root: &Path, paths: &[String]) -> Result<Vec<(Vec<(String, bool)>, ApiFile)>, String> {
+    let mut out: Vec<(Vec<(String, bool)>, ApiFile)> = Vec::new();
     // 已选中的分组目录：其下接口由目录递归收集，单独的文件路径命中目录时跳过，避免重复
     let dirs: Vec<PathBuf> = paths
         .iter()
@@ -35,17 +35,19 @@ pub fn collect_apis(root: &Path, paths: &[String]) -> Result<Vec<(Vec<String>, A
 }
 
 /// 递归遍历分组目录，收集其下所有接口文件（跳过 .examples / .version 等点开头目录）
+/// 括号第二项为分组是否已废弃（来自该目录 __info.json 的 deprecated 字段）
 fn walk_dir(
     dir: &Path,
-    segs: &mut Vec<String>,
-    out: &mut Vec<(Vec<String>, ApiFile)>,
+    segs: &mut Vec<(String, bool)>,
+    out: &mut Vec<(Vec<(String, bool)>, ApiFile)>,
 ) -> Result<(), String> {
     let info = read_info_file(dir);
+    let dep = info.deprecated.unwrap_or(false);
     let dir_name = dir
         .file_name()
         .map(|s| s.to_string_lossy().to_string())
         .unwrap_or_default();
-    segs.push(info.name.clone().unwrap_or(dir_name));
+    segs.push((info.name.clone().unwrap_or(dir_name), dep));
     for entry in fs::read_dir(dir).map_err(|e| format!("读取目录失败: {e}"))? {
         let entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path();
@@ -70,7 +72,7 @@ fn walk_dir(
 // ==================== Postman Collection v2.1 ====================
 
 /// 生成 Postman Collection v2.1 JSON
-pub fn to_postman(apis: &[(Vec<String>, ApiFile)]) -> Value {
+pub fn to_postman(apis: &[(Vec<(String, bool)>, ApiFile)]) -> Value {
     let mut root = PNode {
         name: "API Manager".to_string(),
         apis: Vec::new(),
@@ -78,7 +80,7 @@ pub fn to_postman(apis: &[(Vec<String>, ApiFile)]) -> Value {
     };
     for (segs, api) in apis {
         let mut cur = &mut root;
-        for s in segs {
+        for (s, _dep) in segs {
             cur = cur.children.entry(s.clone()).or_insert_with(|| PNode {
                 name: s.clone(),
                 apis: Vec::new(),
@@ -203,7 +205,7 @@ fn parse_url(url: &str) -> (Vec<String>, Vec<String>) {
 // ==================== OpenAPI 3.0 ====================
 
 /// 生成 OpenAPI 3.0 规范 JSON
-pub fn to_openapi(title: &str, apis: &[(Vec<String>, ApiFile)]) -> Value {
+pub fn to_openapi(title: &str, apis: &[(Vec<(String, bool)>, ApiFile)]) -> Value {
     let mut paths: Map<String, Value> = Map::new();
     for (segs, api) in apis {
         let p = if !api.path.trim().is_empty() {
@@ -244,7 +246,7 @@ fn is_valid_method(m: &str) -> bool {
     matches!(m, "get" | "put" | "post" | "delete" | "options" | "head" | "patch" | "trace")
 }
 
-fn openapi_operation(segs: &[String], api: &ApiFile) -> Value {
+fn openapi_operation(segs: &[(String, bool)], api: &ApiFile) -> Value {
     let mut params: Vec<Value> = Vec::new();
     for prm in api.params.iter().filter(|p| !p.key.trim().is_empty()) {
         params.push(json!({
@@ -307,7 +309,12 @@ fn openapi_operation(segs: &[String], api: &ApiFile) -> Value {
         "responses": responses
     });
     if !segs.is_empty() {
-        op["tags"] = json!([segs.join("/")]);
+        let tag = segs
+            .iter()
+            .map(|(n, dep)| if *dep { format!("{n}（已废弃）") } else { n.clone() })
+            .collect::<Vec<_>>()
+            .join("/");
+        op["tags"] = json!([tag]);
     }
     match api.body.mode.as_str() {
         "json" => {
@@ -342,7 +349,7 @@ fn openapi_operation(segs: &[String], api: &ApiFile) -> Value {
 
 /// 生成单个 Markdown 文件（导出 / 分组查看用）：根标题 + 全部接口，
 /// 分组路径用「 / 」拼接显示（多级分组在单个文件里也能区分层级）
-pub fn markdown_single_file(title: &str, apis: &[(Vec<String>, ApiFile)]) -> String {
+pub fn markdown_single_file(title: &str, apis: &[(Vec<(String, bool)>, ApiFile)]) -> String {
     let mut s = String::new();
     let title = title.trim();
     if !title.is_empty() {
@@ -351,7 +358,12 @@ pub fn markdown_single_file(title: &str, apis: &[(Vec<String>, ApiFile)]) -> Str
     // 同一分组只生成一次分组信息；分组名与文档标题相同时不再重复（避免 # 标题 与 # 分组 叠两行）
     let mut seen_groups: Vec<String> = Vec::new();
     for (segs, api) in apis {
-        let group = segs.join(" / ");
+        // 废弃分组名加标注，与文档中接口的（已废弃）标识一致
+        let group = segs
+            .iter()
+            .map(|(n, dep)| if *dep { format!("{n}（已废弃）") } else { n.clone() })
+            .collect::<Vec<_>>()
+            .join(" / ");
         let g = group.trim();
         let emit = !g.is_empty() && g != title && !seen_groups.iter().any(|x| x == g);
         if emit {
@@ -365,7 +377,7 @@ pub fn markdown_single_file(title: &str, apis: &[(Vec<String>, ApiFile)]) -> Str
 
 /// 生成 Docsify 文档目录：返回 (相对路径, 内容) 列表，
 /// 含 _sidebar.md、根 README.md（首页）与 index.html（开启 _sidebar 支持）
-pub fn docsify_files(apis: &[(Vec<String>, ApiFile)]) -> Vec<(PathBuf, String)> {
+pub fn docsify_files(apis: &[(Vec<(String, bool)>, ApiFile)]) -> Vec<(PathBuf, String)> {
     let mut files: Vec<(PathBuf, String)> = Vec::new();
     let mut used: Vec<PathBuf> = Vec::new();
 
@@ -381,9 +393,13 @@ pub fn docsify_files(apis: &[(Vec<String>, ApiFile)]) -> Vec<(PathBuf, String)> 
     };
     for (segs, api) in apis {
         let mut cur = &mut tree;
-        for s in segs {
-            // 分组目录名去掉空格（docsify 链接更稳定），显示名保留原样
-            let display = s.trim().to_string();
+        for (s, dep) in segs {
+            // 分组目录名去掉空格（docsify 链接更稳定），显示名保留原样；废弃分组名加标注
+            let display = if *dep {
+                format!("{}（已废弃）", s.trim())
+            } else {
+                s.trim().to_string()
+            };
             let name = slug_group(s);
             cur = cur
                 .children
@@ -591,7 +607,7 @@ mod tests {
 
     #[test]
     fn postman_shape() {
-        let apis = vec![(vec!["用户管理".to_string()], sample())];
+        let apis = vec![(vec![("用户管理".to_string(), false)], sample())];
         let v = to_postman(&apis);
         assert_eq!(v["info"]["schema"].as_str().unwrap(), "https://schema.getpostman.com/json/collection/v2.1.0/collection.json");
         let item = &v["item"][0];
@@ -603,7 +619,7 @@ mod tests {
 
     #[test]
     fn openapi_shape() {
-        let apis = vec![(vec!["用户管理".to_string()], sample())];
+        let apis = vec![(vec![("用户管理".to_string(), false)], sample())];
         let v = to_openapi("测试", &apis);
         assert_eq!(v["openapi"], "3.0.1");
         assert_eq!(v["paths"]["/api/users"]["post"]["summary"], "创建用户");
@@ -614,8 +630,8 @@ mod tests {
     #[test]
     fn docsify_files_ok() {
         let apis = vec![
-            (vec!["用户 管理".to_string()], sample()),
-            (vec!["用户 管理".to_string()], sample()), // 同名接口 → 加序号
+            (vec![("用户 管理".to_string(), false)], sample()),
+            (vec![("用户 管理".to_string(), false)], sample()), // 同名接口 → 加序号
         ];
         let files = docsify_files(&apis);
         let names: Vec<String> = files
@@ -645,14 +661,55 @@ mod tests {
     #[test]
     fn markdown_single_file_shape() {
         let apis = vec![
-            (vec!["用户管理".to_string()], sample()),
-            (vec!["用户管理".to_string(), "子组".to_string()], sample()),
+            (vec![("用户管理".to_string(), false)], sample()),
+            (vec![("用户管理".to_string(), false), ("子组".to_string(), false)], sample()),
         ];
         let md = markdown_single_file("接口文档", &apis);
         assert!(md.starts_with("# 接口文档\n"), "md: {md}");
         assert!(md.contains("# 用户管理"), "md: {md}");
         assert!(md.contains("# 用户管理 / 子组"), "md: {md}");
         assert!(md.contains("## 创建用户"), "md: {md}");
+    }
+
+    /// 已废弃接口/分组：markdown 与导出接口文件中带「（已废弃）」标注
+    #[test]
+    fn markdown_deprecated_badges() {
+        // 接口废弃 → 接口标题加标注
+        let mut api = sample();
+        api.deprecated = true;
+        let md = crate::markdown::render(&api, "");
+        assert!(md.contains("## 创建用户（已废弃）"), "md: {md}");
+
+        // 分组废弃 → 单文件分组名加标注
+        let apis = vec![(vec![("用户管理".to_string(), true)], sample())];
+        let md = markdown_single_file("接口文档", &apis);
+        assert!(md.contains("# 用户管理（已废弃）"), "md: {md}");
+
+        // docsify：废弃分组名（README 标题 / 侧栏链接）带标注
+        let files = docsify_files(&apis);
+        let gre = files
+            .iter()
+            .find(|(p, _)| {
+                p.to_string_lossy().replace('\\', "/") == "用户管理/README.md"
+            })
+            .unwrap()
+            .1
+            .clone();
+        assert!(gre.starts_with("# 用户管理（已废弃）"), "group readme: {gre}");
+        let sidebar = files
+            .iter()
+            .find(|(p, _)| p.to_string_lossy() == "_sidebar.md")
+            .unwrap()
+            .1
+            .clone();
+        assert!(sidebar.contains("用户管理（已废弃）"), "sidebar: {sidebar}");
+
+        // openapi：废弃分组 tag 带标注
+        let openapi = to_openapi("测试", &apis);
+        assert_eq!(
+            openapi["paths"]["/api/users"]["post"]["tags"][0],
+            "用户管理（已废弃）"
+        );
     }
 
     /// 同一分组下的多个接口：分组信息只生成一次
@@ -663,8 +720,8 @@ mod tests {
         let mut b = sample();
         b.name = "接口B".into();
         let apis = vec![
-            (vec!["用户管理".to_string()], a.clone()),
-            (vec!["用户管理".to_string()], b.clone()),
+            (vec![("用户管理".to_string(), false)], a.clone()),
+            (vec![("用户管理".to_string(), false)], b.clone()),
         ];
         let md = markdown_single_file("用户管理", &apis);
         // 标题即分组名：不再重复输出 # 用户管理
@@ -704,7 +761,7 @@ mod tests {
         let apis = collect_apis(&base, &paths).expect("collect");
         // 目录已覆盖整棵子树，文件路径被跳过 → 恰好 2 个，不重复
         assert_eq!(apis.len(), 2);
-        assert!(apis.iter().all(|(s, _)| s == &vec!["用户管理".to_string()]));
+        assert!(apis.iter().all(|(s, _)| s == &vec![("用户管理".to_string(), false)]));
         let _ = fs::remove_dir_all(&base);
     }
 
@@ -714,8 +771,8 @@ mod tests {
         let mut a2 = sample();
         a2.name = "创建用户(2)".into();
         let apis = vec![
-            (vec!["用户管理".to_string()], sample()),
-            (vec!["用户管理".to_string()], a2),
+            (vec![("用户管理".to_string(), false)], sample()),
+            (vec![("用户管理".to_string(), false)], a2),
         ];
         let v = to_openapi("测试", &apis);
         assert_eq!(v["paths"]["/api/users"]["post"]["summary"], "创建用户");
