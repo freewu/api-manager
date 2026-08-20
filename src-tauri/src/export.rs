@@ -17,11 +17,19 @@ pub fn collect_apis(root: &Path, paths: &[String]) -> Result<Vec<(Vec<(String, b
         .filter(|p| Path::new(p).is_dir())
         .map(PathBuf::from)
         .collect();
+    // 仅遍历未被其他已选分组覆盖的「顶层」分组：嵌套分组已随外层目录递归收集，
+    // 若再单独遍历会重复导出（导出弹窗勾选分组时同时勾选整棵子树）
+    let top_dirs: Vec<&PathBuf> = dirs
+        .iter()
+        .filter(|d| !dirs.iter().any(|o| o != *d && d.starts_with(o)))
+        .collect();
     for p in paths {
         let abs = Path::new(p);
         if abs.is_dir() {
-            let mut segs = Vec::new();
-            walk_dir(abs, &mut segs, &mut out)?;
+            if top_dirs.iter().any(|d| d.as_path() == abs) {
+                let mut segs = Vec::new();
+                walk_dir(abs, &mut segs, &mut out)?;
+            }
         } else if abs.is_file() {
             if dirs.iter().any(|d| abs.starts_with(d)) {
                 continue; // 已随分组目录收集，跳过避免重复
@@ -784,6 +792,36 @@ mod tests {
         // 目录已覆盖整棵子树，文件路径被跳过 → 恰好 2 个，不重复
         assert_eq!(apis.len(), 2);
         assert!(apis.iter().all(|(s, _)| s == &vec![("用户管理".to_string(), false)]));
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    /// 勾选分组时导出弹窗会同时提交外层分组与嵌套分组路径，嵌套分组不应被重复收集
+    #[test]
+    fn collect_apis_dedupes_nested_dirs() {
+        let base = std::env::temp_dir().join(format!("apim-dedupe2-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        let g = base.join("用户管理");
+        let sub = g.join("子分组");
+        fs::create_dir_all(&sub).unwrap();
+        fs::write(sub.join(INFO_FILE), r#"{"name":"子分组"}"#).unwrap();
+        let mut a = sample();
+        a.name = "接口A".into();
+        fs::write(sub.join("接口A.json"), serde_json::to_string(&a).unwrap()).unwrap();
+        // 外层分组 + 嵌套分组同时被选中（导出弹窗的实际行为）
+        let paths = vec![
+            g.to_string_lossy().to_string(),
+            sub.to_string_lossy().to_string(),
+        ];
+        let apis = collect_apis(&base, &paths).expect("collect");
+        // 嵌套分组已随外层收集 → 恰好 1 个，不重复
+        assert_eq!(apis.len(), 1);
+        assert_eq!(
+            apis[0].0,
+            vec![
+                ("用户管理".to_string(), false),
+                ("子分组".to_string(), false)
+            ]
+        );
         let _ = fs::remove_dir_all(&base);
     }
 

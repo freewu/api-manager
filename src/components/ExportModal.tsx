@@ -148,7 +148,10 @@ export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose 
     if (busy || selected.size === 0) return;
     setBusy(true);
     try {
-      await onExport([...selected], format);
+      // 只提交未被其他已选路径覆盖的顶层路径：勾选分组 = 整棵子树，
+      // 嵌套分组/文件的路径由后端递归收集，避免同一接口重复导出
+      const tops = [...selected].filter((p) => ![...selected].some((o) => o !== p && p.startsWith(o + "/")));
+      await onExport(tops, format);
     } finally {
       setBusy(false);
     }
