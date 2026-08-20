@@ -4,7 +4,7 @@
   "method": "GET",
   "path": "/echo",
   "url": "ws://127.0.0.1:8765/echo?token={{token}}",
-  "description": "向 WebSocket 服务器发送消息，服务器回传获取到的 path / query / header / message 信息",
+  "description": "向 WebSocket 服务器发送消息，服务器回传本次连接的 query / header 参数与消息内容",
   "headers": [
     {
       "key": "User-Agent",
@@ -43,7 +43,7 @@
       "name": "回显成功",
       "status": 0,
       "content_type": "application/json",
-      "body": "{\n  \"type\": \"message\",\n  \"path\": \"/echo\",\n  \"query\": {\"token\": \"dev-token-123456\"},\n  \"header\": {\"host\": \"127.0.0.1:8765\", \"user-agent\": \"API-Manager\"},\n  \"message\": \"hello, this is a websocket echo message\"\n}"
+      "body": "{\n  \"type\": \"message\",\n  \"query\": {\"token\": \"dev-token-123456\"},\n  \"header\": {\"host\": \"127.0.0.1:8765\", \"user-agent\": \"API-Manager\"},\n  \"message\": \"hello, this is a websocket echo message\"\n}"
     }
   ],
   "docParams": [],

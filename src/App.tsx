@@ -769,10 +769,13 @@ export default function App() {
       let url = sub(api.url || rootInfo.baseUrl + api.path);
       // 替换路径参数（多个示例值逗号分隔，发送时取第一个）；
       // 仅替换单大括号 {变量名}，不触碰 {{变量名}} 全局环境变量
-      for (const p of api.params.filter((x) => x.enabled && x.key)) {
-        const v = p.value.split(",")[0].trim();
-        const rx = new RegExp(`(?<!\\{)\\{${escapeRe(p.key)}\\}(?!\\})`, "g");
-        url = url.replace(rx, encodeURIComponent(sub(v)));
+      // WebSocket 不使用路径参数（无 Path 页签），跳过替换
+      if (api.protocol !== "websocket") {
+        for (const p of api.params.filter((x) => x.enabled && x.key)) {
+          const v = p.value.split(",")[0].trim();
+          const rx = new RegExp(`(?<!\\{)\\{${escapeRe(p.key)}\\}(?!\\})`, "g");
+          url = url.replace(rx, encodeURIComponent(sub(v)));
+        }
       }
       // URL 校验：空地址 / 缺少协议前缀 / 存在未替换的 {{变量}}
       if (!url.trim()) {

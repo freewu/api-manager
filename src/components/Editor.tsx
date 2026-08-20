@@ -110,19 +110,26 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
     onTabChange?.("params");
   }, [api.uuid]);
 
-  // 设置中全局关闭 Mock 时，若当前停留在 Mock 页签则切回 Query
+  // 设置中全局关闭 Mock 时，若当前停留在 Mock 页签则切回 Query；
+  // WebSocket 无 Path / Mock 页签，若停留在这两个页签则切回 Query
   useEffect(() => {
     if ((!enableMock || isWs) && tab === "mock") {
       setTab("params");
       onTabChange?.("params");
     }
+    if (isWs && tab === "path") {
+      setTab("params");
+      onTabChange?.("params");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enableMock, isWs]);
+  }, [enableMock, isWs, tab]);
 
   // URL / 路径中的 {xx} 占位符实时同步到 Path 页签（新增或删除）；
   // {{xx}} 是全局环境变量（双大括号），不会被当作路径参数
+  // WebSocket 不使用路径参数，跳过同步
   const pathSource = api.url || api.path;
   useEffect(() => {
+    if (isWs) return;
     const names = new Set(
       [...pathSource.matchAll(/(?<!\{)\{([^{}]+)\}(?!\})/g)]
         .map((m) => m[1].trim())
@@ -139,7 +146,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
       );
     onChange({ ...api, params: next });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathSource]);
+  }, [pathSource, isWs]);
 
   const set = (patch: Partial<ApiFile>) => onChange({ ...api, ...patch });
 
@@ -271,9 +278,11 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         <div className={`tab ${tab === "params" ? "active" : ""}`} onClick={() => switchTab("params")}>
           Query{enabledCount(api.query) > 0 && <span className="count">{enabledCount(api.query)}</span>}
         </div>
-        <div className={`tab ${tab === "path" ? "active" : ""}`} onClick={() => switchTab("path")}>
-          Path{enabledCount(api.params) > 0 && <span className="count">{enabledCount(api.params)}</span>}
-        </div>
+        {!isWs && (
+          <div className={`tab ${tab === "path" ? "active" : ""}`} onClick={() => switchTab("path")}>
+            Path{enabledCount(api.params) > 0 && <span className="count">{enabledCount(api.params)}</span>}
+          </div>
+        )}
         <div className={`tab ${tab === "headers" ? "active" : ""}`} onClick={() => switchTab("headers")}>
           Headers{enabledCount(api.headers) > 0 && <span className="count">{enabledCount(api.headers)}</span>}
         </div>
