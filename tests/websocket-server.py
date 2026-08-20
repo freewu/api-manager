@@ -9,8 +9,13 @@
       "message": "客户端发送的内容"
     }
 
-支持任意路径：examples/demo-workspace 的 WebSocket 分组下唯一接口（/echo）与此服务对应，
-用于核对客户端发送的 query 与 header 是否被服务器正确接收。
+支持任意路径：examples/demo-workspace 的 WebSocket 分组下唯一接口「WebSocket 回显」
+（ws://127.0.0.1:8765/echo）与此服务对应，用于核对客户端发送的 query 与 header 是否被服务器正确接收。
+
+连接建立后服务器先发送欢迎消息（type: welcome，含本次连接的 query / header），
+之后对每条收到的消息回传 {type: message, query, header, message}。
+自定义 header 无法通过浏览器 WebSocket API 发送，Header 页签中的值会作为
+WebSocket 子协议（sec-websocket-protocol）出现在回传的 header 中。
 
 依赖第三方库 `websockets`：
     pip install websockets

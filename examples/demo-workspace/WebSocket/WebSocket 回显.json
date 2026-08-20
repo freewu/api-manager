@@ -4,7 +4,7 @@
   "method": "GET",
   "path": "/echo",
   "url": "ws://127.0.0.1:8765/echo?token={{token}}",
-  "description": "向 WebSocket 服务器发送消息，服务器回传本次连接的 query / header 参数与消息内容",
+  "description": "WebSocket 回显演示接口，配合测试服务 tests/websocket-server.py 使用。\n\n【启动测试服务】\n1. 安装依赖：pip install websockets\n2. 启动服务：python tests/websocket-server.py\n   - 默认监听 ws://127.0.0.1:8765\n   - 自定义端口：python tests/websocket-server.py 9999\n\n【接口说明】\n- 连接地址：ws://127.0.0.1:8765/echo\n- 连接时携带 Query 参数：token={{token}}（开发环境下值为 dev-token-123456）\n- 浏览器 WebSocket 无法自定义请求头：Header 页签中的值会作为 WebSocket 子协议发送，服务器回传的 header 中对应 sec-websocket-protocol 字段\n\n【测试步骤】\n1. 点击「发送」建立连接，连接成功后会先收到一条欢迎消息（type: welcome，含本次连接的 query / header）\n2. 在消息输入框输入任意内容并发送\n3. 服务器回传消息内容及本次连接收到的 query / header，例如：\n{\"type\":\"message\",\"query\":{\"token\":\"dev-token-123456\"},\"header\":{\"host\":\"127.0.0.1:8765\",\"sec-websocket-protocol\":\"API-Manager\"},\"message\":\"hello\"}",
   "headers": [
     {
       "key": "User-Agent",
@@ -43,7 +43,7 @@
       "name": "回显成功",
       "status": 0,
       "content_type": "application/json",
-      "body": "{\n  \"type\": \"message\",\n  \"query\": {\"token\": \"dev-token-123456\"},\n  \"header\": {\"host\": \"127.0.0.1:8765\", \"user-agent\": \"API-Manager\"},\n  \"message\": \"hello, this is a websocket echo message\"\n}"
+      "body": "{\n  \"type\": \"message\",\n  \"query\": {\"token\": \"dev-token-123456\"},\n  \"header\": {\"host\": \"127.0.0.1:8765\", \"sec-websocket-protocol\": \"API-Manager\"},\n  \"message\": \"hello, this is a websocket echo message\"\n}"
     }
   ],
   "docParams": [],
