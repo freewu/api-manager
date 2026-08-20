@@ -78,7 +78,6 @@ import {
   HttpRequestData,
   HttpResult,
   InfoJson,
-  KeyValue,
   MockStatus,
   TreeNode,
   UpdateInfo,
@@ -680,11 +679,13 @@ export default function App() {
   };
 
   /** 建立 WebSocket 连接（首次点「发送」时触发），此后保持长连接 */
-  const openWsConnection = (url: string, headers: KeyValue[]) => {
+  const openWsConnection = (url: string) => {
     setWsConnecting(true);
     let ws: WebSocket;
     try {
-      ws = new WebSocket(url, headers.filter((h) => h.enabled && h.key.trim()).map((h) => h.value.trim()).filter(Boolean));
+      // 浏览器 WebSocket API 无法携带自定义请求头：
+      // 不能把 Header 值当作子协议传入（服务器不回显子协议时浏览器会判定握手失败）
+      ws = new WebSocket(url);
     } catch (e) {
       setWsConnecting(false);
       appendWsEntry("error", `${t("app.wsConnectError")}：${e}`);
@@ -721,7 +722,7 @@ export default function App() {
   };
 
   /** 发送 WebSocket 消息：复用已建立的连接；无连接时先建连再发送 */
-  const handleWsSend = (url: string, headers: KeyValue[], body: BodyData) => {
+  const handleWsSend = (url: string, body: BodyData) => {
     const text = body.raw || "";
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -730,7 +731,7 @@ export default function App() {
       wsQueueRef.current.push(text); // 连接中：排队待发
     } else {
       wsQueueRef.current = [text];
-      openWsConnection(url, headers); // 无连接：建立连接后再发
+      openWsConnection(url); // 无连接：建立连接后再发
     }
   };
 
@@ -797,7 +798,7 @@ export default function App() {
 
       // WebSocket：持久连接发送，交互记录展示在响应区（不设置 HTTP 式 result）
       if (api.protocol === "websocket") {
-        handleWsSend(url, headers, api.body);
+        handleWsSend(url, api.body);
         setLastRequest({ method: "WS", url, headers, body: api.body.raw, timeoutMs: 30000 });
         setLastApiSnapshot(api);
         setSending(false); // WS 发送为异步短操作，立即复位按钮状态

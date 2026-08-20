@@ -14,8 +14,8 @@
 
 连接建立后服务器先发送欢迎消息（type: welcome，含本次连接的 query / header），
 之后对每条收到的消息回传 {type: message, query, header, message}。
-自定义 header 无法通过浏览器 WebSocket API 发送，Header 页签中的值会作为
-WebSocket 子协议（sec-websocket-protocol）出现在回传的 header 中。
+浏览器 WebSocket API 无法自定义请求头，回传的 header 为连接时的标准请求头
+（host、user-agent 等），自定义 header 不会发送。
 
 依赖第三方库 `websockets`：
     pip install websockets
