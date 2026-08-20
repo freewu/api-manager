@@ -1,0 +1,109 @@
+/* Markdown 预览弹窗 */
+.md-modal {
+  width: min(880px, 92vw);
+  height: min(620px, 82vh);
+  display: flex;
+  flex-direction: column;
+}
+.md-modal .modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 18px;
+}
+.md-modal .modal-foot {
+  flex-shrink: 0;
+  padding: 16px 18px 18px;
+  align-items: center;
+}
+.md-modal .modal-foot .btn {
+  padding: 8px 18px;
+  font-size: 13px;
+}
+.md-preview {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text);
+}
+.md-preview h1,
+.md-preview h2,
+.md-preview h3 {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 5px;
+  margin: 18px 0 10px;
+}
+.md-preview h1:first-child {
+  margin-top: 0;
+}
+.md-preview h1 {
+  font-size: 21px;
+}
+.md-preview h2 {
+  font-size: 17px;
+}
+.md-preview h3 {
+  font-size: 15px;
+}
+.md-preview p {
+  margin: 6px 0;
+}
+.md-preview ul {
+  margin: 6px 0;
+  padding-left: 22px;
+}
+.md-preview table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+  font-size: 12.5px;
+}
+.md-preview th,
+.md-preview td {
+  border: 1px solid var(--border);
+  padding: 5px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+.md-preview th {
+  background: var(--bg-panel);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.md-preview pre {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 11px;
+  overflow: auto;
+  font-size: 12px;
+}
+.md-preview code {
+  font-family: var(--font-mono);
+  background: var(--bg-input);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+.md-preview pre code {
+  background: transparent;
+  padding: 0;
+}
+.md-preview blockquote {
+  border-left: 3px solid var(--border);
+  margin: 8px 0;
+  padding: 2px 12px;
+  color: var(--text-dim);
+}
+.md-preview hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 14px 0;
+}
+.md-source {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}

@@ -1,0 +1,142 @@
+:root {
+  --bg: #1e1f22;
+  --bg-deep: #16171a;
+  --bg-sidebar: #1a1b1e;
+  --bg-panel: #24262a;
+  --bg-input: #2b2d31;
+  --bg-hover: #2e3136;
+  --bg-active: #383b41;
+  --border: #35383e;
+  --border-light: #45484f;
+  --text: #e8e9eb;
+  --text-dim: #9ba0a8;
+  --text-faint: #6b7078;
+  --accent: #2e59a7;
+  --accent-hover: #3a6fc4;
+  --ok: #2ec27e;
+  --warn: #e5a50a;
+  --err: #f26d6d;
+  --info: #4aa3ff;
+
+  --method-get: #2ec27e;
+  --method-post: #f5a623;
+  --method-put: #3b82f6;
+  --method-delete: #f26d6d;
+  --method-patch: #a855f7;
+  --method-head: #14b8a6;
+  --method-options: #7d8590;
+
+  --radius: 6px;
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New",
+    monospace;
+
+  --diff-add-bg: rgba(248, 81, 73, 0.14);
+  --diff-add-text: #ff9d96;
+  --diff-del-bg: rgba(63, 185, 80, 0.14);
+  --diff-del-text: #7ee2a8;
+}
+
+/* ============ 浅色主题 ============ */
+:root[data-theme="light"] {
+  --bg: #f5f6f8;
+  --bg-deep: #eceef1;
+  --bg-sidebar: #f0f1f4;
+  --bg-panel: #ffffff;
+  --bg-input: #ffffff;
+  --bg-hover: #e8eaee;
+  --bg-active: #dde0e6;
+  --border: #d9dce1;
+  --border-light: #c3c8cf;
+  --text: #1c1e21;
+  --text-dim: #5c6270;
+  --text-faint: #8b9099;
+  --accent: #2e59a7;
+  --accent-hover: #3a6fc4;
+
+  --diff-add-bg: rgba(248, 81, 73, 0.12);
+  --diff-add-text: #c62f2f;
+  --diff-del-bg: rgba(46, 160, 67, 0.14);
+  --diff-del-text: #1a7f37;
+}
+:root[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #c3c8cf;
+}
+:root[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #aeb4bd;
+}
+:root[data-theme="light"] .switch {
+  background: #c9cdd4;
+}
+:root[data-theme="light"] .switch::after {
+  background: #fff;
+}
+:root[data-theme="light"] .switch.on::after {
+  background: #fff;
+}
+:root[data-theme="light"] .json-key {
+  color: #0f5aa8;
+}
+:root[data-theme="light"] .json-string {
+  color: #1a7f37;
+}
+:root[data-theme="light"] .json-number {
+  color: #c2410c;
+}
+:root[data-theme="light"] .json-boolean {
+  color: #7c3aed;
+}
+:root[data-theme="light"] .json-null {
+  color: #6b7280;
+}
+:root[data-theme="light"] .xml-tag {
+  color: #0f5aa8;
+}
+:root[data-theme="light"] .xml-attr {
+  color: #b45309;
+}
+:root[data-theme="light"] .xml-value {
+  color: #1a7f37;
+}
+:root[data-theme="light"] .xml-comment {
+  color: #6b7280;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  user-select: none;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: #3c3f45;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4a4e55;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}

@@ -49,22 +49,14 @@ import {
   vcsSync,
   hasWorkspaceInfo,
   getCurrentVersion,
-  openExternal,
 } from "./commands";
-import { ApiWorkspace } from "./components/ApiWorkspace";
-import { EnvModal } from "./components/EnvModal";
-import { EnvValueModal } from "./components/EnvValueModal";
-import { HistoryDetail } from "./components/HistoryDetail";
-import { AppView } from "./components/Sidebar";
+import { AppModals, InfoForm, ModalState, emptyInfoForm } from "./components/AppModals";
+import { AppToolbar } from "./components/AppToolbar";
+import { Landing } from "./components/Landing";
+import { RightPane } from "./components/RightPane";
+import { AppView, Sidebar } from "./components/Sidebar";
 import { useHistory } from "./hooks/useHistory";
-import { Modal } from "./components/Modal";
-import { MarkdownModal } from "./components/MarkdownModal";
-import { ExportModal } from "./components/ExportModal";
-import { SettingsModal } from "./components/SettingsModal";
-import { Sidebar } from "./components/Sidebar";
-import { StatsModal } from "./components/StatsModal";
 import { setLang, useT } from "./i18n";
-import logoUrl from "./assets/logo.png";
 
 /** 转义正则特殊字符（用于按字面量构造 {变量名} 匹配） */
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -76,7 +68,7 @@ const normalizeLang = (v: unknown): "zh" | "zh-tw" | "en" => {
   if (s === "zh-tw" || s === "zh-hant" || s === "zh-cht" || s === "tw" || s === "cht") return "zh-tw";
   return "zh";
 };
-import { VersionModal } from "./components/VersionModal";
+
 import {
   ApiFile,
   AppSettings,
@@ -96,28 +88,10 @@ import {
   emptyEnv,
 } from "./types";
 
-interface ModalState {
-  type: "newApi" | "newFolder" | "rename" | "delete" | "info" | "demo";
-  parent: string;
-  target?: TreeNode;
-}
-
-interface InfoForm {
-  name: string;
-  description: string;
-}
-
-const emptyInfoForm = (): InfoForm => ({
-  name: "",
-  description: "",
-});
-
 export default function App() {
   const t = useT();
   const [workspace, setWorkspace] = useState<string | null>(null);
   const [recent, setRecent] = useState<string[]>([]);
-  const [showRecent, setShowRecent] = useState(false);
-  const recentBtnRef = useRef<HTMLDivElement | null>(null);
   const [tree, setTree] = useState<TreeNode | null>(null);
   // 工作目录树加载中（首次加载 / 打开工作区 / 手动刷新时显示加载动画）
   const [treeLoading, setTreeLoading] = useState(false);
@@ -214,14 +188,6 @@ export default function App() {
       .then(setRecent)
       .catch(() => {});
 
-    // 点击「最近目录」按钮外部时关闭下拉
-    const closeRecent = (e: MouseEvent) => {
-      if (recentBtnRef.current && !recentBtnRef.current.contains(e.target as Node)) {
-        setShowRecent(false);
-      }
-    };
-    document.addEventListener("mousedown", closeRecent);
-    return () => document.removeEventListener("mousedown", closeRecent);
     loadSettings()
       .then((s) => {
         setSettings(s);
@@ -1295,148 +1261,41 @@ export default function App() {
   // ---------- 渲染 ----------
   if (!workspace) {
     return (
-      <div className="app">
-        <div className="toolbar">
-          <div className="logo">
-            <img className="logo-img" src={logoUrl} alt="API Manager" />
-            <span>API Manager</span>
-            {updateInfo?.hasUpdate && (
-              <button
-                className="logo-update-badge"
-                title={t("update.badgeTip")}
-                onClick={() => setShowUpdateModal(true)}
-              >
-                {t("update.badge")}
-              </button>
-            )}
-          </div>
-          <div className="toolbar-spacer" />
-          <span style={{ color: "var(--text-faint)", fontSize: 12 }}>
-            {t("start.tagline")} · v{version}
-          </span>
-        </div>
-        <div className="landing">
-          <img className="landing-logo" src={logoUrl} alt="API Manager" />
-          <h1>API Manager</h1>
-          <p>{t("start.subtitle")}</p>
-          <button className="btn primary" style={{ fontSize: 14, padding: "10px 24px" }} onClick={handlePickWorkspace}>
-            {t("start.chooseDir")}
-          </button>
-          {recent.length > 0 && (
-            <div className="recent-workspaces">
-              <div className="recent-title">{t("start.recent")}</div>
-              {recent.slice(0, recentLimit).map((p) => (
-                <button key={p} className="recent-item" title={p} onClick={() => void handleOpenRecent(p)}>
-                  📁 {p}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="file-tree-note">
-            {t("start.structureTitle")}：
-            <br />├── __info.json &nbsp;// {t("start.treeInfo")}
-            <br />├── {t("start.treeGroup")}/
-            <br />│&nbsp;&nbsp;├── __info.json &nbsp;// {t("start.treeGroupDesc")}
-            <br />│&nbsp;&nbsp;└── {t("start.treeApi")} &nbsp;// {t("start.treeApiDesc")}
-          </div>
-          <div className="hint">{t("start.hint")}</div>
-        </div>
-      </div>
+      <Landing
+        version={version}
+        updateInfo={updateInfo}
+        recent={recent}
+        recentLimit={recentLimit}
+        onPickWorkspace={() => void handlePickWorkspace()}
+        onOpenRecent={(ws) => void handleOpenRecent(ws)}
+        onOpenUpdate={() => setShowUpdateModal(true)}
+      />
     );
   }
 
   return (
     <div className="app">
-      <div className="toolbar">
-        <div className="logo">
-          <img className="logo-img" src={logoUrl} alt="API Manager" />
-          <span>API Manager</span>
-          {updateInfo?.hasUpdate && (
-            <button
-              className="logo-update-badge"
-              title={t("update.badgeTip")}
-              onClick={() => setShowUpdateModal(true)}
-            >
-              {t("update.badge")}
-            </button>
-          )}
-        </div>
-        <div className="workspace-chip" title={t("toolbar.workspaceTip")} onClick={handlePickWorkspace}>
-          📁 {workspace}
-        </div>
-        <div className="toolbar-spacer" />
-        <div className="env-box">
-          <div className="recent-btn-wrap" ref={recentBtnRef}>
-            <button
-              className={`btn ${showRecent ? "active" : ""}`}
-              title={t("toolbar.recent")}
-              onClick={() => setShowRecent((s) => !s)}
-            >
-              🕘
-            </button>
-            {showRecent && (
-              <div className="recent-dropdown">
-                <div className="recent-dropdown-title">{t("toolbar.recentTitle")}</div>
-                {recent.length === 0 ? (
-                  <div className="recent-dropdown-empty">{t("toolbar.recentEmpty")}</div>
-                ) : (
-                  recent.slice(0, recentLimit).map((p) => (
-                    <button
-                      key={p}
-                      className="recent-dropdown-item"
-                      title={p}
-                      onClick={() => {
-                        setShowRecent(false);
-                        void handleOpenRecent(p);
-                      }}
-                    >
-                      📁 {p}
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-          <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{t("toolbar.env")}</span>
-          <select
-            className="env-select"
-            value={envs.active || ""}
-            onChange={(e) => handleEnvSwitch(e.target.value)}
-            title={t("toolbar.envTip")}
-          >
-            <option value="">{t("toolbar.noEnv")}</option>
-            {envs.environments.map((e) => (
-              <option key={e.name} value={e.name}>
-                {e.name}
-              </option>
-            ))}
-          </select>
-          <button
-            className="btn"
-            disabled={!activeEnv}
-            title={activeEnv ? t("toolbar.envManageTip", { name: activeEnv.name }) : t("toolbar.envPickTip")}
-            onClick={() => setEnvValue(true)}
-          >
-            📋
-          </button>
-          <button className="btn" title={t("toolbar.envsTip")} onClick={() => setEnvModal(true)}>
-            🌐
-          </button>
-        </div>
-        {settings.enableMock && (
-          <div className="mock-box">
-            <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{t("toolbar.mockLabel", { port: settings.mockPort })}</span>
-            <button className={`switch ${mock.running ? "on" : ""}`} onClick={toggleMock} title={t("toolbar.mockToggleTip", { port: settings.mockPort })} />
-            <span className="mock-status">
-              {mock.running ? t("toolbar.mockRunning", { count: mock.routeCount }) : t("toolbar.mockStopped")}
-            </span>
-          </div>
-        )}
-        <button className="btn" onClick={async () => { await reloadTree(true); showToast(t("toast.refreshed")); }} title={t("toolbar.refresh")}>
-          🔄
-        </button>
-      </div>
-
+      <AppToolbar
+        workspace={workspace}
+        version={version}
+        updateInfo={updateInfo}
+        recent={recent}
+        recentLimit={recentLimit}
+        envs={envs}
+        mock={mock}
+        settings={settings}
+        onPickWorkspace={() => void handlePickWorkspace()}
+        onOpenRecent={(ws) => void handleOpenRecent(ws)}
+        onSwitchEnv={(name) => void handleEnvSwitch(name)}
+        onOpenEnvValue={() => setEnvValue(true)}
+        onOpenEnvModal={() => setEnvModal(true)}
+        onToggleMock={() => void toggleMock()}
+        onRefresh={async () => {
+          await reloadTree(true);
+          showToast(t("toast.refreshed"));
+        }}
+        onOpenUpdate={() => setShowUpdateModal(true)}
+      />
       <div className="main">
         <Sidebar
           width={sidebarWidth}
@@ -1478,392 +1337,123 @@ export default function App() {
           onHistoryReload={history.reload}
           onHistoryClear={() => void history.clearAll()}
         />
-        <div
-          className="resizer"
-          onMouseDown={startResize}
-          onDoubleClick={() => {
+        <RightPane
+          view={view}
+          api={api}
+          historyDetail={history.detail}
+          historyDetailLoading={history.detailLoading}
+          baseUrl={baseUrl}
+          currentVersion={currentVersion}
+          enableVersion={settings.enableVersion}
+          enableCodegen={settings.enableCodegen}
+          enableMock={settings.enableMock}
+          codegenLang={settings.codegenLang}
+          sending={sending}
+          hideResponse={hideResponse}
+          editorRatio={editorRatio}
+          response={response}
+          wsConnected={wsConnected}
+          wsConnecting={wsConnecting}
+          wsEntries={wsEntries}
+          onApiChange={(a) => {
+            setApi(a);
+            setDirty(true);
+          }}
+          onSend={handleSend}
+          onSaveExample={handleSaveExample}
+          onSaveVersion={handleSaveVersion}
+          onCommit={handleAutoSave}
+          onTabChange={(t) => setHideResponse(["response", "mock", "desc", "doc", "code", "examples"].includes(t))}
+          onStartVResize={startVResize}
+          onResetRatio={() => {
+            setEditorRatio(0.45);
+            editorRatioRef.current = 0.45;
+            localStorage.setItem("editor-ratio", "0.45");
+          }}
+          onWsDisconnect={closeWsConnection}
+          onResizeStart={startResize}
+          onResizeReset={() => {
             setSidebarWidth(310);
             sidebarWidthRef.current = 310;
             localStorage.setItem("sidebar-width", "310");
           }}
-          title={t("app.resizeSidebarTip")}
-        />
-
-        <div
-          className="content"
-          onContextMenu={(e) => {
-            // 右侧区域禁止右键（输入框/文本域保留原生菜单以便粘贴）
-            const t = e.target as HTMLElement;
-            if (t.tagName === "INPUT" || t.tagName === "TEXTAREA") return;
+          resizeTip={t("app.resizeSidebarTip")}
+          onEmptyContextMenu={(e) => {
             e.preventDefault();
+            setEmptyMenu({
+              x: Math.min(e.clientX, window.innerWidth - 190),
+              y: Math.min(e.clientY, window.innerHeight - 160),
+            });
           }}
-        >
-          {view === "history" ? (
-            <div className="history-view-content">
-              <HistoryDetail detail={history.detail} loading={history.detailLoading} />
-            </div>
-          ) : api ? (
-            <>
-              <ApiWorkspace
-                api={api}
-                baseUrl={baseUrl}
-                currentVersion={currentVersion}
-                enableVersion={settings.enableVersion}
-                enableCodegen={settings.enableCodegen}
-                enableMock={settings.enableMock}
-                codegenLang={settings.codegenLang}
-                sending={sending}
-                hideResponse={hideResponse}
-                editorRatio={editorRatio}
-                response={response}
-                onChange={(a) => {
-                  setApi(a);
-                  setDirty(true);
-                }}
-                onSend={handleSend}
-                onSaveExample={handleSaveExample}
-                onSaveVersion={handleSaveVersion}
-                onCommit={handleAutoSave}
-                onTabChange={(t) => setHideResponse(["response", "mock", "desc", "doc", "code", "examples"].includes(t))}
-                onStartVResize={startVResize}
-                onResetRatio={() => {
-                  setEditorRatio(0.45);
-                  editorRatioRef.current = 0.45;
-                  localStorage.setItem("editor-ratio", "0.45");
-                }}
-                wsConnected={wsConnected}
-                wsConnecting={wsConnecting}
-                wsEntries={wsEntries}
-                onWsDisconnect={closeWsConnection}
-              />
-            </>
-          ) : (
-            <div
-              className="empty-editor"
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setEmptyMenu({
-                  x: Math.min(e.clientX, window.innerWidth - 190),
-                  y: Math.min(e.clientY, window.innerHeight - 160),
-                });
-              }}
-            >
-              <span className="big">📄</span>
-              <span>{t("editor.emptyHint")}</span>
-            </div>
-          )}
-        </div>
+        />
       </div>
 
-      {toast && <div className="toast">{toast}</div>}
-
-      {notify && (
-        <div className="notify-pop" role="alert">
-          <div className="notify-pop-head">
-            <span className="notify-pop-title">⚠️ {notify.title}</span>
-            <button
-              className="notify-pop-close"
-              onClick={() => setNotify(null)}
-              title={t("common.close")}
-              aria-label={t("common.close")}
-            >
-              ✕
-            </button>
-          </div>
-          <pre className="notify-pop-body">{notify.body}</pre>
-        </div>
-      )}
-
-      {emptyMenu && (
-        <div className="node-ctx-menu" style={{ left: emptyMenu.x, top: emptyMenu.y }}>
-          <button
-            onClick={() => {
-              openModal("newApi", "");
-              setEmptyMenu(null);
-            }}
-          >
-            🌐 {t("sidebar.newApi")}
-          </button>
-          <button
-            onClick={() => {
-              openModal("newFolder", "");
-              setEmptyMenu(null);
-            }}
-          >
-            📁 {t("sidebar.newFolder")}
-          </button>
-        </div>
-      )}
-
-      {versionModal && (
-        <VersionModal
-          api={versionModal.api}
-          versions={versionModal.versions}
-          onRestored={handleVersionRestored}
-          onClose={() => setVersionModal(null)}
-        />
-      )}
-
-      {statsNode && <StatsModal node={statsNode} onClose={() => setStatsNode(null)} />}
-
-      {showUpdateModal && updateInfo && (
-        <Modal
-          title={`🎉 ${t("update.title")}`}
-          onClose={() => setShowUpdateModal(false)}
-          footer={
-            <>
-              <button className="btn" onClick={() => setShowUpdateModal(false)}>
-                {t("update.later")}
-              </button>
-              <button
-                className="btn primary"
-                onClick={() => {
-                  openExternal(updateInfo.url || "https://github.com/freewu/api-manager/releases");
-                }}
-              >
-                {t("update.download")}
-              </button>
-            </>
-          }
-        >
-          <div className="update-desc">
-            {t("update.desc", {
-              current: updateInfo.current,
-              latest: updateInfo.latest,
-            })}
-          </div>
-        </Modal>
-      )}
-
-      {mdView && (
-        <MarkdownModal
-          name={mdView.doc.name}
-          html={mdView.doc.html}
-          md={mdView.doc.md}
-          onSave={(fmt) => handleExportMarkdown(fmt)}
-          onClose={() => setMdView(null)}
-        />
-      )}
-
-      {exportOpen && (
-        <ExportModal
-          tree={tree}
-          preselect={exportPreselect}
-          defaultFormat={settings.exportFormat}
-          onExport={(paths, fmt) => handleExport(paths, fmt)}
-          onClose={() => {
-            setExportOpen(false);
-            setExportPreselect(undefined);
-          }}
-        />
-      )}
-
-      {settingsOpen && (
-        <SettingsModal
-          settings={settings}
-          appVersion={version}
-          vcs={null} // 同步远程设置暂时隐藏
-          workspaceName={
-            rootInfo.name ||
-            (workspace ? workspace.split(/[\\/]/).filter(Boolean).pop() || workspace : "")
-          }
-          onSaveWorkspaceName={saveWorkspaceName}
-          onClose={() => setSettingsOpen(false)}
-          onSave={handleSaveSettings}
-        />
-      )}
-
-      {envModal && (
-        <EnvModal
-          envs={envs}
-          onClose={() => setEnvModal(false)}
-          onSave={handleSaveEnv}
-        />
-      )}
-
-      {envValue && activeEnv && (
-        <EnvValueModal
-          name={activeEnv.name}
-          variables={activeEnv.variables}
-          onSave={handleSaveEnvValues}
-          onClose={() => setEnvValue(false)}
-          maskClassName="modal-mask-top"
-        />
-      )}
-
-      {modal?.type === "newApi" && (
-        <Modal
-          title={t("modal.newApi")}
-          onClose={() => setModal(null)}
-          footer={
-            <>
-              <button className="btn" onClick={() => setModal(null)}>{t("common.cancel")}</button>
-              <button className="btn primary" onClick={doNewApi}>{t("modal.create")}</button>
-            </>
-          }
-        >
-          <label>
-            {t("modal.apiName")}
-            <input
-              autoFocus
-              value={modalText}
-              onChange={(e) => setModalText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && doNewApi()}
-              placeholder={t("modal.apiNamePlaceholder")}
-            />
-          </label>
-          <label>
-            {t("modal.saveTo")}
-            <input value={modal.parent || workspace!} disabled style={{ opacity: 0.6 }} />
-          </label>
-          <label>
-            {t("editor.protocol")}
-            <select value={modalProtocol} onChange={(e) => setModalProtocol(e.target.value as "http" | "websocket")}>
-              <option value="http">{t("editor.httpType")}</option>
-              <option value="websocket">{t("editor.wsType")}</option>
-            </select>
-          </label>
-        </Modal>
-      )}
-
-      {modal?.type === "newFolder" && (
-        <Modal
-          title={t("modal.newFolder")}
-          onClose={() => setModal(null)}
-          footer={
-            <>
-              <button className="btn" onClick={() => setModal(null)}>{t("common.cancel")}</button>
-              <button className="btn primary" onClick={doNewFolder}>{t("modal.create")}</button>
-            </>
-          }
-        >
-          <label>
-            {t("modal.folderName")}
-            <input
-              autoFocus
-              value={modalText}
-              onChange={(e) => setModalText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && doNewFolder()}
-              placeholder={t("modal.folderNamePlaceholder")}
-            />
-          </label>
-          <label>
-            {t("modal.saveTo")}
-            <input value={modal.parent || workspace!} disabled style={{ opacity: 0.6 }} />
-          </label>
-        </Modal>
-      )}
-
-      {modal?.type === "rename" && modal.target && (
-        <Modal
-          title={t("common.rename")}
-          onClose={() => setModal(null)}
-          footer={
-            <>
-              <button className="btn" onClick={() => setModal(null)}>{t("common.cancel")}</button>
-              <button className="btn primary" onClick={doRename}>{t("common.confirm")}</button>
-            </>
-          }
-        >
-          <label>
-            {t("modal.newName")}
-            <input
-              autoFocus
-              value={modalText}
-              onChange={(e) => setModalText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && doRename()}
-            />
-          </label>
-        </Modal>
-      )}
-
-      {modal?.type === "delete" && modal.target && (
-        <Modal
-          title={t("modal.confirmDelete")}
-          onClose={() => setModal(null)}
-          footer={
-            <>
-              <button className="btn" onClick={() => setModal(null)}>{t("common.cancel")}</button>
-              <button className="btn danger" onClick={doDelete}>{t("common.delete")}</button>
-            </>
-          }
-        >
-          <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
-            {modal.target.kind === "folder"
-              ? t("modal.deleteFolderText", { name: modal.target.name })
-              : t("modal.deleteText", { name: modal.target.name })}
-            {modal.target.kind === "folder" && (
-              <div style={{ marginTop: 6 }}>{t("modal.deleteFolderWarning")}</div>
-            )}
-          </div>
-        </Modal>
-      )}
-      {modal?.type === "demo" && (
-        <Modal
-          title={t("modal.demoTitle")}
-          onClose={() => void closeDemoModal(false)}
-          footer={
-            <>
-              <button className="btn" onClick={() => void closeDemoModal(false)}>
-                {t("modal.demoSkip")}
-              </button>
-              <button className="btn primary" onClick={() => void closeDemoModal(demoCreate)}>
-                {t("common.confirm")}
-              </button>
-            </>
-          }
-        >
-          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.7 }}>
-            {t("modal.demoDesc")}
-          </div>
-          <label className="demo-check">
-            <input
-              type="checkbox"
-              checked={demoCreate}
-              onChange={(e) => setDemoCreate(e.target.checked)}
-            />
-            {t("modal.demoLabel")}
-          </label>
-        </Modal>
-      )}
-      {modal?.type === "info" && modal.target && (
-        <Modal
-          title={`${t("modal.groupInfo")} - ${modal.target.name}`}
-          onClose={() => setModal(null)}
-          footer={
-            <>
-              <button className="btn" onClick={() => setModal(null)}>{t("common.cancel")}</button>
-              <button className="btn primary" onClick={doSaveInfo}>{t("common.save")}</button>
-            </>
-          }
-        >
-          <label>
-            {t("modal.name")}
-            <input
-              autoFocus
-              value={infoForm.name}
-              onChange={(e) => setInfoForm({ ...infoForm, name: e.target.value })}
-              placeholder={t("modal.namePlaceholder")}
-            />
-          </label>
-          <label>
-            {t("modal.description")}
-            <textarea
-              value={infoForm.description}
-              onChange={(e) => setInfoForm({ ...infoForm, description: e.target.value })}
-              placeholder={t("modal.descPlaceholder")}
-            />
-          </label>
-        </Modal>
-      )}
-      {exporting && (
-        <div className="export-mask">
-          <div className="export-mask-box">
-            <span className="export-spinner" aria-hidden="true" />
-            <span className="export-mask-text">{t("export.busy")}</span>
-          </div>
-        </div>
-      )}
+      <AppModals
+        toast={toast}
+        notify={notify}
+        emptyMenu={emptyMenu}
+        versionModal={versionModal}
+        statsNode={statsNode}
+        showUpdateModal={showUpdateModal}
+        updateInfo={updateInfo}
+        mdView={mdView}
+        exportOpen={exportOpen}
+        exportPreselect={exportPreselect}
+        exporting={exporting}
+        tree={tree}
+        defaultFormat={settings.exportFormat}
+        settings={settings}
+        settingsOpen={settingsOpen}
+        appVersion={version}
+        workspaceName={
+          rootInfo.name ||
+          (workspace ? workspace.split(/[\\/]/).filter(Boolean).pop() || workspace : "")
+        }
+        envModal={envModal}
+        envs={envs}
+        envValue={envValue}
+        activeEnv={activeEnv}
+        modal={modal}
+        modalText={modalText}
+        modalProtocol={modalProtocol}
+        infoForm={infoForm}
+        demoCreate={demoCreate}
+        workspace={workspace}
+        onCloseNotify={() => setNotify(null)}
+        onEmptyMenuAction={(action) => {
+          openModal(action === "newApi" ? "newApi" : "newFolder", "");
+          setEmptyMenu(null);
+        }}
+        onCloseVersionModal={() => setVersionModal(null)}
+        onVersionRestored={handleVersionRestored}
+        onCloseStats={() => setStatsNode(null)}
+        onCloseUpdate={() => setShowUpdateModal(false)}
+        onCloseMarkdown={() => setMdView(null)}
+        onExportMarkdown={handleExportMarkdown}
+        onCloseExport={() => {
+          setExportOpen(false);
+          setExportPreselect(undefined);
+        }}
+        onExport={handleExport}
+        onCloseSettings={() => setSettingsOpen(false)}
+        onSaveWorkspaceName={saveWorkspaceName}
+        onSaveSettings={handleSaveSettings}
+        onCloseEnvModal={() => setEnvModal(false)}
+        onSaveEnv={handleSaveEnv}
+        onCloseEnvValue={() => setEnvValue(false)}
+        onSaveEnvValues={handleSaveEnvValues}
+        onCloseModal={() => setModal(null)}
+        onModalTextChange={setModalText}
+        onModalProtocolChange={setModalProtocol}
+        onInfoFormChange={setInfoForm}
+        onDemoCreateChange={setDemoCreate}
+        onDoNewApi={() => void doNewApi()}
+        onDoNewFolder={() => void doNewFolder()}
+        onDoRename={() => void doRename()}
+        onDoDelete={() => void doDelete()}
+        onDoSaveInfo={() => void doSaveInfo()}
+        onCloseDemoModal={(create) => void closeDemoModal(create)}
+      />
     </div>
   );
 }
