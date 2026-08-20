@@ -23,8 +23,15 @@
 
 import asyncio
 import json
+import os
 import sys
 from urllib.parse import parse_qs, urlparse
+
+# tests/ 目录下存在 http.py，会遮蔽标准库 http 包，导致 websockets 库内部
+# `import http` 时误导入 tests/http.py。先把脚本目录从 sys.path 中移除，
+# 确保能正确导入标准库 http。
+_here = os.path.dirname(os.path.abspath(__file__))
+sys.path = [p for p in sys.path if os.path.abspath(p) != _here]
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
