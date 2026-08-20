@@ -674,18 +674,6 @@ export function Sidebar(props: Props) {
               <div className="node-ctx-sep" />
               <button
                 onClick={() => {
-                  onToggleDeprecated(menu.node);
-                  setMenu(null);
-                }}
-              >
-                {menu.node.deprecated ? "✅ " : "🚫 "}
-                {menu.node.deprecated
-                  ? t("sidebar.unmarkDeprecated")
-                  : t("sidebar.markDeprecated")}
-              </button>
-              <div className="node-ctx-sep" />
-              <button
-                onClick={() => {
                   onExportNode?.(menu.node);
                   setMenu(null);
                 }}
@@ -726,6 +714,18 @@ export function Sidebar(props: Props) {
               >
                 ✎ {t("sidebar.editInfo")}
               </button>
+              <div className="node-ctx-sep" />
+              <button
+                onClick={() => {
+                  onToggleDeprecated(menu.node);
+                  setMenu(null);
+                }}
+              >
+                {menu.node.deprecated ? "✅ " : "🚫 "}
+                {menu.node.deprecated
+                  ? t("sidebar.unmarkDeprecated")
+                  : t("sidebar.markDeprecated")}
+              </button>
               <button
                 className="danger"
                 onClick={() => {
@@ -745,17 +745,6 @@ export function Sidebar(props: Props) {
                 }}
               >
                 ✎ {t("sidebar.rename")}
-              </button>
-              <button
-                onClick={() => {
-                  onToggleDeprecated(menu.node);
-                  setMenu(null);
-                }}
-              >
-                {menu.node.deprecated ? "✅ " : "🚫 "}
-                {menu.node.deprecated
-                  ? t("sidebar.unmarkDeprecated")
-                  : t("sidebar.markDeprecated")}
               </button>
               {enableVersion && (
                 <button
@@ -794,6 +783,17 @@ export function Sidebar(props: Props) {
                 📋 {t("sidebar.copy")}
               </button>
               <div className="node-ctx-sep" />
+              <button
+                onClick={() => {
+                  onToggleDeprecated(menu.node);
+                  setMenu(null);
+                }}
+              >
+                {menu.node.deprecated ? "✅ " : "🚫 "}
+                {menu.node.deprecated
+                  ? t("sidebar.unmarkDeprecated")
+                  : t("sidebar.markDeprecated")}
+              </button>
               <button
                 className="danger"
                 onClick={() => {
