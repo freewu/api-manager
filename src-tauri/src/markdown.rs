@@ -631,12 +631,136 @@ fn bold(s: &str) -> String {
     out
 }
 
-/// 生成独立的 HTML 文档：由 Markdown 渲染而来，含内置样式（单文件可直接双击打开）
-pub fn wrap_html(title: &str, md: &str) -> String {
+/// 生成独立的 HTML 文档：由 Markdown 渲染而来，含内置样式（单文件可直接双击打开）。
+/// nav：HTML 文档悬浮导航栏位置（off 关闭 / left 左侧 / right 右侧，默认右侧），
+/// 导航根据文档中的分组（# 标题）与接口（## 接口名）自动生成。
+pub fn wrap_html(title: &str, md: &str, nav: &str) -> String {
     let html = md_to_html(md);
     let title = escape_html(title);
+    let nav = match nav {
+        "off" => "off",
+        "left" => "left",
+        _ => "right",
+    };
     format!(
-        "<!doctype html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>{title}</title>\n<style>\nbody{{font-family:-apple-system,'Segoe UI','Microsoft YaHei',sans-serif;max-width:860px;margin:32px auto;padding:0 20px;color:#24292f;line-height:1.6}}\nh1,h2,h3{{border-bottom:1px solid #e5e7eb;padding-bottom:6px}}\ntable{{border-collapse:collapse;width:100%;margin:8px 0}}\nth,td{{border:1px solid #d0d7de;padding:6px 10px;font-size:13px;text-align:left}}\nth{{background:#f6f8fa}}\npre{{background:#f6f8fa;border:1px solid #d0d7de;border-radius:6px;padding:10px;overflow:auto}}\ncode{{font-family:Consolas,Menlo,monospace;font-size:12.5px}}\nblockquote{{border-left:4px solid #d0d7de;margin:8px 0;padding:2px 12px;color:#57606a}}\nul{{padding-left:22px}}\n</style>\n</head>\n<body>\n<article>{html}</article>\n</body>\n</html>\n"
+        r##"<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title>
+<style>
+body{{font-family:-apple-system,'Segoe UI','Microsoft YaHei',sans-serif;max-width:860px;margin:32px auto;padding:0 20px;color:#24292f;line-height:1.6}}
+h1,h2,h3{{border-bottom:1px solid #e5e7eb;padding-bottom:6px}}
+table{{border-collapse:collapse;width:100%;margin:8px 0}}
+th,td{{border:1px solid #d0d7de;padding:6px 10px;font-size:13px;text-align:left}}
+th{{background:#f6f8fa}}
+pre{{background:#f6f8fa;border:1px solid #d0d7de;border-radius:6px;padding:10px;overflow:auto}}
+code{{font-family:Consolas,Menlo,monospace;font-size:12.5px}}
+blockquote{{border-left:4px solid #d0d7de;margin:8px 0;padding:2px 12px;color:#57606a}}
+ul{{padding-left:22px}}
+/* ===== 悬浮导航栏 ===== */
+#doc-nav{{position:fixed;top:0;bottom:0;width:210px;overflow-y:auto;box-sizing:border-box;padding:16px 10px;font-size:13px;background:#fbfbfc;z-index:10}}
+body.nav-right #doc-nav{{right:0;border-left:1px solid #e5e7eb}}
+body.nav-left #doc-nav{{left:0;border-right:1px solid #e5e7eb}}
+body.nav-off #doc-nav{{display:none}}
+#doc-nav .nav-title{{font-weight:600;font-size:12px;color:#57606a;text-transform:uppercase;letter-spacing:.05em;padding:0 8px 8px;border-bottom:1px solid #e5e7eb;margin-bottom:8px}}
+.nav-groups{{list-style:none;margin:0;padding:0}}
+.nav-group-link{{display:block;padding:5px 8px;color:#24292f;font-weight:600;text-decoration:none;border-radius:4px}}
+.nav-group-link:hover{{background:#f0f2f5}}
+.nav-group-link.active{{color:#0969da}}
+.nav-apis{{list-style:none;margin:0 0 6px;padding:0 0 0 12px;border-left:1px solid #e5e7eb}}
+.nav-api-link{{display:block;padding:3px 8px;color:#57606a;text-decoration:none;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+.nav-api-link:hover{{color:#0969da;background:#f0f2f5}}
+.nav-api-link.active{{color:#0969da;background:#ddf4ff;font-weight:600}}
+/* 窄屏：导航改为抽屉，右上/左上角悬浮按钮切换 */
+#doc-nav-toggle{{position:fixed;top:12px;right:12px;z-index:11;display:none;border:1px solid #d0d7de;background:#fff;color:#24292f;border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer}}
+body.nav-left #doc-nav-toggle{{right:auto;left:12px}}
+@media (max-width:1279px){{
+  #doc-nav-toggle{{display:block}}
+  #doc-nav{{top:46px;bottom:0;background:#fff;box-shadow:-2px 0 12px rgba(0,0,0,.1);transform:translateX(100%);transition:transform .2s ease}}
+  body.nav-left #doc-nav{{transform:translateX(-100%);box-shadow:2px 0 12px rgba(0,0,0,.1)}}
+  #doc-nav.open{{transform:translateX(0)}}
+}}
+</style>
+</head>
+<body class="nav-{nav}">
+<button id="doc-nav-toggle" type="button" aria-label="目录">☰ 目录</button>
+<aside id="doc-nav"><div class="nav-title">目录</div></aside>
+<article>{html}</article>
+<script>
+(function () {{
+  // 收集分组（h1）与接口（h2）标题，跳过接口内部小节（header / 请求参数 / 响应参数）
+  var SKIP = {{ 'header': 1, '请求参数': 1, '响应参数': 1 }};
+  var nav = document.getElementById('doc-nav');
+  if (!nav) return;
+  var groups = [];
+  var current = null;
+  var n = 0;
+  var heads = document.querySelectorAll('article h1, article h2');
+  for (var i = 0; i < heads.length; i++) {{
+    var h = heads[i];
+    var txt = (h.textContent || '').trim();
+    if (!h.id) h.id = 'sec-' + (++n);
+    if (h.tagName === 'H1') {{
+      current = {{ title: txt, el: h, apis: [] }};
+      groups.push(current);
+    }} else {{
+      if (SKIP[txt]) continue;
+      if (!current) {{ current = {{ title: '', el: null, apis: [] }}; groups.push(current); }}
+      current.apis.push({{ title: txt, el: h }});
+    }}
+  }}
+  if (!groups.length) return;
+  var ul = document.createElement('ul');
+  ul.className = 'nav-groups';
+  groups.forEach(function (g) {{
+    var li = document.createElement('li');
+    if (g.el) {{
+      var a = document.createElement('a');
+      a.href = '#' + g.el.id;
+      a.className = 'nav-group-link';
+      a.textContent = g.title;
+      li.appendChild(a);
+    }}
+    if (g.apis.length) {{
+      var sub = document.createElement('ul');
+      sub.className = 'nav-apis';
+      g.apis.forEach(function (api) {{
+        var li2 = document.createElement('li');
+        var a2 = document.createElement('a');
+        a2.href = '#' + api.el.id;
+        a2.className = 'nav-api-link';
+        a2.textContent = api.title;
+        li2.appendChild(a2);
+        sub.appendChild(li2);
+      }});
+      li.appendChild(sub);
+    }}
+    ul.appendChild(li);
+  }});
+  nav.appendChild(ul);
+  // 滚动监听：高亮当前所在章节
+  var links = Array.prototype.slice.call(nav.querySelectorAll('a'));
+  function onScroll() {{
+    var cur = null;
+    for (var i = 0; i < links.length; i++) {{
+      var t = document.getElementById(links[i].getAttribute('href').slice(1));
+      if (t && t.getBoundingClientRect().top <= 110) cur = links[i];
+    }}
+    for (var j = 0; j < links.length; j++) links[j].classList.remove('active');
+    if (cur) cur.classList.add('active');
+  }}
+  window.addEventListener('scroll', onScroll, {{ passive: true }});
+  onScroll();
+  // 窄屏抽屉：悬浮按钮切换显隐
+  var toggle = document.getElementById('doc-nav-toggle');
+  if (toggle) toggle.addEventListener('click', function () {{ nav.classList.toggle('open'); }});
+}})();
+</script>
+</body>
+</html>
+"##
     )
 }
 
@@ -1294,6 +1418,28 @@ mod tests {
         assert_eq!(a.responses[1].name, "参数校验失败");
         assert_eq!(a.responses[1].status, 422);
         assert!(a.responses[1].body.contains("name 不能为空"));
+    }
+
+    /// HTML 导出：按 nav 参数生成悬浮导航栏（off / left / right），导航脚本引用分组与接口标题
+    #[test]
+    fn wrap_html_nav() {
+        let md = "# 用户管理\n\n## 创建用户\n\n> GET /api/users\n\n## 请求参数\n\n## 响应参数\n\n# 订单管理\n\n## 查询订单\n\n> GET /api/orders\n";
+        let right = wrap_html("接口文档", md, "right");
+        assert!(right.contains("<body class=\"nav-right\">"), "right 位置");
+        assert!(right.contains("id=\"doc-nav\""), "包含导航容器");
+        assert!(right.contains("id=\"doc-nav-toggle\""), "包含窄屏切换按钮");
+        assert!(right.contains("article h1, article h2"), "导航脚本扫描标题");
+        assert!(right.contains("'header'"), "跳过 header 小节");
+
+        let left = wrap_html("接口文档", md, "left");
+        assert!(left.contains("<body class=\"nav-left\">"));
+        let off = wrap_html("接口文档", md, "off");
+        assert!(off.contains("<body class=\"nav-off\">"));
+        let unknown = wrap_html("接口文档", md, "xyz");
+        assert!(unknown.contains("<body class=\"nav-right\">"), "非法值回退右侧");
+        // 标题转义不被破坏
+        let t = wrap_html("A & B <C>", md, "off");
+        assert!(t.contains("<title>A &amp; B &lt;C&gt;</title>"));
     }
 
     #[test]

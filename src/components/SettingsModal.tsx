@@ -356,6 +356,45 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                 </select>
                 <span className="settings-desc-inline">{t("settings.exportFormatHint")}</span>
               </div>
+              <div className="settings-row">
+                <span className="settings-label">{t("settings.htmlNav")}</span>
+                <div className="settings-options">
+                  <label
+                    className={`settings-option ${settings.htmlNav === "off" ? "active" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name="htmlNav"
+                      checked={settings.htmlNav === "off"}
+                      onChange={() => patch({ htmlNav: "off" })}
+                    />
+                    {t("settings.htmlNavOff")}
+                  </label>
+                  <label
+                    className={`settings-option ${settings.htmlNav === "left" ? "active" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name="htmlNav"
+                      checked={settings.htmlNav === "left"}
+                      onChange={() => patch({ htmlNav: "left" })}
+                    />
+                    {t("settings.htmlNavLeft")}
+                  </label>
+                  <label
+                    className={`settings-option ${settings.htmlNav === "right" ? "active" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name="htmlNav"
+                      checked={settings.htmlNav === "right"}
+                      onChange={() => patch({ htmlNav: "right" })}
+                    />
+                    {t("settings.htmlNavRight")}
+                  </label>
+                </div>
+              </div>
+              <div className="settings-desc">{t("settings.htmlNavHint")}</div>
             </div>
           </section>
 

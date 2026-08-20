@@ -121,22 +121,23 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
     <div className="codegen-root">
       <div className="section-title codegen-head">
         <span>{t("codegen.title")}</span>
-        <select
-          className="codegen-lang"
-          value={lang}
-          onChange={(e) => {
-            const next = e.target.value as CodeLang;
-            setLang(next);
-            setLib(isWs ? undefined : defaultLib(next));
-          }}
-          title={t("codegen.switchLang")}
-        >
+        <div className="codegen-langs" role="tablist" aria-label={t("codegen.switchLang")}>
           {CODE_LANGS.map((l) => (
-            <option key={l.value} value={l.value}>
+            <button
+              key={l.value}
+              role="tab"
+              aria-selected={lang === l.value}
+              className={`codegen-lang ${lang === l.value ? "active" : ""}`}
+              onClick={() => {
+                setLang(l.value);
+                setLib(isWs ? undefined : defaultLib(l.value));
+              }}
+              title={t("codegen.switchLang")}
+            >
               {l.label}
-            </option>
+            </button>
           ))}
-        </select>
+        </div>
         <button className="btn small" onClick={copy}>
           {copied ? t("resp.copied") : "📋 " + t("common.copy")}
         </button>

@@ -668,6 +668,8 @@ pub struct AppSettings {
     pub default_headers: Vec<KeyValue>,
     /// 导出默认格式（postman / openapi / docsify）
     pub export_format: String,
+    /// HTML 文档悬浮导航栏位置（off / left / right）
+    pub html_nav: String,
     /// 界面语言（zh / zh-tw / en，设置页与托盘菜单同步切换）
     pub language: String,
     /// 最近打开的工作目录数量上限（最少 3）
@@ -687,6 +689,7 @@ impl Default for AppSettings {
             enable_default_headers: false,
             default_headers: vec![],
             export_format: "postman".into(),
+            html_nav: "right".into(),
             language: "zh".into(),
             recent_limit: 5,
         }
@@ -1666,6 +1669,7 @@ fn export_api_markdown(
     state: State<'_, WorkspaceState>,
     path: String,
     format: String,
+    nav: String,
 ) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
     let root = workspace_root(&state)?;
@@ -1695,7 +1699,7 @@ fn export_api_markdown(
     };
     let target = unique_path(&dir, &base, &format!(".{fmt}"));
     let content = if fmt == "html" {
-        markdown::wrap_html(&name, &md)
+        markdown::wrap_html(&name, &md, &nav)
     } else {
         md
     };
@@ -1717,6 +1721,7 @@ fn export_selection(
     state: State<'_, WorkspaceState>,
     paths: Vec<String>,
     format: String,
+    nav: String,
 ) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
     let root = workspace_root(&state)?;
@@ -1813,7 +1818,7 @@ fn export_selection(
             };
             let path = p.into_path().map_err(|e| e.to_string())?;
             let content = if is_html {
-                markdown::wrap_html(&title, &md)
+                markdown::wrap_html(&title, &md, &nav)
             } else {
                 md
             };

@@ -551,7 +551,7 @@ export default function App() {
     if (!mdView) return;
     setExporting(true);
     try {
-      const saved = await exportApiMarkdown(mdView.node.path, format);
+      const saved = await exportApiMarkdown(mdView.node.path, format, settings.htmlNav);
       if (saved) showToast(t("toast.savedTo", { path: saved }));
     } catch (e) {
       showToast(t("toast.saveFailed", { err: String(e) }));
@@ -577,7 +577,7 @@ export default function App() {
   const handleExport = async (paths: string[], format: ExportFormat) => {
     setExporting(true);
     try {
-      const saved = await exportSelection(paths, format);
+      const saved = await exportSelection(paths, format, settings.htmlNav);
       if (!saved) return; // 用户取消
       const kind = format === "docsify" ? t("export.kindDir") : t("export.kindFile");
       showToast(t("toast.exported", { kind, path: saved }));
@@ -831,6 +831,7 @@ export default function App() {
         handleWsSend(url, headers, api.body);
         setLastRequest({ method: "WS", url, headers, body: api.body.raw, timeoutMs: 30000 });
         setLastApiSnapshot(api);
+        setSending(false); // WS 发送为异步短操作，立即复位按钮状态
         return;
       }
 

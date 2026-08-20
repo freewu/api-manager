@@ -99,8 +99,12 @@ export function renderGroupMarkdown(path: string): Promise<MarkdownDoc> {
 }
 
 /** 导出接口为 .md / .html 文件（弹窗选目录），返回保存路径或 null（用户取消） */
-export function exportApiMarkdown(path: string, format: "md" | "html"): Promise<string | null> {
-  return invoke<string | null>("export_api_markdown", { path, format });
+export function exportApiMarkdown(
+  path: string,
+  format: "md" | "html",
+  nav: "off" | "left" | "right" = "right"
+): Promise<string | null> {
+  return invoke<string | null>("export_api_markdown", { path, format, nav });
 }
 
 export interface MarkdownImportResult {
@@ -114,8 +118,12 @@ export function importMarkdown(): Promise<MarkdownImportResult | null> {
 }
 
 /** 导出选中接口/分组为 Postman / OpenAPI / Docsify 格式，返回保存路径或 null（用户取消） */
-export function exportSelection(paths: string[], format: ExportFormat): Promise<string | null> {
-  return invoke<string | null>("export_selection", { paths, format });
+export function exportSelection(
+  paths: string[],
+  format: ExportFormat,
+  nav: "off" | "left" | "right" = "right"
+): Promise<string | null> {
+  return invoke<string | null>("export_selection", { paths, format, nav });
 }
 
 export function readTree(): Promise<TreeNode> {

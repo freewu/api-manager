@@ -249,11 +249,9 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             spellCheck={false}
           />
         </div>
-        {!isWs && (
-          <button className="send-btn" onClick={onSend} disabled={sending}>
-            {sending ? t("tab.sending") : t("tab.send")}
-          </button>
-        )}
+        <button className="send-btn" onClick={onSend} disabled={sending}>
+          {sending ? t("tab.sending") : t("tab.send")}
+        </button>
         {enableVersion && (
           <button
             className="save-btn"

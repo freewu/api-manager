@@ -3172,13 +3172,30 @@ body {
 }
 .codegen-lang {
   background: var(--bg-input);
-  color: var(--text);
+  color: var(--text-faint);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 4px 8px;
+  padding: 4px 10px;
   font-size: 12.5px;
   outline: none;
   cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.codegen-lang:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.codegen-lang.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.codegen-langs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
 }
 .codegen-lang:focus {
   border-color: var(--accent);

@@ -218,6 +218,8 @@ export interface AppSettings {
   defaultHeaders: KeyValue[];
   /** 导出默认格式 */
   exportFormat: ExportFormat;
+  /** HTML 文档悬浮导航栏位置（off 关闭 / left 左侧 / right 右侧） */
+  htmlNav: "off" | "left" | "right";
   /** 界面语言（zh / en） */
   language: "zh" | "zh-tw" | "en";
   /** 最近打开的工作目录数量上限（最少 3） */
@@ -235,6 +237,7 @@ export const defaultSettings = (): AppSettings => ({
   enableDefaultHeaders: false,
   defaultHeaders: [],
   exportFormat: "postman",
+  htmlNav: "right",
   language: "zh",
   recentLimit: 5,
 });
