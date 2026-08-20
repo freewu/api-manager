@@ -1,10 +1,12 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { ApiFile, BODY_MODES, BodyData, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
-import { CodeTab } from "./CodeTab";
 import { ExamplesTab } from "./ExamplesTab";
 import { useT } from "../i18n";
 import { pickFile } from "../commands";
+
+// 代码生成页签：highlight.js 体积较大，按需懒加载（首次打开「代码」页签时才下载）
+const CodeTab = lazy(() => import("./CodeTab").then((m) => ({ default: m.CodeTab })));
 
 /** 简易 XML 格式化：按标签层级缩进（支持注释 / CDATA / 声明 / 自闭合标签） */
 function prettyXml(src: string): string {
@@ -715,7 +717,11 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
 
         {tab === "doc" && <DocParamsEditor api={api} set={set} />}
 
-        {tab === "code" && enableCodegen && <CodeTab api={api} baseUrl={baseUrl} defaultLang={codegenLang} />}
+        {tab === "code" && enableCodegen && (
+          <Suspense fallback={<div className="tab-loading">{t("examples.loading")}</div>}>
+            <CodeTab api={api} baseUrl={baseUrl} defaultLang={codegenLang} />
+          </Suspense>
+        )}
         {tab === "examples" && <ExamplesTab uuid={api.uuid} api={api} onChange={onChange} />}
       </div>
     </div>

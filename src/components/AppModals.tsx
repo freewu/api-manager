@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { useT } from "../i18n";
 import {
   openExternal,
@@ -15,13 +16,15 @@ import {
   VersionInfo,
 } from "../types";
 import { Modal } from "./Modal";
-import { MarkdownModal } from "./MarkdownModal";
-import { ExportModal } from "./ExportModal";
-import { SettingsModal } from "./SettingsModal";
-import { StatsModal } from "./StatsModal";
-import { VersionModal } from "./VersionModal";
-import { EnvModal } from "./EnvModal";
-import { EnvValueModal } from "./EnvValueModal";
+
+// 弹窗组件按需懒加载：仅在对应弹窗打开时才下载对应 chunk
+const MarkdownModal = lazy(() => import("./MarkdownModal").then((m) => ({ default: m.MarkdownModal })));
+const ExportModal = lazy(() => import("./ExportModal").then((m) => ({ default: m.ExportModal })));
+const SettingsModal = lazy(() => import("./SettingsModal").then((m) => ({ default: m.SettingsModal })));
+const StatsModal = lazy(() => import("./StatsModal").then((m) => ({ default: m.StatsModal })));
+const VersionModal = lazy(() => import("./VersionModal").then((m) => ({ default: m.VersionModal })));
+const EnvModal = lazy(() => import("./EnvModal").then((m) => ({ default: m.EnvModal })));
+const EnvValueModal = lazy(() => import("./EnvValueModal").then((m) => ({ default: m.EnvValueModal })));
 
 /** 通用弹窗状态（新建接口/新建分组/重命名/删除/分组信息/演示案例询问） */
 export interface ModalState {
@@ -159,7 +162,7 @@ export function AppModals({
 }: AppModalsProps) {
   const t = useT();
   return (
-    <>
+    <Suspense fallback={null}>
       {toast && <div className="toast">{toast}</div>}
 
       {notify && (
@@ -446,6 +449,6 @@ export function AppModals({
           </div>
         </div>
       )}
-    </>
+    </Suspense>
   );
 }

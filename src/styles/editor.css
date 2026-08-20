@@ -477,3 +477,11 @@
   text-transform: none;
   letter-spacing: 0;
 }
+
+/* 代码生成页签懒加载占位 */
+.tab-loading {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13px;
+}
