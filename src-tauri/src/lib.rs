@@ -869,8 +869,11 @@ fn record_recent(app: &AppHandle, path: &str) {
 
 #[tauri::command]
 fn get_recent_workspaces(app: AppHandle) -> Vec<String> {
-    // 返回全部记录，由前端按设置限制展示数量（历史记录不删除）
+    // 过滤掉已不存在的目录；返回全部存在的记录，由前端按设置限制展示数量（历史记录不删除）
     read_recent(&app)
+        .into_iter()
+        .filter(|p| PathBuf::from(p).is_dir())
+        .collect()
 }
 
 /// 按路径直接打开工作目录（开始页「最近打开」点击时调用）
