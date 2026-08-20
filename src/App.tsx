@@ -51,7 +51,7 @@ import {
   getCurrentVersion,
   openExternal,
 } from "./commands";
-import { Editor } from "./components/Editor";
+import { ApiWorkspace } from "./components/ApiWorkspace";
 import { EnvModal } from "./components/EnvModal";
 import { EnvValueModal } from "./components/EnvValueModal";
 import { HistoryDetail } from "./components/HistoryDetail";
@@ -60,7 +60,6 @@ import { useHistory } from "./hooks/useHistory";
 import { Modal } from "./components/Modal";
 import { MarkdownModal } from "./components/MarkdownModal";
 import { ExportModal } from "./components/ExportModal";
-import { Response } from "./components/Response";
 import { SettingsModal } from "./components/SettingsModal";
 import { Sidebar } from "./components/Sidebar";
 import { StatsModal } from "./components/StatsModal";
@@ -92,6 +91,7 @@ import {
   TreeNode,
   UpdateInfo,
   VersionInfo,
+  WsLogEntry,
   defaultSettings,
   emptyEnv,
 } from "./types";
@@ -681,63 +681,100 @@ export default function App() {
     document.body.style.userSelect = "none";
   };
 
-  /** 发送 WebSocket 消息：原生 WebSocket 客户端。返回与 HTTP 同形的结果（status 固定为 0） */
-  const handleWsSend = (
-    url: string,
-    headers: KeyValue[],
-    body: BodyData
-  ): Promise<HttpResult> =>
-    new Promise<HttpResult>((resolve) => {
-      let ws: WebSocket;
-      try {
-        ws = new WebSocket(url, headers.filter((h) => h.enabled && h.key.trim()).map((h) => h.value.trim()).filter(Boolean));
-      } catch (e) {
-        resolve({ ok: false, status: 0, statusText: "", headers: [], body: "", timeMs: 0, size: 0, url, error: `${t("app.wsConnectError")}：${e}` });
-        return;
+  // ===== WebSocket 持久连接与交互记录 =====
+  const wsRef = useRef<WebSocket | null>(null);
+  const wsQueueRef = useRef<string[]>([]);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [wsConnecting, setWsConnecting] = useState(false);
+  const [wsEntries, setWsEntries] = useState<WsLogEntry[]>([]);
+
+  const appendWsEntry = (dir: WsLogEntry["dir"], text: string) =>
+    setWsEntries((prev) => [...prev, { dir, text, time: Date.now() }]);
+
+  const doWsSend = (ws: WebSocket, text: string) => {
+    try {
+      ws.send(text);
+      appendWsEntry("sent", text);
+    } catch (e) {
+      appendWsEntry("error", `${t("app.wsSendFailed")}：${e}`);
+    }
+  };
+
+  /** 关闭当前 WebSocket 连接并清空交互记录 */
+  const closeWsConnection = () => {
+    const ws = wsRef.current;
+    if (ws) {
+      try { ws.close(); } catch {}
+    }
+    wsRef.current = null;
+    wsQueueRef.current = [];
+    setWsConnected(false);
+    setWsConnecting(false);
+    setWsEntries([]);
+  };
+
+  /** 建立 WebSocket 连接（首次点「发送」时触发），此后保持长连接 */
+  const openWsConnection = (url: string, headers: KeyValue[]) => {
+    setWsConnecting(true);
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(url, headers.filter((h) => h.enabled && h.key.trim()).map((h) => h.value.trim()).filter(Boolean));
+    } catch (e) {
+      setWsConnecting(false);
+      appendWsEntry("error", `${t("app.wsConnectError")}：${e}`);
+      return;
+    }
+    wsRef.current = ws;
+    ws.onopen = () => {
+      setWsConnecting(false);
+      setWsConnected(true);
+      appendWsEntry("info", t("resp.wsConnected"));
+      // 连接前的待发消息一次性补发
+      const q = wsQueueRef.current;
+      wsQueueRef.current = [];
+      for (const m of q) doWsSend(ws, m);
+    };
+    ws.onmessage = (ev) => {
+      const d = ev.data;
+      if (d instanceof Blob) {
+        d.text().then((s) => appendWsEntry("recv", s));
+      } else {
+        appendWsEntry("recv", typeof d === "string" ? d : String(d));
       }
-      const t0 = performance.now();
-      let sent = false;
-      let done = false;
-      const finish = (res: HttpResult) => {
-        if (done) return;
-        done = true;
-        window.clearTimeout(timeout);
-        try { ws.close(); } catch {}
-        resolve(res);
-      };
-      const timeout = window.setTimeout(() => {
-        finish({ ok: false, status: 0, statusText: "", headers: [], body: "", timeMs: performance.now() - t0, size: 0, url, error: t("app.wsTimeout") });
-      }, 30000);
-      ws.onopen = () => {
-        sent = true;
-        try {
-          // 浏览器无法直接读取本地文件路径，二进制模式降级为发送原始文本
-          ws.send(body.mode === "binary" ? (body.raw || "") : (body.raw || ""));
-        } catch (e) {
-          finish({ ok: false, status: 0, statusText: "", headers: [], body: "", timeMs: performance.now() - t0, size: 0, url, error: t("app.wsSendFailed") + `：${e}` });
-        }
-      };
-      ws.onmessage = (ev) => {
-        if (!sent || done) return;
-        const d = ev.data;
-        if (d instanceof Blob) {
-          d.text().then((s) =>
-            finish({ ok: true, status: 0, statusText: "", headers: [], body: s, timeMs: performance.now() - t0, size: new Blob([s]).size, url, error: undefined })
-          );
-          return;
-        }
-        const text = typeof d === "string" ? d : String(d);
-        finish({ ok: true, status: 0, statusText: "", headers: [], body: text, timeMs: performance.now() - t0, size: new Blob([text]).size, url, error: undefined });
-      };
-      ws.onerror = () => {
-        finish({ ok: false, status: 0, statusText: "", headers: [], body: "", timeMs: performance.now() - t0, size: 0, url, error: t("app.wsConnectError") });
-      };
-      ws.onclose = () => {
-        if (!done) {
-          finish({ ok: true, status: 0, statusText: "", headers: [], body: "", timeMs: performance.now() - t0, size: 0, url, error: t("app.wsClosed") });
-        }
-      };
-    });
+    };
+    ws.onerror = () => {
+      setWsConnected(false);
+      setWsConnecting(false);
+      appendWsEntry("error", t("app.wsConnectError"));
+    };
+    ws.onclose = () => {
+      setWsConnected(false);
+      setWsConnecting(false);
+      if (wsRef.current === ws) wsRef.current = null;
+    };
+  };
+
+  /** 发送 WebSocket 消息：复用已建立的连接；无连接时先建连再发送 */
+  const handleWsSend = (url: string, headers: KeyValue[], body: BodyData) => {
+    const text = body.raw || "";
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      doWsSend(ws, text);
+    } else if (ws && ws.readyState === WebSocket.CONNECTING) {
+      wsQueueRef.current.push(text); // 连接中：排队待发
+    } else {
+      wsQueueRef.current = [text];
+      openWsConnection(url, headers); // 无连接：建立连接后再发
+    }
+  };
+
+  // 切换接口 / 组件卸载时关闭 WS 连接
+  useEffect(() => {
+    closeWsConnection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api?.uuid]);
+  useEffect(() => () => closeWsConnection(), []);
+
 
   const handleSend = async () => {
     if (!api) return;
@@ -789,10 +826,9 @@ export default function App() {
         .join("&");
       if (qs) url += (url.includes("?") ? "&" : "?") + qs;
 
-      // WebSocket：使用原生客户端发送，不走 HTTP 流程（响应无状态码）
+      // WebSocket：持久连接发送，交互记录展示在响应区（不设置 HTTP 式 result）
       if (api.protocol === "websocket") {
-        const res = await handleWsSend(url, headers, api.body);
-        setResponse(res);
+        handleWsSend(url, headers, api.body);
         setLastRequest({ method: "WS", url, headers, body: api.body.raw, timeoutMs: 30000 });
         setLastApiSnapshot(api);
         return;
@@ -1467,38 +1503,38 @@ export default function App() {
             </div>
           ) : api ? (
             <>
-              <Editor
-                style={{ height: hideResponse ? "100%" : `${editorRatio * 100}%` }}
+              <ApiWorkspace
                 api={api}
                 baseUrl={baseUrl}
                 currentVersion={currentVersion}
+                enableVersion={settings.enableVersion}
+                enableCodegen={settings.enableCodegen}
+                enableMock={settings.enableMock}
+                codegenLang={settings.codegenLang}
+                sending={sending}
+                hideResponse={hideResponse}
+                editorRatio={editorRatio}
+                response={response}
                 onChange={(a) => {
                   setApi(a);
                   setDirty(true);
                 }}
                 onSend={handleSend}
+                onSaveExample={handleSaveExample}
                 onSaveVersion={handleSaveVersion}
-                enableVersion={settings.enableVersion}
-                sending={sending}
                 onCommit={handleAutoSave}
-                enableCodegen={settings.enableCodegen}
-                enableMock={settings.enableMock}
-                codegenLang={settings.codegenLang}
                 onTabChange={(t) => setHideResponse(["response", "mock", "desc", "doc", "code", "examples"].includes(t))}
+                onStartVResize={startVResize}
+                onResetRatio={() => {
+                  setEditorRatio(0.45);
+                  editorRatioRef.current = 0.45;
+                  localStorage.setItem("editor-ratio", "0.45");
+                }}
+                wsConnected={wsConnected}
+                wsConnecting={wsConnecting}
+                wsEntries={wsEntries}
+                onWsDisconnect={closeWsConnection}
               />
-              {!hideResponse && (
-                <div
-                  className="v-resizer"
-                  onMouseDown={startVResize}
-                  onDoubleClick={() => {
-                    setEditorRatio(0.45);
-                    editorRatioRef.current = 0.45;
-                    localStorage.setItem("editor-ratio", "0.45");
-                  }}
-                  title={t("app.resizePaneTip")}
-                />
-              )}
-              {!hideResponse && <Response result={response} sending={sending} onSaveExample={handleSaveExample} hideStatus={api.protocol === "websocket"} />}
             </>
           ) : (
             <div

@@ -263,6 +263,14 @@ export interface HttpResult {
   error?: string;
 }
 
+/** WebSocket 交互记录（连接事件 / 发送 / 接收 / 错误） */
+export interface WsLogEntry {
+  /** sent=已发送 / recv=已接收 / info=连接事件 / error=错误 */
+  dir: "sent" | "recv" | "info" | "error";
+  text: string;
+  time: number;
+}
+
 /** 更新检查结果（来自 GitHub Releases） */
 export interface UpdateInfo {
   latest: string;
