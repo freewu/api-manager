@@ -209,7 +209,7 @@ export function ExamplesTab({ uuid, api, onChange }: Props) {
                       <span className="examples-detail-meta">
                         {detail.error
                           ? t("examples.failed")
-                          : `${detail.status} ${detail.statusText} · ${detail.timeMs} ms · ${(
+                          : `${detail.status || detail.method} ${detail.statusText} · ${detail.timeMs} ms · ${(
                               detail.size / 1024
                             ).toFixed(2)} KB`}
                       </span>

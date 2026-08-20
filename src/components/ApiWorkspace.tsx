@@ -101,6 +101,7 @@ export function ApiWorkspace({
             connecting={wsConnecting}
             entries={wsEntries}
             onDisconnect={onWsDisconnect}
+            onSaveExample={onSaveExample}
           />
         ) : (
           <Response result={response} sending={sending} onSaveExample={onSaveExample} />

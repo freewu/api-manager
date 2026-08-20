@@ -649,6 +649,16 @@ export default function App() {
   // ===== WebSocket 持久连接与交互记录 =====
   const wsRef = useRef<WebSocket | null>(null);
   const wsQueueRef = useRef<string[]>([]);
+  /** 当前 WS 连接地址（写请求历史用） */
+  const wsUrlRef = useRef("");
+  /** 最近一次发送的消息文本（保存示例用） */
+  const wsLastSentRef = useRef<string>("");
+  /** 最近一次收到的消息文本（保存示例用） */
+  const wsLastRecvRef = useRef<string>("");
+  /** 最近一次发送→回显的耗时（保存示例用） */
+  const wsLastRtRef = useRef(0);
+  /** 待回显的请求（收到回显/连接错误时写入请求历史，一次发送对应一条记录） */
+  const wsPendingRef = useRef<{ text: string; time: number } | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [wsConnecting, setWsConnecting] = useState(false);
   const [wsEntries, setWsEntries] = useState<WsLogEntry[]>([]);
@@ -660,9 +670,33 @@ export default function App() {
     try {
       ws.send(text);
       appendWsEntry("sent", text);
+      wsLastSentRef.current = text;
+      wsPendingRef.current = { text, time: Date.now() };
     } catch (e) {
       appendWsEntry("error", `${t("app.wsSendFailed")}：${e}`);
     }
+  };
+
+  /** 收到回显或连接中断时，将待记录的请求写入 .history 日志（仅记录「发送过消息」的交互） */
+  const flushWsPending = (recv: string, error?: string) => {
+    const pend = wsPendingRef.current;
+    if (!pend) return;
+    wsPendingRef.current = null;
+    wsLastRtRef.current = Date.now() - pend.time;
+    saveHistory({
+      method: "WS",
+      url: wsUrlRef.current,
+      reqHeaders: [], // 浏览器 WebSocket API 无法自定义请求头
+      reqBody: pend.text,
+      ok: !error,
+      status: 0,
+      statusText: "",
+      respHeaders: [],
+      respBody: recv,
+      timeMs: wsLastRtRef.current,
+      size: recv.length,
+      error,
+    }).catch((e) => console.error("保存 WebSocket 请求历史失败", e));
   };
 
   /** 关闭当前 WebSocket 连接并清空交互记录 */
@@ -692,6 +726,9 @@ export default function App() {
       return;
     }
     wsRef.current = ws;
+    // 连接建立后服务器可能先推送一条欢迎/问候消息（demo 服务器会发送 type:welcome），
+    // 不把它当作「发送消息」的回显写入请求历史
+    let firstRecv = true;
     ws.onopen = () => {
       setWsConnecting(false);
       setWsConnected(true);
@@ -703,26 +740,38 @@ export default function App() {
     };
     ws.onmessage = (ev) => {
       const d = ev.data;
+      const finish = (s: string) => {
+        appendWsEntry("recv", s);
+        wsLastRecvRef.current = s;
+        if (firstRecv) {
+          firstRecv = false; // 首条消息为服务器主动推送，仅展示不配对
+        } else {
+          flushWsPending(s);
+        }
+      };
       if (d instanceof Blob) {
-        d.text().then((s) => appendWsEntry("recv", s));
+        d.text().then(finish);
       } else {
-        appendWsEntry("recv", typeof d === "string" ? d : String(d));
+        finish(typeof d === "string" ? d : String(d));
       }
     };
     ws.onerror = () => {
       setWsConnected(false);
       setWsConnecting(false);
       appendWsEntry("error", t("app.wsConnectError"));
+      flushWsPending("", t("app.wsConnectError"));
     };
     ws.onclose = () => {
       setWsConnected(false);
       setWsConnecting(false);
       if (wsRef.current === ws) wsRef.current = null;
+      flushWsPending("", t("app.wsConnectError"));
     };
   };
 
   /** 发送 WebSocket 消息：复用已建立的连接；无连接时先建连再发送 */
   const handleWsSend = (url: string, body: BodyData) => {
+    wsUrlRef.current = url;
     const text = body.raw || "";
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -864,7 +913,9 @@ export default function App() {
 
   // 将最近一次请求与响应保存为示例 -> 工作区 .examples/<接口uuid>/<示例名称hash值>.json
   const handleSaveExample = async (name: string) => {
-    if (!api || !lastRequest || !response) return;
+    if (!api || !lastRequest) return;
+    const isWs = api.protocol === "websocket";
+    if (!isWs && !response) return;
     const snap = lastApiSnapshot || api;
     try {
       // 从最终请求 URL 解析出 query 参数（用户在 URL 里直接写的 ?a=1&b=2 也要收录）
@@ -891,25 +942,46 @@ export default function App() {
       for (const [k, v] of urlQuery) {
         if (!seen.has(k)) reqQuery.push([k, v]);
       }
-      await saveExample(api.uuid || crypto.randomUUID(), name, {
-        name,
-        time: Math.floor(Date.now() / 1000),
-        method: lastRequest.method,
-        url: lastRequest.url,
-        reqHeaders: lastRequest.headers.map((h) => [h.key, h.value]),
-        reqPath: snap.params
-          .filter((p) => p.enabled && p.key.trim())
-          .map((p) => [p.key, p.value]),
-        reqQuery,
-        reqBody: lastRequest.body,
-        status: response.status,
-        statusText: response.statusText,
-        respHeaders: response.headers,
-        respBody: response.body,
-        timeMs: response.timeMs,
-        size: response.size,
-        error: response.error || undefined,
-      });
+      if (isWs) {
+        // WebSocket：保存最近一次发送的消息与收到的回显
+        await saveExample(api.uuid || crypto.randomUUID(), name, {
+          name,
+          time: Math.floor(Date.now() / 1000),
+          method: "WS",
+          url: lastRequest.url,
+          reqHeaders: [], // 浏览器 WebSocket API 无法自定义请求头
+          reqPath: [],
+          reqQuery,
+          reqBody: wsLastSentRef.current || undefined,
+          status: 0,
+          statusText: "",
+          respHeaders: [],
+          respBody: wsLastRecvRef.current,
+          timeMs: wsLastRtRef.current,
+          size: wsLastRecvRef.current.length,
+        });
+      } else {
+        if (!response) return; // HTTP 需要最近一次响应
+        await saveExample(api.uuid || crypto.randomUUID(), name, {
+          name,
+          time: Math.floor(Date.now() / 1000),
+          method: lastRequest.method,
+          url: lastRequest.url,
+          reqHeaders: lastRequest.headers.map((h) => [h.key, h.value]),
+          reqPath: snap.params
+            .filter((p) => p.enabled && p.key.trim())
+            .map((p) => [p.key, p.value]),
+          reqQuery,
+          reqBody: lastRequest.body,
+          status: response.status,
+          statusText: response.statusText,
+          respHeaders: response.headers,
+          respBody: response.body,
+          timeMs: response.timeMs,
+          size: response.size,
+          error: response.error || undefined,
+        });
+      }
       showToast(t("toast.exampleSaved", { name }));
     } catch (e) {
       showToast(t("toast.saveExampleFailed", { err: String(e) }));

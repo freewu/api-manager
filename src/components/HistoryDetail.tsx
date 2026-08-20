@@ -44,7 +44,7 @@ export function HistoryDetail({
         </span>
         {detail.ok ? (
           <span className={`status-badge ${statusClass(detail.status)}`}>
-            {detail.status} {detail.statusText}
+            {detail.status || detail.method} {detail.statusText}
           </span>
         ) : (
           <span className="status-badge status-5xx">{t("resp.failed")}</span>

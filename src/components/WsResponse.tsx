@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { WsLogEntry } from "../types";
 import { useT } from "../i18n";
 
@@ -10,6 +10,8 @@ interface Props {
   /** WebSocket 交互记录（发送 / 接收 / 连接事件 / 错误） */
   entries: WsLogEntry[];
   onDisconnect: () => void;
+  /** 将最近一次发送的消息与收到的回显保存为示例 */
+  onSaveExample?: (name: string) => void;
 }
 
 function fmtTime(ms: number) {
@@ -19,14 +21,19 @@ function fmtTime(ms: number) {
 }
 
 /** 展示 WebSocket 接口的实时交互记录（连接、发送、接收、错误） */
-export function WsResponse({ connected, connecting, entries, onDisconnect }: Props) {
+export function WsResponse({ connected, connecting, entries, onDisconnect, onSaveExample }: Props) {
   const t = useT();
   const logRef = useRef<HTMLDivElement | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
 
   // 新消息自动滚动到底部
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [entries.length]);
+
+  // 保存示例按钮：至少发送过一条消息才可用
+  const hasSent = entries.some((e) => e.dir === "sent");
 
   return (
     <div className="response ws-response">
@@ -38,6 +45,53 @@ export function WsResponse({ connected, connecting, entries, onDisconnect }: Pro
           <button type="button" className="btn small" onClick={onDisconnect}>
             {t("resp.wsDisconnect")}
           </button>
+        )}
+        {onSaveExample && hasSent && (
+          <div className="resp-save-example">
+            {saveOpen ? (
+              <>
+                <input
+                  className="resp-save-input"
+                  autoFocus
+                  placeholder={t("resp.exampleName")}
+                  value={saveName}
+                  onChange={(e) => setSaveName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && saveName.trim()) {
+                      onSaveExample(saveName.trim());
+                      setSaveOpen(false);
+                      setSaveName("");
+                    }
+                    if (e.key === "Escape") {
+                      setSaveOpen(false);
+                      setSaveName("");
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn small primary"
+                  disabled={!saveName.trim()}
+                  onClick={() => {
+                    if (saveName.trim()) {
+                      onSaveExample(saveName.trim());
+                      setSaveOpen(false);
+                      setSaveName("");
+                    }
+                  }}
+                >
+                  {t("common.save")}
+                </button>
+                <button type="button" className="btn small" onClick={() => setSaveOpen(false)}>
+                  {t("common.cancel")}
+                </button>
+              </>
+            ) : (
+              <button type="button" className="btn small" onClick={() => setSaveOpen(true)}>
+                💾 {t("resp.saveExample")}
+              </button>
+            )}
+          </div>
         )}
       </div>
       <div className="response-body">
