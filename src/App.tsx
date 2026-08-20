@@ -81,11 +81,13 @@ import { VersionModal } from "./components/VersionModal";
 import {
   ApiFile,
   AppSettings,
+  BodyData,
   EnvStore,
   EnvVariable,
   HttpRequestData,
   HttpResult,
   InfoJson,
+  KeyValue,
   MockStatus,
   TreeNode,
   UpdateInfo,
@@ -679,6 +681,64 @@ export default function App() {
     document.body.style.userSelect = "none";
   };
 
+  /** 发送 WebSocket 消息：原生 WebSocket 客户端。返回与 HTTP 同形的结果（status 固定为 0） */
+  const handleWsSend = (
+    url: string,
+    headers: KeyValue[],
+    body: BodyData
+  ): Promise<HttpResult> =>
+    new Promise<HttpResult>((resolve) => {
+      let ws: WebSocket;
+      try {
+        ws = new WebSocket(url, headers.filter((h) => h.enabled && h.key.trim()).map((h) => h.value.trim()).filter(Boolean));
+      } catch (e) {
+        resolve({ ok: false, status: 0, statusText: "", headers: [], body: "", timeMs: 0, size: 0, url, error: `${t("app.wsConnectError")}：${e}` });
+        return;
+      }
+      const t0 = performance.now();
+      let sent = false;
+      let done = false;
+      const finish = (res: HttpResult) => {
+        if (done) return;
+        done = true;
+        window.clearTimeout(timeout);
+        try { ws.close(); } catch {}
+        resolve(res);
+      };
+      const timeout = window.setTimeout(() => {
+        finish({ ok: false, status: 0, statusText: "", headers: [], body: "", timeMs: performance.now() - t0, size: 0, url, error: t("app.wsTimeout") });
+      }, 30000);
+      ws.onopen = () => {
+        sent = true;
+        try {
+          // 浏览器无法直接读取本地文件路径，二进制模式降级为发送原始文本
+          ws.send(body.mode === "binary" ? (body.raw || "") : (body.raw || ""));
+        } catch (e) {
+          finish({ ok: false, status: 0, statusText: "", headers: [], body: "", timeMs: performance.now() - t0, size: 0, url, error: t("app.wsSendFailed") + `：${e}` });
+        }
+      };
+      ws.onmessage = (ev) => {
+        if (!sent || done) return;
+        const d = ev.data;
+        if (d instanceof Blob) {
+          d.text().then((s) =>
+            finish({ ok: true, status: 0, statusText: "", headers: [], body: s, timeMs: performance.now() - t0, size: new Blob([s]).size, url, error: undefined })
+          );
+          return;
+        }
+        const text = typeof d === "string" ? d : String(d);
+        finish({ ok: true, status: 0, statusText: "", headers: [], body: text, timeMs: performance.now() - t0, size: new Blob([text]).size, url, error: undefined });
+      };
+      ws.onerror = () => {
+        finish({ ok: false, status: 0, statusText: "", headers: [], body: "", timeMs: performance.now() - t0, size: 0, url, error: t("app.wsConnectError") });
+      };
+      ws.onclose = () => {
+        if (!done) {
+          finish({ ok: true, status: 0, statusText: "", headers: [], body: "", timeMs: performance.now() - t0, size: 0, url, error: t("app.wsClosed") });
+        }
+      };
+    });
+
   const handleSend = async () => {
     if (!api) return;
     setSending(true);
@@ -728,6 +788,15 @@ export default function App() {
         .map((q) => `${encodeURIComponent(sub(q.key))}=${encodeURIComponent(sub(q.value))}`)
         .join("&");
       if (qs) url += (url.includes("?") ? "&" : "?") + qs;
+
+      // WebSocket：使用原生客户端发送，不走 HTTP 流程（响应无状态码）
+      if (api.protocol === "websocket") {
+        const res = await handleWsSend(url, headers, api.body);
+        setResponse(res);
+        setLastRequest({ method: "WS", url, headers, body: api.body.raw, timeoutMs: 30000 });
+        setLastApiSnapshot(api);
+        return;
+      }
 
       // 表单：含文件字段时走 multipart（req.form），否则拼 urlencoded body
       const formRows = api.body.form.filter((f) => f.enabled && f.key);
@@ -1429,7 +1498,7 @@ export default function App() {
                   title={t("app.resizePaneTip")}
                 />
               )}
-              {!hideResponse && <Response result={response} sending={sending} onSaveExample={handleSaveExample} />}
+              {!hideResponse && <Response result={response} sending={sending} onSaveExample={handleSaveExample} hideStatus={api.protocol === "websocket"} />}
             </>
           ) : (
             <div

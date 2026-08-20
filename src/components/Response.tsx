@@ -7,6 +7,8 @@ interface Props {
   sending: boolean;
   /** 点击「保存为示例」并确认名称后回调（App 负责写入 .examples 目录） */
   onSaveExample?: (name: string) => void;
+  /** WebSocket 响应无 HTTP 状态码：为 true 时不展示状态码 */
+  hideStatus?: boolean;
 }
 
 type View = "auto" | "raw" | "html" | "xml" | "json" | "text";
@@ -119,7 +121,7 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
-export function Response({ result, sending, onSaveExample }: Props) {
+export function Response({ result, sending, onSaveExample, hideStatus }: Props) {
   const t = useT();
   const [tab, setTab] = useState<"body" | "headers">("body");
   const [view, setView] = useState<View>("auto");
@@ -212,7 +214,21 @@ export function Response({ result, sending, onSaveExample }: Props) {
   return (
     <div className="response">
       <div className="response-head">
-        {result.ok ? (
+        {hideStatus ? (
+          <>
+            <span className="status-badge status-2xx">{t("resp.wsConnected")}</span>
+            <span className="resp-meta">
+              <span>
+                <span className="label">{t("resp.time")} </span>
+                <b>{result.timeMs} ms</b>
+              </span>
+              <span>
+                <span className="label">{t("resp.size")} </span>
+                <b>{kb} KB</b>
+              </span>
+            </span>
+          </>
+        ) : result.ok ? (
           <>
             <span className={`status-badge ${statusClass(result.status)}`}>
               {result.status} {result.statusText}

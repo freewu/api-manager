@@ -35,14 +35,23 @@ pub fn render(api: &ApiFile, group: &str, group_deprecated: bool) -> String {
     let _ = writeln!(s, "## {name}{dep_mark}\n");
 
     // > Method url（url 为空时回退到 path，保证导出文档不丢 URL）
-    let method = api.method.trim();
-    let method = if method.is_empty() { "GET" } else { method };
     let url = api.url.trim();
     let url = if url.is_empty() { api.path.trim() } else { url };
-    let bline = if url.is_empty() {
-        format!("> {method}")
+    // WebSocket 没有 method，直接标注为 WebSocket，避免在文档里显示虚假的 HTTP 方法
+    let bline = if api.protocol == "websocket" {
+        if url.is_empty() {
+            "> WebSocket".to_string()
+        } else {
+            format!("> WebSocket {url}")
+        }
     } else {
-        format!("> {method} {url}")
+        let method = api.method.trim();
+        let method = if method.is_empty() { "GET" } else { method };
+        if url.is_empty() {
+            format!("> {method}")
+        } else {
+            format!("> {method} {url}")
+        }
     };
     let _ = writeln!(s, "{bline}\n");
 
@@ -740,6 +749,7 @@ fn split_apis(block: &str) -> Vec<String> {
 fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
     let mut name = String::new();
     let mut method: Option<String> = None;
+    let mut protocol = "http".to_string();
     let mut url = String::new();
     let mut desc_lines: Vec<String> = Vec::new();
     let mut section = String::new();
@@ -794,7 +804,16 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
         if line.trim_start().starts_with('>') {
             let t = line.trim_start().trim_start_matches('>').trim();
             if !t.is_empty() {
-                if let Some((m, u)) = parse_method_url(t) {
+                // WebSocket 标注：> WebSocket url（还原 protocol，method 置空）
+                let ws_rest = ["WebSocket", "websocket", "WEBSOCKET"]
+                    .iter()
+                    .find_map(|p| t.strip_prefix(p))
+                    .map(|r| r.trim().to_string());
+                if let Some(ws_rest) = ws_rest {
+                    protocol = "websocket".to_string();
+                    method = Some(String::new());
+                    url = ws_rest;
+                } else if let Some((m, u)) = parse_method_url(t) {
                     method = Some(m);
                     url = u;
                 } else {
@@ -830,7 +849,7 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
         responses: vec![],
         doc_params: vec![],
         deprecated: false,
-        protocol: "http".into(),
+        protocol,
     };
 
     for (sec, sub, text) in &sections {

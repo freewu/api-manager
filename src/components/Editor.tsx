@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { ApiFile, BODY_MODES, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../types";
+import { ApiFile, BODY_MODES, BodyData, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { CodeTab } from "./CodeTab";
 import { ExamplesTab } from "./ExamplesTab";
@@ -88,6 +88,11 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   const t = useT();
   /** 是否 WebSocket 接口 */
   const isWs = api.protocol === "websocket";
+  // WebSocket 消息格式：文本 / json / xml / binary（复用 body.mode，text 映射为 raw）
+  const WS_MODES = ["raw", "json", "xml", "binary"] as const;
+  const wsMode: BodyData["mode"] = (WS_MODES as readonly string[]).includes(api.body.mode)
+    ? api.body.mode
+    : "raw";
   const [tab, setTab] = useState<Tab>("params");
   /** JSON 格式化失败提示（body / mock 页签共用） */
   const [formatError, setFormatError] = useState<string | null>(null);
@@ -370,13 +375,86 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             <div className="section-title">
               {t("editor.message")} <span className="help">{t("editor.messagePlaceholder")}</span>
             </div>
-            <textarea
-              className="code-area"
-              value={api.body.raw}
-              placeholder={t("editor.messagePlaceholder")}
-              spellCheck={false}
-              onChange={(e) => set({ body: { ...api.body, raw: e.target.value } })}
-            />
+            <div className="body-modes">
+              {WS_MODES.map((m) => (
+                <div
+                  key={m}
+                  className={`body-mode ${wsMode === m ? "active" : ""}`}
+                  onClick={() => set({ body: { ...api.body, mode: m } })}
+                >
+                  {m === "raw" ? t("editor.wsText") : m === "binary" ? t("editor.binary") : m}
+                </div>
+              ))}
+            </div>
+            {wsMode === "binary" ? (
+              <div className="binary-picker">
+                <button className="btn" onClick={pickBinaryFile}>
+                  📁 {t("editor.pickFile")}
+                </button>
+                {api.body.binaryPath ? (
+                  <div className="binary-file">
+                    <span className="binary-file-path" title={api.body.binaryPath}>
+                      📄 {api.body.binaryPath}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn small"
+                      onClick={() => set({ body: { ...api.body, binaryPath: "" } })}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="body-raw-wrap">
+                <div className="body-raw-toolbar">
+                  <div className="example-list-header">
+                    <span className="help">{t("editor.messagePlaceholder")}</span>
+                  </div>
+                  {wsMode === "json" && (
+                    <button
+                      className="btn small"
+                      onClick={() =>
+                        formatJson(api.body.raw, (text) =>
+                          set({ body: { ...api.body, raw: text } })
+                        )
+                      }
+                      title={t("editor.formatJsonTip")}
+                    >
+                      {t("editor.formatJson")}
+                    </button>
+                  )}
+                  {wsMode === "xml" && (
+                    <button
+                      className="btn small"
+                      onClick={() =>
+                        formatXml(api.body.raw, (text) =>
+                          set({ body: { ...api.body, raw: text } })
+                        )
+                      }
+                      title={t("editor.formatXmlTip")}
+                    >
+                      {t("editor.formatXml")}
+                    </button>
+                  )}
+                  {formatError && <span className="body-format-error">{formatError}</span>}
+                </div>
+                <textarea
+                  className="code-area"
+                  value={api.body.raw}
+                  placeholder={
+                    wsMode === "json"
+                      ? '{\n  "key": "value"\n}'
+                      : wsMode === "xml"
+                        ? "<root>\n  <item>value</item>\n</root>"
+                        : t("editor.messagePlaceholder")
+                  }
+                  spellCheck={false}
+                  onChange={(e) => set({ body: { ...api.body, raw: e.target.value } })}
+                />
+              </div>
+            )}
             <div style={{ color: "var(--text-faint)", fontSize: 12, marginTop: 8 }}>
               {t("editor.wsNoMock")}
             </div>

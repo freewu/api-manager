@@ -139,6 +139,8 @@ function NodeRow({
 }) {
   const t = useT();
   const isFolder = node.kind === "folder";
+  // WebSocket 接口无 HTTP method
+  const isWs = node.protocol === "websocket";
   const [open, setOpen] = useState(node.collapsed !== true);
   // 已废弃：自身标记或继承自上层已废弃分组
   const deprecated = node.deprecated === true || depInherited;
@@ -238,12 +240,12 @@ function NodeRow({
         }}
         title={
           deprecated
-            ? `${t("sidebar.deprecated")} · ${canDrop ? t("sidebar.dropHere") : isFolder ? node.description || node.name : `${node.method} ${node.endpoint}`}`
+            ? `${t("sidebar.deprecated")} · ${canDrop ? t("sidebar.dropHere") : isFolder ? node.description || node.name : `${isWs ? "WebSocket" : node.method} ${node.endpoint}`}`
             : canDrop
               ? t("sidebar.dropHere")
               : isFolder
                 ? node.description || node.name
-                : `${node.method} ${node.endpoint}`
+                : `${isWs ? "WebSocket" : node.method} ${node.endpoint}`
         }
       >
         {isFolder ? (
@@ -276,7 +278,7 @@ function NodeRow({
             {node.endpoint}
           </span>
         )}
-        {!isFolder && node.method && (
+        {!isFolder && node.method && !isWs && (
           <span className={`node-method ${methodClass(node.method)}`}>{node.method}</span>
         )}
         {!isFolder && node.mockEnabled && <span className="mock-dot" title={t("sidebar.mockEnabled")} />}
