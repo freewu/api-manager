@@ -76,15 +76,19 @@ export function HistoryList({
   const [confirmClear, setConfirmClear] = useState(false);
 
   // 已加载的记录按天分组（记录本身已按时间倒序）
+  // 比对模式下勾选了第 1 条后：非同一接口（apiUuid 不同）的记录全部隐藏，方便挑选第 2 条
   const groups = useMemo(() => {
+    const filterUuid =
+      diffIds.length === 1 ? records.find((x) => x.id === diffIds[0])?.apiUuid : undefined;
     const map = new Map<string, HistorySummary[]>();
     for (const r of records) {
+      if (filterUuid && r.apiUuid !== filterUuid) continue;
       const day = fmtDay(r.time);
       if (!map.has(day)) map.set(day, []);
       map.get(day)!.push(r);
     }
     return [...map.entries()];
-  }, [records]);
+  }, [records, diffIds]);
 
   const dayCount = useMemo(() => new Map(days.map((d) => [d.day, d.count])), [days]);
 

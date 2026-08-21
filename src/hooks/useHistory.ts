@@ -97,33 +97,12 @@ export function useHistory() {
     setDiffError("");
   }, []);
 
-  /** 勾选/取消勾选一条记录。约束：最多 2 条且必须属于同一接口 uuid */
-  const toggleDiffSelect = useCallback((r: HistorySummary) => {
-    setDiffPair(null);
-    setDiffError("");
-    setDiffIds((prev) => {
-      const i = prev.indexOf(r.id);
-      if (i >= 0) return prev.filter((x) => x !== r.id);
-      if (prev.length >= 2) return prev;
-      if (prev.length === 1) {
-        const first = records.find((x) => x.id === prev[0]);
-        const sameApi = first && first.apiUuid && r.apiUuid && first.apiUuid === r.apiUuid;
-        if (!sameApi) {
-          setDiffError(first?.apiUuid || r.apiUuid ? "history.diffApiMismatch" : "history.diffNoApi");
-          return prev;
-        }
-      }
-      return [...prev, r.id];
-    });
-  }, [records]);
-
-  /** 加载两个勾选记录的详情并比对 */
-  const startDiff = useCallback(async () => {
-    if (diffIds.length !== 2) return;
+  /** 按两条记录 id 加载详情并比对 */
+  const loadDiff = useCallback(async (ids: string[]) => {
     setDiffLoading(true);
     setDiffError("");
     try {
-      const [a, b] = await Promise.all([historyDetail(diffIds[0]), historyDetail(diffIds[1])]);
+      const [a, b] = await Promise.all([historyDetail(ids[0]), historyDetail(ids[1])]);
       setDiffPair({ a, b });
     } catch (e) {
       console.error(e);
@@ -131,7 +110,39 @@ export function useHistory() {
     } finally {
       setDiffLoading(false);
     }
-  }, [diffIds]);
+  }, []);
+
+  /** 勾选/取消勾选一条记录。约束：最多 2 条且必须属于同一接口 uuid；选中第 2 条后自动开始比对 */
+  const toggleDiffSelect = useCallback(
+    (r: HistorySummary) => {
+      setDiffPair(null);
+      setDiffError("");
+      const i = diffIds.indexOf(r.id);
+      if (i >= 0) {
+        setDiffIds(diffIds.filter((x) => x !== r.id));
+        return;
+      }
+      if (diffIds.length >= 2) return;
+      if (diffIds.length === 1) {
+        const first = records.find((x) => x.id === diffIds[0]);
+        const sameApi = first && first.apiUuid && r.apiUuid && first.apiUuid === r.apiUuid;
+        if (!sameApi) {
+          setDiffError(first?.apiUuid || r.apiUuid ? "history.diffApiMismatch" : "history.diffNoApi");
+          return;
+        }
+      }
+      const next = [...diffIds, r.id];
+      setDiffIds(next);
+      if (next.length === 2) void loadDiff(next);
+    },
+    [diffIds, records, loadDiff]
+  );
+
+  /** 开始比对（工具栏「开始比对」按钮的兜底入口；正常选中第 2 条即自动触发） */
+  const startDiff = useCallback(() => {
+    if (diffIds.length !== 2) return;
+    void loadDiff(diffIds);
+  }, [diffIds, loadDiff]);
 
   const exitDiff = useCallback(() => {
     setDiffPair(null);
