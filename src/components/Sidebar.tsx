@@ -86,6 +86,9 @@ function validDrop(dragSrc: string, dst: string): boolean {
 // 废弃状态筛选：all=全部 / active=未废弃 / deprecated=已废弃
 type DepFilter = "all" | "active" | "deprecated";
 
+/** 高级搜索可选的接口 Method（WebSocket 接口以 WS 表示） */
+const METHOD_OPTIONS = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "WS"];
+
 function NodeRow({
   node,
   depth,
@@ -104,6 +107,7 @@ function NodeRow({
   enableVersion,
   onContextMenu,
   filter,
+  methodFilters,
   depFilter,
   depInherited,
   dragSrc,
@@ -132,6 +136,8 @@ function NodeRow({
   tree: null;
   onContextMenu: (e: React.MouseEvent, node: TreeNode) => void;
   filter: string;
+  /** 高级搜索：按接口 Method 多选过滤（空数组 = 不过滤） */
+  methodFilters: string[];
   /** 废弃状态筛选选项 */
   depFilter: DepFilter;
   /** 父级分组是否已废弃（子节点继承渲染样式） */
@@ -153,20 +159,34 @@ function NodeRow({
   const deprecated = node.deprecated === true || depInherited;
 
   const matches =
-    !filter ||
-    node.name.toLowerCase().includes(filter) ||
-    (node.endpoint || "").toLowerCase().includes(filter);
+    (isFolder ||
+      methodFilters.length === 0 ||
+      (isWs
+        ? methodFilters.includes("WS")
+        : methodFilters.includes((node.method || "").toUpperCase()))) &&
+    (!filter ||
+      node.name.toLowerCase().includes(filter) ||
+      (node.endpoint || "").toLowerCase().includes(filter));
 
-  // 深度搜索：任意层级的后代命中关键词（导入的接口常嵌套在 导入分组→tag 分组 下）
+  // 深度搜索：任意层级的后代命中关键词 / 命中 Method 过滤（导入的接口常嵌套在 导入分组→tag 分组 下）
   const childrenMatch = useMemo(() => {
     if (!isFolder || !node.children) return false;
-    if (!filter) return false;
-    const hit = (n: TreeNode): boolean =>
-      n.name.toLowerCase().includes(filter) ||
-      (n.endpoint || "").toLowerCase().includes(filter) ||
-      (n.kind === "folder" && !!n.children && n.children.some(hit));
+    if (!filter && methodFilters.length === 0) return false;
+    const hit = (n: TreeNode): boolean => {
+      if (n.kind === "folder") return !!n.children && n.children.some(hit);
+      const mOk =
+        methodFilters.length === 0 ||
+        (n.protocol === "websocket"
+          ? methodFilters.includes("WS")
+          : methodFilters.includes((n.method || "").toUpperCase()));
+      return (
+        mOk &&
+        (n.name.toLowerCase().includes(filter) ||
+          (n.endpoint || "").toLowerCase().includes(filter))
+      );
+    };
     return node.children.some(hit);
-  }, [isFolder, node.children, filter]);
+  }, [isFolder, node.children, filter, methodFilters]);
 
   // 废弃状态筛选：自身命中 / 后代命中（递归，废弃分组视同其下内容均废弃）
   const depSelf =
@@ -185,12 +205,16 @@ function NodeRow({
 
   const visible = (matches || childrenMatch) && (depSelf || depChildrenMatch);
 
-  // 搜索 / 废弃筛选命中时自动展开包含命中项的文件夹，保证结果可见
+  // 搜索 / Method 过滤 / 废弃筛选命中时自动展开包含命中项的文件夹，保证结果可见
   useEffect(() => {
-    if (isFolder && ((filter && childrenMatch) || (depFilter !== "all" && depChildrenMatch))) {
+    if (
+      isFolder &&
+      (((filter || methodFilters.length > 0) && childrenMatch) ||
+        (depFilter !== "all" && depChildrenMatch))
+    ) {
       setOpen(true);
     }
-  }, [filter, isFolder, childrenMatch, depFilter, depChildrenMatch]);
+  }, [filter, methodFilters, isFolder, childrenMatch, depFilter, depChildrenMatch]);
 
   if (!visible) return null;
 
@@ -379,6 +403,10 @@ export function Sidebar(props: Props) {
   const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
   const [importMenu, setImportMenu] = useState(false);
   const [filter, setFilter] = useState("");
+  /** 高级搜索：是否展开 Method 过滤面板 */
+  const [advOpen, setAdvOpen] = useState(false);
+  /** 高级搜索：按接口 Method 多选过滤（空数组 = 不过滤） */
+  const [methodFilters, setMethodFilters] = useState<string[]>([]);
   const [depFilter, setDepFilter] = useState<DepFilter>("all");
   const [menu, setMenu] = useState<CtxMenu | null>(null);
   const [bgMenu, setBgMenu] = useState<{ x: number; y: number } | null>(null);
@@ -430,7 +458,8 @@ export function Sidebar(props: Props) {
     <div className="sidebar" style={{ width: props.width ?? 310 }}>
       <div className="sidebar-header">
         {view === "api" ? (
-          <div className="sidebar-search-row">
+          <>
+            <div className="sidebar-search-row">
             <div className="search-box">
               <span className="icon">🔍</span>
               <input
@@ -439,6 +468,28 @@ export function Sidebar(props: Props) {
                 onChange={(e) => setFilter(e.target.value)}
                 spellCheck={false}
               />
+              {filter && (
+                <button
+                  className="search-clear"
+                  onClick={() => setFilter("")}
+                  title={t("common.clear")}
+                  aria-label={t("common.clear")}
+                >
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true">
+                    <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                  </svg>
+                </button>
+              )}
+              <button
+                className={`search-adv-toggle${advOpen ? " on" : ""}`}
+                onClick={() => setAdvOpen((s) => !s)}
+                title={t("sidebar.advSearch")}
+                aria-label={t("sidebar.advSearch")}
+              >
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true">
+                  <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
+                </svg>
+              </button>
             </div>
             <select
               className="dep-filter"
@@ -451,6 +502,42 @@ export function Sidebar(props: Props) {
               <option value="deprecated">{t("sidebar.depFilterDeprecated")}</option>
             </select>
           </div>
+          {advOpen && (
+            <div className="adv-search">
+              <div className="adv-search-title">{t("sidebar.advMethodType")}</div>
+              <div className="adv-methods">
+                {METHOD_OPTIONS.map((m) => {
+                  const on = methodFilters.includes(m);
+                  return (
+                    <label key={m} className={`adv-method${on ? " on" : ""}`}>
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={() =>
+                          setMethodFilters((prev) =>
+                            on ? prev.filter((x) => x !== m) : [...prev, m]
+                          )
+                        }
+                      />
+                      {m}
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="adv-search-actions">
+                <button
+                  className="btn-link"
+                  onClick={() => setMethodFilters([...METHOD_OPTIONS])}
+                >
+                  {t("common.selectAll")}
+                </button>
+                <button className="btn-link" onClick={() => setMethodFilters([])}>
+                  {t("common.clear")}
+                </button>
+              </div>
+            </div>
+          )}
+          </>
         ) : (
           <div className="history-side-header">
             <span className="history-side-title">{t("history.title")}</span>
@@ -512,6 +599,7 @@ export function Sidebar(props: Props) {
                 enableVersion={enableVersion}
                 onContextMenu={openMenu}
                 filter={filter.trim().toLowerCase()}
+                methodFilters={methodFilters}
                 depFilter={depFilter}
                 depInherited={false}
                 tree={null}

@@ -139,6 +139,8 @@ export const EN: Record<string, string> = {
   "start.workspace": "Workspace",
 
   "sidebar.search": "Search APIs / paths",
+  "sidebar.advSearch": "Advanced search",
+  "sidebar.advMethodType": "API type (filter by Method, multi-select)",
   "sidebar.newFolder": "New Group",
   "sidebar.newApi": "New API",
   "sidebar.rename": "Rename",

@@ -144,6 +144,8 @@ export const ZH: Record<string, string> = {
 
   // ===== 侧栏 =====
   "sidebar.search": "搜索接口 / 路径",
+  "sidebar.advSearch": "高级搜索",
+  "sidebar.advMethodType": "接口类型（按 Method 筛选，可多选）",
   "sidebar.newFolder": "新增分组",
   "sidebar.newApi": "新增接口",
   "sidebar.rename": "重命名",

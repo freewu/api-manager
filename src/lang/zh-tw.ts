@@ -131,6 +131,8 @@ export const TW: Record<string, string> = {
   "start.hint": "選擇一個已按約定組織的目錄，或直接選擇空目錄從零開始",
   "start.workspace": "工作區",
   "sidebar.search": "搜索接口 / 路徑",
+  "sidebar.advSearch": "進階搜索",
+  "sidebar.advMethodType": "接口類型（按 Method 篩選，可多選）",
   "sidebar.newFolder": "新增分組",
   "sidebar.newApi": "新增接口",
   "sidebar.rename": "重命名",

@@ -81,6 +81,94 @@
   color: var(--text-faint);
 }
 
+/* 搜索框内：清除按钮 + 高级搜索开关 */
+.search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+.search-clear:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+.search-adv-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.search-adv-toggle:hover,
+.search-adv-toggle.on {
+  color: var(--accent);
+}
+
+/* 高级搜索面板：按 Method 多选过滤 */
+.adv-search {
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: var(--bg-input);
+}
+.adv-search-title {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+}
+.adv-methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.adv-method {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.adv-method input {
+  display: none;
+}
+.adv-method:hover {
+  border-color: var(--border-light);
+}
+.adv-method.on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.adv-search-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+}
+
 .tree {
   flex: 1;
   overflow-y: auto;
