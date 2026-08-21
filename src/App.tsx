@@ -121,6 +121,8 @@ export default function App() {
   const [version, setVersion] = useState("");
   /** 当前接口已保存的最新版本号（.version/<uuid> 最大版本，未保存过为 0） */
   const [currentVersion, setCurrentVersion] = useState(0);
+  /** 示例保存版本号：保存示例成功后 +1，驱动 Editor「示例」角标刷新计数 */
+  const [exampleVersion, setExampleVersion] = useState(0);
   const [envs, setEnvs] = useState<EnvStore>(emptyEnv());
   const [envModal, setEnvModal] = useState(false);
   const [envValue, setEnvValue] = useState(false);
@@ -987,6 +989,7 @@ export default function App() {
         });
       }
       showToast(t("toast.exampleSaved", { name }));
+      setExampleVersion((v) => v + 1);
     } catch (e) {
       showToast(t("toast.saveExampleFailed", { err: String(e) }));
     }
@@ -1433,6 +1436,7 @@ export default function App() {
           onHistoryDiffExit={history.exitDiff}
           baseUrl={baseUrl}
           currentVersion={currentVersion}
+          exampleVersion={exampleVersion}
           enableVersion={settings.enableVersion}
           enableCodegen={settings.enableCodegen}
           enableMock={settings.enableMock}

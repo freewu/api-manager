@@ -82,11 +82,13 @@ interface Props {
   enableMock?: boolean;
   /** 代码生成默认语言（bash / python / c / cpp / java / csharp / ...） */
   codegenLang?: string;
+  /** 示例保存版本号：变化时重新拉取示例数量刷新角标 */
+  exampleVersion?: number;
   /** 页签切换回调（App 据此隐藏/显示响应面板） */
   onTabChange?: (tab: string) => void;
 }
 
-export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, enableMock = true, codegenLang = "bash", onTabChange, currentVersion = 0 }: Props) {
+export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, enableMock = true, codegenLang = "bash", onTabChange, currentVersion = 0, exampleVersion = 0 }: Props) {
   const t = useT();
   /** 是否 WebSocket 接口 */
   const isWs = api.protocol === "websocket";
@@ -102,7 +104,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   const [exampleCount, setExampleCount] = useState(0);
   const effectiveUrl = api.url || (baseUrl + api.path);
 
-  // 示例数量：接口切换时拉取；ExamplesTab 每次加载后也会回报最新数量
+  // 示例数量：接口切换或保存示例成功（exampleVersion 变化）时拉取；ExamplesTab 每次加载后也会回报最新数量
   useEffect(() => {
     let alive = true;
     listExamples(api.uuid)
@@ -111,7 +113,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
     return () => {
       alive = false;
     };
-  }, [api.uuid]);
+  }, [api.uuid, exampleVersion]);
 
   const switchTab = (t: Tab) => {
     setTab(t);

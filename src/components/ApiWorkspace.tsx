@@ -7,6 +7,8 @@ interface Props {
   api: ApiFile;
   baseUrl: string;
   currentVersion?: number;
+  /** 示例保存版本号：保存示例成功后自增，用于刷新「示例」角标 */
+  exampleVersion?: number;
   enableVersion: boolean;
   enableCodegen: boolean;
   enableMock: boolean;
@@ -41,6 +43,7 @@ export function ApiWorkspace({
   api,
   baseUrl,
   currentVersion = 0,
+  exampleVersion = 0,
   enableVersion,
   enableCodegen,
   enableMock,
@@ -70,6 +73,7 @@ export function ApiWorkspace({
       api={api}
       baseUrl={baseUrl}
       currentVersion={currentVersion}
+      exampleVersion={exampleVersion}
       onChange={onChange}
       onSend={onSend}
       onSaveVersion={onSaveVersion}

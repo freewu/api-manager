@@ -26,6 +26,8 @@ interface RightPaneProps {
   enableCodegen: boolean;
   enableMock: boolean;
   codegenLang: string;
+  /** 示例保存版本号：保存示例成功后自增，用于刷新「示例」角标 */
+  exampleVersion: number;
   sending: boolean;
   hideResponse: boolean;
   editorRatio: number;
@@ -119,6 +121,7 @@ export function RightPane({
             api={api}
             baseUrl={baseUrl}
             currentVersion={currentVersion}
+            exampleVersion={exampleVersion}
             enableVersion={enableVersion}
             enableCodegen={enableCodegen}
             enableMock={enableMock}
