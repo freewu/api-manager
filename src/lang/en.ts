@@ -140,7 +140,8 @@ export const EN: Record<string, string> = {
 
   "sidebar.search": "Search APIs / paths",
   "sidebar.advSearch": "Advanced search",
-  "sidebar.advMethodType": "API type (filter by Method, multi-select)",
+  "sidebar.advProtocolType": "API type",
+  "sidebar.advMethodType": "Method type",
   "sidebar.newFolder": "New Group",
   "sidebar.newApi": "New API",
   "sidebar.rename": "Rename",

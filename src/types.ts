@@ -72,7 +72,7 @@ export interface ApiFile {
   /** 是否已标记废弃 */
   deprecated: boolean;
   /** 接口协议：http（HTTP 接口）或 websocket（WebSocket 接口） */
-  protocol: "http" | "websocket";
+  protocol: "http" | "websocket" | "graphql";
 }
 
 export type DocSource =
@@ -189,7 +189,7 @@ export interface TreeNode {
   /** 是否已标记废弃（分组无此字段时默认未废弃） */
   deprecated?: boolean;
   /** 接口协议（http / websocket，分组无此字段） */
-  protocol?: "http" | "websocket";
+  protocol?: "http" | "websocket" | "graphql";
   children?: TreeNode[];
 }
 

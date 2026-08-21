@@ -86,8 +86,15 @@ function validDrop(dragSrc: string, dst: string): boolean {
 // 废弃状态筛选：all=全部 / active=未废弃 / deprecated=已废弃
 type DepFilter = "all" | "active" | "deprecated";
 
-/** 高级搜索可选的接口 Method（WebSocket 接口以 WS 表示） */
-const METHOD_OPTIONS = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "WS"];
+/** 高级搜索可选的接口协议类型 */
+const PROTOCOL_OPTIONS = [
+  { id: "http", label: "HTTP" },
+  { id: "websocket", label: "WebSocket" },
+  { id: "graphql", label: "GraphQL" },
+] as const;
+
+/** 高级搜索可选的接口 Method（WebSocket / GraphQL 接口无 Method） */
+const METHOD_OPTIONS = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
 
 function NodeRow({
   node,
@@ -107,6 +114,7 @@ function NodeRow({
   enableVersion,
   onContextMenu,
   filter,
+  protocolFilters,
   methodFilters,
   depFilter,
   depInherited,
@@ -136,6 +144,8 @@ function NodeRow({
   tree: null;
   onContextMenu: (e: React.MouseEvent, node: TreeNode) => void;
   filter: string;
+  /** 高级搜索：按接口协议类型多选过滤（空数组 = 不过滤） */
+  protocolFilters: string[];
   /** 高级搜索：按接口 Method 多选过滤（空数组 = 不过滤） */
   methodFilters: string[];
   /** 废弃状态筛选选项 */
@@ -158,35 +168,45 @@ function NodeRow({
   // 已废弃：自身标记或继承自上层已废弃分组
   const deprecated = node.deprecated === true || depInherited;
 
+  const protocolOk =
+    isFolder ||
+    protocolFilters.length === 0 ||
+    protocolFilters.includes(node.protocol || "http");
+  // WebSocket / GraphQL 接口无 Method：选中任何 Method 均不匹配
+  const methodOk =
+    isFolder ||
+    methodFilters.length === 0 ||
+    (isWs ? false : methodFilters.includes((node.method || "").toUpperCase()));
+
   const matches =
-    (isFolder ||
-      methodFilters.length === 0 ||
-      (isWs
-        ? methodFilters.includes("WS")
-        : methodFilters.includes((node.method || "").toUpperCase()))) &&
+    protocolOk &&
+    methodOk &&
     (!filter ||
       node.name.toLowerCase().includes(filter) ||
       (node.endpoint || "").toLowerCase().includes(filter));
 
-  // 深度搜索：任意层级的后代命中关键词 / 命中 Method 过滤（导入的接口常嵌套在 导入分组→tag 分组 下）
+  // 深度搜索：任意层级的后代命中关键词 / 命中协议+Method 过滤（导入的接口常嵌套在 导入分组→tag 分组 下）
   const childrenMatch = useMemo(() => {
     if (!isFolder || !node.children) return false;
-    if (!filter && methodFilters.length === 0) return false;
+    if (!filter && protocolFilters.length === 0 && methodFilters.length === 0) return false;
     const hit = (n: TreeNode): boolean => {
       if (n.kind === "folder") return !!n.children && n.children.some(hit);
+      const pOk =
+        protocolFilters.length === 0 || protocolFilters.includes(n.protocol || "http");
       const mOk =
         methodFilters.length === 0 ||
         (n.protocol === "websocket"
-          ? methodFilters.includes("WS")
+          ? false
           : methodFilters.includes((n.method || "").toUpperCase()));
       return (
+        pOk &&
         mOk &&
         (n.name.toLowerCase().includes(filter) ||
           (n.endpoint || "").toLowerCase().includes(filter))
       );
     };
     return node.children.some(hit);
-  }, [isFolder, node.children, filter, methodFilters]);
+  }, [isFolder, node.children, filter, protocolFilters, methodFilters]);
 
   // 废弃状态筛选：自身命中 / 后代命中（递归，废弃分组视同其下内容均废弃）
   const depSelf =
@@ -205,16 +225,17 @@ function NodeRow({
 
   const visible = (matches || childrenMatch) && (depSelf || depChildrenMatch);
 
-  // 搜索 / Method 过滤 / 废弃筛选命中时自动展开包含命中项的文件夹，保证结果可见
+  // 搜索 / 协议 / Method 过滤 / 废弃筛选命中时自动展开包含命中项的文件夹，保证结果可见
   useEffect(() => {
     if (
       isFolder &&
-      (((filter || methodFilters.length > 0) && childrenMatch) ||
+      (((filter || protocolFilters.length > 0 || methodFilters.length > 0) &&
+        childrenMatch) ||
         (depFilter !== "all" && depChildrenMatch))
     ) {
       setOpen(true);
     }
-  }, [filter, methodFilters, isFolder, childrenMatch, depFilter, depChildrenMatch]);
+  }, [filter, protocolFilters, methodFilters, isFolder, childrenMatch, depFilter, depChildrenMatch]);
 
   if (!visible) return null;
 
@@ -371,6 +392,7 @@ function NodeRow({
               enableVersion={enableVersion}
               onContextMenu={onContextMenu}
               filter={filter}
+              protocolFilters={protocolFilters}
               methodFilters={methodFilters}
               depFilter={depFilter}
               depInherited={deprecated}
@@ -404,8 +426,10 @@ export function Sidebar(props: Props) {
   const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
   const [importMenu, setImportMenu] = useState(false);
   const [filter, setFilter] = useState("");
-  /** 高级搜索：是否展开 Method 过滤面板 */
+  /** 高级搜索：是否展开过滤面板 */
   const [advOpen, setAdvOpen] = useState(false);
+  /** 高级搜索：按接口协议类型多选过滤（空数组 = 不过滤） */
+  const [protocolFilters, setProtocolFilters] = useState<string[]>([]);
   /** 高级搜索：按接口 Method 多选过滤（空数组 = 不过滤） */
   const [methodFilters, setMethodFilters] = useState<string[]>([]);
   const [depFilter, setDepFilter] = useState<DepFilter>("all");
@@ -505,6 +529,26 @@ export function Sidebar(props: Props) {
           </div>
           {advOpen && (
             <div className="adv-search">
+              <div className="adv-search-title">{t("sidebar.advProtocolType")}</div>
+              <div className="adv-methods">
+                {PROTOCOL_OPTIONS.map((p) => {
+                  const on = protocolFilters.includes(p.id);
+                  return (
+                    <label key={p.id} className={`adv-method${on ? " on" : ""}`}>
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={() =>
+                          setProtocolFilters((prev) =>
+                            on ? prev.filter((x) => x !== p.id) : [...prev, p.id]
+                          )
+                        }
+                      />
+                      {p.label}
+                    </label>
+                  );
+                })}
+              </div>
               <div className="adv-search-title">{t("sidebar.advMethodType")}</div>
               <div className="adv-methods">
                 {METHOD_OPTIONS.map((m) => {
@@ -528,11 +572,20 @@ export function Sidebar(props: Props) {
               <div className="adv-search-actions">
                 <button
                   className="btn-link"
-                  onClick={() => setMethodFilters([...METHOD_OPTIONS])}
+                  onClick={() => {
+                    setProtocolFilters(PROTOCOL_OPTIONS.map((p) => p.id));
+                    setMethodFilters([...METHOD_OPTIONS]);
+                  }}
                 >
                   {t("common.selectAll")}
                 </button>
-                <button className="btn-link" onClick={() => setMethodFilters([])}>
+                <button
+                  className="btn-link"
+                  onClick={() => {
+                    setProtocolFilters([]);
+                    setMethodFilters([]);
+                  }}
+                >
                   {t("common.clear")}
                 </button>
               </div>
@@ -600,6 +653,7 @@ export function Sidebar(props: Props) {
                 enableVersion={enableVersion}
                 onContextMenu={openMenu}
                 filter={filter.trim().toLowerCase()}
+                protocolFilters={protocolFilters}
                 methodFilters={methodFilters}
                 depFilter={depFilter}
                 depInherited={false}
