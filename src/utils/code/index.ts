@@ -10,7 +10,7 @@ import { genCsharp, genWsCsharp } from "./csharp";
 import { genJsDispatch, genWsJavaScript } from "./javascript";
 import { genR, genRRCurl } from "./r";
 import { genRust, genWsRustDispatch } from "./rust";
-import { genDelphi } from "./delphi";
+import { genDelphi, genWsDelphiDispatch } from "./delphi";
 import { genPhpDispatch, genWsPhp } from "./php";
 import { genGo, genWsGo } from "./go";
 import { genRuby, genWsRuby } from "./ruby";
@@ -66,6 +66,8 @@ export function generateWebSocketCode(lang: CodeLang, api: ApiFile, baseUrl: str
       return genWsPowershell(r);
     case "lua":
       return genWsLuaDispatch(r, lib);
+    case "delphi":
+      return genWsDelphiDispatch(r, lib);
     default:
       return genWsUnsupported(lang);
   }

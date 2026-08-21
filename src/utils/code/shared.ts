@@ -150,6 +150,12 @@ export const WS_CODE_LIBS: Partial<Record<CodeLang, CodeLibOption[]>> = {
     { value: "tokio", label: "tokio-tungstenite" },
     { value: "sync", label: "tungstenite" },
   ],
+  // Delphi 没有原生 WebSocket：Indy 10 从 Delphi XE8 起内置 TIdWebSocket
+  delphi: [
+    { value: "synapse", label: "Delphi-WebSocket（Synapse）" },
+    { value: "indy", label: "Indy 10（TIdWebSocket）" },
+    { value: "websocket4delphi", label: "Websocket4Delphi（WinHTTP）" },
+  ],
 };
 
 export const CODE_LANGS: { value: CodeLang; label: string }[] = [
