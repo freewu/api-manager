@@ -174,7 +174,8 @@ export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose 
         </>
       }
     >
-      <div className="export-format-row">
+      <div className="export-body" onContextMenu={(e) => e.preventDefault()}>
+        <div className="export-format-row">
         <span className="export-format-label">{t("export.format")}</span>
         <select
           className="export-format-select"
@@ -198,6 +199,7 @@ export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose 
         </button>
       </div>
       <div className="export-tree">{tree ? renderNode(tree, 0) : <div className="doc-empty">{t("export.noData")}</div>}</div>
+      </div>
     </Modal>
   );
 }
