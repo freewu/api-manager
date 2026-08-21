@@ -91,7 +91,7 @@ export function defaultLib(lang: CodeLang): string | undefined {
   return CODE_LIBS[lang]?.[0]?.value;
 }
 
-/** WebSocket 代码生成的可选库（目前 C / C++ / PHP / Ruby / Java 语言支持库切换） */
+/** WebSocket 代码生成的可选库（目前 C / C++ / PHP / Ruby / Java / Swift 语言支持库切换） */
 export const WS_CODE_LIBS: Partial<Record<CodeLang, CodeLibOption[]>> = {
   c: [
     { value: "libwebsockets", label: "libwebsockets" },
@@ -119,6 +119,11 @@ export const WS_CODE_LIBS: Partial<Record<CodeLang, CodeLibOption[]>> = {
     { value: "spring", label: "Spring WebSocket" },
     { value: "netty", label: "Netty" },
     { value: "okhttp", label: "OkHttp" },
+  ],
+  swift: [
+    { value: "urlsession", label: "URLSession WebSocket" },
+    { value: "starscream", label: "Starscream" },
+    { value: "network", label: "Network.framework" },
   ],
 };
 
@@ -3107,6 +3112,183 @@ function genWsRubyActionCable(r: WsReq): string {
   return out.join("\n");
 }
 
+function genWsSwiftDispatch(r: WsReq, lib?: string): string {
+  switch (lib) {
+    case "starscream":
+      return genWsSwiftStarscream(r);
+    case "network":
+      return genWsSwiftNetwork(r);
+    default:
+      return genWsSwiftUrlSession(r);
+  }
+}
+
+function genWsSwiftUrlSession(r: WsReq): string {
+  const out: string[] = [];
+  out.push("/*");
+  out.push(" * WebSocket 客户端示例（URLSession WebSocket：系统原生，Swift 5.5+，iOS 13+ / macOS 10.15+）");
+  out.push(" * 官网: https://developer.apple.com/documentation/foundation/urlsessionwebsockettask");
+  out.push(" * 无需第三方库，系统自带");
+  out.push(" */");
+  out.push("import Foundation");
+  out.push("");
+  out.push("// 1. 发起连接（支持自定义请求头）");
+  out.push(`var request = URLRequest(url: URL(string: ${JSON.stringify(r.url)})!)`);
+  for (const h of r.headers) out.push(`request.setValue(${JSON.stringify(h.value)}, forHTTPHeaderField: ${JSON.stringify(h.key)})`);
+  out.push("let session = URLSession(configuration: .default)");
+  out.push("let wsTask = session.webSocketTask(with: request)");
+  out.push("wsTask.resume()");
+  out.push("print(\">>> 连接中...\")");
+  out.push("");
+  out.push("// 2. 发送一条文本消息");
+  out.push(`let msg = ${JSON.stringify(r.message || "hello, this is a websocket echo message")}`);
+  out.push("wsTask.send(.string(msg)) { error in");
+  out.push("    if let error = error {");
+  out.push("        print(\"发送失败: \" + error.localizedDescription)");
+  out.push("    } else {");
+  out.push("        print(\">>> 发送: \" + msg)");
+  out.push("    }");
+  out.push("}");
+  out.push("");
+  out.push("// 3. 循环接收消息");
+  out.push("func receive() {");
+  out.push("    wsTask.receive { result in");
+  out.push("        switch result {");
+  out.push("        case .success(let message):");
+  out.push("            switch message {");
+  out.push("            case .string(let text):");
+  out.push("                print(\"<<< 接收: \" + text)");
+  out.push("            case .data(let data):");
+  out.push("                print(\"<<< 接收(binary): \" + data.base64EncodedString())");
+  out.push("            @unknown default:");
+  out.push("                break");
+  out.push("            }");
+  out.push("            receive()   // 继续接收下一条");
+  out.push("        case .failure(let error):");
+  out.push("            print(\"接收失败: \" + error.localizedDescription)");
+  out.push("            exit(0)");
+  out.push("        }");
+  out.push("    }");
+  out.push("}");
+  out.push("receive()");
+  out.push("");
+  out.push("// 4. 保持主线程运行");
+  out.push("dispatchMain()");
+  return out.join("\n");
+}
+
+function genWsSwiftStarscream(r: WsReq): string {
+  const out: string[] = [];
+  out.push("/*");
+  out.push(" * WebSocket 客户端示例（Starscream：最流行的第三方 WebSocket 库，老系统兼容）");
+  out.push(" * 官网: https://github.com/daltoniam/Starscream");
+  out.push(" * 安装（Swift Package Manager）:");
+  out.push(" *   dependencies: [.package(url: \"https://github.com/daltoniam/Starscream.git\", from: \"4.0.6\")]");
+  out.push(" * 支持 iOS 8+ / macOS 10.10+，老系统也可用");
+  out.push(" */");
+  out.push("import Starscream");
+  out.push("");
+  out.push(`let url = URL(string: ${JSON.stringify(r.url)})!`);
+  out.push("var request = URLRequest(url: url)");
+  for (const h of r.headers) out.push(`request.setValue(${JSON.stringify(h.value)}, forHTTPHeaderField: ${JSON.stringify(h.key)})`);
+  out.push("");
+  out.push("let socket = WebSocket(request: request)");
+  out.push("socket.onEvent = { event in");
+  out.push("    switch event {");
+  out.push("    case .connected(let headers):");
+  out.push("        print(\">>> 连接成功\")");
+  out.push(`        socket.write(string: ${JSON.stringify(r.message || "hello, this is a websocket echo message")})`);
+  out.push("        print(\">>> 发送完成\")");
+  out.push("    case .text(let text):");
+  out.push("        print(\"<<< 接收: \" + text)");
+  out.push("        socket.disconnect()");
+  out.push("    case .binary(let data):");
+  out.push("        print(\"<<< 接收(binary): \" + data.base64EncodedString())");
+  out.push("    case .error(let error):");
+  out.push("        print(\"连接失败: \" + (error?.localizedDescription ?? \"unknown\"))");
+  out.push("    case .disconnected(let reason, let code):");
+  out.push("        print(\"连接已关闭: \" + reason + \" (\" + String(code) + \")\")");
+  out.push("    default:");
+  out.push("        break");
+  out.push("    }");
+  out.push("}");
+  out.push("socket.connect()");
+  out.push("");
+  out.push("// 保持主线程运行");
+  out.push("dispatchMain()");
+  return out.join("\n");
+}
+
+function genWsSwiftNetwork(r: WsReq): string {
+  const out: string[] = [];
+  out.push("/*");
+  out.push(" * WebSocket 客户端示例（Network.framework NWWebSocket：Apple Network 框架，底层高性能）");
+  out.push(" * 官网: https://developer.apple.com/documentation/network/nwprotocolwebsocket");
+  out.push(" * 系统自带（iOS 13+ / macOS 10.15+），基于 nw_connection，性能高");
+  out.push(" */");
+  out.push("import Network");
+  out.push("import Foundation");
+  out.push("");
+  out.push("// 1. 解析 URL 并配置参数");
+  out.push(`let url = URL(string: ${JSON.stringify(r.url)})!`);
+  out.push("let params = NWParameters(url: url)!");
+  out.push("params.allowLocalEndpointReuse = true");
+  out.push("");
+  if (r.headers.length) {
+    out.push("// 2. 附加自定义请求头（WebSocket metadata）");
+    out.push("let handshake = NWProtocolWebSocket.Metadata()");
+    out.push("handshake.setAdditionalHeaders([" + r.headers.map((h) => `(${JSON.stringify(h.key)}, ${JSON.stringify(h.value)})`).join(", ") + "])");
+    out.push("params.defaultProtocolStack.applicationProtocols.insert(handshake, at: 0)");
+    out.push("");
+  }
+  out.push("// 3. 建立连接");
+  out.push("let connection = NWConnection(to: .url(url), using: params)");
+  out.push("");
+  out.push("// 4. 循环接收消息");
+  out.push("func receive() {");
+  out.push("    connection.receiveMessage { content, context, isComplete, error in");
+  out.push("        if let content = content, let text = String(data: content, encoding: .utf8) {");
+  out.push("            print(\"<<< 接收: \" + text)");
+  out.push("            connection.cancel()");
+  out.push("        } else if let error = error {");
+  out.push("            print(\"接收失败: \" + error.localizedDescription)");
+  out.push("            connection.cancel()");
+  out.push("        }");
+  out.push("    }");
+  out.push("}");
+  out.push("");
+  out.push("connection.stateUpdateHandler = { state in");
+  out.push("    switch state {");
+  out.push("    case .ready:");
+  out.push("        print(\">>> 连接成功\")");
+  out.push("        // 发送一条文本消息");
+  out.push(`        let msg = ${JSON.stringify(r.message || "hello, this is a websocket echo message")}`);
+  out.push("        let content = Data(msg.utf8)");
+  out.push("        let meta = NWProtocolWebSocket.Metadata(opcode: .text)");
+  out.push("        let context = NWConnection.ContentContext(identifier: \"text\", metadata: [meta])");
+  out.push("        connection.send(content: content, contentContext: context, isComplete: true) { error in");
+  out.push("            if let error = error {");
+  out.push("                print(\"发送失败: \" + error.localizedDescription)");
+  out.push("            } else {");
+  out.push("                print(\">>> 发送: \" + msg)");
+  out.push("            }");
+  out.push("        }");
+  out.push("        receive()");
+  out.push("    case .waiting(let error):");
+  out.push("        print(\"等待连接: \" + error.localizedDescription)");
+  out.push("    case .failed(let error):");
+  out.push("        print(\"连接失败: \" + error.localizedDescription)");
+  out.push("    default:");
+  out.push("        break");
+  out.push("    }");
+  out.push("}");
+  out.push("connection.start(queue: .main)");
+  out.push("");
+  out.push("// 5. 保持主线程运行");
+  out.push("dispatchMain()");
+  return out.join("\n");
+}
+
 function genWsUnsupported(lang: string): string {
   return `// ${lang}：暂未内置 WebSocket 客户端代码生成`;
 }
@@ -3140,6 +3322,8 @@ export function generateWebSocketCode(lang: CodeLang, api: ApiFile, baseUrl: str
       return genWsPhp(r, lib);
     case "ruby":
       return genWsRuby(r, lib);
+    case "swift":
+      return genWsSwiftDispatch(r, lib);
     default:
       return genWsUnsupported(lang);
   }
