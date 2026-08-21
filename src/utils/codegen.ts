@@ -91,7 +91,7 @@ export function defaultLib(lang: CodeLang): string | undefined {
   return CODE_LIBS[lang]?.[0]?.value;
 }
 
-/** WebSocket 代码生成的可选库（目前 C / C++ / PHP / Ruby 语言支持库切换） */
+/** WebSocket 代码生成的可选库（目前 C / C++ / PHP / Ruby / Java 语言支持库切换） */
 export const WS_CODE_LIBS: Partial<Record<CodeLang, CodeLibOption[]>> = {
   c: [
     { value: "libwebsockets", label: "libwebsockets" },
@@ -113,6 +113,12 @@ export const WS_CODE_LIBS: Partial<Record<CodeLang, CodeLibOption[]>> = {
     { value: "websocket-ruby", label: "websocket-ruby" },
     { value: "sinatra", label: "Sinatra + faye-websocket" },
     { value: "actioncable", label: "Rails ActionCable" },
+  ],
+  java: [
+    { value: "jsr356", label: "JSR-356" },
+    { value: "spring", label: "Spring WebSocket" },
+    { value: "netty", label: "Netty" },
+    { value: "okhttp", label: "OkHttp" },
   ],
 };
 
@@ -1843,44 +1849,301 @@ function genWsGo(r: WsReq): string {
   return out.join("\n");
 }
 
-function genWsJava(r: WsReq): string {
+function genWsJavaDispatch(r: WsReq, lib?: string): string {
+  switch (lib) {
+    case "spring":
+      return genWsJavaSpring(r);
+    case "netty":
+      return genWsJavaNetty(r);
+    case "okhttp":
+      return genWsJavaOkhttp(r);
+    default:
+      return genWsJavaJsr356(r);
+  }
+}
+
+function genWsJavaJsr356(r: WsReq): string {
   const out: string[] = [];
+  out.push("/*");
+  out.push(" * WebSocket 客户端示例（JSR-356：Java 标准 WebSocket API，JavaEE/JakartaEE 标准）");
+  out.push(" * 规范官网: https://jakarta.ee/specifications/websocket/");
+  out.push(" * 教程: https://javaee.github.io/tutorial/websocket.html");
+  out.push(" * 容器内置: Tomcat（tomcat-websocket）、Jetty（jetty-websocket）");
+  out.push(" * 依赖（以 Tomcat 为例，Maven）:");
+  out.push(" *   <dependency>");
+  out.push(" *     <groupId>org.apache.tomcat</groupId>");
+  out.push(" *     <artifactId>tomcat-websocket</artifactId>");
+  out.push(" *     <version>9.0.102</version>");
+  out.push(" *   </dependency>");
+  out.push(" * 注意: JakartaEE 9+ 将包名 javax.websocket 改为 jakarta.websocket");
+  out.push(" */");
+  out.push("import javax.websocket.*;");
   out.push("import java.net.URI;");
-  out.push("import java.net.http.HttpClient;");
-  out.push("import java.net.http.WebSocket;");
-  out.push("import java.util.concurrent.CompletionStage;");
+  out.push("import java.util.List;");
+  out.push("import java.util.Map;");
+  out.push("");
+  out.push("@ClientEndpoint");
+  out.push("public class Main {");
+  out.push("    public static void main(String[] args) throws Exception {");
+  out.push("        WebSocketContainer container = ContainerProvider.getWebSocketContainer();");
+  if (r.headers.length) {
+    out.push("        ClientEndpointConfig config = ClientEndpointConfig.Builder.create()");
+    out.push("            .configurator(new ClientEndpointConfig.Configurator() {");
+    out.push("                @Override");
+    out.push("                public void beforeRequest(Map<String, List<String>> headers) {");
+    for (const h of r.headers) out.push(`                    headers.put(${JSON.stringify(h.key)}, List.of(${JSON.stringify(h.value)}));`);
+    out.push("                }");
+    out.push("            }).build();");
+    out.push(`        Session session = container.connectToServer(Main.class, config, URI.create(${JSON.stringify(r.url)}));`);
+  } else {
+    out.push(`        Session session = container.connectToServer(Main.class, URI.create(${JSON.stringify(r.url)}));`);
+  }
+  out.push("        // 保持主线程存活，等待回调");
+  out.push("        Thread.sleep(5000);");
+  out.push("        session.close();");
+  out.push("    }");
+  out.push("");
+  out.push("    @OnOpen");
+  out.push("    public static void onOpen(Session session) {");
+  out.push("        System.out.println(\">>> 连接成功\");");
+  out.push(`        String msg = ${JSON.stringify(r.message || "hello, this is a websocket echo message")};`);
+  out.push("        System.out.println(\">>> 发送: \" + msg);");
+  out.push("        try { session.getBasicRemote().sendText(msg); } catch (Exception e) { }");
+  out.push("    }");
+  out.push("");
+  out.push("    @OnMessage");
+  out.push("    public static void onMessage(String message, Session session) {");
+  out.push("        System.out.println(\"<<< 接收: \" + message);");
+  out.push("        try { session.close(); } catch (Exception e) { }");
+  out.push("    }");
+  out.push("");
+  out.push("    @OnError");
+  out.push("    public static void onError(Session session, Throwable t) {");
+  out.push("        System.out.println(\"连接失败: \" + t.getMessage());");
+  out.push("    }");
+  out.push("");
+  out.push("    @OnClose");
+  out.push("    public static void onClose(Session session, CloseReason reason) {");
+  out.push("        System.out.println(\"连接已关闭: \" + reason.getReasonPhrase());");
+  out.push("    }");
+  out.push("}");
+  return out.join("\n");
+}
+
+function genWsJavaSpring(r: WsReq): string {
+  const out: string[] = [];
+  out.push("/*");
+  out.push(" * WebSocket 客户端示例（Spring WebSocket：SpringBoot 项目首选，底层可用 JSR356 / Netty / Jetty）");
+  out.push(" * 官网: https://spring.io/projects/spring-websocket");
+  out.push(" * 文档: https://docs.spring.io/spring-framework/reference/web/websocket.html");
+  out.push(" * 依赖: spring-boot-starter-websocket（或 spring-websocket）");
+  out.push(" * 说明: 底层客户端可切换 StandardWebSocketClient（JSR-356）/ JettyWebSocketClient /");
+  out.push(" *       ReactorNettyWebSocketClient（WebFlux）；如需 STOMP 子协议，");
+  out.push(" *       改用 spring-messaging 的 WebSocketStompClient + StompSession");
+  out.push(" */");
+  out.push("import org.springframework.web.socket.*;");
+  out.push("import org.springframework.web.socket.client.WebSocketClient;");
+  out.push("import org.springframework.web.socket.client.standard.StandardWebSocketClient;");
+  out.push("import java.util.concurrent.CompletableFuture;");
   out.push("");
   out.push("public class Main {");
   out.push("    public static void main(String[] args) throws Exception {");
-  out.push("        HttpClient client = HttpClient.newHttpClient();");
+  out.push("        WebSocketClient client = new StandardWebSocketClient();");
   if (r.headers.length) {
-    out.push("        HttpClient.Builder builder = HttpClient.newBuilder();");
-    out.push("        WebSocket.Builder wsBuilder = builder.build().newWebSocketBuilder();");
-    for (const h of r.headers) out.push(`        wsBuilder.header(${JSON.stringify(h.key)}, ${JSON.stringify(h.value)});`);
-    out.push("        WebSocket ws = wsBuilder.buildAsync(URI.create(" + JSON.stringify(r.url) + "), new Listener()).join();");
+    out.push("        HttpHeaders headers = new HttpHeaders();");
+    for (const h of r.headers) out.push(`        headers.set(${JSON.stringify(h.key)}, ${JSON.stringify(h.value)});`);
+    out.push(`        CompletableFuture<WebSocketSession> future = client.execute(handler(), ${JSON.stringify(r.url)}, headers);`);
   } else {
-    out.push("        WebSocket ws = client.newWebSocketBuilder()");
-    out.push("                .buildAsync(URI.create(" + JSON.stringify(r.url) + "), new Listener()).join();");
+    out.push(`        CompletableFuture<WebSocketSession> future = client.execute(handler(), ${JSON.stringify(r.url)});`);
   }
+  out.push("        WebSocketSession session = future.get();");
   out.push("        Thread.sleep(5000);");
-  out.push("        ws.close(1000, \"bye\");");
+  out.push("        session.close();");
   out.push("    }");
   out.push("");
-  out.push("    static class Listener implements WebSocket.Listener {");
-  out.push("        @Override");
-  out.push("        public void onOpen(WebSocket webSocket) {");
-  if (r.message) {
-    out.push("            webSocket.sendText(" + JSON.stringify(r.message) + ", true);");
-    out.push("            webSocket.request(1);");
-  }
-  out.push("        }");
+  out.push("    private static WebSocketHandler handler() {");
+  out.push("        return new WebSocketHandler() {");
+  out.push("            @Override");
+  out.push("            public void afterConnectionEstablished(WebSocketSession session) throws Exception {");
+  out.push("                System.out.println(\">>> 连接成功\");");
+  out.push(`                session.sendMessage(new TextMessage(${JSON.stringify(r.message || "hello, this is a websocket echo message")}));`);
+  out.push("                System.out.println(\">>> 发送完成\");");
+  out.push("            }");
   out.push("");
-  out.push("        @Override");
-  out.push("        public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {");
-  out.push("            System.out.println(\"<<< 接收:\" + data);");
-  out.push("            webSocket.request(1);");
-  out.push("            return null;");
+  out.push("            @Override");
+  out.push("            public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) throws Exception {");
+  out.push("                if (message instanceof TextMessage) {");
+  out.push("                    System.out.println(\"<<< 接收: \" + ((TextMessage) message).getPayload());");
+  out.push("                }");
+  out.push("            }");
+  out.push("");
+  out.push("            @Override");
+  out.push("            public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {");
+  out.push("                System.out.println(\"连接失败: \" + exception.getMessage());");
+  out.push("            }");
+  out.push("");
+  out.push("            @Override");
+  out.push("            public void afterConnectionClosed(WebSocketSession session, CloseStatus closeStatus) throws Exception {");
+  out.push("                System.out.println(\"连接已关闭: \" + closeStatus);");
+  out.push("            }");
+  out.push("");
+  out.push("            @Override");
+  out.push("            public boolean supportsPartialMessages() { return false; }");
+  out.push("        };");
+  out.push("    }");
+  out.push("}");
+  return out.join("\n");
+}
+
+function genWsJavaNetty(r: WsReq): string {
+  const out: string[] = [];
+  out.push("/*");
+  out.push(" * WebSocket 客户端示例（Netty 原生：高性能底层，高并发网关、IM 服务）");
+  out.push(" * 官网: https://netty.io/");
+  out.push(" * 依赖（Maven）:");
+  out.push(" *   <dependency>");
+  out.push(" *     <groupId>io.netty</groupId>");
+  out.push(" *     <artifactId>netty-codec-http</artifactId>");
+  out.push(" *     <version>4.1.115.Final</version>");
+  out.push(" *   </dependency>");
+  out.push(" *   （wss:// 时另需 netty-handler 与 netty-tcnative/OpenSSL）");
+  out.push(" */");
+  out.push("import io.netty.bootstrap.Bootstrap;");
+  out.push("import io.netty.channel.*;");
+  out.push("import io.netty.channel.nio.NioEventLoopGroup;");
+  out.push("import io.netty.channel.socket.SocketChannel;");
+  out.push("import io.netty.channel.socket.nio.NioSocketChannel;");
+  out.push("import io.netty.handler.codec.http.DefaultHttpHeaders;");
+  out.push("import io.netty.handler.codec.http.HttpClientCodec;");
+  out.push("import io.netty.handler.codec.http.HttpObjectAggregator;");
+  out.push("import io.netty.handler.codec.http.websocketx.*;");
+  out.push("import io.netty.handler.ssl.SslContextBuilder;");
+  out.push("import java.net.URI;");
+  out.push("");
+  out.push("public class Main {");
+  out.push("    public static void main(String[] args) throws Exception {");
+  out.push(`        URI uri = new URI(${JSON.stringify(r.url)});`);
+  out.push("        String scheme = uri.getScheme();");
+  out.push("        boolean ssl = \"wss\".equals(scheme);");
+  out.push("        String host = uri.getHost();");
+  out.push("        int port = uri.getPort();");
+  out.push("        if (port == -1) port = ssl ? 443 : 80;");
+  out.push("");
+  if (r.headers.length) {
+    out.push("        DefaultHttpHeaders headers = new DefaultHttpHeaders();");
+    for (const h of r.headers) out.push(`        headers.add(${JSON.stringify(h.key)}, ${JSON.stringify(h.value)});`);
+  } else {
+    out.push("        DefaultHttpHeaders headers = new DefaultHttpHeaders();");
+  }
+  out.push(`        WebSocketClientHandshaker handshaker = WebSocketClientHandshakerFactory`);
+  out.push(`                .newHandshaker(uri, WebSocketVersion.V13, null, true, headers);`);
+  out.push("");
+  out.push("        EventLoopGroup group = new NioEventLoopGroup();");
+  out.push("        try {");
+  out.push("            Bootstrap bootstrap = new Bootstrap();");
+  out.push("            bootstrap.group(group)");
+  out.push("                .channel(NioSocketChannel.class)");
+  out.push("                .handler(new ChannelInitializer<SocketChannel>() {");
+  out.push("                    @Override");
+  out.push("                    protected void initChannel(SocketChannel ch) {");
+  out.push("                        ChannelPipeline p = ch.pipeline();");
+  out.push("                        if (ssl) {");
+  out.push("                            p.addLast(SslContextBuilder.forClient().build()");
+  out.push("                                    .newHandler(ch.alloc(), host, port));");
+  out.push("                        }");
+  out.push("                        p.addLast(new HttpClientCodec());");
+  out.push("                        p.addLast(new HttpObjectAggregator(8192));");
+  out.push("                        p.addLast(new WebSocketClientProtocolHandler(handshaker, true));");
+  out.push("                        p.addLast(new SimpleChannelInboundHandler<WebSocketFrame>() {");
+  out.push("                            @Override");
+  out.push("                            protected void channelRead0(ChannelHandlerContext ctx, WebSocketFrame frame) {");
+  out.push("                                if (frame instanceof TextWebSocketFrame) {");
+  out.push("                                    System.out.println(\"<<< 接收: \" + ((TextWebSocketFrame) frame).text());");
+  out.push("                                    ctx.close();");
+  out.push("                                }");
+  out.push("                            }");
+  out.push("");
+  out.push("                            @Override");
+  out.push("                            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {");
+  out.push("                                System.out.println(\"连接失败: \" + cause.getMessage());");
+  out.push("                                ctx.close();");
+  out.push("                            }");
+  out.push("                        });");
+  out.push("                    }");
+  out.push("                });");
+  out.push("");
+  out.push("            Channel ch = bootstrap.connect(host, port).sync().channel();");
+  out.push("            handshaker.handshakeFuture().sync();   // 等待握手完成");
+  out.push("            System.out.println(\">>> 连接成功\");");
+  out.push(`            String msg = ${JSON.stringify(r.message || "hello, this is a websocket echo message")};`);
+  out.push("            System.out.println(\">>> 发送: \" + msg);");
+  out.push("            ch.writeAndFlush(new TextWebSocketFrame(msg));");
+  out.push("            ch.closeFuture().sync();");
+  out.push("        } finally {");
+  out.push("            group.shutdownGracefully();");
   out.push("        }");
+  out.push("    }");
+  out.push("}");
+  return out.join("\n");
+}
+
+function genWsJavaOkhttp(r: WsReq): string {
+  const out: string[] = [];
+  out.push("/*");
+  out.push(" * WebSocket 客户端示例（OkHttp：轻量易用，Android 与 JVM 通用）");
+  out.push(" * 官网: https://square.github.io/okhttp/");
+  out.push(" * GitHub: https://github.com/square/okhttp");
+  out.push(" * 依赖（Maven）:");
+  out.push(" *   <dependency>");
+  out.push(" *     <groupId>com.squareup.okhttp3</groupId>");
+  out.push(" *     <artifactId>okhttp</artifactId>");
+  out.push(" *     <version>4.12.0</version>");
+  out.push(" *   </dependency>");
+  out.push(" */");
+  out.push("import okhttp3.*;");
+  out.push("import okio.ByteString;");
+  out.push("");
+  out.push("public class Main {");
+  out.push("    public static void main(String[] args) throws Exception {");
+  out.push("        OkHttpClient client = new OkHttpClient();");
+  out.push("        Request request = new Request.Builder()");
+  out.push(`            .url(${JSON.stringify(r.url)})`);
+  for (const h of r.headers) out.push(`            .addHeader(${JSON.stringify(h.key)}, ${JSON.stringify(h.value)})`);
+  out.push("            .build();");
+  out.push("");
+  out.push("        WebSocket ws = client.newWebSocket(request, new WebSocketListener() {");
+  out.push("            @Override");
+  out.push("            public void onOpen(WebSocket webSocket, Response response) {");
+  out.push("                System.out.println(\">>> 连接成功\");");
+  out.push(`                webSocket.send(${JSON.stringify(r.message || "hello, this is a websocket echo message")});`);
+  out.push("                System.out.println(\">>> 发送完成\");");
+  out.push("            }");
+  out.push("");
+  out.push("            @Override");
+  out.push("            public void onMessage(WebSocket webSocket, String text) {");
+  out.push("                System.out.println(\"<<< 接收: \" + text);");
+  out.push("                webSocket.close(1000, \"bye\");");
+  out.push("            }");
+  out.push("");
+  out.push("            @Override");
+  out.push("            public void onMessage(WebSocket webSocket, ByteString bytes) {");
+  out.push("                System.out.println(\"<<< 接收(binary): \" + bytes.hex());");
+  out.push("            }");
+  out.push("");
+  out.push("            @Override");
+  out.push("            public void onFailure(WebSocket webSocket, Throwable t, Response response) {");
+  out.push("                System.out.println(\"连接失败: \" + t.getMessage());");
+  out.push("            }");
+  out.push("");
+  out.push("            @Override");
+  out.push("            public void onClosed(WebSocket webSocket, int code, String reason) {");
+  out.push("                System.out.println(\"连接已关闭: \" + reason);");
+  out.push("            }");
+  out.push("        });");
+  out.push("");
+  out.push("        // 保持主线程存活");
+  out.push("        Thread.sleep(5000);");
+  out.push("        client.dispatcher().executorService().shutdown();");
   out.push("    }");
   out.push("}");
   return out.join("\n");
@@ -2864,7 +3127,7 @@ export function generateWebSocketCode(lang: CodeLang, api: ApiFile, baseUrl: str
     case "go":
       return genWsGo(r);
     case "java":
-      return genWsJava(r);
+      return genWsJavaDispatch(r, lib);
     case "csharp":
       return genWsCsharp(r);
     case "rust":
