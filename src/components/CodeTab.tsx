@@ -83,31 +83,108 @@ interface Props {
   defaultLang: string;
 }
 
-/** 语言 icon：各语言吉祥物/代表 emoji（原生 select 的 option 无法内嵌图片，用 emoji 呈现） */
-const LANG_ICONS: Record<string, string> = {
-  bash: "🐧",
-  python: "🐍",
-  c: "⚙️",
-  cpp: "🔧",
-  java: "☕",
-  csharp: "🎯",
-  javascript: "🟨",
-  r: "📊",
-  rust: "🦀",
-  delphi: "🏛️",
-  php: "🐘",
-  go: "🐹",
-  ruby: "💎",
-  swift: "🕊️",
-  perl: "🐫",
-  objectivec: "🍎",
-  julia: "🟣",
-  kotlin: "🅺",
-  typescript: "🔷",
-  erlang: "☎️",
-  lua: "🌙",
-  powershell: "🪟",
+/** 语言 icon：各语言 logo 图片（src/assets/code/），文件名大小写以实际为准 */
+const LANG_ICON_FILES: Record<string, string> = {
+  bash: "bash.png",
+  python: "Python.png",
+  c: "c.png",
+  cpp: "C++.png",
+  java: "java.png",
+  javascript: "javascript.png",
+  r: "R.png",
+  rust: "rust.png",
+  php: "php.png",
+  go: "go.png",
+  ruby: "Ruby.png",
+  swift: "swift.png",
+  objectivec: "objective-c.png",
+  julia: "Julia.png",
+  kotlin: "kotlin.png",
+  typescript: "typescript.png",
+  erlang: "Erlang.png",
+  lua: "Lua.png",
+  powershell: "powershell.png",
+  // csharp / delphi / perl 暂无图片，不显示 icon
 };
+const langIconImgs = import.meta.glob<string>("../assets/code/*.png", {
+  eager: true,
+  import: "default",
+});
+const LANG_ICON: Record<string, string> = {};
+for (const [path, url] of Object.entries(langIconImgs)) {
+  const file = path.slice(path.lastIndexOf("/") + 1);
+  for (const [value, f] of Object.entries(LANG_ICON_FILES)) {
+    if (f === file) LANG_ICON[value] = url;
+  }
+}
+
+/** 自定义语言下拉（div 实现，option 前展示语言 logo 图片） */
+function LangSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: CodeLang;
+  options: { value: CodeLang; label: string }[];
+  onChange: (v: CodeLang) => void;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const cur = options.find((o) => o.value === value) ?? options[0];
+  return (
+    <div className="codegen-lang-select-wrap">
+      <div
+        className={`codegen-lang-select${open ? " open" : ""}`}
+        onClick={() => setOpen((s) => !s)}
+        title={t("codegen.switchLang")}
+        role="listbox"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen((s) => !s);
+          } else if (e.key === "Escape") {
+            setOpen(false);
+          }
+        }}
+      >
+        {LANG_ICON[cur.value] ? (
+          <img className="codegen-lang-icon" src={LANG_ICON[cur.value]} alt="" />
+        ) : (
+          <span className="codegen-lang-icon codegen-lang-icon-empty" />
+        )}
+        <span className="codegen-lang-label">{cur.label}</span>
+        <span className="codegen-lang-caret">▾</span>
+      </div>
+      {open && (
+        <>
+          <div className="menu-mask" onClick={() => setOpen(false)} />
+          <div className="codegen-lang-pop">
+            {options.map((o) => (
+              <div
+                key={o.value}
+                role="option"
+                aria-selected={o.value === value}
+                className={`codegen-lang-opt${o.value === value ? " active" : ""}`}
+                onClick={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                }}
+              >
+                {LANG_ICON[o.value] ? (
+                  <img className="codegen-lang-icon" src={LANG_ICON[o.value]} alt="" />
+                ) : (
+                  <span className="codegen-lang-icon codegen-lang-icon-empty" />
+                )}
+                {o.label}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function CodeTab({ api, baseUrl, defaultLang }: Props) {
   const t = useT();
@@ -149,23 +226,14 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
     <div className="codegen-root">
       <div className="section-title codegen-head">
         <span>{t("codegen.title")}</span>
-        <select
-          className="codegen-lang"
+        <LangSelect
           value={lang}
-          onChange={(e) => {
-            const next = e.target.value as CodeLang;
+          options={CODE_LANGS}
+          onChange={(next) => {
             setLang(next);
             setLib(isWs ? WS_CODE_LIBS[next]?.[0]?.value : defaultLib(next));
           }}
-          title={t("codegen.switchLang")}
-        >
-          {CODE_LANGS.map((l) => (
-            <option key={l.value} value={l.value}>
-              {LANG_ICONS[l.value] ? `${LANG_ICONS[l.value]} ` : ""}
-              {l.label}
-            </option>
-          ))}
-        </select>
+        />
         <button className="btn small" onClick={copy}>
           {copied ? t("resp.copied") : "📋 " + t("common.copy")}
         </button>

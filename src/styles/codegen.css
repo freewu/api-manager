@@ -12,19 +12,6 @@
   flex-wrap: wrap;
   flex-shrink: 0;
 }
-.codegen-lang {
-  background: var(--bg-input);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 12.5px;
-  outline: none;
-  cursor: pointer;
-}
-.codegen-lang:focus {
-  border-color: var(--accent);
-}
 .codegen-libs {
   display: flex;
   flex-wrap: wrap;
@@ -135,7 +122,14 @@
   color: #6a737d;
 }
 
+.codegen-lang-select-wrap {
+  position: relative;
+  display: inline-flex;
+}
 .codegen-lang-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   height: 34px;
   min-width: 230px;
   padding: 0 12px;
@@ -146,9 +140,67 @@
   border-radius: 6px;
   font-size: 13px;
   outline: none;
+  user-select: none;
 }
-.codegen-lang-select:hover {
+.codegen-lang-select:hover,
+.codegen-lang-select.open {
   border-color: var(--accent);
+}
+.codegen-lang-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.codegen-lang-icon-empty {
+  width: 18px;
+}
+.codegen-lang-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.codegen-lang-caret {
+  color: var(--text-faint);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.codegen-lang-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 200;
+  min-width: 230px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: menu-in 0.12s ease;
+}
+.codegen-lang-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+}
+.codegen-lang-opt:hover {
+  background: var(--bg-hover);
+}
+.codegen-lang-opt.active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
 }
 
 .kv-filetype select {
