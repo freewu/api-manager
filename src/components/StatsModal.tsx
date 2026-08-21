@@ -21,6 +21,8 @@ const FALLBACK_COLORS = ["#4f8ef7", "#37b26c", "#f0a63a", "#9a6cf0", "#e05561", 
 
 interface Stats {
   totalApis: number;
+  httpApis: number;
+  wsApis: number;
   totalFolders: number;
   deprecatedApis: number;
   deprecatedFolders: number;
@@ -34,14 +36,21 @@ function computeStats(node: TreeNode): Stats {
   let mockEnabled = 0;
   let deprecatedApis = 0;
   let deprecatedFolders = 0;
+  let httpApis = 0;
+  let wsApis = 0;
 
-  // 单次遍历：累计方法分布、mock 与废弃接口数（有副作用，只调用一次）
+  // 单次遍历：累计方法分布（仅 HTTP 接口）、mock 与废弃接口数（有副作用，只调用一次）
   const countApis = (n: TreeNode): number => {
     if (n.kind === "api") {
       if (n.mockEnabled) mockEnabled++;
       if (n.deprecated) deprecatedApis++;
-      const m = (n.method || "GET").toUpperCase();
-      methods.set(m, (methods.get(m) || 0) + 1);
+      if (n.protocol === "websocket") {
+        wsApis++;
+      } else {
+        httpApis++;
+        const m = (n.method || "GET").toUpperCase();
+        methods.set(m, (methods.get(m) || 0) + 1);
+      }
       return 1;
     }
     let c = 0;
@@ -74,7 +83,17 @@ function computeStats(node: TreeNode): Stats {
   }));
 
   const methodList = [...methods.entries()].sort((a, b) => b[1] - a[1]);
-  return { totalApis, totalFolders, deprecatedApis, deprecatedFolders, mockEnabled, methods: methodList, items };
+  return {
+    totalApis,
+    httpApis,
+    wsApis,
+    totalFolders,
+    deprecatedApis,
+    deprecatedFolders,
+    mockEnabled,
+    methods: methodList,
+    items,
+  };
 }
 
 /** 环形图：接口方法分布 */
@@ -139,6 +158,14 @@ export function StatsModal({ node, onClose }: Props) {
           <div className="stats-card-label">{t("stats.totalApis")}</div>
         </div>
         <div className="stats-card">
+          <div className="stats-card-num">{stats.httpApis}</div>
+          <div className="stats-card-label">{t("stats.httpApis")}</div>
+        </div>
+        <div className="stats-card">
+          <div className="stats-card-num">{stats.wsApis}</div>
+          <div className="stats-card-label">{t("stats.wsApis")}</div>
+        </div>
+        <div className="stats-card">
           <div className="stats-card-num">{stats.totalFolders}</div>
           <div className="stats-card-label">{t("stats.totalFolders")}</div>
         </div>
@@ -159,6 +186,7 @@ export function StatsModal({ node, onClose }: Props) {
       <div className="stats-body">
         <div className="stats-panel">
           <div className="stats-panel-title">{t("stats.methods")}</div>
+          {stats.wsApis > 0 && <div className="stats-ws-note">{t("stats.wsExcluded")}</div>}
           {stats.methods.length === 0 ? (
             <div className="stats-empty">{t("stats.noApis")}</div>
           ) : (

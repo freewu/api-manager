@@ -44,9 +44,16 @@ interface Props {
   onLoadMore: () => void;
   onReload: () => void;
   onClear: () => void;
+  /** Diff 比对模式 */
+  diffMode: boolean;
+  diffIds: string[];
+  diffError: string;
+  onToggleDiffMode: (on: boolean) => void;
+  onToggleDiffSelect: (r: HistorySummary) => void;
+  onStartDiff: () => void;
 }
 
-/** 左侧请求历史列表（替代接口树），按天分组、懒加载 */
+/** 左侧请求历史列表（替代接口树），按天分组、懒加载；支持 Diff 比对 */
 export function HistoryList({
   records,
   days,
@@ -58,6 +65,12 @@ export function HistoryList({
   onLoadMore,
   onReload,
   onClear,
+  diffMode,
+  diffIds,
+  diffError,
+  onToggleDiffMode,
+  onToggleDiffSelect,
+  onStartDiff,
 }: Props) {
   const t = useT();
   const [confirmClear, setConfirmClear] = useState(false);
@@ -96,17 +109,57 @@ export function HistoryList({
           {totalCount > 0 ? t("history.total", { count: totalCount }) : t("history.empty")}
         </span>
         <span style={{ flex: 1 }} />
-        <button
-          className="icon-btn"
-          onClick={onReload}
-          disabled={loading}
-          title={t("history.refresh")}
-          aria-label={t("history.refresh")}
-        >
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
-            <path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
-          </svg>
-        </button>
+        {diffMode ? (
+          <>
+            <button
+              className={`icon-btn ${diffIds.length === 2 ? "accent" : ""}`}
+              onClick={onStartDiff}
+              disabled={diffIds.length !== 2}
+              title={
+                diffIds.length === 2 ? t("history.diffStart") : t("history.diffNeedTwo")
+              }
+              aria-label={t("history.diffStart")}
+            >
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+                <path d="M9.01 14H2v2h7.01v3L13 15l-3.99-4v3zm5.98-1v-3H22V8h-7.01V5L11 9l3.99 4z" />
+              </svg>
+            </button>
+            <button
+              className="icon-btn"
+              onClick={() => onToggleDiffMode(false)}
+              title={t("history.diffCancel")}
+              aria-label={t("history.diffCancel")}
+            >
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+                <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              </svg>
+            </button>
+          </>
+        ) : (
+          <button
+            className="icon-btn"
+            onClick={onReload}
+            disabled={loading}
+            title={t("history.refresh")}
+            aria-label={t("history.refresh")}
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+              <path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+            </svg>
+          </button>
+        )}
+        {!diffMode && (
+          <button
+            className="icon-btn"
+            onClick={() => onToggleDiffMode(true)}
+            title={t("history.diffMode")}
+            aria-label={t("history.diffMode")}
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+              <path d="M9.01 14H2v2h7.01v3L13 15l-3.99-4v3zm5.98-1v-3H22V8h-7.01V5L11 9l3.99 4z" />
+            </svg>
+          </button>
+        )}
         <button
           className={`icon-btn ${confirmClear ? "danger" : ""}`}
           onClick={() => {
@@ -126,6 +179,11 @@ export function HistoryList({
           </svg>
         </button>
       </div>
+      {diffMode && (
+        <div className={`history-diff-hint${diffError ? " error" : ""}`}>
+          {diffError ? t(diffError) : t("history.diffHint", { n: diffIds.length })}
+        </div>
+      )}
       <div className="history-list-scroll">
         {records.length === 0 && !loading && (
           <div className="history-empty">{t("history.emptyHint")}</div>
@@ -138,23 +196,35 @@ export function HistoryList({
                 <span className="history-day-count">{dayCount.get(day)} {t("history.items")}</span>
               )}
             </div>
-            {list.map((r) => (
-              <div
-                key={r.id}
-                className={`history-item ${selectedId === r.id ? "active" : ""}`}
-                onClick={() => onSelect(r.id)}
-                title={`${r.method} ${r.url}`}
-              >
-                <span className="history-time">{fmtTime(r.time)}</span>
-                <span className={`node-method ${methodClass(r.method)}`}>{r.method}</span>
-                {r.status > 0 ? (
-                  <span className={`history-status ${statusClass(r.status)}`}>{r.status}</span>
-                ) : (
-                  <span className="history-status status-5xx">ERR</span>
-                )}
-                <span className="history-url">{r.url}</span>
-              </div>
-            ))}
+            {list.map((r) => {
+              const checked = diffIds.includes(r.id);
+              const sel = selectedId === r.id;
+              return (
+                <div
+                  key={r.id}
+                  className={`history-item ${sel ? "active" : ""} ${checked ? "diff-checked" : ""}`}
+                  onClick={() => (diffMode ? onToggleDiffSelect(r) : onSelect(r.id))}
+                  title={`${r.method} ${r.url}`}
+                >
+                  {diffMode && (
+                    <span
+                      className={`history-check${checked ? " on" : ""}`}
+                      aria-hidden="true"
+                    >
+                      {checked ? "✓" : ""}
+                    </span>
+                  )}
+                  <span className="history-time">{fmtTime(r.time)}</span>
+                  <span className={`node-method ${methodClass(r.method)}`}>{r.method}</span>
+                  {r.status > 0 ? (
+                    <span className={`history-status ${statusClass(r.status)}`}>{r.status}</span>
+                  ) : (
+                    <span className="history-status status-5xx">ERR</span>
+                  )}
+                  <span className="history-url">{r.url}</span>
+                </div>
+              );
+            })}
           </div>
         ))}
         {loading && <div className="history-empty">{t("history.loading")}</div>}

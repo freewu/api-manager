@@ -1,9 +1,11 @@
 import { useT } from "../i18n";
 import { ApiFile, HttpResult, WsLogEntry } from "../types";
 import { HistoryDetail as HistoryDetailType } from "../commands";
+import { HistoryDiffPair } from "../hooks/useHistory";
 import { AppView } from "./Sidebar";
 import { ApiWorkspace } from "./ApiWorkspace";
 import { HistoryDetail } from "./HistoryDetail";
+import { HistoryDiff } from "./HistoryDiff";
 
 /**
  * 右侧面板：左右分栏拖拽条 + 内容区（请求历史详情 / 接口编辑工作台 / 空状态）。
@@ -14,6 +16,10 @@ interface RightPaneProps {
   api: ApiFile | null;
   historyDetail: HistoryDetailType | null;
   historyDetailLoading: boolean;
+  /** Diff 比对视图（非 null 时优先展示） */
+  historyDiff: HistoryDiffPair | null;
+  historyDiffLoading: boolean;
+  onHistoryDiffExit: () => void;
   baseUrl: string;
   currentVersion: number;
   enableVersion: boolean;
@@ -47,6 +53,9 @@ export function RightPane({
   api,
   historyDetail,
   historyDetailLoading,
+  historyDiff,
+  historyDiffLoading,
+  onHistoryDiffExit,
   baseUrl,
   currentVersion,
   enableVersion,
@@ -94,7 +103,16 @@ export function RightPane({
       >
         {view === "history" ? (
           <div className="history-view-content">
-            <HistoryDetail detail={historyDetail} loading={historyDetailLoading} />
+            {historyDiff ? (
+              <HistoryDiff
+                pair={historyDiff}
+                loading={historyDiffLoading}
+                onBack={onHistoryDiffExit}
+                onExit={onHistoryDiffExit}
+              />
+            ) : (
+              <HistoryDetail detail={historyDetail} loading={historyDetailLoading} />
+            )}
           </div>
         ) : api ? (
           <ApiWorkspace

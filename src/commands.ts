@@ -237,6 +237,9 @@ export interface HistorySummary {
   time: number;
   method: string;
   url: string;
+  /** 所属接口 uuid（Diff 比对限定同接口；旧记录可能为空字符串） */
+  apiUuid?: string;
+  apiName?: string;
   ok: boolean;
   status: number;
   statusText: string;
@@ -250,6 +253,8 @@ export interface HistoryDetail {
   time: number;
   method: string;
   url: string;
+  apiUuid?: string;
+  apiName?: string;
   ok: boolean;
   status: number;
   statusText: string;
@@ -265,6 +270,9 @@ export interface HistoryDetail {
 export interface HistoryInput {
   method: string;
   url: string;
+  /** 所属接口 uuid（发送请求时从当前接口带出，用于 Diff 比对） */
+  apiUuid?: string;
+  apiName?: string;
   reqHeaders: [string, string][];
   reqBody?: string;
   ok: boolean;

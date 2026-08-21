@@ -11,6 +11,8 @@ interface Props {
   api: ApiFile;
   /** 修改接口（「应用到当前接口」回调） */
   onChange: (api: ApiFile) => void;
+  /** 示例数量变化回调（供父级页签角标显示） */
+  onCountChange?: (count: number) => void;
 }
 
 function fmtTime(t: number): string {
@@ -56,7 +58,7 @@ function BodyView({ text }: { text: string }) {
   return <pre className="examples-body examples-pre">{text}</pre>;
 }
 
-export function ExamplesTab({ uuid, api, onChange }: Props) {
+export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
   const t = useT();
   const [list, setList] = useState<ExampleSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +78,11 @@ export function ExamplesTab({ uuid, api, onChange }: Props) {
       setLoading(false);
     }
   };
+
+  // 数量上报：加载完成后同步到父级（页签角标）
+  useEffect(() => {
+    onCountChange?.(list.length);
+  }, [list, onCountChange]);
 
   useEffect(() => {
     void load();

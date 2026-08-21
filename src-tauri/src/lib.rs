@@ -3213,6 +3213,12 @@ pub struct HistoryFile {
     pub time: u64,
     pub method: String,
     pub url: String,
+    /// 所属接口 uuid（用于 Diff 比对时限定同接口；旧记录无此字段）
+    #[serde(default)]
+    pub api_uuid: String,
+    /// 所属接口名称（旧记录无此字段）
+    #[serde(default)]
+    pub api_name: String,
     #[serde(default)]
     pub req_headers: Vec<(String, String)>,
     #[serde(default)]
@@ -3242,6 +3248,8 @@ impl HistoryFile {
             time: self.time,
             method: self.method.clone(),
             url: self.url.clone(),
+            api_uuid: self.api_uuid.clone(),
+            api_name: self.api_name.clone(),
             ok: self.ok,
             status: self.status,
             status_text: self.status_text.clone(),
@@ -3260,6 +3268,8 @@ pub struct HistoryRecord {
     pub time: u64,
     pub method: String,
     pub url: String,
+    pub api_uuid: String,
+    pub api_name: String,
     pub ok: bool,
     pub status: u16,
     pub status_text: String,
@@ -3277,6 +3287,8 @@ pub struct HistoryDetail {
     pub time: u64,
     pub method: String,
     pub url: String,
+    pub api_uuid: String,
+    pub api_name: String,
     pub ok: bool,
     pub status: u16,
     pub status_text: String,
@@ -3305,6 +3317,10 @@ pub struct HistoryDay {
 pub struct HistoryInput {
     pub method: String,
     pub url: String,
+    #[serde(default)]
+    pub api_uuid: String,
+    #[serde(default)]
+    pub api_name: String,
     #[serde(default)]
     pub req_headers: Vec<(String, String)>,
     #[serde(default)]
@@ -3368,6 +3384,8 @@ fn save_history_to(root: &Path, input: HistoryInput) -> Result<String, String> {
         time: secs,
         method: input.method,
         url: input.url,
+        api_uuid: input.api_uuid,
+        api_name: input.api_name,
         req_headers: input.req_headers,
         req_body: input.req_body,
         ok: input.ok,
@@ -3414,6 +3432,8 @@ fn history_detail_from(root: &Path, id: &str) -> Result<HistoryDetail, String> {
                 time: rec.time,
                 method: rec.method,
                 url: rec.url,
+                api_uuid: rec.api_uuid,
+                api_name: rec.api_name,
                 ok: rec.ok,
                 status: rec.status,
                 status_text: rec.status_text,
@@ -4977,6 +4997,8 @@ mod tests {
         let input = HistoryInput {
             method: "GET".into(),
             url: "http://127.0.0.1:8080/api/users".into(),
+            api_uuid: "abc-123".into(),
+            api_name: "用户列表".into(),
             req_headers: vec![("Content-Type".into(), "application/json".into())],
             req_body: Some("{\"a\":1}".into()),
             ok: true,
@@ -4996,6 +5018,7 @@ mod tests {
         assert_eq!(page.len(), 1);
         assert_eq!(page[0].id, id);
         assert_eq!(page[0].status, 200);
+        assert_eq!(page[0].api_uuid, "abc-123");
         // offset 越界返回空
         assert!(history_records_from(&root, 5, 100).unwrap().is_empty());
 

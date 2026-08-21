@@ -3,7 +3,7 @@ import { ApiFile, BODY_MODES, BodyData, DOC_TYPES, DocParam, DocSource, KeyValue
 import { KeyValueEditor } from "./KeyValueEditor";
 import { ExamplesTab } from "./ExamplesTab";
 import { useT } from "../i18n";
-import { pickFile } from "../commands";
+import { pickFile, listExamples } from "../commands";
 
 // 代码生成页签：highlight.js 体积较大，按需懒加载（首次打开「代码」页签时才下载）
 const CodeTab = lazy(() => import("./CodeTab").then((m) => ({ default: m.CodeTab })));
@@ -98,7 +98,20 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   const [tab, setTab] = useState<Tab>("params");
   /** JSON 格式化失败提示（body / mock 页签共用） */
   const [formatError, setFormatError] = useState<string | null>(null);
+  /** 示例记录数（「示例」页签角标） */
+  const [exampleCount, setExampleCount] = useState(0);
   const effectiveUrl = api.url || (baseUrl + api.path);
+
+  // 示例数量：接口切换时拉取；ExamplesTab 每次加载后也会回报最新数量
+  useEffect(() => {
+    let alive = true;
+    listExamples(api.uuid)
+      .then((l) => alive && setExampleCount(l.length))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [api.uuid]);
 
   const switchTab = (t: Tab) => {
     setTab(t);
@@ -326,6 +339,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         )}
         <div className={`tab ${tab === "examples" ? "active" : ""}`} onClick={() => switchTab("examples")}>
           {t("tab.examples")}
+          {exampleCount > 0 && <span className="count">{exampleCount}</span>}
         </div>
       </div>
 
@@ -722,7 +736,9 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             <CodeTab api={api} baseUrl={baseUrl} defaultLang={codegenLang} />
           </Suspense>
         )}
-        {tab === "examples" && <ExamplesTab uuid={api.uuid} api={api} onChange={onChange} />}
+        {tab === "examples" && (
+          <ExamplesTab uuid={api.uuid} api={api} onChange={onChange} onCountChange={setExampleCount} />
+        )}
       </div>
     </div>
   );

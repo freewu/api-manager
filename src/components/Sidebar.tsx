@@ -50,6 +50,13 @@ interface Props {
   onHistoryLoadMore: () => void;
   onHistoryReload: () => void;
   onHistoryClear: () => void;
+  // Diff 比对
+  historyDiffMode: boolean;
+  historyDiffIds: string[];
+  historyDiffError: string;
+  onHistoryToggleDiffMode: (on: boolean) => void;
+  onHistoryToggleDiffSelect: (r: HistorySummary) => void;
+  onHistoryStartDiff: () => void;
 }
 
 interface CtxMenu {
@@ -553,6 +560,12 @@ export function Sidebar(props: Props) {
           onLoadMore={props.onHistoryLoadMore}
           onReload={props.onHistoryReload}
           onClear={props.onHistoryClear}
+          diffMode={props.historyDiffMode}
+          diffIds={props.historyDiffIds}
+          diffError={props.historyDiffError}
+          onToggleDiffMode={props.onHistoryToggleDiffMode}
+          onToggleDiffSelect={props.onHistoryToggleDiffSelect}
+          onStartDiff={props.onHistoryStartDiff}
         />
       )}
       <div className="sidebar-footer">

@@ -686,6 +686,8 @@ export default function App() {
     saveHistory({
       method: "WS",
       url: wsUrlRef.current,
+      apiUuid: api?.uuid,
+      apiName: api?.name,
       reqHeaders: [], // 浏览器 WebSocket API 无法自定义请求头
       reqBody: pend.text,
       ok: !error,
@@ -890,6 +892,8 @@ export default function App() {
         await saveHistory({
           method: req.method,
           url: req.url,
+          apiUuid: api?.uuid,
+          apiName: api?.name,
           reqHeaders: req.headers.map((h) => [h.key, h.value]),
           reqBody: req.body,
           ok: res.ok,
@@ -1412,12 +1416,21 @@ export default function App() {
           onHistoryLoadMore={() => void history.loadPage(history.offset)}
           onHistoryReload={history.reload}
           onHistoryClear={() => void history.clearAll()}
+          historyDiffMode={history.diffMode}
+          historyDiffIds={history.diffIds}
+          historyDiffError={history.diffError}
+          onHistoryToggleDiffMode={history.toggleDiffMode}
+          onHistoryToggleDiffSelect={history.toggleDiffSelect}
+          onHistoryStartDiff={() => void history.startDiff()}
         />
         <RightPane
           view={view}
           api={api}
           historyDetail={history.detail}
           historyDetailLoading={history.detailLoading}
+          historyDiff={history.diffPair}
+          historyDiffLoading={history.diffLoading}
+          onHistoryDiffExit={history.exitDiff}
           baseUrl={baseUrl}
           currentVersion={currentVersion}
           enableVersion={settings.enableVersion}

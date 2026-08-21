@@ -5,11 +5,13 @@
 }
 .stats-cards {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 14px;
 }
 .stats-card {
   flex: 1;
+  min-width: 92px;
   padding: 12px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -141,4 +143,9 @@
   color: var(--text);
   font-weight: 600;
   flex-shrink: 0;
+}
+.stats-ws-note {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-bottom: 8px;
 }
