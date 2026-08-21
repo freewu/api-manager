@@ -91,7 +91,7 @@ export function defaultLib(lang: CodeLang): string | undefined {
   return CODE_LIBS[lang]?.[0]?.value;
 }
 
-/** WebSocket 代码生成的可选库（目前 C / C++ 语言支持库切换） */
+/** WebSocket 代码生成的可选库（目前 C / C++ / PHP 语言支持库切换） */
 export const WS_CODE_LIBS: Partial<Record<CodeLang, CodeLibOption[]>> = {
   c: [
     { value: "libwebsockets", label: "libwebsockets" },
@@ -103,6 +103,10 @@ export const WS_CODE_LIBS: Partial<Record<CodeLang, CodeLibOption[]>> = {
     { value: "libwebsockets", label: "libwebsockets" },
     { value: "uwebsockets", label: "uWebSockets" },
     { value: "qt", label: "Qt QWebSocket" },
+  ],
+  php: [
+    { value: "swoole", label: "Swoole / OpenSwoole" },
+    { value: "ratchet", label: "Ratchet" },
   ],
 };
 
@@ -2541,11 +2545,114 @@ function genWsCppQt(r: WsReq): string {
   return out.join("\n");
 }
 
+function genWsPhp(r: WsReq, lib?: string): string {
+  switch (lib) {
+    case "ratchet":
+      return genWsPhpRatchet(r);
+    default:
+      return genWsPhpSwoole(r);
+  }
+}
+
+function genWsPhpSwoole(r: WsReq): string {
+  const u = parseWsUrl(r.url);
+  const out: string[] = [];
+  out.push("<?php");
+  out.push("/**");
+  out.push(" * WebSocket 客户端示例（Swoole / OpenSwoole，协程，生产环境首选）");
+  out.push(" * Swoole 官网: https://www.swoole.com/");
+  out.push(" * Swoole 文档: https://wiki.swoole.com/#/websocket_client");
+  out.push(" * OpenSwoole 官网: https://openswoole.com/");
+  out.push(" * 安装: pecl install swoole      （Swoole）");
+  out.push(" *       pecl install openswoole  （OpenSwoole）");
+  out.push(" * 运行: php ws_client.php");
+  out.push(" */");
+  out.push("Co\\run(function () {");
+  out.push(`    $client = new Swoole\\WebSocket\\Client(${JSON.stringify(u.host)}, ${u.port}, ${JSON.stringify(u.path)});`);
+  out.push("    // 使用 OpenSwoole 时改为：");
+  out.push(`    // $client = new OpenSwoole\\WebSocket\\Client(${JSON.stringify(u.host)}, ${u.port}, ${JSON.stringify(u.path)});`);
+  if (r.headers.length) {
+    out.push("    $client->setHeaders([");
+    for (const h of r.headers) out.push(`        ${JSON.stringify(h.key)} => ${JSON.stringify(h.value)},`);
+    out.push("    ]);");
+  }
+  out.push("");
+  out.push("    $client->on('open', function (Swoole\\WebSocket\\Client $client) {");
+  out.push(`        $msg = ${JSON.stringify(r.message || "hello, this is a websocket echo message")};`);
+  out.push("        echo '>>> 发送: ' . $msg . PHP_EOL;");
+  out.push("        $client->push($msg);");
+  out.push("    });");
+  out.push("");
+  out.push("    $client->on('message', function (Swoole\\WebSocket\\Client $client, Swoole\\WebSocket\\Frame $frame) {");
+  out.push("        echo '<<< 接收: ' . $frame->data . PHP_EOL;");
+  out.push("        $client->close();");
+  out.push("    });");
+  out.push("");
+  out.push("    $client->on('error', function (Swoole\\WebSocket\\Client $client, $error) {");
+  out.push("        echo '连接失败: ' . $error . PHP_EOL;");
+  out.push("        $client->close();");
+  out.push("    });");
+  out.push("");
+  out.push("    $client->on('close', function (Swoole\\WebSocket\\Client $client) {");
+  out.push("        echo '连接已关闭' . PHP_EOL;");
+  out.push("    });");
+  out.push("");
+  out.push("    if (!$client->connect()) {");
+  out.push("        echo '连接失败' . PHP_EOL;");
+  out.push("    }");
+  out.push("});");
+  return out.join("\n");
+}
+
+function genWsPhpRatchet(r: WsReq): string {
+  const out: string[] = [];
+  out.push("<?php");
+  out.push("/**");
+  out.push(" * WebSocket 客户端示例（Ratchet：PHP 纯用户态库，基于 ReactPHP，传统 PHP）");
+  out.push(" * 官网: http://socketo.me/");
+  out.push(" * GitHub: https://github.com/ratchetphp/Ratchet");
+  out.push(" * 客户端库 Pawl: https://github.com/ratchetphp/Pawl");
+  out.push(" * 安装: composer require ratchet/pawl");
+  out.push(" * 运行: php ws_client.php");
+  out.push(" */");
+  out.push("require __DIR__ . '/vendor/autoload.php';");
+  out.push("");
+  out.push("use Ratchet\\Client\\Connector;");
+  out.push("use Ratchet\\Client\\WebSocket;");
+  out.push("use Ratchet\\RFC6455\\Messaging\\MessageInterface;");
+  out.push("use React\\EventLoop\\Loop;");
+  out.push("");
+  out.push("$loop = Loop::get();");
+  out.push("$connector = new Connector($loop);");
+  out.push("");
+  out.push(`$connector(${JSON.stringify(r.url)}, [], [`);
+  for (const h of r.headers) out.push(`    ${JSON.stringify(h.key)} => ${JSON.stringify(h.value)},`);
+  out.push("])->then(function (WebSocket $conn) {");
+  out.push(`    $msg = ${JSON.stringify(r.message || "hello, this is a websocket echo message")};`);
+  out.push("    echo '>>> 发送: ' . $msg . PHP_EOL;");
+  out.push("    $conn->send($msg);");
+  out.push("");
+  out.push("    $conn->on('message', function (MessageInterface $message) use ($conn) {");
+  out.push("        echo '<<< 接收: ' . $message . PHP_EOL;");
+  out.push("        $conn->close();");
+  out.push("    });");
+  out.push("");
+  out.push("    $conn->on('close', function () {");
+  out.push("        echo '连接已关闭' . PHP_EOL;");
+  out.push("    });");
+  out.push("}, function (\\Exception $e) {");
+  out.push("    echo '连接失败: ' . $e->getMessage() . PHP_EOL;");
+  out.push("});");
+  out.push("");
+  out.push("$loop->run();");
+  return out.join("\n");
+}
+
 function genWsUnsupported(lang: string): string {
   return `// ${lang}：暂未内置 WebSocket 客户端代码生成`;
 }
 
-/** 生成 WebSocket 客户端代码（C 语言支持 libwebsockets / libuv-ws / wslay，C++ 支持 Boost.Beast / libwebsockets / uWebSockets / Qt） */
+/** 生成 WebSocket 客户端代码（C: libwebsockets/libuv-ws/wslay，C++: Beast/libwebsockets/uWS/Qt，PHP: Swoole/Ratchet） */
 export function generateWebSocketCode(lang: CodeLang, api: ApiFile, baseUrl: string, lib?: string): string {
   const r = buildWsReq(api, baseUrl);
   switch (lang) {
@@ -2570,6 +2677,8 @@ export function generateWebSocketCode(lang: CodeLang, api: ApiFile, baseUrl: str
       return genWsC(r, lib);
     case "cpp":
       return genWsCpp(r, lib);
+    case "php":
+      return genWsPhp(r, lib);
     default:
       return genWsUnsupported(lang);
   }
