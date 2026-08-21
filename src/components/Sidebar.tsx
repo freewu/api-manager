@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { TreeNode } from "../types";
+import { AppSettings, TreeNode } from "../types";
 import { HistoryDay, HistorySummary } from "../commands";
 import { HistoryList } from "./HistoryList";
+import { FormatIcon } from "./FormatSelect";
 import { useT } from "../i18n";
 import iconHttp from "../assets/icon-http.png";
 import iconWs from "../assets/icon-websocket.png";
@@ -33,6 +34,8 @@ interface Props {
   onImportMarkdown?: () => void;
   onImportApifox?: () => void;
   onImportApipost?: () => void;
+  /** 当前设置（导入菜单按 importTypes 开关过滤格式） */
+  settings?: AppSettings;
   onExport?: () => void;
   onExportNode?: (node: TreeNode) => void;
   /** 工作目录版本控制类型（.git / .svn），为空时不显示同步/提交按钮 */
@@ -429,7 +432,7 @@ function NodeRow({
 
 export function Sidebar(props: Props) {
   const t = useT();
-  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
+  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
   const [importMenu, setImportMenu] = useState(false);
   const [filter, setFilter] = useState("");
   /** 高级搜索：是否展开过滤面板 */
@@ -780,50 +783,59 @@ export function Sidebar(props: Props) {
               <>
                 <div className="menu-mask" onClick={() => setImportMenu(false)} />
                 <div className="import-menu">
-                  <button
-                    onClick={() => {
-                      setImportMenu(false);
-                      onImportPostman();
-                    }}
-                  >
-                    📦 Postman Collection
-                  </button>
-                  <button
-                    onClick={() => {
-                      setImportMenu(false);
-                      onImportOpenApi?.();
-                    }}
-                  >
-                    📖 OpenAPI / Swagger（JSON / YAML）
-                  </button>
-                  {onImportMarkdown && (
+                  {settings?.importTypes?.postman !== false && onImportPostman && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportPostman();
+                      }}
+                    >
+                      <FormatIcon value="postman" className="import-menu-icon" />
+                      Postman Collection
+                    </button>
+                  )}
+                  {settings?.importTypes?.openapi !== false && onImportOpenApi && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportOpenApi();
+                      }}
+                    >
+                      <FormatIcon value="openapi" className="import-menu-icon" />
+                      OpenAPI / Swagger（JSON / YAML）
+                    </button>
+                  )}
+                  {settings?.importTypes?.markdown !== false && onImportMarkdown && (
                     <button
                       onClick={() => {
                         setImportMenu(false);
                         onImportMarkdown();
                       }}
                     >
-                      📄 Markdown {t("sidebar.markdown")}
+                      <FormatIcon value="markdown" className="import-menu-icon" />
+                      Markdown {t("sidebar.markdown")}
                     </button>
                   )}
-                  {onImportApifox && (
+                  {settings?.importTypes?.apifox !== false && onImportApifox && (
                     <button
                       onClick={() => {
                         setImportMenu(false);
                         onImportApifox();
                       }}
                     >
-                      🦊 Apifox 项目（JSON）
+                      <FormatIcon value="apifox" className="import-menu-icon" />
+                      Apifox 项目（JSON）
                     </button>
                   )}
-                  {onImportApipost && (
+                  {settings?.importTypes?.apipost !== false && onImportApipost && (
                     <button
                       onClick={() => {
                         setImportMenu(false);
                         onImportApipost();
                       }}
                     >
-                      🐼 Apipost 项目（JSON）
+                      <FormatIcon value="apipost" className="import-menu-icon" />
+                      Apipost 项目（JSON）
                     </button>
                   )}
                 </div>

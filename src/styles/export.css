@@ -27,16 +27,88 @@
 }
 .export-format-select {
   flex: 1;
-  padding: 6px 10px;
+}
+
+/* 导出格式自绘下拉（div 实现，替代原生 select） */
+.format-select-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.format-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-input);
-  color: var(--text);
   font-size: 13px;
   outline: none;
+  user-select: none;
 }
-.export-format-select:focus {
+.format-select:hover,
+.format-select.open {
   border-color: var(--accent);
+}
+.format-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.format-icon-empty {
+  width: 20px;
+}
+.format-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.format-caret {
+  color: var(--text-faint);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.format-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: menu-in 0.12s ease;
+}
+.format-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+}
+.format-opt:hover {
+  background: var(--bg-hover);
+}
+.format-opt.active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
 }
 .export-tree-head {
   display: flex;

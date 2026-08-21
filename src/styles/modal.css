@@ -230,6 +230,46 @@
   font-size: 11px;
   color: var(--text-faint);
 }
+/* 导入 / 导出类型选择列表（设置页） */
+.settings-format-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+.settings-format-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-input);
+}
+.settings-format-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  min-width: 0;
+}
+.settings-format-name .settings-format-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.settings-required {
+  font-size: 11px;
+  color: var(--text-faint);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 .settings-min-hint {
   font-size: 10.5px;
   color: var(--text-faint);
@@ -275,6 +315,9 @@
 }
 .settings-port-input:focus {
   border-color: var(--accent);
+}
+.settings-export-format {
+  width: 220px;
 }
 .settings-ws-input {
   width: 260px;

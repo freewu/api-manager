@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal } from "./Modal";
-import { TreeNode } from "../types";
+import { FormatSelect } from "./FormatSelect";
+import { AppSettings, TreeNode } from "../types";
 import { ExportFormat } from "../commands";
 import { useT } from "../i18n";
 
@@ -10,6 +11,8 @@ interface Props {
   preselect?: string[];
   /** 默认导出格式（来自设置） */
   defaultFormat?: ExportFormat;
+  /** 当前设置（用于导出格式开关过滤） */
+  settings?: AppSettings;
   onExport: (paths: string[], format: ExportFormat) => Promise<void>;
   onClose: () => void;
 }
@@ -32,8 +35,24 @@ function findNode(node: TreeNode, path: string): TreeNode | null {
 }
 
 /** 导出弹窗：勾选接口/分组（勾选分组 = 整棵子树），选择格式后导出 */
-export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose }: Props) {
+export function ExportModal({ tree, preselect, defaultFormat, settings, onExport, onClose }: Props) {
   const t = useT();
+  // 格式下拉选项：必选格式始终展示，其余按设置开关过滤
+  const formatOptions = useMemo(
+    () =>
+      (
+        [
+          { value: "postman", label: t("export.postman") },
+          { value: "openapi", label: t("export.openapi") },
+          { value: "apifox", label: t("export.apifox") },
+          { value: "apipost", label: t("export.apipost") },
+          { value: "docsify", label: t("export.docsify") },
+          { value: "markdown", label: t("export.markdown") },
+          { value: "html", label: t("export.html") },
+        ] as { value: ExportFormat; label: string }[]
+      ).filter((o) => settings?.exportTypes?.[o.value] !== false),
+    [settings, t]
+  );
   const [selected, setSelected] = useState<Set<string>>(() => {
     const s = new Set<string>();
     if (preselect?.length && tree) {
@@ -50,6 +69,12 @@ export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose 
     return s;
   });
   const [format, setFormat] = useState<ExportFormat>(defaultFormat || "postman");
+  // 默认格式若被设置开关隐藏，回退到第一个可用格式
+  useEffect(() => {
+    if (formatOptions.length && !formatOptions.some((o) => o.value === format)) {
+      setFormat(formatOptions[0].value);
+    }
+  }, [formatOptions, format]);
   const [busy, setBusy] = useState(false);
   // 折叠状态：默认全部展开，点击箭头折叠/展开分组
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
@@ -177,19 +202,12 @@ export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose 
       <div className="export-body" onContextMenu={(e) => e.preventDefault()}>
         <div className="export-format-row">
         <span className="export-format-label">{t("export.format")}</span>
-        <select
+        <FormatSelect
           className="export-format-select"
           value={format}
-          onChange={(e) => setFormat(e.target.value as ExportFormat)}
-        >
-          <option value="postman">{t("export.postman")}</option>
-          <option value="openapi">{t("export.openapi")}</option>
-          <option value="apifox">{t("export.apifox")}</option>
-          <option value="apipost">{t("export.apipost")}</option>
-          <option value="docsify">{t("export.docsify")}</option>
-          <option value="markdown">{t("export.markdown")}</option>
-          <option value="html">{t("export.html")}</option>
-        </select>
+          options={formatOptions}
+          onChange={(v) => setFormat(v)}
+        />
       </div>
       <div className="export-tree-head">
         <label className="export-all">

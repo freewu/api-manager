@@ -211,6 +211,26 @@ export type ExportFormat =
   | "apifox"
   | "apipost";
 
+/** 主页「导入」菜单支持的格式 */
+export type ImportFormat =
+  | "postman"
+  | "openapi"
+  | "markdown"
+  | "apifox"
+  | "apipost";
+
+/** 导入格式中必选（不可关闭）的类型 */
+export const REQUIRED_IMPORT_FORMATS: ImportFormat[] = ["postman", "openapi"];
+
+/** 导出格式中必选（不可关闭）的类型 */
+export const REQUIRED_EXPORT_FORMATS: ExportFormat[] = [
+  "postman",
+  "openapi",
+  "docsify",
+  "markdown",
+  "html",
+];
+
 export interface AppSettings {
   displayMode: string; // "dark" | "light" | "system"
   enableVersion: boolean;
@@ -225,6 +245,10 @@ export interface AppSettings {
   defaultHeaders: KeyValue[];
   /** 导出默认格式 */
   exportFormat: ExportFormat;
+  /** 主页导入菜单展示的格式开关（postman/openapi 必选不可关闭） */
+  importTypes: Record<ImportFormat, boolean>;
+  /** 导出弹窗格式下拉展示的格式开关（postman/openapi/docsify/markdown/html 必选不可关闭） */
+  exportTypes: Record<ExportFormat, boolean>;
   /** HTML 文档悬浮导航栏位置（off 关闭 / left 左侧 / right 右侧） */
   htmlNav: "off" | "left" | "right";
   /** 界面语言（zh / en） */
@@ -244,6 +268,22 @@ export const defaultSettings = (): AppSettings => ({
   enableDefaultHeaders: false,
   defaultHeaders: [],
   exportFormat: "postman",
+  importTypes: {
+    postman: true,
+    openapi: true,
+    markdown: true,
+    apifox: true,
+    apipost: true,
+  },
+  exportTypes: {
+    postman: true,
+    openapi: true,
+    apifox: true,
+    apipost: true,
+    docsify: true,
+    markdown: true,
+    html: true,
+  },
   htmlNav: "right",
   language: "zh",
   recentLimit: 5,

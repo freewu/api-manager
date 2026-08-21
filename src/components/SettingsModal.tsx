@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { AppSettings } from "../types";
+import { AppSettings, ExportFormat, ImportFormat, REQUIRED_EXPORT_FORMATS, REQUIRED_IMPORT_FORMATS } from "../types";
 import { Modal } from "./Modal";
 import { openExternal, setLanguage } from "../commands";
 import { CODE_LANGS, CodeLang } from "../utils/codegen";
+import { FormatIcon, FormatSelect } from "./FormatSelect";
 import { LangSelect } from "./LangSelect";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { setLang, useT } from "../i18n";
@@ -30,6 +31,26 @@ const MODES = [
 const PROJECT_URL = "https://github.com/freewu/api-manager";
 const ISSUE_URL = "https://github.com/freewu/api-manager/issues/new";
 
+/** 导入格式列表（含可开关的） */
+const IMPORT_FORMATS: { value: ImportFormat; labelKey: string }[] = [
+  { value: "postman", labelKey: "export.postman" },
+  { value: "openapi", labelKey: "export.openapi" },
+  { value: "markdown", labelKey: "export.markdown" },
+  { value: "apifox", labelKey: "export.apifox" },
+  { value: "apipost", labelKey: "export.apipost" },
+];
+
+/** 导出格式列表（含可开关的） */
+const EXPORT_FORMATS: { value: ExportFormat; labelKey: string }[] = [
+  { value: "postman", labelKey: "export.postman" },
+  { value: "openapi", labelKey: "export.openapi" },
+  { value: "docsify", labelKey: "export.docsify" },
+  { value: "markdown", labelKey: "export.markdown" },
+  { value: "html", labelKey: "export.html" },
+  { value: "apifox", labelKey: "export.apifox" },
+  { value: "apipost", labelKey: "export.apipost" },
+];
+
 /** 左侧导航（目录）项：点击滚动到对应分区 */
 const NAV = [
   { id: "workspace", icon: "📁", titleKey: "settings.nav.workspace", descKey: "settings.nav.workspaceDesc" },
@@ -39,6 +60,7 @@ const NAV = [
   { id: "mock", icon: "🛡️", titleKey: "settings.nav.mock", descKey: "settings.nav.mockDesc" },
   { id: "codegen", icon: "💻", titleKey: "settings.nav.codegen", descKey: "settings.nav.codegenDesc" },
   { id: "export", icon: "📤", titleKey: "settings.nav.export", descKey: "settings.nav.exportDesc" },
+  { id: "import", icon: "📥", titleKey: "settings.nav.import", descKey: "settings.nav.importDesc" },
   { id: "headers", icon: "🧾", titleKey: "settings.nav.headers", descKey: "settings.nav.headersDesc" },
   { id: "sync", icon: "🔄", titleKey: "settings.nav.sync", descKey: "settings.nav.syncDesc" },
   { id: "about", icon: "ℹ️", titleKey: "settings.nav.about", descKey: "settings.nav.aboutDesc" },
@@ -335,21 +357,78 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
             <div className="settings-feature">
               <div className="settings-row settings-port-row">
                 <span className="settings-label">{t("settings.exportFormat")}</span>
-                <select
-                  className="settings-port-input codegen-lang-select"
+                <FormatSelect
+                  className="settings-export-format"
                   value={settings.exportFormat}
-                  onChange={(e) => patch({ exportFormat: e.target.value as typeof settings.exportFormat })}
-                >
-                  <option value="postman">Postman Collection（.json）</option>
-                  <option value="openapi">OpenAPI 3.0（.json）</option>
-                  <option value="apifox">Apifox 项目（.json）</option>
-                  <option value="apipost">Apipost 项目（.json）</option>
-                  <option value="docsify">Docsify（.md）</option>
-                  <option value="markdown">Markdown（.md）</option>
-                  <option value="html">HTML（.html）</option>
-                </select>
+                  options={EXPORT_FORMATS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
+                  onChange={(v) => patch({ exportFormat: v })}
+                />
                 <span className="settings-desc-inline">{t("settings.exportFormatHint")}</span>
               </div>
+              <div className="settings-desc">{t("settings.exportTypesDesc")}</div>
+              <div className="settings-format-list">
+                {EXPORT_FORMATS.map((f) => {
+                  const required = REQUIRED_EXPORT_FORMATS.includes(f.value);
+                  return (
+                    <div className="settings-format-row" key={f.value}>
+                      <span className="settings-format-name">
+                        <FormatIcon value={f.value} className="settings-format-icon" />
+                        {t(f.labelKey)}
+                      </span>
+                      {required ? (
+                        <span className="settings-required">{t("settings.required")}</span>
+                      ) : (
+                        <Switch
+                          checked={settings.exportTypes[f.value] !== false}
+                          onChange={(v) =>
+                            patch({
+                              exportTypes: { ...settings.exportTypes, [f.value]: v },
+                            })
+                          }
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          <section id="settings-import" className="settings-section">
+            <div className="settings-panel-title">{t("settings.nav.import")}</div>
+            <div className="settings-feature">
+              <div className="settings-desc">{t("settings.importTypesDesc")}</div>
+              <div className="settings-format-list">
+                {IMPORT_FORMATS.map((f) => {
+                  const required = REQUIRED_IMPORT_FORMATS.includes(f.value);
+                  return (
+                    <div className="settings-format-row" key={f.value}>
+                      <span className="settings-format-name">
+                        <FormatIcon value={f.value} className="settings-format-icon" />
+                        {t(f.labelKey)}
+                      </span>
+                      {required ? (
+                        <span className="settings-required">{t("settings.required")}</span>
+                      ) : (
+                        <Switch
+                          checked={settings.importTypes[f.value] !== false}
+                          onChange={(v) =>
+                            patch({
+                              importTypes: { ...settings.importTypes, [f.value]: v },
+                            })
+                          }
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          <section id="settings-export-extra" className="settings-section">
+            <div className="settings-panel-title">{t("settings.htmlNavTitle")}</div>
+            <div className="settings-feature">
               <div className="settings-row">
                 <span className="settings-label">{t("settings.htmlNav")}</span>
                 <div className="settings-options">

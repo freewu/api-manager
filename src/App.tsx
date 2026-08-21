@@ -193,7 +193,14 @@ export default function App() {
 
     loadSettings()
       .then((s) => {
-        setSettings(s);
+        // 旧配置可能缺少 importTypes/exportTypes 开关，合并默认值保证字段存在
+        const def = defaultSettings();
+        setSettings({
+          ...def,
+          ...s,
+          importTypes: { ...def.importTypes, ...(s.importTypes || {}) },
+          exportTypes: { ...def.exportTypes, ...(s.exportTypes || {}) },
+        });
         setLang(normalizeLang(s.language));
       })
       .catch(() => {});
@@ -1431,6 +1438,7 @@ export default function App() {
           onImportMarkdown={() => void handleImportMarkdown()}
           onImportApifox={() => void handleImportApifox()}
           onImportApipost={() => void handleImportApipost()}
+          settings={settings}
           onViewMarkdown={(node) => void handleViewMarkdown(node)}
           onExport={() => openExport()}
           onExportNode={(node) => openExport(node)}

@@ -244,6 +244,7 @@ export function AppModals({
           tree={tree}
           preselect={exportPreselect}
           defaultFormat={defaultFormat}
+          settings={settings}
           onExport={onExport}
           onClose={onCloseExport}
         />
