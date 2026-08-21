@@ -102,6 +102,11 @@ export function importWadl(): Promise<OpenApiImportResult | null> {
   return invoke<OpenApiImportResult | null>("import_wadl");
 }
 
+/** 导入 HAR 抓包文件（弹窗选 .har 文件） */
+export function importHar(): Promise<OpenApiImportResult | null> {
+  return invoke<OpenApiImportResult | null>("import_har");
+}
+
 export interface MarkdownDoc {
   name: string;
   md: string;

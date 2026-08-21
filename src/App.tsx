@@ -17,6 +17,7 @@ import {
   importApipost,
   importRaml,
   importWadl,
+  importHar,
   importMarkdown,
   renderApiMarkdown,
   renderGroupMarkdown,
@@ -555,6 +556,18 @@ export default function App() {
       if (!result) return; // 用户取消
       await loadAll(workspace!);
       showToast(t("toast.importedWadl", { count: result.count }));
+      void reloadMockIfRunning();
+    } catch (e) {
+      showToast(t("toast.importFailed", { err: String(e) }));
+    }
+  };
+
+  const handleImportHar = async () => {
+    try {
+      const result = await importHar();
+      if (!result) return; // 用户取消
+      await loadAll(workspace!);
+      showToast(t("toast.importedHar", { count: result.count }));
       void reloadMockIfRunning();
     } catch (e) {
       showToast(t("toast.importFailed", { err: String(e) }));
@@ -1466,6 +1479,7 @@ export default function App() {
           onImportApipost={() => void handleImportApipost()}
           onImportRaml={() => void handleImportRaml()}
           onImportWadl={() => void handleImportWadl()}
+          onImportHar={() => void handleImportHar()}
           settings={settings}
           onViewMarkdown={(node) => void handleViewMarkdown(node)}
           onExport={() => openExport()}

@@ -40,6 +40,7 @@ const IMPORT_FORMATS: { value: ImportFormat; labelKey: string }[] = [
   { value: "apipost", labelKey: "export.apipost" },
   { value: "raml", labelKey: "export.raml" },
   { value: "wadl", labelKey: "export.wadl" },
+  { value: "har", labelKey: "export.har" },
 ];
 
 /** 导出格式列表（含可开关的） */

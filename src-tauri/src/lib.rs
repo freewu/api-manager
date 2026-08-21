@@ -4,7 +4,7 @@ mod export;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -2983,6 +2983,297 @@ fn wadl_method_to_api(dir: &Path, path: &str, method_el: roxmltree::Node) -> Res
     Ok(1)
 }
 
+// ==================== HAR 导入 ====================
+
+/// 浏览器自动附带的请求头（导入时过滤，避免冗余）
+const HAR_SKIP_HEADERS: [&str; 24] = [
+    "accept",
+    "accept-encoding",
+    "accept-language",
+    "cache-control",
+    "connection",
+    "cookie",
+    "host",
+    "origin",
+    "pragma",
+    "referer",
+    "user-agent",
+    "upgrade-insecure-requests",
+    "sec-ch-ua",
+    "sec-ch-ua-mobile",
+    "sec-ch-ua-platform",
+    "sec-fetch-dest",
+    "sec-fetch-mode",
+    "sec-fetch-site",
+    "sec-fetch-user",
+    "priority",
+    "te",
+    "dnt",
+    "if-none-match",
+    "if-modified-since",
+];
+
+/// 导入 HAR 文件（.har）：弹窗选文件，工作区根新建同名分组，按 host 分小组
+#[tauri::command]
+fn import_har(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+) -> Result<Option<OpenApiImportResult>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("HAR", &["har", "json"])
+        .blocking_pick_file();
+    let Some(path) = picked else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let root = workspace_root(&state)?;
+    let result = import_har_file(&root, &path)?;
+    Ok(Some(result))
+}
+
+/// 解析 HAR 文件：log.entries 逐条导入接口，按 host 分小组
+fn import_har_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, String> {
+    let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
+    let json: Value =
+        serde_json::from_str(&content).map_err(|e| format!("解析 HAR 失败: {e}"))?;
+    let entries = json
+        .pointer("/log/entries")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| "不是有效的 HAR 文件（缺少 log.entries）".to_string())?;
+    let title = json
+        .pointer("/log/pages/0/title")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.trim().is_empty())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            file.file_stem()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_else(|| "HAR 导入".to_string())
+        });
+    let dir_name = sanitize_filename(&title);
+    let dir_name = if dir_name.is_empty() {
+        "HAR 导入".to_string()
+    } else {
+        dir_name
+    };
+    let folder = unique_path(root, &dir_name, "");
+    fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
+    let src_name = file
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    write_pretty(
+        &folder.join(INFO_FILE),
+        &InfoJson {
+            name: Some(title.clone()),
+            description: format!("从 HAR 抓包文件导入（{src_name}）"),
+            base_url: None,
+            mock_port: None,
+            order: None,
+            collapsed: None,
+            deprecated: None,
+        },
+    )?;
+    let mut count = 0usize;
+    // 按 host 分组，避免重复建同名 host 目录
+    let mut by_host: BTreeMap<String, Vec<&Value>> = BTreeMap::new();
+    for e in entries {
+        let url = e
+            .pointer("/request/url")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let host = url
+            .split("://")
+            .nth(1)
+            .and_then(|r| r.split('/').next())
+            .unwrap_or("")
+            .to_string();
+        let host = if host.is_empty() {
+            "未分类".to_string()
+        } else {
+            host
+        };
+        by_host.entry(host).or_default().push(e);
+    }
+    for (host, list) in &by_host {
+        let sub = folder.join(&sanitize_filename(host));
+        // 同名 host 分组已存在时复用目录
+        if !sub.is_dir() {
+            fs::create_dir_all(&sub).map_err(|e| format!("创建分组失败: {e}"))?;
+            write_pretty(
+                &sub.join(INFO_FILE),
+                &InfoJson {
+                    name: Some(host.clone()),
+                    description: String::new(),
+                    base_url: None,
+                    mock_port: None,
+                    order: None,
+                    collapsed: None,
+                    deprecated: None,
+                },
+            )?;
+        }
+        for e in list {
+            count += har_entry_to_api(&sub, e)?;
+        }
+    }
+    Ok(OpenApiImportResult {
+        folder: folder.to_string_lossy().to_string(),
+        count,
+    })
+}
+
+/// HAR entry → ApiFile：method/url/headers/queryString/postData，响应存为返回示例
+fn har_entry_to_api(dir: &Path, entry: &Value) -> Result<usize, String> {
+    let req = entry.get("request").and_then(|v| v.as_object()).cloned().unwrap_or_default();
+    let method = req
+        .get("method")
+        .and_then(|v| v.as_str())
+        .unwrap_or("GET")
+        .to_uppercase();
+    let url = req
+        .get("url")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    if url.is_empty() || method.is_empty() {
+        return Ok(0);
+    }
+    let (path, params) = extract_path(&url);
+    // 请求头：过滤浏览器自动头
+    let mut headers = Vec::new();
+    if let Some(hs) = req.get("headers").and_then(|v| v.as_array()) {
+        for h in hs {
+            let key = h
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .trim()
+                .to_lowercase();
+            if key.is_empty() || HAR_SKIP_HEADERS.contains(&key.as_str()) {
+                continue;
+            }
+            let value = h.get("value").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            headers.push(KeyValue {
+                key,
+                value,
+                enabled: true,
+                is_file: false,
+                description: String::new(),
+            });
+        }
+    }
+    // 查询参数
+    let mut query = Vec::new();
+    if let Some(qs) = req.get("queryString").and_then(|v| v.as_array()) {
+        for q in qs {
+            let key = q.get("name").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+            if key.is_empty() {
+                continue;
+            }
+            let value = q.get("value").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            query.push(KeyValue {
+                key,
+                value,
+                enabled: true,
+                is_file: false,
+                description: String::new(),
+            });
+        }
+    }
+    // 请求体
+    let mut body = BodyData::default();
+    if let Some(pd) = req.get("postData") {
+        let text = pd.get("text").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+        let mime = pd.get("mimeType").and_then(|v| v.as_str()).unwrap_or("").to_lowercase();
+        if !text.is_empty() {
+            if mime.contains("json") {
+                body.mode = "json".into();
+            } else if mime.contains("form-urlencoded") || mime.contains("multipart") {
+                body.mode = "form".into();
+                // urlencoded 表单：a=1&b=2 解析为 form 列表
+                for pair in text.split('&') {
+                    if let Some((k, v)) = pair.split_once('=') {
+                        body.form.push(KeyValue {
+                            key: k.trim().to_string(),
+                            value: percent_encoding::percent_decode_str(v.trim())
+                                .decode_utf8_lossy()
+                                .to_string(),
+                            enabled: true,
+                            is_file: false,
+                            description: String::new(),
+                        });
+                    }
+                }
+                body.raw = String::new();
+            } else {
+                body.mode = "raw".into();
+            }
+            if body.mode != "form" {
+                body.raw = text;
+            }
+        }
+    }
+    // 响应存为返回示例
+    let mut responses = Vec::new();
+    if let Some(resp) = entry.get("response") {
+        let status = resp.get("status").and_then(|v| v.as_u64()).unwrap_or(0) as u16;
+        let content_type = resp
+            .pointer("/content/mimeType")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let resp_text = resp
+            .pointer("/content/text")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        if !resp_text.is_empty() {
+            let truncated = if resp_text.chars().count() > 100_000 {
+                resp_text.chars().take(100_000).collect()
+            } else {
+                resp_text
+            };
+            responses.push(ResponseItem {
+                id: uuid::Uuid::new_v4().to_string(),
+                name: format!("HTTP {status}"),
+                status,
+                content_type,
+                body: truncated,
+            });
+        }
+    }
+    let name = format!("{} {}", method, path);
+    let file_base = sanitize_filename(&name);
+    let file_path = unique_path(dir, &file_base, ".json");
+    let api = ApiFile {
+        uuid: uuid::Uuid::new_v4().to_string(),
+        name: name.clone(),
+        method: method.clone(),
+        path: path.clone(),
+        url,
+        description: String::new(),
+        headers,
+        query,
+        params,
+        body,
+        mock: MockConfig::default(),
+        examples: vec![],
+        responses,
+        doc_params: vec![],
+        deprecated: false,
+        protocol: "http".into(),
+    };
+    write_pretty(&file_path, &api)?;
+    Ok(1)
+}
+
 #[tauri::command]
 fn import_openapi(
     app: AppHandle,
@@ -5291,6 +5582,7 @@ pub fn run() {
             import_apipost,
             import_raml,
             import_wadl,
+            import_har,
             render_api_markdown,
             render_group_markdown,
             export_api_markdown,
@@ -6277,6 +6569,127 @@ mod tests {
     }
 
     #[test]
+    fn test_import_har_file() {
+        let root = std::env::temp_dir().join(format!("apimgr-har-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        // 内联迷你 HAR：两个 host、浏览器自动头应被过滤、json body、响应示例、urlencoded 表单
+        let har = serde_json::json!({
+            "log": {
+                "version": "1.2",
+                "creator": { "name": "t", "version": "1" },
+                "pages": [{ "title": "示例站点" }],
+                "entries": [
+                    {
+                        "request": {
+                            "method": "GET",
+                            "url": "https://api.example.com/users?page=2",
+                            "headers": [
+                                { "name": "Accept", "value": "*/*" },
+                                { "name": "User-Agent", "value": "Mozilla/5.0" },
+                                { "name": "X-Api-Key", "value": "secret123" },
+                                { "name": "Cookie", "value": "sid=abc" }
+                            ],
+                            "queryString": [
+                                { "name": "page", "value": "2" }
+                            ],
+                            "postData": null
+                        },
+                        "response": {
+                            "status": 200,
+                            "content": {
+                                "mimeType": "application/json",
+                                "text": "{\"list\":[]}"
+                            }
+                        }
+                    },
+                    {
+                        "request": {
+                            "method": "POST",
+                            "url": "https://api.example.com/users",
+                            "headers": [
+                                { "name": "Content-Type", "value": "application/json" }
+                            ],
+                            "queryString": [],
+                            "postData": {
+                                "mimeType": "application/json",
+                                "text": "{\"name\":\"张三\"}"
+                            }
+                        },
+                        "response": {
+                            "status": 201,
+                            "content": {
+                                "mimeType": "application/json",
+                                "text": "{\"id\":1}"
+                            }
+                        }
+                    },
+                    {
+                        "request": {
+                            "method": "POST",
+                            "url": "https://track.other.com/event",
+                            "headers": [],
+                            "queryString": [],
+                            "postData": {
+                                "mimeType": "application/x-www-form-urlencoded",
+                                "text": "a=1&name=%E5%BC%A0%E4%B8%89"
+                            }
+                        },
+                        "response": {
+                            "status": 200,
+                            "content": { "mimeType": "text/plain", "text": "ok" }
+                        }
+                    }
+                ]
+            }
+        });
+        let file = root.join("sample.har");
+        fs::write(&file, serde_json::to_string_pretty(&har).unwrap()).unwrap();
+        let result = import_har_file(&root, &file).expect("har 导入失败");
+        assert_eq!(result.count, 3, "接口数应为 3，实际 {}", result.count);
+        let folder = PathBuf::from(&result.folder);
+        assert!(folder.join(INFO_FILE).exists());
+        // 按 host 分小组
+        let api_host = folder.join("api.example.com");
+        let track_host = folder.join("track.other.com");
+        assert!(api_host.is_dir(), "api.example.com 分组应存在");
+        assert!(track_host.is_dir(), "track.other.com 分组应存在");
+        // GET /users 的接口：query 参数、浏览器头被过滤、X-Api-Key 保留
+        let get_file = api_host.join("GET _users.json");
+        assert!(get_file.exists(), "GET _users.json 应存在");
+        let api: ApiFile =
+            serde_json::from_str(&fs::read_to_string(get_file).unwrap()).unwrap();
+        assert_eq!(api.method, "GET");
+        assert_eq!(api.path, "/users");
+        assert_eq!(api.query.len(), 1);
+        assert_eq!(api.query[0].key, "page");
+        assert_eq!(api.query[0].value, "2");
+        assert_eq!(api.headers.len(), 1, "浏览器自动头应被过滤");
+        assert_eq!(api.headers[0].key, "x-api-key");
+        assert_eq!(api.headers[0].value, "secret123");
+        // 响应示例已存储
+        assert_eq!(api.responses.len(), 1);
+        assert_eq!(api.responses[0].status, 200);
+        assert!(api.responses[0].body.contains("list"));
+        // POST json body
+        let post_file = api_host.join("POST _users.json");
+        let post: ApiFile =
+            serde_json::from_str(&fs::read_to_string(post_file).unwrap()).unwrap();
+        assert_eq!(post.body.mode, "json");
+        assert!(post.body.raw.contains("张三"));
+        assert_eq!(post.responses[0].status, 201);
+        // urlencoded 表单 → form 列表 + 解码
+        let ev_file = track_host.join("POST _event.json");
+        let ev: ApiFile = serde_json::from_str(&fs::read_to_string(ev_file).unwrap()).unwrap();
+        assert_eq!(ev.body.mode, "form");
+        assert_eq!(ev.body.form.len(), 2);
+        assert_eq!(ev.body.form[0].key, "a");
+        assert_eq!(ev.body.form[0].value, "1");
+        assert_eq!(ev.body.form[1].value, "张三");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+        #[test]
     fn test_history_roundtrip() {
         // 保存 -> 分页列表 -> 详情 -> 按天统计 全链路
         let root = std::env::temp_dir().join(format!("history-test-{}", std::process::id()));

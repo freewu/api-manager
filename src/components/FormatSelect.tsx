@@ -17,6 +17,7 @@ const FORMAT_ICON_FILES: Record<string, string> = {
   html: "html.png",
   raml: "raml.png",
   wadl: "wadl.png",
+  har: "har.png",
 };
 
 const formatIconImgs = import.meta.glob<string>("../assets/import/*.{png,svg}", {

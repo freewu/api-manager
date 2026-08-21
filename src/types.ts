@@ -221,7 +221,8 @@ export type ImportFormat =
   | "apifox"
   | "apipost"
   | "raml"
-  | "wadl";
+  | "wadl"
+  | "har";
 
 /** 导入格式中必选（不可关闭）的类型 */
 export const REQUIRED_IMPORT_FORMATS: ImportFormat[] = ["postman", "openapi"];
@@ -280,6 +281,7 @@ export const defaultSettings = (): AppSettings => ({
     apipost: true,
     raml: true,
     wadl: true,
+    har: true,
   },
   exportTypes: {
     postman: true,
