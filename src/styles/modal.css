@@ -230,6 +230,12 @@
   font-size: 11px;
   color: var(--text-faint);
 }
+.settings-min-hint {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  margin-left: 4px;
+  white-space: nowrap;
+}
 .settings-feature {
   padding: 10px 0;
   border-bottom: 1px solid var(--border);

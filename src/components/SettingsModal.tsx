@@ -174,7 +174,7 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                   patch({ recentLimit: Math.max(3, Number(e.target.value.replace(/\D/g, "")) || 3) })
                 }
               />
-              <span className="settings-desc-inline">{t("settings.recentLimitMin")}</span>
+              <span className="settings-min-hint">{t("settings.recentLimitMin")}</span>
             </div>
             <div className="settings-desc">{t("settings.recentLimitDesc")}</div>
           </section>
@@ -193,7 +193,7 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                     checked={settings.language === "zh"}
                     onChange={() => switchLang("zh")}
                   />
-                  🇨🇳 {t("settings.lang.zh")}
+                  {t("settings.lang.zh")}
                 </label>
                 <label
                   className={`settings-option ${settings.language === "zh-tw" ? "active" : ""}`}
@@ -204,7 +204,7 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                     checked={settings.language === "zh-tw"}
                     onChange={() => switchLang("zh-tw")}
                   />
-                  🇹🇼 {t("settings.lang.zhTw")}
+                  {t("settings.lang.zhTw")}
                 </label>
                 <label
                   className={`settings-option ${settings.language === "en" ? "active" : ""}`}
@@ -215,7 +215,7 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                     checked={settings.language === "en"}
                     onChange={() => switchLang("en")}
                   />
-                  🇺🇸 {t("settings.lang.en")}
+                  {t("settings.lang.en")}
                 </label>
               </div>
             </div>
