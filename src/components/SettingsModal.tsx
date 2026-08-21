@@ -103,6 +103,15 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
   useEffect(() => setWsName(workspaceName), [workspaceName]);
   const patch = (p: Partial<AppSettings>) => onSave({ ...settings, ...p });
 
+  // 当前默认导出格式被隐藏时，自动回退到第一个可见格式
+  useEffect(() => {
+    if (settings.exportTypes[settings.exportFormat] === false) {
+      const first = EXPORT_FORMATS.find((f) => settings.exportTypes[f.value] !== false);
+      if (first && first.value !== settings.exportFormat) patch({ exportFormat: first.value });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.exportTypes, settings.exportFormat]);
+
   // 切换界面语言：即时生效 + 持久化 + 联动托盘
   const switchLang = (l: "zh" | "zh-tw" | "en") => {
     if (settings.language === l) return;
@@ -360,7 +369,10 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                 <FormatSelect
                   className="settings-export-format"
                   value={settings.exportFormat}
-                  options={EXPORT_FORMATS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
+                  options={EXPORT_FORMATS.filter((f) => settings.exportTypes[f.value] !== false).map((f) => ({
+                    value: f.value,
+                    label: t(f.labelKey),
+                  }))}
                   onChange={(v) => patch({ exportFormat: v })}
                 />
                 <span className="settings-desc-inline">{t("settings.exportFormatHint")}</span>

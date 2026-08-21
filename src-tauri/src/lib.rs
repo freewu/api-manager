@@ -2049,26 +2049,33 @@ fn import_apifox_items_arr(dir: &Path, items: &[Value]) -> Result<usize, String>
             write_pretty(&file_path, &api)?;
             count += 1;
         } else if let Some(sub) = item.get("items").and_then(|v| v.as_array()) {
+            if sub.is_empty() {
+                // Apifox 导出的目录占位（如 webSocketCollection 中的空分组）不创建
+                continue;
+            }
             let sub_base = sanitize_filename(&name);
             let sub_base = if sub_base.is_empty() {
                 "子分组".to_string()
             } else {
                 sub_base
             };
-            let sub_dir = unique_path(dir, &sub_base, "");
-            fs::create_dir_all(&sub_dir).map_err(|e| format!("创建分组失败: {e}"))?;
-            write_pretty(
-                &sub_dir.join(INFO_FILE),
-                &InfoJson {
-                    name: Some(name.clone()),
-                    description: String::new(),
-                    base_url: None,
-                    mock_port: None,
-                    order: None,
-                    collapsed: None,
-                    deprecated: None,
-                },
-            )?;
+            let sub_dir = dir.join(&sub_base);
+            // 同名分组已存在时复用目录，避免生成大量「xx (2)」重复分组
+            if !sub_dir.is_dir() {
+                fs::create_dir_all(&sub_dir).map_err(|e| format!("创建分组失败: {e}"))?;
+                write_pretty(
+                    &sub_dir.join(INFO_FILE),
+                    &InfoJson {
+                        name: Some(name.clone()),
+                        description: String::new(),
+                        base_url: None,
+                        mock_port: None,
+                        order: None,
+                        collapsed: None,
+                        deprecated: None,
+                    },
+                )?;
+            }
             count += import_apifox_items_arr(&sub_dir, sub)?;
         }
     }
@@ -2303,22 +2310,29 @@ fn import_apipost_node(
         .to_string();
     match node.get("target_type").and_then(|v| v.as_str()) {
         Some("folder") => {
-            let sub_dir = unique_path(dir, &sanitize_filename(&name), "");
-            fs::create_dir_all(&sub_dir).map_err(|e| format!("创建分组失败: {e}"))?;
-            write_pretty(
-                &sub_dir.join(INFO_FILE),
-                &InfoJson {
-                    name: Some(name.clone()),
-                    description: String::new(),
-                    base_url: None,
-                    mock_port: None,
-                    order: None,
-                    collapsed: None,
-                    deprecated: None,
-                },
-            )?;
-            let mut count = 0usize;
             let kids = apipost_node_children(node, by_id);
+            if kids.is_empty() {
+                // 空文件夹不创建，避免生成空分组
+                return Ok(0);
+            }
+            let sub_dir = dir.join(&sanitize_filename(&name));
+            // 同名分组已存在时复用目录（Apipost 树中可能多个同名文件夹）
+            if !sub_dir.is_dir() {
+                fs::create_dir_all(&sub_dir).map_err(|e| format!("创建分组失败: {e}"))?;
+                write_pretty(
+                    &sub_dir.join(INFO_FILE),
+                    &InfoJson {
+                        name: Some(name.clone()),
+                        description: String::new(),
+                        base_url: None,
+                        mock_port: None,
+                        order: None,
+                        collapsed: None,
+                        deprecated: None,
+                    },
+                )?;
+            }
+            let mut count = 0usize;
             for c in kids {
                 count += import_apipost_node(&sub_dir, c, by_id)?;
             }
@@ -5625,6 +5639,17 @@ mod tests {
         assert_eq!(api.path, "/pets/{id}");
         assert_eq!(api.params.len(), 1);
         assert_eq!(api.params[0].key, "id");
+        // 同名分组合并：apiCollection 两个集合的「宠物」应合并，不生成「宠物 (2)」
+        assert!(!folder.join("宠物 (2)").exists(), "不应生成重复分组「宠物 (2)」");
+        assert!(
+            folder.join("宠物").join("批量创建宠物.json").exists(),
+            "第二个集合的接口应合并进「宠物」分组"
+        );
+        // webSocketCollection 的空分组占位（宠物/商店/用户 无接口）不应创建
+        assert!(
+            !folder.join("商店 (2)").exists(),
+            "不应生成空分组「商店 (2)」"
+        );
         let _ = fs::remove_dir_all(&root);
     }
 
