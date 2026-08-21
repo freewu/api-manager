@@ -174,7 +174,7 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                   patch({ recentLimit: Math.max(3, Number(e.target.value.replace(/\D/g, "")) || 3) })
                 }
               />
-              <span className="settings-desc-inline">≥3</span>
+              <span className="settings-desc-inline">{t("settings.recentLimitMin")}</span>
             </div>
             <div className="settings-desc">{t("settings.recentLimitDesc")}</div>
           </section>
@@ -243,7 +243,6 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                 ))}
               </div>
             </div>
-            <div className="settings-desc">{t("settings.modeDesc")}</div>
 
             <div className="settings-preview">
               <div className="settings-preview-title">{t("settings.preview")}</div>
@@ -303,7 +302,6 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                     })
                   }
                 />
-                <span className="settings-desc-inline">5050</span>
               </div>
             </div>
           </section>
@@ -327,7 +325,6 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                     options={CODE_LANGS}
                     onChange={(v) => patch({ codegenLang: v })}
                   />
-                  <span className="settings-desc-inline">{t("settings.codegenLangHint")}</span>
                 </div>
               )}
             </div>
@@ -450,7 +447,6 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
               <LinkRow icon="📦" title={t("settings.projectUrl")} desc={PROJECT_URL} url={PROJECT_URL} />
               <LinkRow icon="🐛" title={t("settings.issueUrl")} desc={t("settings.issueUrlDesc")} url={ISSUE_URL} />
             </div>
-            <div className="about-footnote">{t("settings.aboutFootnote")}</div>
           </section>
         </div>
       </div>
