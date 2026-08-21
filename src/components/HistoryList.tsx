@@ -103,7 +103,10 @@ export function HistoryList({
   };
 
   return (
-    <div className="history-list-side">
+    <div
+      className="history-list-side"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <div className="history-side-toolbar">
         <span className="history-side-count">
           {totalCount > 0 ? t("history.total", { count: totalCount }) : t("history.empty")}

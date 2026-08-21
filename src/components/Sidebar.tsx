@@ -568,7 +568,7 @@ export function Sidebar(props: Props) {
           onStartDiff={props.onHistoryStartDiff}
         />
       )}
-      <div className="sidebar-footer">
+      <div className="sidebar-footer" onContextMenu={(e) => e.preventDefault()}>
         <button
           className={`icon-btn ${view === "history" ? "active" : ""}`}
           onClick={() => onSwitchView(view === "history" ? "api" : "history")}
