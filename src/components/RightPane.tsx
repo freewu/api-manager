@@ -60,6 +60,7 @@ export function RightPane({
   onHistoryDiffExit,
   baseUrl,
   currentVersion,
+  exampleVersion,
   enableVersion,
   enableCodegen,
   enableMock,
