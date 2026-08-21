@@ -46,6 +46,8 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
           { value: "openapi", label: t("export.openapi") },
           { value: "apifox", label: t("export.apifox") },
           { value: "apipost", label: t("export.apipost") },
+          { value: "raml", label: t("export.raml") },
+          { value: "wadl", label: t("export.wadl") },
           { value: "docsify", label: t("export.docsify") },
           { value: "markdown", label: t("export.markdown") },
           { value: "html", label: t("export.html") },

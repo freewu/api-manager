@@ -1779,6 +1779,40 @@ fn export_selection(
             fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
             Ok(Some(path.to_string_lossy().to_string()))
         }
+        "raml" => {
+            let v = export::to_raml(&apis);
+            let content =
+                serde_yaml::to_string(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 RAML")
+                .set_file_name("api.raml")
+                .add_filter("RAML", &["raml"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "wadl" => {
+            let content = export::to_wadl(&apis);
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 WADL")
+                .set_file_name("api.wadl")
+                .add_filter("WADL", &["wadl"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
         "docsify" => {
             let picked = app
                 .dialog()
@@ -2520,6 +2554,433 @@ fn extract_path(raw: &str) -> (String, Vec<KeyValue>) {
         path = "/".to_string();
     }
     (path, params)
+}
+
+// ==================== RAML / WADL 导入 ====================
+
+/// 导入 RAML 文件（.raml）：弹窗选文件，工作区根新建同名分组
+#[tauri::command]
+fn import_raml(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+) -> Result<Option<OpenApiImportResult>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("RAML", &["raml"])
+        .blocking_pick_file();
+    let Some(path) = picked else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let root = workspace_root(&state)?;
+    let result = import_raml_file(&root, &path)?;
+    Ok(Some(result))
+}
+
+/// 解析 RAML 1.0 文件（YAML）：title 作分组名，顶层路径 key 为资源，方法对象为接口
+fn import_raml_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, String> {
+    let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
+    let json: Value =
+        serde_yaml::from_str(&content).map_err(|e| format!("解析 RAML(YAML) 失败: {e}"))?;
+    let title = json
+        .get("title")
+        .and_then(|v| v.as_str())
+        .unwrap_or("RAML 导入")
+        .to_string();
+    let dir_name = sanitize_filename(&title);
+    let dir_name = if dir_name.is_empty() {
+        "RAML 导入".to_string()
+    } else {
+        dir_name
+    };
+    let folder = unique_path(root, &dir_name, "");
+    fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
+    let base_url = json
+        .get("baseUri")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim_end_matches('/')
+        .to_string();
+    let src_name = file
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    write_pretty(
+        &folder.join(INFO_FILE),
+        &InfoJson {
+            name: Some(title.clone()),
+            description: format!("从 RAML 文档导入（{src_name}）"),
+            base_url: if base_url.is_empty() {
+                None
+            } else {
+                Some(base_url.clone())
+            },
+            mock_port: None,
+            order: None,
+            collapsed: None,
+            deprecated: None,
+        },
+    )?;
+    let mut count = 0usize;
+    // 顶层 key：以 / 开头的为资源路径，其余为元数据（title/version/baseUri/mediaType/types/...）
+    if let Some(obj) = json.as_object() {
+        for (key, val) in obj {
+            if !key.starts_with('/') {
+                continue;
+            }
+            count += raml_resource_to_apis(&folder, key, val, &base_url)?;
+        }
+    }
+    Ok(OpenApiImportResult {
+        folder: folder.to_string_lossy().to_string(),
+        count,
+    })
+}
+
+/// RAML 资源节点 → 接口文件（路径 key 为资源，值为方法对象或嵌套资源）
+fn raml_resource_to_apis(
+    dir: &Path,
+    path: &str,
+    node: &Value,
+    base_url: &str,
+) -> Result<usize, String> {
+    let mut count = 0usize;
+    let Some(obj) = node.as_object() else {
+        return Ok(0);
+    };
+    // 子资源：key 不以 HTTP 方法开头且值为对象（含 / 前缀的路径）
+    for (key, val) in obj {
+        if key.starts_with('/') {
+            let joined = format!("{}{}", path.trim_end_matches('/'), key);
+            count += raml_resource_to_apis(dir, &joined, val, base_url)?;
+            continue;
+        }
+        let method = key.to_uppercase();
+        if !matches!(
+            method.as_str(),
+            "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS"
+        ) {
+            continue;
+        }
+        count += raml_method_to_api(dir, &method, path, val, base_url)?;
+    }
+    Ok(count)
+}
+
+/// RAML method 对象 → ApiFile
+fn raml_method_to_api(
+    dir: &Path,
+    method: &str,
+    path: &str,
+    op: &Value,
+    base_url: &str,
+) -> Result<usize, String> {
+    let mut headers = Vec::new();
+    let mut query = Vec::new();
+    // 查询参数：queryParameters[key] = { type, required, default, description }
+    if let Some(qp) = op.get("queryParameters").and_then(|v| v.as_object()) {
+        for (k, v) in qp {
+            let desc = v
+                .get("description")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string();
+            let value = v
+                .get("default")
+                .and_then(|x| x.as_str().map(|s| s.to_string()))
+                .or_else(|| {
+                    v.get("default")
+                        .and_then(|x| x.as_i64())
+                        .map(|n| n.to_string())
+                })
+                .unwrap_or_default();
+            query.push(KeyValue {
+                key: k.clone(),
+                value,
+                enabled: true,
+                is_file: false,
+                description: desc,
+            });
+        }
+    }
+    // 请求头：headers[key] = { required, description }
+    if let Some(hp) = op.get("headers").and_then(|v| v.as_object()) {
+        for (k, v) in hp {
+            let desc = v
+                .get("description")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string();
+            headers.push(KeyValue {
+                key: k.clone(),
+                value: String::new(),
+                enabled: true,
+                is_file: false,
+                description: desc,
+            });
+        }
+    }
+    // 路径参数：uriParameters / path 中的 {xxx}
+    let mut params = Vec::new();
+    if let Some(up) = op.get("uriParameters").and_then(|v| v.as_object()) {
+        for (k, v) in up {
+            let desc = v
+                .get("description")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string();
+            params.push(KeyValue {
+                key: k.clone(),
+                value: String::new(),
+                enabled: true,
+                is_file: false,
+                description: desc,
+            });
+        }
+    }
+    // 请求体：body[mediaType] = { type, example }
+    let mut body = BodyData::default();
+    if let Some(b) = op.get("body").and_then(|v| v.as_object()) {
+        let example = b
+            .values()
+            .find_map(|mt| {
+                mt.get("example")
+                    .and_then(|e| e.as_str())
+                    .map(|s| s.to_string())
+                    .or_else(|| {
+                        // 非字符串示例（对象/数组）序列化
+                        mt.get("example").map(|e| {
+                            serde_json::to_string_pretty(e).unwrap_or_else(|_| "{}".into())
+                        })
+                    })
+            })
+            .unwrap_or_default();
+        if !example.is_empty() {
+            body.mode = "json".into();
+            body.raw = example;
+        }
+    }
+    let description = op
+        .get("description")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    // 从 path 提取 {xxx} 参数
+    for seg in path.split('/') {
+        if let Some(var) = seg.strip_prefix('{').and_then(|s| s.strip_suffix('}')) {
+            if !params.iter().any(|p| p.key == var) {
+                params.push(KeyValue {
+                    key: var.to_string(),
+                    value: String::new(),
+                    enabled: true,
+                    is_file: false,
+                    description: String::new(),
+                });
+            }
+        }
+    }
+    let name = format!("{} {}", method, path);
+    let file_base = sanitize_filename(&name);
+    let file_path = unique_path(dir, &file_base, ".json");
+    let api = ApiFile {
+        uuid: uuid::Uuid::new_v4().to_string(),
+        name: name.clone(),
+        method: method.to_string(),
+        path: path.to_string(),
+        url: format!("{}{}", base_url.trim_end_matches('/'), path),
+        description,
+        headers,
+        query,
+        params,
+        body,
+        mock: MockConfig::default(),
+        examples: vec![],
+        responses: vec![],
+        doc_params: vec![],
+        deprecated: false,
+        protocol: "http".into(),
+    };
+    write_pretty(&file_path, &api)?;
+    Ok(1)
+}
+
+/// 导入 WADL 文件（.wadl）：弹窗选文件，工作区根新建同名分组
+#[tauri::command]
+fn import_wadl(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+) -> Result<Option<OpenApiImportResult>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("WADL", &["wadl"])
+        .blocking_pick_file();
+    let Some(path) = picked else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let root = workspace_root(&state)?;
+    let result = import_wadl_file(&root, &path)?;
+    Ok(Some(result))
+}
+
+/// 解析 WADL 文件（XML）：resources base 为基地址，递归 resource/method 导入接口
+fn import_wadl_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, String> {
+    let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
+    let doc = roxmltree::Document::parse(&content).map_err(|e| format!("解析 WADL(XML) 失败: {e}"))?;
+    let root_el = doc.root_element();
+    if !root_el.has_tag_name("application") {
+        return Err("不是有效的 WADL 文件（缺少 application 根节点）".into());
+    }
+    let title = root_el.attribute("doc").unwrap_or("").to_string();
+    let title = if title.is_empty() || title == "WADL 导入" {
+        file.file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or("WADL 导入".to_string())
+    } else {
+        title
+    };
+    let dir_name = sanitize_filename(&title);
+    let dir_name = if dir_name.is_empty() {
+        "WADL 导入".to_string()
+    } else {
+        dir_name
+    };
+    let folder = unique_path(root, &dir_name, "");
+    fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
+    // 基地址：resources base 属性
+    let base_url = root_el
+        .children()
+        .find(|n| n.is_element() && n.has_tag_name("resources"))
+        .and_then(|r| r.attribute("base"))
+        .unwrap_or("")
+        .trim_end_matches('/')
+        .to_string();
+    let src_name = file
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    write_pretty(
+        &folder.join(INFO_FILE),
+        &InfoJson {
+            name: Some(title.clone()),
+            description: format!("从 WADL 文档导入（{src_name}）"),
+            base_url: if base_url.is_empty() {
+                None
+            } else {
+                Some(base_url.clone())
+            },
+            mock_port: None,
+            order: None,
+            collapsed: None,
+            deprecated: None,
+        },
+    )?;
+    let mut count = 0usize;
+    for res in root_el.descendants().filter(|n| n.is_element() && n.has_tag_name("resources")) {
+        for child in res.children().filter(|n| n.is_element() && n.has_tag_name("resource")) {
+            count += wadl_resource_to_apis(&folder, "", child)?;
+        }
+    }
+    Ok(OpenApiImportResult {
+        folder: folder.to_string_lossy().to_string(),
+        count,
+    })
+}
+
+/// WADL resource 递归：子 resource 拼接 path，method 写接口文件
+fn wadl_resource_to_apis(dir: &Path, parent_path: &str, res: roxmltree::Node) -> Result<usize, String> {
+    let rel = res.attribute("path").unwrap_or("");
+    let path = if parent_path.is_empty() {
+        format!("/{}", rel.trim_start_matches('/'))
+    } else if rel.is_empty() {
+        parent_path.to_string()
+    } else {
+        format!("{}/{}", parent_path.trim_end_matches('/'), rel.trim_start_matches('/'))
+    };
+    let mut count = 0usize;
+    for child in res.children().filter(|n| n.is_element()) {
+        if child.has_tag_name("resource") {
+            count += wadl_resource_to_apis(dir, &path, child)?;
+        } else if child.has_tag_name("method") {
+            count += wadl_method_to_api(dir, &path, child)?;
+        }
+    }
+    Ok(count)
+}
+
+/// WADL method 元素 → ApiFile
+fn wadl_method_to_api(dir: &Path, path: &str, method_el: roxmltree::Node) -> Result<usize, String> {
+    let method = method_el.attribute("name").unwrap_or("GET").to_uppercase();
+    let mut headers = Vec::new();
+    let mut query = Vec::new();
+    let mut params = Vec::new();
+    let mut raw = String::new();
+    // request 子元素：param（query/header/path/template 样式）与 representation
+    if let Some(req) = method_el
+        .children()
+        .find(|n| n.is_element() && n.has_tag_name("request"))
+    {
+        for p in req.children().filter(|n| n.is_element() && n.has_tag_name("param")) {
+            let key = p.attribute("name").unwrap_or("").trim().to_string();
+            if key.is_empty() {
+                continue;
+            }
+            let style = p.attribute("style").unwrap_or("query");
+            let value = p.attribute("default").unwrap_or("").to_string();
+            let kv = KeyValue {
+                key,
+                value,
+                enabled: true,
+                is_file: false,
+                description: String::new(),
+            };
+            match style {
+                "query" => query.push(kv),
+                "header" => headers.push(kv),
+                "path" | "template" => params.push(kv),
+                _ => query.push(kv),
+            }
+        }
+        // 请求体：representation mediaType 为 json 时取 example 或留空
+        for rep in req.children().filter(|n| n.is_element() && n.has_tag_name("representation")) {
+            let mt = rep.attribute("mediaType").unwrap_or("").to_lowercase();
+            if mt.contains("json") {
+                raw = rep.attribute("example").unwrap_or("").to_string();
+            }
+        }
+    }
+    let mut body = BodyData::default();
+    if !raw.is_empty() {
+        body.mode = "json".into();
+        body.raw = raw;
+    }
+    let name = format!("{} {}", method, path);
+    let file_base = sanitize_filename(&name);
+    let file_path = unique_path(dir, &file_base, ".json");
+    let api = ApiFile {
+        uuid: uuid::Uuid::new_v4().to_string(),
+        name: name.clone(),
+        method: method.clone(),
+        path: path.to_string(),
+        url: path.to_string(),
+        description: String::new(),
+        headers,
+        query,
+        params,
+        body,
+        mock: MockConfig::default(),
+        examples: vec![],
+        responses: vec![],
+        doc_params: vec![],
+        deprecated: false,
+        protocol: "http".into(),
+    };
+    write_pretty(&file_path, &api)?;
+    Ok(1)
 }
 
 #[tauri::command]
@@ -4828,6 +5289,8 @@ pub fn run() {
             import_openapi,
             import_apifox,
             import_apipost,
+            import_raml,
+            import_wadl,
             render_api_markdown,
             render_group_markdown,
             export_api_markdown,
@@ -5670,6 +6133,146 @@ mod tests {
         assert!(folder.join(INFO_FILE).exists());
         // Auth 分组（parent_id=0 的根分组）应存在
         assert!(folder.join("Auth").exists());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_import_raml_file() {
+        let root = std::env::temp_dir().join(format!("apimgr-raml-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let file = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../tests/data/demo.raml"
+        ));
+        let result = import_raml_file(&root, &file).expect("raml 导入失败");
+        // demo.raml 含 /users 的 get/post 两个接口
+        assert_eq!(result.count, 2, "接口数应为 2，实际 {}", result.count);
+        let folder = PathBuf::from(&result.folder);
+        assert!(folder.join(INFO_FILE).exists());
+        assert!(
+            folder.join("GET _users.json").exists(),
+            "GET _users.json 应存在"
+        );
+        let api: ApiFile = serde_json::from_str(
+            &fs::read_to_string(folder.join("GET _users.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(api.method, "GET");
+        assert_eq!(api.path, "/users");
+        assert_eq!(api.url, "https://api.example.com/v1/users");
+        // queryParameters page 应导入为查询参数
+        assert_eq!(api.query.len(), 1);
+        assert_eq!(api.query[0].key, "page");
+        assert_eq!(api.query[0].value, "1");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_import_wadl_file() {
+        let root = std::env::temp_dir().join(format!("apimgr-wadl-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let file = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../tests/data/demo.wadl"
+        ));
+        let result = import_wadl_file(&root, &file).expect("wadl 导入失败");
+        // demo.wadl 含 /users 的 GET/POST 两个接口
+        assert_eq!(result.count, 2, "接口数应为 2，实际 {}", result.count);
+        let folder = PathBuf::from(&result.folder);
+        assert!(folder.join(INFO_FILE).exists());
+        assert!(
+            folder.join("GET _users.json").exists(),
+            "GET _users.json 应存在"
+        );
+        let api: ApiFile = serde_json::from_str(
+            &fs::read_to_string(folder.join("GET _users.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(api.method, "GET");
+        assert_eq!(api.path, "/users");
+        // query param page（style=query）应导入为查询参数
+        assert_eq!(api.query.len(), 1);
+        assert_eq!(api.query[0].key, "page");
+        assert_eq!(api.query[0].value, "1");
+        // 分组 INFO_FILE 应记录 base
+        let info: InfoJson =
+            serde_json::from_str(&fs::read_to_string(folder.join(INFO_FILE)).unwrap()).unwrap();
+        assert_eq!(info.base_url.as_deref(), Some("https://api.example.com/v1"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_export_raml_wadl() {
+        // 用导出的 RAML/WADL 再导回：round-trip 冒烟
+        let root = std::env::temp_dir().join(format!("apimgr-rw-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        // 构造两个接口
+        let make = |name: &str, method: &str, path: &str, is_ws: bool| ApiFile {
+            uuid: uuid::Uuid::new_v4().to_string(),
+            name: name.into(),
+            method: method.into(),
+            path: path.into(),
+            url: format!("https://api.example.com{path}"),
+            description: format!("{name} 描述"),
+            headers: vec![KeyValue {
+                key: "X-Token".into(),
+                value: "abc".into(),
+                enabled: true,
+                is_file: false,
+                description: "令牌".into(),
+            }],
+            query: vec![KeyValue {
+                key: "page".into(),
+                value: "1".into(),
+                enabled: true,
+                is_file: false,
+                description: String::new(),
+            }],
+            params: vec![KeyValue {
+                key: "id".into(),
+                value: String::new(),
+                enabled: true,
+                is_file: false,
+                description: String::new(),
+            }],
+            body: BodyData {
+                mode: "json".into(),
+                raw: "{\"a\":1}".into(),
+                form: vec![],
+                binary_path: String::new(),
+            },
+            mock: MockConfig::default(),
+            examples: vec![],
+            responses: vec![],
+            doc_params: vec![],
+            deprecated: false,
+            protocol: if is_ws { "websocket".into() } else { "http".into() },
+        };
+        let apis = vec![
+            (vec![], make("get", "GET", "/users", false)),
+            (vec![], make("post", "POST", "/users", false)),
+            (vec![], make("ws", "GET", "/ws/chat", true)),
+        ];
+        // RAML 导出：ws 应被过滤
+        let raml = export::to_raml(&apis);
+        assert!(raml.get("/users").is_some(), "RAML 应包含 /users");
+        assert!(raml.get("/ws/chat").is_none(), "RAML 不应包含 WS 接口");
+        assert_eq!(raml["/users"]["get"]["queryParameters"]["page"]["default"], "1");
+        let yaml = serde_yaml::to_string(&raml).unwrap();
+        assert!(yaml.contains("baseUri: https://api.example.com"));
+        // WADL 导出
+        let wadl = export::to_wadl(&apis);
+        assert!(wadl.contains("<resource path=\"users\">"));
+        assert!(wadl.contains("<method name=\"GET\">"));
+        assert!(!wadl.contains("ws/chat"), "WADL 不应包含 WS 接口");
+        // WADL 可再解析回接口
+        let tmp = root.join("round.wadl");
+        fs::write(&tmp, &wadl).unwrap();
+        let re = import_wadl_file(&root, &tmp).expect("wadl round-trip 失败");
+        assert_eq!(re.count, 2, "round-trip 接口数应为 2");
         let _ = fs::remove_dir_all(&root);
     }
 

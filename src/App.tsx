@@ -15,6 +15,8 @@ import {
   importPostman,
   importApifox,
   importApipost,
+  importRaml,
+  importWadl,
   importMarkdown,
   renderApiMarkdown,
   renderGroupMarkdown,
@@ -529,6 +531,30 @@ export default function App() {
       if (!result) return; // 用户取消
       await loadAll(workspace!);
       showToast(t("toast.importedApipost", { count: result.count }));
+      void reloadMockIfRunning();
+    } catch (e) {
+      showToast(t("toast.importFailed", { err: String(e) }));
+    }
+  };
+
+  const handleImportRaml = async () => {
+    try {
+      const result = await importRaml();
+      if (!result) return; // 用户取消
+      await loadAll(workspace!);
+      showToast(t("toast.importedRaml", { count: result.count }));
+      void reloadMockIfRunning();
+    } catch (e) {
+      showToast(t("toast.importFailed", { err: String(e) }));
+    }
+  };
+
+  const handleImportWadl = async () => {
+    try {
+      const result = await importWadl();
+      if (!result) return; // 用户取消
+      await loadAll(workspace!);
+      showToast(t("toast.importedWadl", { count: result.count }));
       void reloadMockIfRunning();
     } catch (e) {
       showToast(t("toast.importFailed", { err: String(e) }));
@@ -1438,6 +1464,8 @@ export default function App() {
           onImportMarkdown={() => void handleImportMarkdown()}
           onImportApifox={() => void handleImportApifox()}
           onImportApipost={() => void handleImportApipost()}
+          onImportRaml={() => void handleImportRaml()}
+          onImportWadl={() => void handleImportWadl()}
           settings={settings}
           onViewMarkdown={(node) => void handleViewMarkdown(node)}
           onExport={() => openExport()}

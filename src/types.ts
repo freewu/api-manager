@@ -209,7 +209,9 @@ export type ExportFormat =
   | "markdown"
   | "html"
   | "apifox"
-  | "apipost";
+  | "apipost"
+  | "raml"
+  | "wadl";
 
 /** 主页「导入」菜单支持的格式 */
 export type ImportFormat =
@@ -217,7 +219,9 @@ export type ImportFormat =
   | "openapi"
   | "markdown"
   | "apifox"
-  | "apipost";
+  | "apipost"
+  | "raml"
+  | "wadl";
 
 /** 导入格式中必选（不可关闭）的类型 */
 export const REQUIRED_IMPORT_FORMATS: ImportFormat[] = ["postman", "openapi"];
@@ -274,6 +278,8 @@ export const defaultSettings = (): AppSettings => ({
     markdown: true,
     apifox: true,
     apipost: true,
+    raml: true,
+    wadl: true,
   },
   exportTypes: {
     postman: true,
@@ -283,6 +289,8 @@ export const defaultSettings = (): AppSettings => ({
     docsify: true,
     markdown: true,
     html: true,
+    raml: true,
+    wadl: true,
   },
   htmlNav: "right",
   language: "zh",

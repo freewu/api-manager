@@ -15,6 +15,8 @@ const FORMAT_ICON_FILES: Record<string, string> = {
   docsify: "docsify.svg",
   markdown: "markdown.png",
   html: "html.png",
+  raml: "raml.png",
+  wadl: "wadl.png",
 };
 
 const formatIconImgs = import.meta.glob<string>("../assets/import/*.{png,svg}", {

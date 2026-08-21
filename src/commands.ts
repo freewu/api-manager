@@ -92,6 +92,16 @@ export function importApipost(): Promise<OpenApiImportResult | null> {
   return invoke<OpenApiImportResult | null>("import_apipost");
 }
 
+/** 导入 RAML 文档（弹窗选 .raml 文件） */
+export function importRaml(): Promise<OpenApiImportResult | null> {
+  return invoke<OpenApiImportResult | null>("import_raml");
+}
+
+/** 导入 WADL 文档（弹窗选 .wadl 文件） */
+export function importWadl(): Promise<OpenApiImportResult | null> {
+  return invoke<OpenApiImportResult | null>("import_wadl");
+}
+
 export interface MarkdownDoc {
   name: string;
   md: string;
