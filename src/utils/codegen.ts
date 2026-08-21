@@ -91,7 +91,7 @@ export function defaultLib(lang: CodeLang): string | undefined {
   return CODE_LIBS[lang]?.[0]?.value;
 }
 
-/** WebSocket 代码生成的可选库（目前 C / C++ / PHP / Ruby / Java / Swift / Perl 语言支持库切换） */
+/** WebSocket 代码生成的可选库（目前 C / C++ / PHP / Ruby / Java / Swift / Perl / Julia / Kotlin 语言支持库切换） */
 export const WS_CODE_LIBS: Partial<Record<CodeLang, CodeLibOption[]>> = {
   c: [
     { value: "libwebsockets", label: "libwebsockets" },
@@ -128,6 +128,13 @@ export const WS_CODE_LIBS: Partial<Record<CodeLang, CodeLibOption[]>> = {
   perl: [
     { value: "mojo", label: "Mojo::UserAgent" },
     { value: "anyevent", label: "AnyEvent::WebSocket::Client" },
+  ],
+  julia: [
+    { value: "websocketjl", label: "WebSocket.jl" },
+  ],
+  kotlin: [
+    { value: "okhttp", label: "OkHttp WebSocket" },
+    { value: "java-websocket", label: "Java-WebSocket" },
   ],
 };
 
@@ -3423,6 +3430,158 @@ function genWsPerlAnyEvent(r: WsReq): string {
   return out.join("\n");
 }
 
+function genWsJulia(r: WsReq): string {
+  const out: string[] = [];
+  out.push("# WebSocket 客户端示例（WebSocket.jl：Julia 生态的 WebSocket 库）");
+  out.push("# 官网: https://github.com/JuliaWeb/WebSocket.jl");
+  out.push("# 安装: Pkg.add(\"WebSockets\")   （包名 WebSockets，仓库名 WebSocket.jl）");
+  out.push("# 运行: julia ws_client.jl");
+  out.push("using WebSockets");
+  out.push("");
+  if (r.headers.length) {
+    out.push("# 自定义请求头（握手时发送）");
+    out.push("headers = Dict{String,String}(");
+    for (const h of r.headers) out.push(`    ${JSON.stringify(h.key)} => ${JSON.stringify(h.value)},`);
+    out.push(")");
+  } else {
+    out.push("headers = Dict{String,String}()");
+  }
+  out.push("");
+  out.push("# 建立连接（握手完成后回调 do 块，connect 返回后台任务）");
+  out.push(`task = WebSockets.connect(${JSON.stringify(r.url)}, headers) do ws`);
+  out.push("    println(\">>> 连接成功\")");
+  out.push("");
+  out.push("    # 发送一条文本消息");
+  out.push(`    msg = ${JSON.stringify(r.message || "hello, this is a websocket echo message")}`);
+  out.push("    send(ws, msg)");
+  out.push("    println(\">>> 发送: \", msg)");
+  out.push("");
+  out.push("    # 循环接收消息");
+  out.push("    while isopen(ws)");
+  out.push("        message = receive(ws)");
+  out.push("        if message.opcode == WebSockets.TEXT");
+  out.push("            println(\"<<< 接收: \", String(message.data))");
+  out.push("        end");
+  out.push("    end");
+  out.push("    println(\"连接已关闭\")");
+  out.push("end");
+  out.push("");
+  out.push("# 等待连接任务结束");
+  out.push("wait(task)");
+  return out.join("\n");
+}
+
+function genWsKotlinDispatch(r: WsReq, lib?: string): string {
+  switch (lib) {
+    case "java-websocket":
+      return genWsKotlinJavaWebSocket(r);
+    default:
+      return genWsKotlinOkhttp(r);
+  }
+}
+
+function genWsKotlinOkhttp(r: WsReq): string {
+  const out: string[] = [];
+  out.push("/*");
+  out.push(" * WebSocket 客户端示例（OkHttp：最常用，Android / JVM 后端通用，生产首选）");
+  out.push(" * 官网: https://square.github.io/okhttp/");
+  out.push(" * GitHub: https://github.com/square/okhttp");
+  out.push(" * 依赖（Gradle）:");
+  out.push(" *   implementation(\"com.squareup.okhttp3:okhttp:4.12.0\")");
+  out.push(" */");
+  out.push("import okhttp3.OkHttpClient");
+  out.push("import okhttp3.Request");
+  out.push("import okhttp3.Response");
+  out.push("import okhttp3.WebSocket");
+  out.push("import okhttp3.WebSocketListener");
+  out.push("import okio.ByteString");
+  out.push("");
+  out.push("fun main() {");
+  out.push("    val client = OkHttpClient()");
+  out.push("    val request = Request.Builder()");
+  out.push(`        .url(${JSON.stringify(r.url)})`);
+  for (const h of r.headers) out.push(`        .addHeader(${JSON.stringify(h.key)}, ${JSON.stringify(h.value)})`);
+  out.push("        .build()");
+  out.push("");
+  out.push("    val ws = client.newWebSocket(request, object : WebSocketListener() {");
+  out.push("        override fun onOpen(webSocket: WebSocket, response: Response) {");
+  out.push("            println(\">>> 连接成功\")");
+  out.push(`            webSocket.send(${JSON.stringify(r.message || "hello, this is a websocket echo message")})`);
+  out.push("            println(\">>> 发送完成\")");
+  out.push("        }");
+  out.push("");
+  out.push("        override fun onMessage(webSocket: WebSocket, text: String) {");
+  out.push("            println(\"<<< 接收: \" + text)");
+  out.push("            webSocket.close(1000, \"bye\")");
+  out.push("        }");
+  out.push("");
+  out.push("        override fun onMessage(webSocket: WebSocket, bytes: ByteString) {");
+  out.push("            println(\"<<< 接收(binary): \" + bytes.hex())");
+  out.push("        }");
+  out.push("");
+  out.push("        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {");
+  out.push("            println(\"连接失败: \" + t.message)");
+  out.push("        }");
+  out.push("");
+  out.push("        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {");
+  out.push("            println(\"连接已关闭: \" + reason)");
+  out.push("        }");
+  out.push("    })");
+  out.push("");
+  out.push("    // 保持主线程存活（命令行场景）");
+  out.push("    Thread.sleep(5000)");
+  out.push("    client.dispatcher.executorService.shutdown()");
+  out.push("}");
+  return out.join("\n");
+}
+
+function genWsKotlinJavaWebSocket(r: WsReq): string {
+  const out: string[] = [];
+  out.push("/*");
+  out.push(" * WebSocket 客户端示例（Java-WebSocket：独立 websocket 库，不依赖 okhttp）");
+  out.push(" * 官网: https://github.com/TooTallNate/Java-WebSocket");
+  out.push(" * 依赖（Gradle）:");
+  out.push(" *   implementation(\"org.java-websocket:Java-WebSocket:1.5.7\")");
+  out.push(" */");
+  out.push("import org.java_websocket.client.WebSocketClient");
+  out.push("import org.java_websocket.handshake.ServerHandshake");
+  out.push("import java.net.URI");
+  out.push("");
+  out.push("fun main() {");
+  out.push("    val client = object : WebSocketClient(URI(\"" + r.url + "\")) {");
+  out.push("        override fun onOpen(handshakedata: ServerHandshake) {");
+  out.push("            println(\">>> 连接成功\")");
+  out.push(`            send(${JSON.stringify(r.message || "hello, this is a websocket echo message")})`);
+  out.push("            println(\">>> 发送完成\")");
+  out.push("        }");
+  out.push("");
+  out.push("        override fun onMessage(message: String) {");
+  out.push("            println(\"<<< 接收: \" + message)");
+  out.push("            close()");
+  out.push("        }");
+  out.push("");
+  out.push("        override fun onClose(code: Int, reason: String, remote: Boolean) {");
+  out.push("            println(\"连接已关闭: \" + reason)");
+  out.push("        }");
+  out.push("");
+  out.push("        override fun onError(ex: Exception) {");
+  out.push("            println(\"连接失败: \" + ex.message)");
+  out.push("        }");
+  out.push("    }");
+  out.push("");
+  if (r.headers.length) {
+    out.push("    // 自定义请求头（握手前设置）");
+    out.push("    val headers = mapOf(" + r.headers.map((h) => `"${h.key}" to "${h.value}"`).join(", ") + ")");
+    out.push("    headers.forEach { (k, v) -> client.addHeader(k, v) }");
+    out.push("");
+  }
+  out.push("    client.connect()");
+  out.push("    // 保持主线程存活");
+  out.push("    Thread.sleep(5000)");
+  out.push("}");
+  return out.join("\n");
+}
+
 function genWsUnsupported(lang: string): string {
   return `// ${lang}：暂未内置 WebSocket 客户端代码生成`;
 }
@@ -3460,6 +3619,10 @@ export function generateWebSocketCode(lang: CodeLang, api: ApiFile, baseUrl: str
       return genWsSwiftDispatch(r, lib);
     case "perl":
       return genWsPerlDispatch(r, lib);
+    case "julia":
+      return genWsJulia(r);
+    case "kotlin":
+      return genWsKotlinDispatch(r, lib);
     default:
       return genWsUnsupported(lang);
   }
