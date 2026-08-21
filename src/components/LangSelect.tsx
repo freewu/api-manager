@@ -13,6 +13,7 @@ const LANG_ICON_FILES: Record<string, string> = {
   c: "c.png",
   cpp: "C++.png",
   java: "java.png",
+  csharp: "csharp.png",
   javascript: "javascript.png",
   r: "R.png",
   rust: "rust.png",
@@ -29,7 +30,6 @@ const LANG_ICON_FILES: Record<string, string> = {
   erlang: "Erlang.png",
   lua: "Lua.png",
   powershell: "powershell.png",
-  // csharp 暂无图片，不显示 icon
 };
 const langIconImgs = import.meta.glob<string>("../assets/code/*.png", {
   eager: true,
