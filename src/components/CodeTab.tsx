@@ -83,6 +83,32 @@ interface Props {
   defaultLang: string;
 }
 
+/** 语言 icon：各语言吉祥物/代表 emoji（原生 select 的 option 无法内嵌图片，用 emoji 呈现） */
+const LANG_ICONS: Record<string, string> = {
+  bash: "🐧",
+  python: "🐍",
+  c: "⚙️",
+  cpp: "🔧",
+  java: "☕",
+  csharp: "🎯",
+  javascript: "🟨",
+  r: "📊",
+  rust: "🦀",
+  delphi: "🏛️",
+  php: "🐘",
+  go: "🐹",
+  ruby: "💎",
+  swift: "🕊️",
+  perl: "🐫",
+  objectivec: "🍎",
+  julia: "🟣",
+  kotlin: "🅺",
+  typescript: "🔷",
+  erlang: "☎️",
+  lua: "🌙",
+  powershell: "🪟",
+};
+
 export function CodeTab({ api, baseUrl, defaultLang }: Props) {
   const t = useT();
   const isWs = api.protocol === "websocket";
@@ -135,6 +161,7 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
         >
           {CODE_LANGS.map((l) => (
             <option key={l.value} value={l.value}>
+              {LANG_ICONS[l.value] ? `${LANG_ICONS[l.value]} ` : ""}
               {l.label}
             </option>
           ))}
