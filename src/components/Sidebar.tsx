@@ -371,6 +371,7 @@ function NodeRow({
               enableVersion={enableVersion}
               onContextMenu={onContextMenu}
               filter={filter}
+              methodFilters={methodFilters}
               depFilter={depFilter}
               depInherited={deprecated}
               tree={null}
