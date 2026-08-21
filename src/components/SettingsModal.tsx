@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { AppSettings } from "../types";
 import { Modal } from "./Modal";
 import { openExternal, setLanguage } from "../commands";
-import { CODE_LANGS } from "../utils/codegen";
+import { CODE_LANGS, CodeLang } from "../utils/codegen";
+import { LangSelect } from "./LangSelect";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { setLang, useT } from "../i18n";
 import logoUrl from "../assets/logo.png";
@@ -321,17 +322,11 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
               {settings.enableCodegen && (
                 <div className="settings-row settings-port-row">
                   <span className="settings-label">{t("settings.codegenLang")}</span>
-                  <select
-                    className="settings-port-input codegen-lang-select"
-                    value={settings.codegenLang}
-                    onChange={(e) => patch({ codegenLang: e.target.value })}
-                  >
-                    {CODE_LANGS.map((l) => (
-                      <option key={l.value} value={l.value}>
-                        {l.label}
-                      </option>
-                    ))}
-                  </select>
+                  <LangSelect
+                    value={settings.codegenLang as CodeLang}
+                    options={CODE_LANGS}
+                    onChange={(v) => patch({ codegenLang: v })}
+                  />
                   <span className="settings-desc-inline">{t("settings.codegenLangHint")}</span>
                 </div>
               )}
