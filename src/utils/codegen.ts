@@ -146,6 +146,14 @@ export const WS_CODE_LIBS: Partial<Record<CodeLang, CodeLibOption[]>> = {
     { value: "resty", label: "lua-resty-websocket" },
     { value: "standalone", label: "lua-websocket" },
   ],
+  python: [
+    { value: "websockets", label: "websockets" },
+    { value: "sync", label: "websocket-client" },
+  ],
+  rust: [
+    { value: "tokio", label: "tokio-tungstenite" },
+    { value: "sync", label: "tungstenite" },
+  ],
 };
 
 export const CODE_LANGS: { value: CodeLang; label: string }[] = [
@@ -1739,6 +1747,11 @@ function genWsBash(r: WsReq): string {
 
 function genWsPython(r: WsReq): string {
   const out: string[] = [];
+  out.push("# WebSocket 客户端示例（websockets：异步 asyncio，现代首选，支持 ws/wss）");
+  out.push("# 官网: https://websockets.readthedocs.io/");
+  out.push("# 安装: pip install websockets");
+  out.push("# 运行: python ws_client.py");
+  out.push("");
   out.push("import asyncio");
   out.push("import json");
   out.push("import websockets");
@@ -1771,6 +1784,54 @@ function genWsPython(r: WsReq): string {
   out.push("");
   out.push("");
   out.push("asyncio.run(main())");
+  return out.join("\n");
+}
+
+function genWsPythonDispatch(r: WsReq, lib?: string): string {
+  switch (lib) {
+    case "sync":
+      return genWsPythonSync(r);
+    default:
+      return genWsPython(r);
+  }
+}
+
+function genWsPythonSync(r: WsReq): string {
+  const out: string[] = [];
+  out.push("# WebSocket 客户端示例（websocket-client：同步阻塞，简单脚本用）");
+  out.push("# 官网: https://github.com/websocket-client/websocket-client");
+  out.push("# 安装: pip install websocket-client");
+  out.push("# 运行: python ws_client.py");
+  out.push("");
+  out.push("from websocket import create_connection");
+  out.push("");
+  if (r.headers.length) {
+    out.push("# 自定义请求头（握手时发送）");
+    out.push(`headers = ${JSON.stringify(Object.fromEntries(r.headers.map((h) => [h.key, h.value])))}`);
+    out.push("");
+  }
+  if (r.headers.length) {
+    out.push(`ws = create_connection(${JSON.stringify(r.url)}, header=headers, timeout=10)`);
+  } else {
+    out.push(`ws = create_connection(${JSON.stringify(r.url)}, timeout=10)`);
+  }
+  out.push("print('>>> 连接成功')");
+  out.push("");
+  if (r.message) {
+    out.push(`message = ${JSON.stringify(r.message)}`);
+    out.push("print('>>> 发送:', message)");
+    out.push("ws.send(message)");
+    out.push("");
+    out.push("# 接收回显");
+    out.push("reply = ws.recv()");
+    out.push("print('<<< 接收:', reply)");
+  } else {
+    out.push("# 接收消息");
+    out.push("reply = ws.recv()");
+    out.push("print('<<< 接收:', reply)");
+  }
+  out.push("");
+  out.push("ws.close()");
   return out.join("\n");
 }
 
@@ -2214,6 +2275,14 @@ function genWsCsharp(r: WsReq): string {
 
 function genWsRust(r: WsReq): string {
   const out: string[] = [];
+  out.push("// WebSocket 客户端示例（tokio-tungstenite：异步，tokio 运行时，工业级，生产首选）");
+  out.push("// 官网: https://github.com/snapview/tokio-tungstenite");
+  out.push("// 依赖（Cargo.toml）:");
+  out.push("//   [dependencies]");
+  out.push("//   tokio = { version = \"1\", features = [\"full\"] }");
+  out.push("//   tokio-tungstenite = \"0.24\"");
+  out.push("//   futures-util = \"0.3\"");
+  out.push("// 编译运行: cargo run");
   out.push("use futures_util::{SinkExt, StreamExt};");
   out.push("use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};");
   out.push("");
@@ -2237,6 +2306,63 @@ function genWsRust(r: WsReq): string {
     out.push("    }");
   } else {
     out.push("    if let Some(Ok(msg)) = ws.next().await {");
+    out.push("        println!(\"<<< 接收: {}\", msg);");
+    out.push("    }");
+  }
+  out.push("    Ok(())");
+  out.push("}");
+  return out.join("\n");
+}
+
+function genWsRustDispatch(r: WsReq, lib?: string): string {
+  switch (lib) {
+    case "sync":
+      return genWsRustSync(r);
+    default:
+      return genWsRust(r);
+  }
+}
+
+function genWsRustSync(r: WsReq): string {
+  const out: string[] = [];
+  out.push("// WebSocket 客户端示例（tungstenite：同步阻塞版本，适合简单脚本）");
+  out.push("// 官网: https://github.com/snapview/tungstenite-rs");
+  out.push("// 依赖（Cargo.toml）:");
+  out.push("//   [dependencies]");
+  out.push("//   tungstenite = \"0.24\"");
+  out.push("//   url = \"2\"");
+  out.push("//   http = \"1\"   （自定义请求头时使用）");
+  out.push("// 编译运行: cargo run");
+  out.push("use tungstenite::{connect, Message};");
+  out.push("use url::Url;");
+  out.push("");
+  out.push("fn main() -> Result<(), Box<dyn std::error::Error>> {");
+  if (r.headers.length) {
+    out.push("    // 自定义请求头（握手时发送）");
+    out.push("    let mut req = http::Request::builder()");
+    out.push(`        .uri(${JSON.stringify(r.url)})`);
+    for (const h of r.headers) out.push(`        .header(${JSON.stringify(h.key)}, ${JSON.stringify(h.value)})`);
+    out.push("        .body(())?;");
+    out.push("    let (mut ws, response) = connect(req)?;");
+    out.push("    println!(\">>> 连接成功: {}\", response.status());");
+  } else {
+    out.push(`    let url = Url::parse(${JSON.stringify(r.url)})?;`);
+    out.push("    let (mut ws, _) = connect(url)?;");
+    out.push("    println!(\">>> 连接成功\");");
+  }
+  out.push("");
+  if (r.message) {
+    out.push(`    let message = ${JSON.stringify(r.message)};`);
+    out.push("    println!(\">>> 发送: {}\", message);");
+    out.push("    ws.send(Message::Text(message.into()))?;");
+    out.push("");
+    out.push("    // 阻塞接收一条消息");
+    out.push("    if let Some(msg) = ws.read()? {");
+    out.push("        println!(\"<<< 接收: {}\", msg);");
+    out.push("    }");
+  } else {
+    out.push("    // 阻塞接收一条消息");
+    out.push("    if let Some(msg) = ws.read()? {");
     out.push("        println!(\"<<< 接收: {}\", msg);");
     out.push("    }");
   }
@@ -3843,7 +3969,7 @@ export function generateWebSocketCode(lang: CodeLang, api: ApiFile, baseUrl: str
     case "curl":
       return genWsBash(r);
     case "python":
-      return genWsPython(r);
+      return genWsPythonDispatch(r, lib);
     case "javascript":
       return genWsJavaScript(r);
     case "typescript":
@@ -3855,7 +3981,7 @@ export function generateWebSocketCode(lang: CodeLang, api: ApiFile, baseUrl: str
     case "csharp":
       return genWsCsharp(r);
     case "rust":
-      return genWsRust(r);
+      return genWsRustDispatch(r, lib);
     case "c":
       return genWsC(r, lib);
     case "cpp":
