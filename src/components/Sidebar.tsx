@@ -223,7 +223,11 @@ function NodeRow({
     return node.children.some((c) => hit(c, deprecated));
   }, [isFolder, node.children, depFilter, deprecated]);
 
-  const visible = (matches || childrenMatch) && (depSelf || depChildrenMatch);
+  // 查询过滤生效时（关键词 / 协议 / Method），隐藏没有命中后代的分组（空分组）
+  const filtering = !!filter || protocolFilters.length > 0 || methodFilters.length > 0;
+  const visible =
+    (isFolder && filtering ? childrenMatch : matches || childrenMatch) &&
+    (depSelf || depChildrenMatch);
 
   // 搜索 / 协议 / Method 过滤 / 废弃筛选命中时自动展开包含命中项的文件夹，保证结果可见
   useEffect(() => {
