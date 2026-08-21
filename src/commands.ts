@@ -82,6 +82,16 @@ export function importOpenApi(): Promise<OpenApiImportResult | null> {
   return invoke<OpenApiImportResult | null>("import_openapi");
 }
 
+/** 导入 Apifox 项目（弹窗选 .json 文件） */
+export function importApifox(): Promise<OpenApiImportResult | null> {
+  return invoke<OpenApiImportResult | null>("import_apifox");
+}
+
+/** 导入 Apipost 项目（弹窗选 .json 文件） */
+export function importApipost(): Promise<OpenApiImportResult | null> {
+  return invoke<OpenApiImportResult | null>("import_apipost");
+}
+
 export interface MarkdownDoc {
   name: string;
   md: string;

@@ -184,6 +184,8 @@ export function ExportModal({ tree, preselect, defaultFormat, onExport, onClose 
         >
           <option value="postman">{t("export.postman")}</option>
           <option value="openapi">{t("export.openapi")}</option>
+          <option value="apifox">{t("export.apifox")}</option>
+          <option value="apipost">{t("export.apipost")}</option>
           <option value="docsify">{t("export.docsify")}</option>
           <option value="markdown">{t("export.markdown")}</option>
           <option value="html">{t("export.html")}</option>

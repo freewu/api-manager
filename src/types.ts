@@ -202,7 +202,14 @@ export interface VersionInfo {
   endpoint?: string;
 }
 
-export type ExportFormat = "postman" | "openapi" | "docsify" | "markdown" | "html";
+export type ExportFormat =
+  | "postman"
+  | "openapi"
+  | "docsify"
+  | "markdown"
+  | "html"
+  | "apifox"
+  | "apipost";
 
 export interface AppSettings {
   displayMode: string; // "dark" | "light" | "system"

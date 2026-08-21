@@ -31,6 +31,8 @@ interface Props {
   onImportPostman?: () => void;
   onImportOpenApi?: () => void;
   onImportMarkdown?: () => void;
+  onImportApifox?: () => void;
+  onImportApipost?: () => void;
   onExport?: () => void;
   onExportNode?: (node: TreeNode) => void;
   /** 工作目录版本控制类型（.git / .svn），为空时不显示同步/提交按钮 */
@@ -427,7 +429,7 @@ function NodeRow({
 
 export function Sidebar(props: Props) {
   const t = useT();
-  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
+  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion } = props;
   const [importMenu, setImportMenu] = useState(false);
   const [filter, setFilter] = useState("");
   /** 高级搜索：是否展开过滤面板 */
@@ -802,6 +804,26 @@ export function Sidebar(props: Props) {
                       }}
                     >
                       📄 Markdown {t("sidebar.markdown")}
+                    </button>
+                  )}
+                  {onImportApifox && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportApifox();
+                      }}
+                    >
+                      🦊 Apifox 项目（JSON）
+                    </button>
+                  )}
+                  {onImportApipost && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportApipost();
+                      }}
+                    >
+                      🐼 Apipost 项目（JSON）
                     </button>
                   )}
                 </div>

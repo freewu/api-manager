@@ -13,6 +13,8 @@ import {
   openWorkspace,
   importOpenApi,
   importPostman,
+  importApifox,
+  importApipost,
   importMarkdown,
   renderApiMarkdown,
   renderGroupMarkdown,
@@ -494,6 +496,32 @@ export default function App() {
       if (!result) return; // 用户取消
       await loadAll(workspace!);
       showToast(t("toast.importedOpenApi", { count: result.count }));
+      void reloadMockIfRunning();
+    } catch (e) {
+      showToast(t("toast.importFailed", { err: String(e) }));
+    }
+  };
+
+  /** 导入 Apifox 项目：自动新建分组并导入全部接口 */
+  const handleImportApifox = async () => {
+    try {
+      const result = await importApifox();
+      if (!result) return; // 用户取消
+      await loadAll(workspace!);
+      showToast(t("toast.importedApifox", { count: result.count }));
+      void reloadMockIfRunning();
+    } catch (e) {
+      showToast(t("toast.importFailed", { err: String(e) }));
+    }
+  };
+
+  /** 导入 Apipost 项目：自动新建分组并导入全部接口 */
+  const handleImportApipost = async () => {
+    try {
+      const result = await importApipost();
+      if (!result) return; // 用户取消
+      await loadAll(workspace!);
+      showToast(t("toast.importedApipost", { count: result.count }));
       void reloadMockIfRunning();
     } catch (e) {
       showToast(t("toast.importFailed", { err: String(e) }));
@@ -1401,6 +1429,8 @@ export default function App() {
           onImportPostman={() => void handleImportPostman()}
           onImportOpenApi={() => void handleImportOpenApi()}
           onImportMarkdown={() => void handleImportMarkdown()}
+          onImportApifox={() => void handleImportApifox()}
+          onImportApipost={() => void handleImportApipost()}
           onViewMarkdown={(node) => void handleViewMarkdown(node)}
           onExport={() => openExport()}
           onExportNode={(node) => openExport(node)}

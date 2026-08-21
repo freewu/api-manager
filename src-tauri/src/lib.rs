@@ -1745,6 +1745,40 @@ fn export_selection(
             fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
             Ok(Some(path.to_string_lossy().to_string()))
         }
+        "apifox" => {
+            let v = export::to_apifox(&apis);
+            let content = serde_json::to_string_pretty(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 Apifox 项目")
+                .set_file_name("apifox-project.json")
+                .add_filter("Apifox 项目", &["json"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "apipost" => {
+            let v = export::to_apipost(&apis);
+            let content = serde_json::to_string_pretty(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 Apipost 项目")
+                .set_file_name("apipost-project.json")
+                .add_filter("Apipost 项目", &["json"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
         "docsify" => {
             let picked = app
                 .dialog()
@@ -1897,6 +1931,582 @@ fn import_markdown(
     }))
 }
 
+// ==================== Apifox / Apipost 导入 ====================
+
+/// 导入 Apifox 项目（apifox-project.json）：弹窗选文件，工作区根新建同名分组
+#[tauri::command]
+fn import_apifox(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+) -> Result<Option<OpenApiImportResult>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("Apifox 项目", &["json"])
+        .blocking_pick_file();
+    let Some(path) = picked else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let root = workspace_root(&state)?;
+    let result = import_apifox_file(&root, &path)?;
+    Ok(Some(result))
+}
+
+/// 解析 Apifox 项目文件：apiCollection + webSocketCollection 全部导入
+fn import_apifox_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, String> {
+    let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
+    let json: Value =
+        serde_json::from_str(&content).map_err(|e| format!("解析 JSON 失败: {e}"))?;
+    if json.get("apiCollection").is_none() && json.get("webSocketCollection").is_none() {
+        return Err("不是有效的 Apifox 项目文件（缺少 apiCollection 字段）".into());
+    }
+    let coll_name = json
+        .pointer("/info/name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Apifox 导入")
+        .to_string();
+    let dir_name = sanitize_filename(&coll_name);
+    let dir_name = if dir_name.is_empty() {
+        "Apifox 导入".to_string()
+    } else {
+        dir_name
+    };
+    let folder = unique_path(root, &dir_name, "");
+    fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
+    let src_name = file
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    write_pretty(
+        &folder.join(INFO_FILE),
+        &InfoJson {
+            name: Some(coll_name.clone()),
+            description: format!("从 Apifox 项目导入（{src_name}）"),
+            base_url: None,
+            mock_port: None,
+            order: None,
+            collapsed: None,
+            deprecated: None,
+        },
+    )?;
+    let mut count = 0usize;
+    // HTTP 接口：apiCollection 为数组（可能多个集合）或对象 {items:[...]}
+    match json.get("apiCollection") {
+        Some(Value::Array(arr)) => {
+            for c in arr {
+                count += import_apifox_items(&folder, c)?;
+            }
+        }
+        Some(obj) => {
+            if let Some(items) = obj.get("items").and_then(|v| v.as_array()) {
+                count += import_apifox_items_arr(&folder, items)?;
+            }
+        }
+        _ => {}
+    }
+    // WebSocket 接口：webSocketCollection（api 无 method，path 即 ws url，消息体在 requestBody.message）
+    if let Some(arr) = json.get("webSocketCollection").and_then(|v| v.as_array()) {
+        for c in arr {
+            count += import_apifox_items(&folder, c)?;
+        }
+    }
+    Ok(OpenApiImportResult {
+        folder: folder.to_string_lossy().to_string(),
+        count,
+    })
+}
+
+/// 单个 Apifox 集合：取 items 递归导入
+fn import_apifox_items(dir: &Path, collection: &Value) -> Result<usize, String> {
+    let items = collection
+        .get("items")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    import_apifox_items_arr(dir, &items)
+}
+
+/// Apifox items 递归：带 api 的为接口，带 items 的为分组
+fn import_apifox_items_arr(dir: &Path, items: &[Value]) -> Result<usize, String> {
+    let mut count = 0usize;
+    for item in items {
+        let name = item
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("未命名")
+            .to_string();
+        if let Some(api_obj) = item.get("api") {
+            let api = apifox_api_to_api(&name, api_obj)?;
+            let file_base = sanitize_filename(&name);
+            let file_base = if file_base.is_empty() {
+                "未命名接口".to_string()
+            } else {
+                file_base
+            };
+            let file_path = unique_path(dir, &file_base, ".json");
+            write_pretty(&file_path, &api)?;
+            count += 1;
+        } else if let Some(sub) = item.get("items").and_then(|v| v.as_array()) {
+            let sub_base = sanitize_filename(&name);
+            let sub_base = if sub_base.is_empty() {
+                "子分组".to_string()
+            } else {
+                sub_base
+            };
+            let sub_dir = unique_path(dir, &sub_base, "");
+            fs::create_dir_all(&sub_dir).map_err(|e| format!("创建分组失败: {e}"))?;
+            write_pretty(
+                &sub_dir.join(INFO_FILE),
+                &InfoJson {
+                    name: Some(name.clone()),
+                    description: String::new(),
+                    base_url: None,
+                    mock_port: None,
+                    order: None,
+                    collapsed: None,
+                    deprecated: None,
+                },
+            )?;
+            count += import_apifox_items_arr(&sub_dir, sub)?;
+        }
+    }
+    Ok(count)
+}
+
+/// 将 Apifox api 对象转换为 ApiFile（WebSocket 接口无 method，path 即地址）
+fn apifox_api_to_api(name: &str, api_obj: &Value) -> Result<ApiFile, String> {
+    let is_ws = api_obj.get("method").is_none() && api_obj.get("path").and_then(|v| v.as_str()).map_or(true, |p| p.contains("ws://") || p.contains("wss://"));
+    let method = if is_ws {
+        "WS".to_string()
+    } else {
+        api_obj
+            .get("method")
+            .and_then(|v| v.as_str())
+            .unwrap_or("GET")
+            .to_uppercase()
+    };
+    let path = api_obj
+        .get("path")
+        .and_then(|v| v.as_str())
+        .unwrap_or("/")
+        .to_string();
+    let (mut headers, mut query, mut params) = (Vec::new(), Vec::new(), Vec::new());
+    if let Some(p) = api_obj.get("parameters").and_then(|v| v.as_object()) {
+        let kv_list = |arr: Option<&Vec<Value>>| -> Vec<KeyValue> {
+            arr.map(|arr| {
+                arr.iter()
+                    .map(|v| KeyValue {
+                        key: v.get("name").and_then(|x| x.as_str()).unwrap_or("").trim().to_string(),
+                        value: v.get("value").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+                        enabled: v.get("enable").and_then(|x| x.as_bool()).unwrap_or(true),
+                        description: v.get("description").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+                        is_file: false,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+        };
+        headers = kv_list(p.get("header").and_then(|v| v.as_array()));
+        query = kv_list(p.get("query").and_then(|v| v.as_array()));
+        params = kv_list(p.get("path").and_then(|v| v.as_array()));
+    }
+    let body = if is_ws {
+        let msg = api_obj
+            .pointer("/requestBody/message")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        BodyData {
+            mode: if msg.trim().is_empty() {
+                "none".into()
+            } else if msg.trim_start().starts_with('{') || msg.trim_start().starts_with('[') {
+                "json".into()
+            } else {
+                "raw".into()
+            },
+            raw: msg,
+            form: vec![],
+            binary_path: String::new(),
+        }
+    } else {
+        apifox_body(api_obj.get("requestBody"))
+    };
+    let description = api_obj
+        .get("description")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    Ok(ApiFile {
+        uuid: uuid::Uuid::new_v4().to_string(),
+        name: name.to_string(),
+        method,
+        url: path.clone(),
+        path,
+        description,
+        headers,
+        query,
+        params,
+        body,
+        mock: MockConfig::default(),
+        examples: vec![],
+        responses: vec![],
+        doc_params: vec![],
+        deprecated: false,
+        protocol: if is_ws { "websocket".into() } else { "http".into() },
+    })
+}
+
+/// 转换 Apifox requestBody（type: json / form-data / x-www-form-urlencoded / raw / none）
+fn apifox_body(body: Option<&Value>) -> BodyData {
+    let mut out = BodyData::default();
+    let Some(body) = body else {
+        return out;
+    };
+    let ty = body.get("type").and_then(|v| v.as_str()).unwrap_or("none");
+    match ty {
+        "json" | "raw" => {
+            // JSON 示例体在 examples[].data；raw 直接用 raw
+            let raw = if ty == "raw" {
+                body.get("raw").and_then(|v| v.as_str()).unwrap_or("").to_string()
+            } else {
+                body.get("examples")
+                    .and_then(|v| v.as_array())
+                    .and_then(|arr| arr.first())
+                    .and_then(|e| e.get("data"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string()
+            };
+            out.mode = if ty == "raw" { "raw".into() } else { "json".into() };
+            out.raw = raw;
+        }
+        "form-data" | "x-www-form-urlencoded" => {
+            out.mode = "form".into();
+            if let Some(arr) = body.get("parameters").and_then(|v| v.as_array()) {
+                for f in arr {
+                    let key = f.get("name").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+                    if key.is_empty() {
+                        continue;
+                    }
+                    out.form.push(KeyValue {
+                        key,
+                        value: f.get("value").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                        enabled: f.get("enable").and_then(|v| v.as_bool()).unwrap_or(true),
+                        is_file: f.get("type").and_then(|v| v.as_str()).unwrap_or("") == "file",
+                        description: String::new(),
+                    });
+                }
+            }
+        }
+        _ => {}
+    }
+    out
+}
+
+/// 导入 Apipost 项目（apipost 导出 json）：弹窗选文件，工作区根新建同名分组
+#[tauri::command]
+fn import_apipost(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+) -> Result<Option<OpenApiImportResult>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("Apipost 项目", &["json"])
+        .blocking_pick_file();
+    let Some(path) = picked else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let root = workspace_root(&state)?;
+    let result = import_apipost_file(&root, &path)?;
+    Ok(Some(result))
+}
+
+/// 解析 Apipost 项目文件：apis 平铺数组按 parent_id 组织成树
+fn import_apipost_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, String> {
+    let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
+    let json: Value =
+        serde_json::from_str(&content).map_err(|e| format!("解析 JSON 失败: {e}"))?;
+    let apis = json.get("apis").and_then(|v| v.as_array()).cloned();
+    let Some(apis) = apis else {
+        return Err("不是有效的 Apipost 项目文件（缺少 apis 字段）".into());
+    };
+    let coll_name = json
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Apipost 导入")
+        .to_string();
+    let dir_name = sanitize_filename(&coll_name);
+    let dir_name = if dir_name.is_empty() {
+        "Apipost 导入".to_string()
+    } else {
+        dir_name
+    };
+    let folder = unique_path(root, &dir_name, "");
+    fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
+    let src_name = file
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    write_pretty(
+        &folder.join(INFO_FILE),
+        &InfoJson {
+            name: Some(coll_name.clone()),
+            description: format!("从 Apipost 项目导入（{src_name}）"),
+            base_url: None,
+            mock_port: None,
+            order: None,
+            collapsed: None,
+            deprecated: None,
+        },
+    )?;
+    // target_id → 节点索引
+    let mut by_id: HashMap<String, &Value> = HashMap::new();
+    for a in &apis {
+        if let Some(id) = a.get("target_id").and_then(|v| v.as_str()) {
+            by_id.insert(id.to_string(), a);
+        }
+    }
+    // 根节点：parent_id 为 0 或指向不存在的节点
+    let mut roots: Vec<&Value> = apis
+        .iter()
+        .filter(|a| {
+            let pid = a.get("parent_id").and_then(|v| v.as_str()).unwrap_or("0");
+            pid == "0" || !by_id.contains_key(pid)
+        })
+        .collect();
+    roots.sort_by_key(|a| a.get("sort").and_then(|v| v.as_i64()).unwrap_or(0));
+    let mut count = 0usize;
+    for r in roots {
+        count += import_apipost_node(&folder, r, &by_id)?;
+    }
+    Ok(OpenApiImportResult {
+        folder: folder.to_string_lossy().to_string(),
+        count,
+    })
+}
+
+/// Apipost 节点递归：folder 建分组，api/graphql 写接口文件
+fn import_apipost_node(
+    dir: &Path,
+    node: &Value,
+    by_id: &HashMap<String, &Value>,
+) -> Result<usize, String> {
+    let name = node
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("未命名")
+        .to_string();
+    match node.get("target_type").and_then(|v| v.as_str()) {
+        Some("folder") => {
+            let sub_dir = unique_path(dir, &sanitize_filename(&name), "");
+            fs::create_dir_all(&sub_dir).map_err(|e| format!("创建分组失败: {e}"))?;
+            write_pretty(
+                &sub_dir.join(INFO_FILE),
+                &InfoJson {
+                    name: Some(name.clone()),
+                    description: String::new(),
+                    base_url: None,
+                    mock_port: None,
+                    order: None,
+                    collapsed: None,
+                    deprecated: None,
+                },
+            )?;
+            let mut count = 0usize;
+            let kids = apipost_node_children(node, by_id);
+            for c in kids {
+                count += import_apipost_node(&sub_dir, c, by_id)?;
+            }
+            Ok(count)
+        }
+        _ => {
+            let api = apipost_request_to_api(&name, node)?;
+            let file_base = sanitize_filename(&name);
+            let file_base = if file_base.is_empty() {
+                "未命名接口".to_string()
+            } else {
+                file_base
+            };
+            let file_path = unique_path(dir, &file_base, ".json");
+            write_pretty(&file_path, &api)?;
+            Ok(1)
+        }
+    }
+}
+
+/// 取某节点的直接子节点（按 sort 排序）
+fn apipost_node_children<'a>(node: &Value, by_id: &HashMap<String, &'a Value>) -> Vec<&'a Value> {
+    let id = node.get("target_id").and_then(|v| v.as_str()).unwrap_or("");
+    let mut kids: Vec<&'a Value> = by_id
+        .values()
+        .filter(|v| v.get("parent_id").and_then(|x| x.as_str()).unwrap_or("") == id)
+        .copied()
+        .collect();
+    kids.sort_by_key(|v| v.get("sort").and_then(|x| x.as_i64()).unwrap_or(0));
+    kids
+}
+
+/// 将 Apipost 接口节点转换为 ApiFile
+fn apipost_request_to_api(name: &str, node: &Value) -> Result<ApiFile, String> {
+    let method = node
+        .get("method")
+        .and_then(|v| v.as_str())
+        .unwrap_or("GET")
+        .to_uppercase();
+    let url = node.get("url").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let protocol = node.get("protocol").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let is_ws = protocol.contains("websocket") || protocol.contains("ws");
+    let (path, mut params) = extract_path(&url);
+    let request = node.get("request");
+    let mut headers = Vec::new();
+    let mut query = Vec::new();
+    if let Some(req) = request {
+        headers = apipost_param_list(
+            req.get("header")
+                .and_then(|h| h.get("parameter"))
+                .and_then(|v| v.as_array()),
+        );
+        query = apipost_param_list(
+            req.get("query")
+                .and_then(|h| h.get("parameter"))
+                .and_then(|v| v.as_array()),
+        );
+        let restful = apipost_param_list(
+            req.get("restful")
+                .and_then(|h| h.get("parameter"))
+                .and_then(|v| v.as_array()),
+        );
+        if !restful.is_empty() {
+            params = restful;
+        }
+    }
+    let body = request
+        .map(|r| apipost_body(r.get("body")))
+        .unwrap_or_default();
+    let description = node
+        .get("description")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    Ok(ApiFile {
+        uuid: uuid::Uuid::new_v4().to_string(),
+        name: name.to_string(),
+        method,
+        path,
+        url,
+        description,
+        headers,
+        query,
+        params,
+        body,
+        mock: MockConfig::default(),
+        examples: vec![],
+        responses: vec![],
+        doc_params: vec![],
+        deprecated: false,
+        protocol: if is_ws { "websocket".into() } else { "http".into() },
+    })
+}
+
+/// 读取 Apipost 参数数组（{key, value, description, is_checked}）
+fn apipost_param_list(arr: Option<&Vec<Value>>) -> Vec<KeyValue> {
+    arr.map(|arr| {
+        arr.iter()
+            .map(|v| KeyValue {
+                key: v.get("key").and_then(|x| x.as_str()).unwrap_or("").trim().to_string(),
+                value: v.get("value").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+                enabled: v.get("is_checked").and_then(|x| x.as_i64()).unwrap_or(1) != 0,
+                description: v.get("description").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+                is_file: false,
+            })
+            .collect()
+    })
+    .unwrap_or_default()
+}
+
+/// 转换 Apipost body（mode: json / raw / form-data / urlencoded / none）
+fn apipost_body(body: Option<&Value>) -> BodyData {
+    let mut out = BodyData::default();
+    let Some(body) = body else {
+        return out;
+    };
+    match body.get("mode").and_then(|v| v.as_str()) {
+        Some("json") | Some("raw") | Some("xml") => {
+            out.mode = if body.get("mode").and_then(|v| v.as_str()) == Some("xml") {
+                "raw".to_string()
+            } else {
+                "json".to_string()
+            };
+            out.raw = body.get("raw").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        }
+        Some("form-data") | Some("urlencoded") | Some("form") => {
+            out.mode = "form".into();
+            if let Some(arr) = body.get("parameter").and_then(|v| v.as_array()) {
+                for f in arr {
+                    let key = f.get("key").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+                    if key.is_empty() {
+                        continue;
+                    }
+                    out.form.push(KeyValue {
+                        key,
+                        value: f.get("value").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                        enabled: f.get("is_checked").and_then(|v| v.as_i64()).unwrap_or(1) != 0,
+                        is_file: f.get("type").and_then(|v| v.as_str()).unwrap_or("") == "file",
+                        description: String::new(),
+                    });
+                }
+            }
+        }
+        _ => {}
+    }
+    out
+}
+
+/// 从 URL 提取路径（:id → {id}）与路径参数
+fn extract_path(raw: &str) -> (String, Vec<KeyValue>) {
+    let no_query = raw.split('?').next().unwrap_or("");
+    let no_hash = no_query.split('#').next().unwrap_or("");
+    let after_scheme = match no_hash.splitn(2, "://").nth(1) {
+        Some(rest) => rest,
+        None => no_hash,
+    };
+    let path_only = match after_scheme.find('/') {
+        Some(i) => &after_scheme[i..],
+        None => "/",
+    };
+    let mut params = Vec::new();
+    let segs: Vec<String> = path_only
+        .split('/')
+        .map(|seg| {
+            if let Some(var) = seg.strip_prefix(':') {
+                if !var.is_empty() {
+                    params.push(KeyValue {
+                        key: var.to_string(),
+                        value: String::new(),
+                        enabled: true,
+                        is_file: false,
+                        description: String::new(),
+                    });
+                    return format!("{{{var}}}");
+                }
+            }
+            seg.to_string()
+        })
+        .collect();
+    let mut path = segs.join("/");
+    if !path.starts_with('/') {
+        path.insert(0, '/');
+    }
+    if path.is_empty() {
+        path = "/".to_string();
+    }
+    (path, params)
+}
 
 #[tauri::command]
 fn import_openapi(
@@ -4202,6 +4812,8 @@ pub fn run() {
             create_demo,
             import_postman,
             import_openapi,
+            import_apifox,
+            import_apipost,
             render_api_markdown,
             render_group_markdown,
             export_api_markdown,
@@ -4984,6 +5596,55 @@ mod tests {
         assert_eq!(result2.count, 2);
         assert!(PathBuf::from(&result2.folder).join("pets").exists());
 
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    /// 使用 tests/data/apifox.json 真实文件验证 Apifox 项目导入
+    #[test]
+    fn test_import_apifox_file() {
+        let root = std::env::temp_dir().join(format!("apimgr-apifox-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let file = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../tests/data/apifox.json"
+        ));
+        let result = import_apifox_file(&root, &file).expect("apifox 导入失败");
+        assert!(result.count > 0, "应至少导入 1 个接口，实际 {}", result.count);
+        let folder = PathBuf::from(&result.folder);
+        assert!(folder.join(INFO_FILE).exists());
+        // 宠物商店示例：根集合下含「宠物」分组与 GET 接口
+        let pets = folder.join("宠物");
+        assert!(pets.exists(), "应生成「宠物」分组");
+        // 直接读取「获取宠物」接口文件验证转换结果
+        let api_file = pets.join("获取宠物.json");
+        assert!(api_file.exists(), "应生成「获取宠物.json」");
+        let api: ApiFile =
+            serde_json::from_str(&fs::read_to_string(api_file).unwrap()).unwrap();
+        assert_eq!(api.method, "GET");
+        assert_eq!(api.path, "/pets/{id}");
+        assert_eq!(api.params.len(), 1);
+        assert_eq!(api.params[0].key, "id");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    /// 使用 tests/data/apipost.json 真实文件验证 Apipost 项目导入
+    #[test]
+    fn test_import_apipost_file() {
+        let root = std::env::temp_dir().join(format!("apimgr-apipost-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let file = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../tests/data/apipost.json"
+        ));
+        let result = import_apipost_file(&root, &file).expect("apipost 导入失败");
+        // 文件含 406 个 api + 15 个 graphql，folder 只建分组不计数
+        assert_eq!(result.count, 421, "接口数应为 421，实际 {}", result.count);
+        let folder = PathBuf::from(&result.folder);
+        assert!(folder.join(INFO_FILE).exists());
+        // Auth 分组（parent_id=0 的根分组）应存在
+        assert!(folder.join("Auth").exists());
         let _ = fs::remove_dir_all(&root);
     }
 
