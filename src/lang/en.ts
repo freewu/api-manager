@@ -244,6 +244,8 @@ export const EN: Record<string, string> = {
   "settings.codegenLang": "Default language",
   "settings.exportFormat": "Default export format",
   "settings.exportFormatHint": "Pre-selected in the export dialog",
+  "settings.exportEnabled": "Enable export (show export button)",
+  "settings.importEnabled": "Enable import (show import button)",
   "settings.exportTypesDesc": "Choose which formats appear in the export dialog dropdown (Postman / OpenAPI / Docsify / Markdown / HTML are required)",
   "settings.importTypesDesc": "Choose which formats appear in the sidebar import menu (Postman / OpenAPI are required)",
   "settings.required": "Required",

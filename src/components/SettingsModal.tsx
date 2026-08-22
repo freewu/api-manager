@@ -402,6 +402,13 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
           <section id="settings-export" className="settings-section">
             <div className="settings-panel-title">{t("settings.nav.export")}</div>
             <div className="settings-feature">
+              <div className="settings-row">
+                <span className="settings-label">{t("settings.exportEnabled")}</span>
+                <Switch
+                  checked={settings.exportEnabled !== false}
+                  onChange={(v) => patch({ exportEnabled: v })}
+                />
+              </div>
               <div className="settings-row settings-port-row">
                 <span className="settings-label">{t("settings.exportFormat")}</span>
                 <FormatSelect
@@ -447,6 +454,13 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
           <section id="settings-import" className="settings-section">
             <div className="settings-panel-title">{t("settings.nav.import")}</div>
             <div className="settings-feature">
+              <div className="settings-row">
+                <span className="settings-label">{t("settings.importEnabled")}</span>
+                <Switch
+                  checked={settings.importEnabled !== false}
+                  onChange={(v) => patch({ importEnabled: v })}
+                />
+              </div>
               <div className="settings-desc">{t("settings.importTypesDesc")}</div>
               <div className="settings-format-list">
                 {IMPORT_FORMATS.map((f) => {
