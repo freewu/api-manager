@@ -50,7 +50,7 @@ export function useModals(opts: {
 
   const [modal, setModal] = useState<ModalState | null>(null);
   const [modalText, setModalText] = useState("");
-  const [modalProtocol, setModalProtocol] = useState<"http" | "websocket">("http");
+  const [modalProtocol, setModalProtocol] = useState<"http" | "websocket" | "graphql">("http");
   const [infoForm, setInfoForm] = useState<InfoForm>(emptyInfoForm());
   const [demoCreate, setDemoCreate] = useState(true);
   const [versionModal, setVersionModal] = useState<{ api: ApiFile; versions: VersionInfo[] } | null>(null);

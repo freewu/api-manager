@@ -6,6 +6,7 @@ import { FormatIcon } from "./FormatSelect";
 import { useT } from "../i18n";
 import iconHttp from "../assets/icon-http.png";
 import iconWs from "../assets/icon-websocket.png";
+import iconGql from "../assets/icon-graphql.png";
 
 export type AppView = "api" | "history";
 
@@ -338,6 +339,8 @@ function NodeRow({
             "📁"
           ) : node.protocol === "websocket" ? (
             <img className="node-type-icon" src={iconWs} alt="WS" />
+          ) : node.protocol === "graphql" ? (
+            <img className="node-type-icon" src={iconGql} alt="GraphQL" />
           ) : (
             <img className="node-type-icon" src={iconHttp} alt="HTTP" />
           )}

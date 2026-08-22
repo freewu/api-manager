@@ -92,6 +92,8 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   const t = useT();
   /** 是否 WebSocket 接口 */
   const isWs = api.protocol === "websocket";
+  /** 是否 GraphQL 接口（固定 POST + JSON body，不支持 Mock / Path 参数） */
+  const isGraphql = api.protocol === "graphql";
   // WebSocket 消息格式：文本 / json / xml / binary（复用 body.mode，text 映射为 raw）
   const WS_MODES = ["raw", "json", "xml", "binary"] as const;
   const wsMode: BodyData["mode"] = (WS_MODES as readonly string[]).includes(api.body.mode)
@@ -130,23 +132,23 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   // 设置中全局关闭 Mock 时，若当前停留在 Mock 页签则切回 Query；
   // WebSocket 无 Path / Mock 页签，若停留在这两个页签则切回 Query
   useEffect(() => {
-    if ((!enableMock || isWs) && tab === "mock") {
+    if ((!enableMock || isWs || isGraphql) && tab === "mock") {
       setTab("params");
       onTabChange?.("params");
     }
-    if (isWs && tab === "path") {
+    if ((isWs || isGraphql) && tab === "path") {
       setTab("params");
       onTabChange?.("params");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enableMock, isWs, tab]);
+  }, [enableMock, isWs, isGraphql, tab]);
 
   // URL / 路径中的 {xx} 占位符实时同步到 Path 页签（新增或删除）；
   // {{xx}} 是全局环境变量（双大括号），不会被当作路径参数
   // WebSocket 不使用路径参数，跳过同步
   const pathSource = api.url || api.path;
   useEffect(() => {
-    if (isWs) return;
+    if (isWs || isGraphql) return;
     const names = new Set(
       [...pathSource.matchAll(/(?<!\{)\{([^{}]+)\}(?!\})/g)]
         .map((m) => m[1].trim())
@@ -239,6 +241,10 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               ws
             </button>
           </div>
+        ) : isGraphql ? (
+          <select className="method-select" value="POST" disabled title={t("editor.graphqlMethodTip")}>
+            <option value="POST">POST</option>
+          </select>
         ) : (
           <select
             className="method-select"
@@ -295,7 +301,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         <div className={`tab ${tab === "params" ? "active" : ""}`} onClick={() => switchTab("params")}>
           Query{enabledCount(api.query) > 0 && <span className="count">{enabledCount(api.query)}</span>}
         </div>
-        {!isWs && (
+        {!isWs && !isGraphql && (
           <div className={`tab ${tab === "path" ? "active" : ""}`} onClick={() => switchTab("path")}>
             Path{enabledCount(api.params) > 0 && <span className="count">{enabledCount(api.params)}</span>}
           </div>
@@ -323,7 +329,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           {t("editor.responseTab")}
           {(api.responses?.length ?? 0) > 0 && <span className="count">{api.responses.length}</span>}
         </div>
-        {enableMock && !isWs && (
+        {enableMock && !isWs && !isGraphql && (
           <div className={`tab ${tab === "mock" ? "active" : ""}`} onClick={() => switchTab("mock")}>
             Mock{api.mock.enabled && <span className="count">●</span>}
           </div>
@@ -489,30 +495,36 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         {tab === "body" && !isWs && (
           <div>
             <div className="body-modes">
-              {BODY_MODES.map((m) => (
-                <div
-                  key={m}
-                  className={`body-mode ${api.body.mode === m ? "active" : ""}`}
-                  onClick={() => set({ body: { ...api.body, mode: m } })}
-                >
-                  {m === "none"
-                    ? t("editor.none")
-                    : m === "raw"
-                      ? t("editor.raw")
-                      : m === "json"
-                        ? "JSON"
-                        : m === "xml"
-                          ? "XML"
-                          : m === "binary"
-                            ? t("editor.binary")
-                            : t("editor.form")}
+              {isGraphql ? (
+                <div className="body-mode active" title={t("editor.graphqlBodyTip")}>
+                  JSON
                 </div>
-              ))}
+              ) : (
+                BODY_MODES.map((m) => (
+                  <div
+                    key={m}
+                    className={`body-mode ${api.body.mode === m ? "active" : ""}`}
+                    onClick={() => set({ body: { ...api.body, mode: m } })}
+                  >
+                    {m === "none"
+                      ? t("editor.none")
+                      : m === "raw"
+                        ? t("editor.raw")
+                        : m === "json"
+                          ? "JSON"
+                          : m === "xml"
+                            ? "XML"
+                            : m === "binary"
+                              ? t("editor.binary")
+                              : t("editor.form")}
+                  </div>
+                ))
+              )}
             </div>
-            {api.body.mode === "none" && (
+            {!isGraphql && api.body.mode === "none" && (
               <div style={{ color: "var(--text-faint)", fontSize: 12 }}>{t("editor.noBody")}</div>
             )}
-            {api.body.mode === "form" && (
+            {!isGraphql && api.body.mode === "form" && (
               <>
                 <KeyValueEditor
                   rows={api.body.form}
@@ -526,10 +538,10 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                 </div>
               </>
             )}
-            {(api.body.mode === "raw" || api.body.mode === "json" || api.body.mode === "xml") && (
+            {(isGraphql || api.body.mode === "raw" || api.body.mode === "json" || api.body.mode === "xml") && (
               <div className="body-raw-wrap">
                 <div className="body-raw-toolbar">
-                  {api.body.mode === "json" ? (
+                  {(isGraphql || api.body.mode === "json") ? (
                     <button
                       className="btn small"
                       onClick={() =>
@@ -560,8 +572,8 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                   className="code-area"
                   value={api.body.raw}
                   placeholder={
-                    api.body.mode === "json"
-                      ? '{\n  "key": "value"\n}'
+                    (isGraphql || api.body.mode === "json")
+                      ? '{\n  "query": "query { user(id: 1) { id name } }"\n}'
                       : api.body.mode === "xml"
                         ? '<root>\n  <item>value</item>\n</root>'
                         : t("editor.bodyRaw")

@@ -1168,6 +1168,64 @@ fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String> {
     ]);
     write("WebSocket", "WebSocket 回显.json", &ws_echo)?;
 
+    // GraphQL 分组（与 tests/graphql-server.py 一一对应）：仅支持 POST + JSON body，不支持 Mock
+    write("GraphQL", INFO_FILE, &serde_json::json!({ "name": "GraphQL", "description": "GraphQL 接口示例（与 tests/graphql-server.py 一一对应）" }))?;
+
+    let gql_desc = "GraphQL 接口演示，配合测试服务 tests/graphql-server.py 使用。\n\n【启动测试服务】\n1. 无需安装第三方依赖（纯 Python 标准库）\n2. 启动服务：python tests/graphql-server.py\n   - 默认监听 http://127.0.0.1:8080/graphql\n   - 自定义端口：python tests/graphql-server.py 9999\n\n【接口说明】\n- GraphQL 接口固定使用 POST 方法，Body 仅支持 JSON 格式\n- 不支持 Mock（GraphQL 无法按路径生成路由）\n- 请求体结构：{ \"query\": \"...\", \"variables\": {} }\n\n【测试步骤】\n1. 点击「发送」执行下方 query / mutation 语句\n2. 服务端返回对应数据（data 字段）或错误信息（errors 字段）";
+
+    let mut gql_query_user = api_file("查询用户", "POST", "/graphql", gql_desc);
+    gql_query_user["protocol"] = serde_json::json!("graphql");
+    gql_query_user["url"] = serde_json::json!("http://127.0.0.1:8080/graphql");
+    gql_query_user["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "application/json", "enabled": true, "description": "" }]);
+    gql_query_user["body"] = serde_json::json!({ "mode": "json", "raw": "{\n  \"query\": \"query { user(id: 1) { id name email role } }\"\n}", "form": [], "binaryPath": "" });
+    gql_query_user["responses"] = serde_json::json!([
+        { "id": format!("gql-user-{}", uuid::Uuid::new_v4()), "name": "返回成功", "status": 200, "content_type": "application/json", "body": "{\n  \"data\": {\n    \"user\": {\n      \"id\": 1,\n      \"name\": \"张三\",\n      \"email\": \"zhangsan@example.com\",\n      \"role\": \"user\"\n    }\n  }\n}" }
+    ]);
+    gql_query_user["docParams"] = serde_json::json!([
+        d("body", "query", "String", "GraphQL 查询语句（query / mutation）", vec![]),
+        d("body", "variables", "Object", "查询变量（可选）", vec![]),
+        d("resp_success", "data", "Object", "查询结果数据", vec![
+            d("resp_success", "user", "Object", "用户信息", vec![
+                d("resp_success", "id", "Integer", "用户ID", vec![]),
+                d("resp_success", "name", "String", "用户名", vec![]),
+                d("resp_success", "email", "String", "邮箱地址", vec![]),
+                d("resp_success", "role", "String", "用户角色", vec![]),
+            ]),
+        ]),
+        d("resp_fail", "errors", "List", "GraphQL 错误列表（如用户不存在）", vec![]),
+    ]);
+    write("GraphQL", "查询用户.json", &gql_query_user)?;
+
+    let mut gql_list_users = api_file("用户列表", "POST", "/graphql", "查询全部用户（GraphQL query）");
+    gql_list_users["protocol"] = serde_json::json!("graphql");
+    gql_list_users["url"] = serde_json::json!("http://127.0.0.1:8080/graphql");
+    gql_list_users["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "application/json", "enabled": true, "description": "" }]);
+    gql_list_users["body"] = serde_json::json!({ "mode": "json", "raw": "{\n  \"query\": \"query { users { id name email role } }\"\n}", "form": [], "binaryPath": "" });
+    gql_list_users["responses"] = serde_json::json!([
+        { "id": format!("gql-users-{}", uuid::Uuid::new_v4()), "name": "返回成功", "status": 200, "content_type": "application/json", "body": "{\n  \"data\": {\n    \"users\": [\n      { \"id\": 1, \"name\": \"张三\", \"email\": \"zhangsan@example.com\", \"role\": \"user\" },\n      { \"id\": 2, \"name\": \"李四\", \"email\": \"lisi@example.com\", \"role\": \"admin\" }\n    ]\n  }\n}" }
+    ]);
+    write("GraphQL", "用户列表.json", &gql_list_users)?;
+
+    let mut gql_create_user = api_file("创建用户", "POST", "/graphql", "通过 mutation 创建用户");
+    gql_create_user["protocol"] = serde_json::json!("graphql");
+    gql_create_user["url"] = serde_json::json!("http://127.0.0.1:8080/graphql");
+    gql_create_user["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "application/json", "enabled": true, "description": "" }]);
+    gql_create_user["body"] = serde_json::json!({ "mode": "json", "raw": "{\n  \"query\": \"mutation { createUser(name: \\\"王五\\\", email: \\\"wangwu@example.com\\\") { id name email } }\"\n}", "form": [], "binaryPath": "" });
+    gql_create_user["responses"] = serde_json::json!([
+        { "id": format!("gql-create-{}", uuid::Uuid::new_v4()), "name": "返回成功", "status": 200, "content_type": "application/json", "body": "{\n  \"data\": {\n    \"createUser\": {\n      \"id\": 3,\n      \"name\": \"王五\",\n      \"email\": \"wangwu@example.com\"\n    }\n  }\n}" }
+    ]);
+    write("GraphQL", "创建用户.json", &gql_create_user)?;
+
+    let mut gql_order = api_file("查询订单", "POST", "/graphql", "查询订单详情（含嵌套字段）");
+    gql_order["protocol"] = serde_json::json!("graphql");
+    gql_order["url"] = serde_json::json!("http://127.0.0.1:8080/graphql");
+    gql_order["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "application/json", "enabled": true, "description": "" }]);
+    gql_order["body"] = serde_json::json!({ "mode": "json", "raw": "{\n  \"query\": \"query { order(id: 1001) { id no amount items { name price } } }\"\n}", "form": [], "binaryPath": "" });
+    gql_order["responses"] = serde_json::json!([
+        { "id": format!("gql-order-{}", uuid::Uuid::new_v4()), "name": "返回成功", "status": 200, "content_type": "application/json", "body": "{\n  \"data\": {\n    \"order\": {\n      \"id\": 1001,\n      \"no\": \"SO20240101001\",\n      \"amount\": 99.5,\n      \"items\": [\n        { \"name\": \"鼠标\", \"price\": 49.5 },\n        { \"name\": \"键盘\", \"price\": 50.0 }\n      ]\n    }\n  }\n}" }
+    ]);
+    write("GraphQL", "查询订单.json", &gql_order)?;
+
     Ok(())
 }
 
@@ -7887,14 +7945,33 @@ fn create_api(
     let data = ApiFile {
         uuid: uuid::Uuid::new_v4().to_string(),
         name: display_name,
-        method: "GET".into(),
-        path: "/".into(),
+        // GraphQL 接口固定使用 POST
+        method: if protocol.as_deref() == Some("graphql") {
+            "POST".into()
+        } else {
+            "GET".into()
+        },
+        path: if protocol.as_deref() == Some("graphql") {
+            "/graphql".into()
+        } else {
+            "/".into()
+        },
         url: String::new(),
         description: String::new(),
         headers: vec![],
         query: vec![],
         params: vec![],
-        body: BodyData::default(),
+        body: if protocol.as_deref() == Some("graphql") {
+            // GraphQL 固定 JSON body
+            BodyData {
+                mode: "json".into(),
+                raw: String::new(),
+                form: vec![],
+                binary_path: String::new(),
+            }
+        } else {
+            BodyData::default()
+        },
         mock: MockConfig::default(),
         examples: vec![],
         responses: default_responses(),
@@ -7902,10 +7979,10 @@ fn create_api(
         deprecated: false,
         protocol: match protocol.as_deref() {
             Some("websocket") => "websocket".into(),
+            Some("graphql") => "graphql".into(),
             _ => "http".into(),
         },
-    };
-    write_pretty(&file_path, &data)?;
+    };    write_pretty(&file_path, &data)?;
     Ok(file_path.to_string_lossy().to_string())
 }
 

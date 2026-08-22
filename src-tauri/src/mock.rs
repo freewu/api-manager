@@ -45,6 +45,10 @@ fn parse_route(api: &ApiFile) -> Option<MockRoute> {
     if !api.mock.enabled {
         return None;
     }
+    // GraphQL 接口暂不支持 Mock（无法按路径生成路由）
+    if api.protocol == "graphql" {
+        return None;
+    }
     let path = if api.path.trim().is_empty() {
         "/"
     } else {
