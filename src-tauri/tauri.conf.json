@@ -18,7 +18,8 @@
         "minWidth": 1024,
         "minHeight": 700,
         "center": true,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "url": "loading.html"
       }
     ],
     "security": {
