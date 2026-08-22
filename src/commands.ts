@@ -126,6 +126,10 @@ export async function importJmeter(): Promise<OpenApiImportResult | null> {
   return invoke<OpenApiImportResult | null>("import_jmeter");
 }
 
+export async function importApiDoc(): Promise<OpenApiImportResult | null> {
+  return invoke<OpenApiImportResult | null>("import_apidoc");
+}
+
 export interface MarkdownDoc {
   name: string;
   md: string;

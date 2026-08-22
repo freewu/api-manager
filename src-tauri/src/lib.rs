@@ -1880,6 +1880,27 @@ fn export_selection(
             fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
             Ok(Some(path.to_string_lossy().to_string()))
         }
+        "apidoc" => {
+            let (proj, data) = export::to_apidoc(&apis);
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 apiDoc")
+                .set_file_name("api_project.json")
+                .add_filter("apiDoc", &["json"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            let dir = path.parent().unwrap_or(Path::new("."));
+            let proj_json = serde_json::to_string_pretty(&proj).map_err(|e| format!("序列化失败: {e}"))?;
+            let data_json = serde_json::to_string_pretty(&data).map_err(|e| format!("序列化失败: {e}"))?;
+            fs::write(&path, proj_json).map_err(|e| format!("写入失败: {e}"))?;
+            let data_path = dir.join("api_data.json");
+            fs::write(&data_path, data_json).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
         "docsify" => {
             let picked = app
                 .dialog()
@@ -3624,6 +3645,426 @@ fn yapi_api_to_api(dir: &Path, title: &str, api: &Value) -> Result<usize, String
     };
     write_pretty(&file_path, &api_file)?;
     Ok(1)
+}
+
+
+// ==================== apiDoc 导入 ====================
+
+/// 导入 apiDoc 导出文件（api_project.json + api_data.json 两个文件）
+#[tauri::command]
+fn import_apidoc(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+) -> Result<Option<OpenApiImportResult>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("apiDoc", &["json"])
+        .blocking_pick_file();
+    let Some(path) = picked else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let root = workspace_root(&state)?;
+    let dir = path.parent().unwrap_or(Path::new("."));
+    let project_path = dir.join("api_project.json");
+    let data_path = dir.join("api_data.json");
+    if !project_path.exists() || !data_path.exists() {
+        return Err("apiDoc 导出需要同目录下的 api_project.json 与 api_data.json 两个文件".into());
+    }
+    let result = import_apidoc_files(&root, &project_path, &data_path)?;
+    Ok(Some(result))
+}
+
+fn import_apidoc_files(
+    root: &Path,
+    project_path: &Path,
+    data_path: &Path,
+) -> Result<OpenApiImportResult, String> {
+    let proj: Value =
+        serde_json::from_str(&fs::read_to_string(project_path).map_err(|e| e.to_string())?)
+            .map_err(|e| format!("解析 api_project.json 失败: {e}"))?;
+    let data: Value =
+        serde_json::from_str(&fs::read_to_string(data_path).map_err(|e| e.to_string())?)
+            .map_err(|e| format!("解析 api_data.json 失败: {e}"))?;
+    let name = proj
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("apiDoc 导入")
+        .trim()
+        .to_string();
+    let folder = unique_path(root, &name, "");
+    fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
+    // 描述：description + header.content（去 HTML 标签）
+    let mut desc = proj
+        .get("description")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if let Some(hc) = proj.get("header").and_then(|h| h.get("content")).and_then(|v| v.as_str()) {
+        let stripped = strip_html(hc);
+        if !stripped.is_empty() {
+            if !desc.is_empty() {
+                desc.push_str("\n\n");
+            }
+            desc.push_str(&stripped);
+        }
+    }
+    // base_url：sampleUrl 优先
+    let base_url = proj
+        .get("sampleUrl")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .or_else(|| proj.get("url").and_then(|v| v.as_str()).filter(|s| !s.is_empty()))
+        .map(|s| s.to_string());
+    write_pretty(
+        &folder.join(INFO_FILE),
+        &InfoJson {
+            name: Some(name.clone()),
+            description: desc,
+            base_url,
+            mock_port: None,
+            order: None,
+            collapsed: None,
+            deprecated: None,
+        },
+    )?;
+    // 分组
+    let mut group_dirs: HashMap<String, PathBuf> = HashMap::new();
+    if let Some(gs) = data.get("groups").and_then(|v| v.as_array()) {
+        for g in gs {
+            let gname = g.get("name").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+            if gname.is_empty() {
+                continue;
+            }
+            let gtitle = g
+                .get("title")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.trim().is_empty())
+                .unwrap_or(&gname)
+                .to_string();
+            let sub_base = sanitize_filename(&gtitle);
+            let sub = folder.join(&sub_base);
+            if !sub.is_dir() {
+                fs::create_dir_all(&sub).map_err(|e| format!("创建分组失败: {e}"))?;
+                write_pretty(
+                    &sub.join(INFO_FILE),
+                    &InfoJson {
+                        name: Some(gtitle),
+                        description: g
+                            .get("description")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
+                        base_url: None,
+                        mock_port: None,
+                        order: None,
+                        collapsed: None,
+                        deprecated: None,
+                    },
+                )?;
+            }
+            group_dirs.insert(gname, sub);
+        }
+    }
+    let mut count = 0usize;
+    if let Some(apis) = data.get("apis").and_then(|v| v.as_array()) {
+        for a in apis {
+            let gname = a.get("group").and_then(|v| v.as_str()).unwrap_or("");
+            let dir = group_dirs.get(gname).unwrap_or(&folder);
+            count += apidoc_api_to_api(dir, a)?;
+        }
+    }
+    Ok(OpenApiImportResult {
+        folder: folder.to_string_lossy().to_string(),
+        count,
+    })
+}
+
+/// 去掉 HTML 标签与常见实体
+fn strip_html(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut in_tag = false;
+    for c in s.chars() {
+        match c {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => out.push(c),
+            _ => {}
+        }
+    }
+    out.replace("&nbsp;", " ")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .trim()
+        .to_string()
+}
+
+/// apiDoc api 对象 → ApiFile
+fn apidoc_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
+    let mut method = a.get("method").and_then(|v| v.as_str()).unwrap_or("GET").trim().to_uppercase();
+    if method.is_empty() {
+        method = "GET".to_string();
+    }
+    let raw_url = a.get("url").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+    if raw_url.is_empty() {
+        return Ok(0);
+    }
+    let is_ws = raw_url.starts_with("ws://") || raw_url.starts_with("wss://");
+    let protocol = if is_ws { "websocket".to_string() } else { "http".to_string() };
+    let (path, mut params) = if is_ws {
+        (raw_url.clone(), Vec::new())
+    } else {
+        extract_path(&raw_url)
+    };
+    let name = a
+        .get("title")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.trim().is_empty())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| format!("{method} {path}"));
+    let description = a.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    // 请求头
+    let mut headers = Vec::new();
+    if let Some(fs) = a
+        .get("header")
+        .and_then(|h| h.get("fields"))
+        .and_then(|f| f.get("Header"))
+        .and_then(|v| v.as_array())
+    {
+        for f in fs {
+            let key = f.get("field").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+            if key.is_empty() {
+                continue;
+            }
+            headers.push(KeyValue {
+                key: key.clone(),
+                value: String::new(),
+                enabled: true,
+                is_file: false,
+                description: f.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+            });
+        }
+    }
+    // query + body 字段
+    let mut query = Vec::new();
+    let mut body_fields: Vec<Value> = Vec::new();
+    if let Some(pf) = a.get("parameter").and_then(|p| p.get("fields")).and_then(|v| v.as_object()) {
+        for (k, arr) in pf {
+            let Some(arr) = arr.as_array() else { continue };
+            if k == "Query" {
+                for f in arr {
+                    let key = f.get("field").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+                    if key.is_empty() {
+                        continue;
+                    }
+                    query.push(KeyValue {
+                        key: key.clone(),
+                        value: String::new(),
+                        enabled: true,
+                        is_file: false,
+                        description: f
+                            .get("description")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
+                    });
+                }
+            } else {
+                body_fields.extend(arr.iter().cloned());
+            }
+        }
+    }
+    // body：字段列表 → 嵌套 JSON 示例
+    let mut body = BodyData::default();
+    let mut doc_params: Vec<DocParam> = Vec::new();
+    if !body_fields.is_empty() {
+        let json_val = apidoc_fields_to_value(&body_fields);
+        if json_val != Value::Null {
+            body.mode = "json".to_string();
+            body.raw = serde_json::to_string_pretty(&json_val).unwrap_or_default();
+        }
+        for f in &body_fields {
+            let key = f.get("field").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+            if key.is_empty() {
+                continue;
+            }
+            doc_params.push(DocParam {
+                source: "body".into(),
+                key: key.clone(),
+                r#type: f.get("type").and_then(|v| v.as_str()).unwrap_or("String").to_string(),
+                description: f.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                item_type: String::new(),
+                object_name: String::new(),
+                children: vec![],
+            });
+        }
+    }
+    for h in &headers {
+        doc_params.push(DocParam {
+            source: "header".into(),
+            key: h.key.clone(),
+            r#type: "String".into(),
+            description: h.description.clone(),
+            item_type: String::new(),
+            object_name: String::new(),
+            children: vec![],
+        });
+    }
+    for q in &query {
+        doc_params.push(DocParam {
+            source: "query".into(),
+            key: q.key.clone(),
+            r#type: "String".into(),
+            description: q.description.clone(),
+            item_type: String::new(),
+            object_name: String::new(),
+            children: vec![],
+        });
+    }
+    // 响应
+    let mut responses: Vec<ResponseItem> = Vec::new();
+    if let Some(exs) = a.get("successExamples").and_then(|v| v.as_array()) {
+        for ex in exs {
+            responses.push(ResponseItem {
+                id: uuid::Uuid::new_v4().to_string(),
+                name: ex.get("title").and_then(|v| v.as_str()).unwrap_or("返回成功").to_string(),
+                status: 200,
+                content_type: "application/json".to_string(),
+                body: ex.get("content").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+            });
+        }
+    }
+    if let Some(exs) = a.get("error").and_then(|e| e.get("examples")).and_then(|v| v.as_array()) {
+        for ex in exs {
+            responses.push(ResponseItem {
+                id: uuid::Uuid::new_v4().to_string(),
+                name: ex.get("title").and_then(|v| v.as_str()).filter(|s| !s.trim().is_empty()).unwrap_or("返回失败").to_string(),
+                status: 0,
+                content_type: "application/json".to_string(),
+                body: ex.get("content").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+            });
+        }
+    }
+    // success.fields → resp_success 文档字段
+    if let Some(fs) = a.get("success").and_then(|s| s.get("fields")).and_then(|v| v.as_object()) {
+        for (_k, arr) in fs {
+            let Some(arr) = arr.as_array() else { continue };
+            for f in arr {
+                let key = f.get("field").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+                if key.is_empty() {
+                    continue;
+                }
+                doc_params.push(DocParam {
+                    source: "resp_success".into(),
+                    key: key.clone(),
+                    r#type: f.get("type").and_then(|v| v.as_str()).unwrap_or("String").to_string(),
+                    description: f.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                    item_type: String::new(),
+                    object_name: String::new(),
+                    children: vec![],
+                });
+            }
+        }
+    }
+    let file_base = sanitize_filename(&name);
+    let file_path = unique_path(dir, &file_base, ".json");
+    let api_file = ApiFile {
+        uuid: uuid::Uuid::new_v4().to_string(),
+        name: name.clone(),
+        method: method.clone(),
+        path: path.clone(),
+        url: raw_url,
+        description,
+        headers,
+        query,
+        params,
+        body,
+        mock: MockConfig::default(),
+        examples: vec![],
+        responses,
+        doc_params,
+        deprecated: false,
+        protocol,
+    };
+    write_pretty(&file_path, &api_file)?;
+    Ok(1)
+}
+
+/// 字段列表（点分 key）→ 嵌套 JSON 示例值
+fn apidoc_fields_to_value(fields: &[Value]) -> Value {
+    let entries: Vec<(Vec<String>, &Value)> = fields
+        .iter()
+        .filter_map(|f| {
+            let key = f.get("field").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+            if key.is_empty() {
+                return None;
+            }
+            let parts: Vec<String> = key.split('.').map(|s| s.to_string()).collect();
+            Some((parts, f))
+        })
+        .collect();
+    if entries.is_empty() {
+        return Value::Null;
+    }
+    apidoc_build_node(&entries)
+}
+
+fn apidoc_build_node(entries: &[(Vec<String>, &Value)]) -> Value {
+    let mut order: Vec<String> = Vec::new();
+    let mut groups: HashMap<String, Vec<(Vec<String>, &Value)>> = HashMap::new();
+    for (parts, f) in entries {
+        let root = &parts[0];
+        if !groups.contains_key(root) {
+            order.push(root.clone());
+        }
+        let rest = parts[1..].to_vec();
+        groups.entry(root.clone()).or_default().push((rest, f));
+    }
+    let mut obj = serde_json::Map::new();
+    for root in order {
+        let group = groups.remove(&root).unwrap_or_default();
+        let self_field = group.iter().find(|(p, _)| p.is_empty()).map(|(_, f)| *f);
+        let children: Vec<(Vec<String>, &Value)> = group
+            .iter()
+            .filter(|(p, _)| !p.is_empty())
+            .map(|(p, f)| (p.clone(), *f))
+            .collect();
+        let ty = self_field
+            .and_then(|f| f.get("type"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("Object")
+            .to_string();
+        let val = if ty.contains("[]") || ty.eq_ignore_ascii_case("Array") || ty.eq_ignore_ascii_case("List") {
+            if children.is_empty() {
+                Value::Array(vec![])
+            } else {
+                Value::Array(vec![apidoc_build_node(&children)])
+            }
+        } else if !children.is_empty() {
+            apidoc_build_node(&children)
+        } else {
+            apidoc_default_value(&ty)
+        };
+        obj.insert(root, val);
+    }
+    Value::Object(obj)
+}
+
+fn apidoc_default_value(ty: &str) -> Value {
+    let t = ty.to_lowercase();
+    if t.contains("number") || t.contains("integer") || t.contains("float") {
+        Value::Number(0.into())
+    } else if t.contains("bool") {
+        Value::Bool(false)
+    } else if t.contains("object") || t.contains("list") || t.contains("array") {
+        Value::Object(serde_json::Map::new())
+    } else {
+        Value::String(String::new())
+    }
 }
 
 // ==================== JMeter 导入 ====================
@@ -7031,6 +7472,7 @@ pub fn run() {
             import_eolink,
             import_insomnia,
             import_jmeter,
+            import_apidoc,
             render_api_markdown,
             render_group_markdown,
             export_api_markdown,
@@ -8678,6 +9120,167 @@ let v = export::to_yapi(&apis);
         assert_eq!(created.body.mode, "json");
         assert!(created.body.raw.contains("测试"));
         assert!(created.headers.iter().any(|h| h.key == "X-Token"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_import_apidoc_files() {
+        let root = std::env::temp_dir().join(format!("apimgr-apidoc-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let base = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/data"));
+        let result = import_apidoc_files(&root, &base.join("api_project.json"), &base.join("api_data.json"))
+            .expect("apidoc 导入失败");
+        assert_eq!(result.count, 7, "接口数应为 7，实际 {}", result.count);
+        let folder = PathBuf::from(&result.folder);
+        assert_eq!(folder.file_name().unwrap().to_string_lossy(), "后端API接口文档");
+        // INFO base_url = sampleUrl
+        let info_f: InfoJson =
+            serde_json::from_str(&fs::read_to_string(folder.join(INFO_FILE)).unwrap()).unwrap();
+        assert_eq!(info_f.base_url.as_deref(), Some("http://127.0.0.1:8080/api"));
+        // 分组：用户模块 / 订单模块
+        let user_dir = folder.join("用户模块");
+        assert!(user_dir.is_dir(), "用户模块分组应存在");
+        // 登录接口：POST json body + 嵌套字段展开
+        let login: ApiFile = serde_json::from_str(
+            &fs::read_to_string(user_dir.join("用户登录.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(login.method, "POST");
+        assert_eq!(login.path, "/api/user/login");
+        assert_eq!(login.body.mode, "json");
+        assert!(login.body.raw.contains("username"));
+        assert!(login.body.raw.contains("password"));
+        // 响应：successExamples → status 200，error.examples → 返回失败
+        assert!(login.responses.iter().any(|r| r.status == 200 && r.name == "登录成功"));
+        assert!(login.responses.iter().any(|r| r.status == 0 && r.name == "登录失败"));
+        // docParams：body 字段 + resp_success 字段
+        assert!(login.doc_params.iter().any(|d| d.source == "body" && d.key == "username"));
+        assert!(login.doc_params.iter().any(|d| d.source == "resp_success" && d.key == "data.token"));
+        // header 字段 → 请求头
+        let info: ApiFile = serde_json::from_str(
+            &fs::read_to_string(user_dir.join("获取当前登录用户信息.json")).unwrap(),
+        )
+        .unwrap();
+        assert!(info.headers.iter().any(|h| h.key == "Authorization"));
+        // 路径参数 :orderId → {orderId}
+        let detail: ApiFile = serde_json::from_str(
+            &fs::read_to_string(folder.join("订单模块").join("获取订单详情.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(detail.path, "/api/order/{orderId}");
+        assert!(detail.params.iter().any(|p| p.key == "orderId"));
+        // 创建订单：数组字段 goodsList 展开
+        let create: ApiFile = serde_json::from_str(
+            &fs::read_to_string(folder.join("订单模块").join("创建订单.json")).unwrap(),
+        )
+        .unwrap();
+        assert!(create.body.raw.contains("goodsList"));
+        assert!(create.body.raw.contains("goodsId"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_export_apidoc_roundtrip() {
+        let root = std::env::temp_dir().join(format!("apimgr-apidoc-e-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let make = |name: &str, method: &str, path: &str| ApiFile {
+            uuid: uuid::Uuid::new_v4().to_string(),
+            name: name.into(),
+            method: method.into(),
+            path: path.into(),
+            url: path.into(),
+            description: String::new(),
+            headers: vec![KeyValue {
+                key: "Authorization".into(),
+                value: String::new(),
+                enabled: true,
+                is_file: false,
+                description: "Bearer token".into(),
+            }],
+            query: vec![KeyValue {
+                key: "page".into(),
+                value: "1".into(),
+                enabled: true,
+                is_file: false,
+                description: String::new(),
+            }],
+            params: vec![KeyValue {
+                key: "orderId".into(),
+                value: String::new(),
+                enabled: true,
+                is_file: false,
+                description: String::new(),
+            }],
+            body: BodyData {
+                mode: "json".into(),
+                raw: "{\"username\":\"zhangsan\",\"info\":{\"age\":18},\"tags\":[\"a\"]}".into(),
+                form: vec![],
+                binary_path: String::new(),
+            },
+            mock: MockConfig::default(),
+            examples: vec![],
+            responses: vec![ResponseItem {
+                id: uuid::Uuid::new_v4().to_string(),
+                name: "成功".into(),
+                status: 200,
+                content_type: "application/json".into(),
+                body: "{\"code\":0}".into(),
+            }],
+            doc_params: vec![],
+            deprecated: false,
+            protocol: "http".into(),
+        };
+        let apis: Vec<(Vec<(String, bool)>, ApiFile)> = vec![
+            (vec![("订单模块".to_string(), true)], make("订单详情", "GET", "/api/order/{orderId}")),
+        ];
+        let (proj, data) = export::to_apidoc(&apis);
+        assert_eq!(proj["name"].as_str(), Some("订单模块"));
+        let groups = data["groups"].as_array().unwrap();
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0]["name"].as_str(), Some("订单模块"));
+        let apis_out = data["apis"].as_array().unwrap();
+        assert_eq!(apis_out.len(), 1);
+        let a = &apis_out[0];
+        assert_eq!(a["group"].as_str(), Some("订单模块"));
+        assert_eq!(a["url"].as_str(), Some("/api/order/:orderId"));
+        // header 字段
+        assert_eq!(
+            a["header"]["fields"]["Header"][0]["field"].as_str(),
+            Some("Authorization")
+        );
+        // query → Query 字段
+        assert_eq!(a["parameter"]["fields"]["Query"][0]["field"].as_str(), Some("page"));
+        // body 嵌套展开：username / info.age / tags[]
+        let pf = a["parameter"]["fields"]["Parameter"].as_array().unwrap();
+        let fields: Vec<&str> = pf.iter().map(|f| f["field"].as_str().unwrap()).collect();
+        assert!(fields.contains(&"username"));
+        assert!(fields.contains(&"info.age"));
+        assert!(fields.contains(&"tags"));
+        // successExamples
+        assert_eq!(a["successExamples"][0]["content"].as_str(), Some("{\"code\":0}"));
+        // round-trip：导出 → 写文件 → 再导入
+        let dir = root.join("out");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("api_project.json"), serde_json::to_string_pretty(&proj).unwrap()).unwrap();
+        fs::write(dir.join("api_data.json"), serde_json::to_string_pretty(&data).unwrap()).unwrap();
+        let re = import_apidoc_files(&root, &dir.join("api_project.json"), &dir.join("api_data.json"))
+            .expect("apidoc round-trip 失败");
+        assert_eq!(re.count, 1, "apidoc round-trip 接口数应为 1");
+        let folder = PathBuf::from(&re.folder);
+        let created: ApiFile = serde_json::from_str(
+            &fs::read_to_string(folder.join("订单模块").join("订单详情.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(created.path, "/api/order/{orderId}");
+        assert_eq!(created.body.mode, "json");
+        assert!(created.body.raw.contains("username"));
+        assert!(created.body.raw.contains("info"));
+        assert!(created.headers.iter().any(|h| h.key == "Authorization"));
+        assert!(created.query.iter().any(|q| q.key == "page"));
+        assert!(created.params.iter().any(|p| p.key == "orderId"));
+        assert!(created.responses.iter().any(|r| r.status == 200));
         let _ = fs::remove_dir_all(&root);
     }
 

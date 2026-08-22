@@ -52,6 +52,7 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
           { value: "eolink", label: t("export.eolink") },
           { value: "insomnia", label: t("export.insomnia") },
           { value: "jmeter", label: t("export.jmeter") },
+          { value: "apidoc", label: t("export.apidoc") },
           { value: "docsify", label: t("export.docsify") },
           { value: "markdown", label: t("export.markdown") },
           { value: "html", label: t("export.html") },

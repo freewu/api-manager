@@ -42,6 +42,7 @@ interface Props {
   onImportEolink?: () => void;
   onImportInsomnia?: () => void;
   onImportJmeter?: () => void;
+  onImportApiDoc?: () => void;
   /** 当前设置（导入菜单按 importTypes 开关过滤格式） */
   settings?: AppSettings;
   onExport?: () => void;
@@ -443,7 +444,7 @@ function NodeRow({
 
 export function Sidebar(props: Props) {
   const t = useT();
-  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
+  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onImportApiDoc, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
   const [importMenu, setImportMenu] = useState(false);
   const [filter, setFilter] = useState("");
   /** 高级搜索：是否展开过滤面板 */
@@ -924,6 +925,17 @@ export function Sidebar(props: Props) {
                     >
                       <FormatIcon value="jmeter" className="import-menu-icon" />
                       JMeter 测试计划
+                    </button>
+                  )}
+                  {settings?.importTypes?.apidoc !== false && onImportApiDoc && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportApiDoc();
+                      }}
+                    >
+                      <FormatIcon value="apidoc" className="import-menu-icon" />
+                      apiDoc 文档
                     </button>
                   )}
                 </div>
