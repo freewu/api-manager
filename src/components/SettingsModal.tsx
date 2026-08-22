@@ -56,6 +56,7 @@ const IMPORT_FORMATS: { value: ImportFormat; labelKey: string }[] = [
   { value: "docway", labelKey: "export.docway" },
   { value: "hoppscotch", labelKey: "export.hoppscotch" },
   { value: "metersphere", labelKey: "export.metersphere" },
+  { value: "rap2", labelKey: "export.rap2" },
 ];
 
 /** 导出格式列表（含可开关的） */
@@ -84,6 +85,8 @@ const EXPORT_FORMATS: { value: ExportFormat; labelKey: string }[] = [
   { value: "docway", labelKey: "export.docway" },
   { value: "hoppscotch", labelKey: "export.hoppscotch" },
   { value: "metersphere", labelKey: "export.metersphere" },
+  { value: "rap2-project", labelKey: "export.rap2-project" },
+  { value: "rap2-single", labelKey: "export.rap2-single" },
 ];
 
 /** 左侧导航（目录）项：点击滚动到对应分区 */

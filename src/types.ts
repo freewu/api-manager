@@ -226,7 +226,9 @@ export type ExportFormat =
   | "easydoc"
   | "docway"
   | "hoppscotch"
-  | "metersphere";
+  | "metersphere"
+  | "rap2-project"
+  | "rap2-single";
 
 /** 主页「导入」菜单支持的格式 */
 export type ImportFormat =
@@ -252,7 +254,8 @@ export type ImportFormat =
   | "easydoc"
   | "docway"
   | "hoppscotch"
-  | "metersphere";
+  | "metersphere"
+  | "rap2";
 
 /** 导入格式中必选（不可关闭）的类型 */
 export const REQUIRED_IMPORT_FORMATS: ImportFormat[] = ["postman", "openapi"];
@@ -327,6 +330,7 @@ export const defaultSettings = (): AppSettings => ({
     docway: true,
     hoppscotch: true,
     metersphere: true,
+    rap2: true,
   },
   exportTypes: {
     postman: true,
@@ -353,6 +357,8 @@ export const defaultSettings = (): AppSettings => ({
     docway: true,
     hoppscotch: true,
     metersphere: true,
+    "rap2-project": true,
+    "rap2-single": true,
   },
   htmlNav: "right",
   language: "zh",

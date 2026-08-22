@@ -3273,6 +3273,225 @@ fn metersphere_api_out(api: &ApiFile, module_id: &str) -> Value {
 // ---------- 统一导出入口 ----------
 
 /// 返回 (文件内容, 默认文件名, 扩展名)
+
+// ---------- RAP2 ----------
+
+/// ApiFile → rap2 属性列表（scope request/response，parentId 嵌套）
+fn rap2_props_from_value(
+    prefix: &str,
+    v: &Value,
+    scope: &str,
+    out: &mut Vec<Value>,
+    parent_id: i64,
+    counter: &mut i64,
+) -> i64 {
+    match v {
+        Value::Object(m) => {
+            let my_id = *counter;
+            *counter += 1;
+            out.push(json!({
+                "id": my_id, "scope": scope, "pos": 1, "name": prefix,
+                "type": "Object", "required": true, "value": "",
+                "description": "", "parentId": parent_id, "priority": 1,
+            }));
+            for (k, val) in m {
+                rap2_props_from_value(k, val, scope, out, my_id, counter);
+            }
+            my_id
+        }
+        Value::Array(arr) => {
+            let my_id = *counter;
+            *counter += 1;
+            out.push(json!({
+                "id": my_id, "scope": scope, "pos": 1, "name": prefix,
+                "type": "Array", "required": true, "value": "",
+                "description": "", "parentId": parent_id, "priority": 1,
+            }));
+            if let Some(first) = arr.first() {
+                if first.is_object() {
+                    for (k, val) in first.as_object().unwrap() {
+                        rap2_props_from_value(k, val, scope, out, my_id, counter);
+                    }
+                }
+            }
+            my_id
+        }
+        Value::Number(n) => {
+            let id = *counter;
+            *counter += 1;
+            out.push(json!({
+                "id": id, "scope": scope, "pos": 1, "name": prefix,
+                "type": if n.as_i64().is_some() { "Number" } else { "Float" },
+                "required": true, "value": n, "description": "", "parentId": parent_id, "priority": 1,
+            }));
+            id
+        }
+        Value::Bool(b) => {
+            let id = *counter;
+            *counter += 1;
+            out.push(json!({
+                "id": id, "scope": scope, "pos": 1, "name": prefix,
+                "type": "Boolean", "required": true, "value": b,
+                "description": "", "parentId": parent_id, "priority": 1,
+            }));
+            id
+        }
+        _ => {
+            let id = *counter;
+            *counter += 1;
+            out.push(json!({
+                "id": id, "scope": scope, "pos": 1, "name": prefix,
+                "type": "String", "required": true,
+                "value": if v.is_null() { "" } else { v.as_str().unwrap_or("") },
+                "description": "", "parentId": parent_id, "priority": 1,
+            }));
+            id
+        }
+    }
+}
+
+/// 生成接口的 properties（request：headers/query/params/body；response：第一个成功响应）
+fn rap2_api_properties(api: &ApiFile) -> Vec<Value> {
+    let mut out: Vec<Value> = Vec::new();
+    let mut counter: i64 = 1;
+    for h in api.headers.iter().filter(|h| extra_kv_enabled(h)) {
+        out.push(json!({
+            "id": counter, "scope": "request", "pos": 1, "name": h.key,
+            "type": "String", "required": true, "value": h.value,
+            "description": h.description, "parentId": -1, "priority": out.len() as i64 + 1,
+        }));
+        counter += 1;
+    }
+    for q in api.query.iter().filter(|q| extra_kv_enabled(q)) {
+        out.push(json!({
+            "id": counter, "scope": "request", "pos": 2, "name": q.key,
+            "type": "String", "required": true, "value": q.value,
+            "description": q.description, "parentId": -1, "priority": out.len() as i64 + 1,
+        }));
+        counter += 1;
+    }
+    for p in api.params.iter().filter(|p| extra_kv_enabled(p)) {
+        out.push(json!({
+            "id": counter, "scope": "request", "pos": 3, "name": p.key,
+            "type": "String", "required": true, "value": p.value,
+            "description": p.description, "parentId": -1, "priority": out.len() as i64 + 1,
+        }));
+        counter += 1;
+    }
+    if api.body.mode == "json" {
+        if let Ok(v) = serde_json::from_str::<Value>(&api.body.raw) {
+            let ty = if v.is_object() { "Object" } else { "Array" };
+            out.push(json!({
+                "id": counter, "scope": "request", "pos": 4, "name": "body",
+                "type": ty, "required": true, "value": "",
+                "description": "", "parentId": -1, "priority": out.len() as i64 + 1,
+            }));
+            counter += 1;
+            match &v {
+                Value::Object(m) => {
+                    for (k, val) in m {
+                        rap2_props_from_value(k, val, "request", &mut out, counter - 1, &mut counter);
+                    }
+                }
+                Value::Array(arr) => {
+                    if let Some(first) = arr.first() {
+                        if first.is_object() {
+                            for (k, val) in first.as_object().unwrap() {
+                                rap2_props_from_value(k, val, "request", &mut out, counter - 1, &mut counter);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    if let Some(r) = api.responses.iter().find(|r| !r.body.trim().is_empty()) {
+        if let Ok(v) = serde_json::from_str::<Value>(&r.body) {
+            match &v {
+                Value::Object(m) => {
+                    for (k, val) in m {
+                        rap2_props_from_value(k, val, "response", &mut out, -1, &mut counter);
+                    }
+                }
+                Value::Array(arr) => {
+                    if let Some(first) = arr.first() {
+                        if first.is_object() {
+                            for (k, val) in first.as_object().unwrap() {
+                                rap2_props_from_value(k, val, "response", &mut out, -1, &mut counter);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    out
+}
+
+/// 单接口 → rap2 interface 对象
+fn rap2_interface_out(api: &ApiFile) -> Value {
+    json!({
+        "id": 0,
+        "name": api.name,
+        "url": api.path,
+        "method": api.method.to_uppercase(),
+        "status": "draft",
+        "description": api.description,
+        "priority": 0,
+        "moduleId": -1,
+        "repositoryId": -1,
+        "creatorId": -1,
+        "lockerId": -1,
+        "createdAt": "",
+        "updatedAt": "",
+        "properties": rap2_api_properties(api),
+    })
+}
+
+/// 项目格式：分组 → modules[]
+pub fn to_rap2_project(apis: &[(Vec<(String, bool)>, ApiFile)]) -> Value {
+    let (top_groups, root_name) = extra_build_tree(apis);
+    let mut modules: Vec<Value> = Vec::new();
+    let mut repo_id = 0i64;
+    for g in &top_groups {
+        repo_id += 1;
+        let mut interfaces: Vec<Value> = Vec::new();
+        for api in &g.apis {
+            interfaces.push(rap2_interface_out(api));
+        }
+        modules.push(json!({
+            "id": 9000 + repo_id,
+            "name": g.name,
+            "description": "",
+            "priority": repo_id,
+            "repositoryId": repo_id,
+            "interfaces": interfaces,
+        }));
+    }
+    json!({
+        "data": {
+            "id": 1,
+            "name": root_name,
+            "description": "",
+            "logo": "",
+            "token": "",
+            "visibility": "public",
+            "createdAt": "",
+            "updatedAt": "",
+            "modules": modules,
+        }
+    })
+}
+
+/// 单接口格式：data 直接是 interface
+pub fn to_rap2_single(apis: &[(Vec<(String, bool)>, ApiFile)]) -> Value {
+    let api = &apis[0].1;
+    json!({ "data": rap2_interface_out(api) })
+}
+
+
 pub fn export_extra(
     apis: &[(Vec<(String, bool)>, ApiFile)],
     format: &str,
@@ -3288,6 +3507,8 @@ pub fn export_extra(
         "docway" => (to_docway(apis), "docway", "mjson"),
         "hoppscotch" => (to_hoppscotch(apis), "hoppscotch", "json"),
         "metersphere" => (to_metersphere(apis), "metersphere", "json"),
+        "rap2-project" => (to_rap2_project(apis), "rap2-project", "json"),
+        "rap2-single" => (to_rap2_single(apis), "rap2-single", "json"),
         _ => return Err(format!("不支持的格式: {format}")),
     };
     let content = serde_json::to_string_pretty(&val).map_err(|e| format!("序列化失败: {e}"))?;

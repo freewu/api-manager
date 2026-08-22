@@ -1901,7 +1901,7 @@ fn export_selection(
             fs::write(&data_path, data_json).map_err(|e| format!("写入失败: {e}"))?;
             Ok(Some(path.to_string_lossy().to_string()))
         }
-        "apidog" | "bruno" | "apizza" | "nei" | "doclever" | "io-docs" | "easydoc" | "docway" | "hoppscotch" | "metersphere" => {
+        "apidog" | "bruno" | "apizza" | "nei" | "doclever" | "io-docs" | "easydoc" | "docway" | "hoppscotch" | "metersphere" | "rap2-project" | "rap2-single" => {
             let (content, fname, ext) = export::export_extra(&apis, &format)?;
             let title = match format.as_str() {
                 "apidog" => "导出 apiDog",
@@ -1913,7 +1913,8 @@ fn export_selection(
                 "easydoc" => "导出 EasyDoc",
                 "docway" => "导出 DocWay",
                 "hoppscotch" => "导出 Hoppscotch",
-                _ => "导出 MeterSphere",
+                "rap2-project" => "导出 RAP2 项目",
+                _ => "导出 RAP2 单接口",
             };
             let picked = app
                 .dialog()
@@ -5360,6 +5361,278 @@ fn metersphere_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
 
 // ---------- 统一分发 ----------
 
+
+// ---------- RAP2 ----------
+
+/// 常见请求头名（rap2 无显式 header 分类，靠名字识别）
+fn is_common_header(name: &str) -> bool {
+    let n = name.to_ascii_lowercase();
+    matches!(
+        n.as_str(),
+        "authorization" | "content-type" | "accept" | "accept-language" | "accept-encoding"
+            | "user-agent" | "cookie" | "origin" | "referer" | "host" | "x-requested-with"
+            | "x-token" | "token" | "cache-control" | "pragma" | "if-none-match" | "if-modified-since"
+    )
+}
+
+/// rap2 属性类型 → 示例值（递归解析 parentId 树）
+fn rap2_build_value(
+    props: &[Value],
+    parent_id: i64,
+    is_root: bool,
+    depth: usize,
+) -> Value {
+    let mut m = serde_json::Map::new();
+    let mut arr_items: Vec<Value> = Vec::new();
+    let mut has_arr = false;
+    let mut has_obj = false;
+    for p in props {
+        let pid = p.get("parentId").and_then(|x| x.as_i64()).unwrap_or(-1);
+        if pid != parent_id {
+            continue;
+        }
+        let name = str_field(p, "name");
+        if name.is_empty() {
+            continue;
+        }
+        let ty = str_field(p, "type");
+        let val = rap2_prop_value(p);
+        let lower = ty.to_ascii_lowercase();
+        if lower.contains("object") {
+            has_obj = true;
+            let child = rap2_build_value(props, p.get("id").and_then(|x| x.as_i64()).unwrap_or(-1), false, depth + 1);
+            m.insert(name.clone(), if child.is_object() && child.as_object().map(|c| c.is_empty()).unwrap_or(true) && !val.is_null() { val } else { child });
+        } else if lower.contains("array") {
+            has_arr = true;
+            // 数组元素：寻找该数组下的 Object 子属性
+            let elem_id = p.get("id").and_then(|x| x.as_i64()).unwrap_or(-1);
+            let mut elem_obj = rap2_build_value(props, elem_id, false, depth + 1);
+            if elem_obj.as_object().map(|c| c.is_empty()).unwrap_or(true) {
+                arr_items.push(Value::String(String::new()));
+            } else {
+                // 数组本身还有更深的子元素（Array 的 Object 元素）
+                arr_items.push(elem_obj.clone());
+            }
+            m.insert(name.clone(), Value::Array(arr_items.clone()));
+            arr_items.clear();
+        } else {
+            m.insert(name.clone(), val);
+        }
+    }
+    if is_root {
+        // 根级：多个顶层属性合并为一个对象
+        if !m.is_empty() {
+            return Value::Object(m);
+        }
+        Value::Object(serde_json::Map::new())
+    } else {
+        Value::Object(m)
+    }
+}
+
+/// 单个 rap2 属性 → 示例值（mock 表达式原样保留）
+fn rap2_prop_value(p: &Value) -> Value {
+    let ty = str_field(p, "type");
+    let raw = p.get("value").cloned().unwrap_or(Value::Null);
+    let v: Value = if raw.is_null() { Value::String(String::new()) } else { raw };
+    match ty.as_str() {
+        "Number" | "Integer" | "Float" | "Double" => {
+            if let Some(n) = v.as_i64() {
+                Value::from(n)
+            } else if let Some(f) = v.as_f64() {
+                Value::from(f)
+            } else {
+                let s = v.as_str().unwrap_or("");
+                if let Ok(n) = s.parse::<i64>() {
+                    Value::from(n)
+                } else if let Ok(f) = s.parse::<f64>() {
+                    Value::from(f)
+                } else {
+                    Value::String(String::new())
+                }
+            }
+        }
+        "Boolean" => Value::Bool(v.as_bool().unwrap_or(false)),
+        "Null" => Value::Null,
+        _ => {
+            // 字符串/文件/其他：保留原始 value（含 @mock 表达式）
+            if v.is_string() {
+                v
+            } else {
+                Value::String(v.to_string())
+            }
+        }
+    }
+}
+
+/// rap2 接口 → ApiFile
+fn rap2_interface_to_api(it: &Value) -> ApiFile {
+    let raw_url = str_field(it, "url");
+    let method = str_field(it, "method").to_uppercase();
+    let mut path = raw_url.clone();
+    let mut query_txt = String::new();
+    if let Some(qi) = path.find('?') {
+        query_txt = path[qi + 1..].to_string();
+        path = path[..qi].to_string();
+    }
+    let props: Vec<Value> = it
+        .get("properties")
+        .and_then(|x| x.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let mut headers: Vec<KeyValue> = Vec::new();
+    let mut query: Vec<KeyValue> = Vec::new();
+    let mut params: Vec<KeyValue> = Vec::new();
+    let mut body_parts: serde_json::Map<String, Value> = serde_json::Map::new();
+    let mut response_objs: serde_json::Map<String, Value> = serde_json::Map::new();
+    for p in &props {
+        let scope = str_field(p, "scope");
+        let pid = p.get("parentId").and_then(|x| x.as_i64()).unwrap_or(-1);
+        if pid != -1 {
+            continue; // 嵌套属性由父级递归处理
+        }
+        let name = str_field(p, "name");
+        if name.is_empty() {
+            continue;
+        }
+        let ty = str_field(p, "type");
+        let lower = ty.to_ascii_lowercase();
+        let is_body_like = lower.contains("object") || lower.contains("array");
+        if scope == "request" {
+            if path.contains(&format!("{{{name}}}")) {
+                params.push(KeyValue {
+                    key: name.clone(),
+                    value: String::new(),
+                    enabled: true,
+                    is_file: false,
+                    description: str_field(p, "description"),
+                });
+            } else if is_body_like {
+                let pid_v = p.get("id").and_then(|x| x.as_i64()).unwrap_or(-1);
+                let child = rap2_build_value(&props, pid_v, false, 0);
+                body_parts.insert(name.clone(), child);
+            } else if is_common_header(&name) {
+                headers.push(KeyValue {
+                    key: name,
+                    value: str_field(p, "value"),
+                    enabled: true,
+                    is_file: false,
+                    description: str_field(p, "description"),
+                });
+            } else {
+                query.push(KeyValue {
+                    key: name,
+                    value: str_field(p, "value"),
+                    enabled: true,
+                    is_file: false,
+                    description: str_field(p, "description"),
+                });
+            }
+        } else if scope == "response" {
+            let pid_v = p.get("id").and_then(|x| x.as_i64()).unwrap_or(-1);
+            let child = rap2_build_value(&props, pid_v, false, 0);
+            if !(child.is_object() && child.as_object().map(|c| c.is_empty()).unwrap_or(true)) || !rap2_prop_value(p).is_null() {
+                if is_body_like || !(child.is_object() && child.as_object().map(|c| c.is_empty()).unwrap_or(true)) {
+                    response_objs.insert(name.clone(), child);
+                } else {
+                    response_objs.insert(name.clone(), rap2_prop_value(p));
+                }
+            } else {
+                response_objs.insert(name.clone(), rap2_prop_value(p));
+            }
+        }
+    }
+    let mut body = BodyData::default();
+    if !body_parts.is_empty() {
+        body.mode = "json".to_string();
+        body.raw = serde_json::to_string_pretty(&Value::Object(body_parts)).unwrap_or_default();
+    }
+    let mut responses: Vec<ResponseItem> = Vec::new();
+    if !response_objs.is_empty() {
+        let resp_body = serde_json::to_string_pretty(&Value::Object(response_objs)).unwrap_or_default();
+        responses.push(resp_item(200, "成功", &resp_body));
+    }
+    ApiFile {
+        uuid: uuid::Uuid::new_v4().to_string(),
+        name: str_field(it, "name"),
+        method: if method.is_empty() { "GET".to_string() } else { method },
+        path,
+        url: raw_url,
+        description: str_field(it, "description"),
+        headers,
+        query,
+        params,
+        body,
+        mock: MockConfig::default(),
+        examples: vec![],
+        responses,
+        doc_params: vec![],
+        deprecated: false,
+        protocol: "http".to_string(),
+    }
+}
+
+/// 项目格式：data.modules[] → 分组
+fn import_rap2_project(root: &Path, data: &Value) -> Result<OpenApiImportResult, String> {
+    let name = str_field(data, "name");
+    let folder = unique_path(root, &if name.is_empty() { "RAP2 导入".to_string() } else { name.clone() }, "");
+    fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
+    let mut count = 0usize;
+    let mut order = 0i32;
+    let modules = data.get("modules").and_then(|x| x.as_array()).cloned().unwrap_or_default();
+    for m in modules {
+        let mname = str_field(&m, "name");
+        let dir = mk_group_dir(&folder, &if mname.is_empty() { "未分组".to_string() } else { mname.clone() }, &str_field(&m, "description"))?;
+        let interfaces = m.get("interfaces").and_then(|x| x.as_array()).cloned().unwrap_or_default();
+        for it in interfaces {
+            order += 1;
+            let api = rap2_interface_to_api(&it);
+            write_pretty(
+                &dir.join(format!("{}.json", sanitize_filename(&api.name))),
+                &api,
+            )?;
+            count += 1;
+        }
+    }
+    // 分组顺序
+    let info_path = folder.join(INFO_FILE);
+    if let Ok(mut info) = serde_json::from_str::<InfoJson>(&fs::read_to_string(&info_path).unwrap_or_default()) {
+        info.order = Some(order);
+        write_pretty(&info_path, &info)?;
+    }
+    Ok(OpenApiImportResult {
+        folder: folder.to_string_lossy().to_string(),
+        count,
+    })
+}
+
+/// 单接口格式：data 直接是接口
+fn import_rap2_single(root: &Path, data: &Value) -> Result<OpenApiImportResult, String> {
+    let folder = unique_path(root, "RAP2 导入", "");
+    fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
+    let api = rap2_interface_to_api(data);
+    let fname = sanitize_filename(&api.name);
+    write_pretty(&folder.join(format!("{fname}.json")), &api)?;
+    Ok(OpenApiImportResult {
+        folder: folder.to_string_lossy().to_string(),
+        count: 1,
+    })
+}
+
+/// 自动识别：data.modules 存在 → 项目格式，否则单接口
+fn import_rap2_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, String> {
+    let v: Value = serde_json::from_str(&fs::read_to_string(file).map_err(|e| e.to_string())?)
+        .map_err(|e| format!("解析 RAP2 文件失败: {e}"))?;
+    let data = v.get("data").cloned().unwrap_or(v);
+    if data.get("modules").and_then(|x| x.as_array()).map(|a| !a.is_empty()).unwrap_or(false) {
+        import_rap2_project(root, &data)
+    } else if data.get("url").is_some() {
+        import_rap2_single(root, &data)
+    } else {
+        Err("无法识别 RAP2 文件（缺少 modules 或 url 字段）".to_string())
+    }
+}
+
 fn import_extra_files(root: &Path, file: &Path, format: &str) -> Result<OpenApiImportResult, String> {
     match format {
         "apidog" => import_apidog_files(root, file),
@@ -5372,6 +5645,7 @@ fn import_extra_files(root: &Path, file: &Path, format: &str) -> Result<OpenApiI
         "docway" => import_docway_files(root, file),
         "hoppscotch" => import_hoppscotch_files(root, file),
         "metersphere" => import_metersphere_files(root, file),
+        "rap2" => import_rap2_files(root, file),
         _ => Err(format!("不支持的格式: {format}")),
     }
 }
@@ -5394,6 +5668,7 @@ fn import_extra(
         "docway" => ("DocWay", &["json", "mjson"]),
         "hoppscotch" => ("Hoppscotch", &["json"]),
         "metersphere" => ("MeterSphere", &["json"]),
+        "rap2" => ("RAP2", &["json"]),
         _ => return Err(format!("不支持的格式: {format}")),
     };
     let picked = app
@@ -11463,5 +11738,129 @@ let v = export::to_yapi(&apis);
                 assert!(!upload.body.form.is_empty(), "{format} 上传接口 form 字段保留");
             }
         }
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_import_rap2() {
+        let root = std::env::temp_dir().join(format!("apimgr-rap2-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let base = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/data"));
+        // 项目格式
+        let r = import_rap2_files(&root, &base.join("rap2-project.json")).expect("rap2 项目导入失败");
+        assert_eq!(r.count, 6, "项目格式接口数应为 6，实际 {}", r.count);
+        let folder = PathBuf::from(&r.folder);
+        // 三个分组目录
+        for mod_name in ["用户管理", "商品管理", "订单管理"] {
+            assert!(folder.join(sanitize_filename(mod_name)).is_dir(), "缺少分组 {mod_name}");
+        }
+        // 用户管理分组下：获取用户列表 GET /api/user/list，响应含 code/msg/data
+        let ulist = folder.join(sanitize_filename("用户管理")).join(sanitize_filename("获取用户列表.json"));
+        let api: ApiFile = serde_json::from_str(&fs::read_to_string(&ulist).unwrap()).unwrap();
+        assert_eq!(api.method, "GET");
+        assert_eq!(api.path, "/api/user/list");
+        assert!(api.headers.iter().any(|h| h.key == "Authorization"), "Authorization 应识别为 header");
+        assert!(api.query.iter().any(|q| q.key == "page"), "page 应为 query");
+        assert!(api.responses.iter().any(|r| r.body.contains("\"code\"") && r.body.contains("\"data\"")), "响应示例应含 code/data");
+        // DELETE 接口 path 参数
+        let del = folder.join(sanitize_filename("用户管理")).join(sanitize_filename("删除用户.json"));
+        let api: ApiFile = serde_json::from_str(&fs::read_to_string(&del).unwrap()).unwrap();
+        assert_eq!(api.method, "DELETE");
+        assert!(api.path.contains("{userId}"), "删除用户 path 应保留 {{userId}}，实际 {}", api.path);
+        assert!(api.params.iter().any(|p| p.key == "userId"), "userId 应为 path 参数");
+        // 订单管理 POST /api/order body json
+        let ord = folder.join(sanitize_filename("订单管理")).join(sanitize_filename("创建订单.json"));
+        let api: ApiFile = serde_json::from_str(&fs::read_to_string(&ord).unwrap()).unwrap();
+        assert_eq!(api.method, "POST");
+        assert_eq!(api.path, "/api/order");
+        assert_eq!(api.body.mode, "json", "订单接口应有 json body");
+        assert!(api.body.raw.contains("receiverInfo") && api.body.raw.contains("goodsItems"), "body 应含嵌套 receiverInfo/goodsItems");
+        // 单接口格式
+        let r2 = import_rap2_files(&root, &base.join("rap2-single.json")).expect("rap2 单接口导入失败");
+        assert_eq!(r2.count, 1, "单接口格式接口数应为 1");
+        let folder2 = PathBuf::from(&r2.folder);
+        let single = fs::read_dir(&folder2).unwrap().flatten()
+            .find(|e| e.path().extension().map(|x| x == "json").unwrap_or(false) && e.file_name() != INFO_FILE)
+            .unwrap();
+        let api: ApiFile = serde_json::from_str(&fs::read_to_string(single.path()).unwrap()).unwrap();
+        assert_eq!(api.method, "PUT");
+        assert!(api.path.contains("{orderId}"), "单接口 path 应含 {{orderId}}，实际 {}", api.path);
+        assert!(api.params.iter().any(|p| p.key == "orderId"), "orderId 应为 path 参数");
+        assert_eq!(api.body.mode, "json", "单接口应有 json body（receiver/goodsList）");
+        assert!(api.body.raw.contains("receiverName"), "body 应含 receiverName 嵌套");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_export_rap2_roundtrip() {
+        let root = std::env::temp_dir().join(format!("apimgr-rap2-e-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let mk = |name: &str, method: &str, path: &str| ApiFile {
+            uuid: uuid::Uuid::new_v4().to_string(),
+            name: name.into(),
+            method: method.into(),
+            path: path.into(),
+            url: path.into(),
+            description: "测试".into(),
+            headers: vec![KeyValue { key: "Authorization".into(), value: "Bearer x".into(), enabled: true, is_file: false, description: String::new() }],
+            query: vec![KeyValue { key: "page".into(), value: "1".into(), enabled: true, is_file: false, description: String::new() }],
+            params: vec![KeyValue { key: "orderId".into(), value: String::new(), enabled: true, is_file: false, description: String::new() }],
+            body: BodyData {
+                mode: "json".into(),
+                raw: "{\"username\":\"zhangsan\",\"info\":{\"age\":18}}".into(),
+                form: vec![],
+                binary_path: String::new(),
+            },
+            mock: MockConfig::default(),
+            examples: vec![],
+            responses: vec![ResponseItem {
+                id: uuid::Uuid::new_v4().to_string(),
+                name: "成功".into(),
+                status: 200,
+                content_type: "application/json".into(),
+                body: "{\"code\":0,\"data\":{\"total\":5}}".into(),
+            }],
+            doc_params: vec![],
+            deprecated: false,
+            protocol: "http".into(),
+        };
+        let apis: Vec<(Vec<(String, bool)>, ApiFile)> = vec![
+            (vec![("用户模块".to_string(), true)], mk("登录", "POST", "/api/login")),
+            (vec![("订单模块".to_string(), true)], mk("删除订单", "DELETE", "/api/order/{orderId}")),
+        ];
+        // 项目格式闭环
+        let proj = export::to_rap2_project(&apis);
+        let file = root.join("rap2-project.json");
+        fs::write(&file, serde_json::to_string_pretty(&proj).unwrap()).unwrap();
+        let re = import_rap2_files(&root, &file).expect("rap2 项目 round-trip 导入失败");
+        assert_eq!(re.count, 2);
+        let folder = PathBuf::from(&re.folder);
+        let mut apis2: Vec<ApiFile> = Vec::new();
+        for dir in fs::read_dir(&folder).unwrap().flatten() {
+            if dir.path().is_dir() {
+                for f in fs::read_dir(dir.path()).unwrap().flatten() {
+                    if f.path().extension().map(|x| x == "json").unwrap_or(false) && f.file_name() != INFO_FILE {
+                        apis2.push(serde_json::from_str(&fs::read_to_string(f.path()).unwrap()).unwrap());
+                    }
+                }
+            }
+        }
+        assert_eq!(apis2.len(), 2);
+        let login = apis2.iter().find(|a| a.path == "/api/login").unwrap();
+        assert_eq!(login.method, "POST");
+        assert!(login.headers.iter().any(|h| h.key == "Authorization"), "round-trip header 保留");
+        assert!(login.query.iter().any(|q| q.key == "page"), "round-trip query 保留");
+        assert!(login.body.raw.contains("info"), "round-trip 嵌套 body 保留");
+        assert!(login.responses.iter().any(|r| r.body.contains("total")), "round-trip 响应保留");
+        let del = apis2.iter().find(|a| a.path.contains("/api/order/")).unwrap();
+        assert!(del.params.iter().any(|p| p.key == "orderId"), "round-trip path 参数保留");
+        // 单接口格式闭环
+        let single = export::to_rap2_single(&apis[..1]);
+        let file2 = root.join("rap2-single.json");
+        fs::write(&file2, serde_json::to_string_pretty(&single).unwrap()).unwrap();
+        let re2 = import_rap2_files(&root, &file2).expect("rap2 单接口 round-trip 导入失败");
+        assert_eq!(re2.count, 1);
         let _ = fs::remove_dir_all(&root);
     }

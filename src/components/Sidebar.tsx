@@ -1050,6 +1050,17 @@ export function Sidebar(props: Props) {
                       MeterSphere
                     </button>
                   )}
+                  {settings?.importTypes?.rap2 !== false && onImportExtra && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportExtra("rap2");
+                      }}
+                    >
+                      <FormatIcon value="rap2" className="import-menu-icon" />
+                      RAP2
+                    </button>
+                  )}
                 </div>
               </>
             )}

@@ -32,7 +32,8 @@ const FORMAT_ICON_FILES: Record<string, string> = {
   easydoc: "easydoc.png",
   hoppscotch: "hoppscotch.svg",
   metersphere: "MeterSphere.png",
-  // docway 无官方图标，使用占位方块
+  rap2: "rap2.png",
+  docway: "docway.png",
 };
 
 const formatIconImgs = import.meta.glob<string>("../assets/import/*.{png,svg}", {
