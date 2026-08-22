@@ -44,6 +44,7 @@ const IMPORT_FORMATS: { value: ImportFormat; labelKey: string }[] = [
   { value: "yapi", labelKey: "export.yapi" },
   { value: "eolink", labelKey: "export.eolink" },
   { value: "insomnia", labelKey: "export.insomnia" },
+  { value: "jmeter", labelKey: "export.jmeter" },
 ];
 
 /** 导出格式列表（含可开关的） */
@@ -60,6 +61,7 @@ const EXPORT_FORMATS: { value: ExportFormat; labelKey: string }[] = [
   { value: "yapi", labelKey: "export.yapi" },
   { value: "eolink", labelKey: "export.eolink" },
   { value: "insomnia", labelKey: "export.insomnia" },
+  { value: "jmeter", labelKey: "export.jmeter" },
 ];
 
 /** 左侧导航（目录）项：点击滚动到对应分区 */

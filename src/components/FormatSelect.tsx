@@ -19,6 +19,9 @@ const FORMAT_ICON_FILES: Record<string, string> = {
   wadl: "wadl.png",
   har: "har.png",
   yapi: "yapi.png",
+  eolink: "eolink.png",
+  insomnia: "insomnia.png",
+  jmeter: "jmeter.png",
 };
 
 const formatIconImgs = import.meta.glob<string>("../assets/import/*.{png,svg}", {

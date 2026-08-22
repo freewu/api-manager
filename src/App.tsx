@@ -21,6 +21,7 @@ import {
   importYapi,
   importEolink,
   importInsomnia,
+  importJmeter,
   importMarkdown,
   renderApiMarkdown,
   renderGroupMarkdown,
@@ -607,6 +608,18 @@ export default function App() {
       if (!result) return; // 用户取消
       await loadAll(workspace!);
       showToast(t("toast.importedInsomnia", { count: result.count }));
+      void reloadMockIfRunning();
+    } catch (e) {
+      showToast(t("toast.importFailed", { err: String(e) }));
+    }
+  };
+
+  const handleImportJmeter = async () => {
+    try {
+      const result = await importJmeter();
+      if (!result) return; // 用户取消
+      await loadAll(workspace!);
+      showToast(t("toast.importedJmeter", { count: result.count }));
       void reloadMockIfRunning();
     } catch (e) {
       showToast(t("toast.importFailed", { err: String(e) }));
@@ -1522,6 +1535,7 @@ export default function App() {
           onImportYapi={() => void handleImportYapi()}
           onImportEolink={() => void handleImportEolink()}
           onImportInsomnia={() => void handleImportInsomnia()}
+          onImportJmeter={() => void handleImportJmeter()}
           settings={settings}
           onViewMarkdown={(node) => void handleViewMarkdown(node)}
           onExport={() => openExport()}

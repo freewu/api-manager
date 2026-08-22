@@ -122,6 +122,10 @@ export function importInsomnia(): Promise<OpenApiImportResult | null> {
   return invoke<OpenApiImportResult | null>("import_insomnia");
 }
 
+export async function importJmeter(): Promise<OpenApiImportResult | null> {
+  return invoke<OpenApiImportResult | null>("import_jmeter");
+}
+
 export interface MarkdownDoc {
   name: string;
   md: string;

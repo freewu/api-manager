@@ -214,7 +214,8 @@ export type ExportFormat =
   | "wadl"
   | "yapi"
   | "eolink"
-  | "insomnia";
+  | "insomnia"
+  | "jmeter";
 
 /** 主页「导入」菜单支持的格式 */
 export type ImportFormat =
@@ -228,7 +229,8 @@ export type ImportFormat =
   | "har"
   | "yapi"
   | "eolink"
-  | "insomnia";
+  | "insomnia"
+  | "jmeter";
 
 /** 导入格式中必选（不可关闭）的类型 */
 export const REQUIRED_IMPORT_FORMATS: ImportFormat[] = ["postman", "openapi"];
@@ -291,6 +293,7 @@ export const defaultSettings = (): AppSettings => ({
     yapi: true,
     eolink: true,
     insomnia: true,
+    jmeter: true,
   },
   exportTypes: {
     postman: true,
@@ -305,6 +308,7 @@ export const defaultSettings = (): AppSettings => ({
     yapi: true,
     eolink: true,
     insomnia: true,
+    jmeter: true,
   },
   htmlNav: "right",
   language: "zh",
