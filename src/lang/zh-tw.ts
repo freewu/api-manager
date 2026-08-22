@@ -190,6 +190,8 @@ export const TW: Record<string, string> = {
   "editor.protocol": "協議",
   "editor.httpType": "HTTP 接口",
   "editor.wsType": "WebSocket 接口",
+    "editor.socketIoType": "Socket.IO 介面",
+    "editor.socketIoUrlPlaceholder": "Socket.IO 位址（http/https）",
   "editor.graphqlType": "GraphQL 接口",
   "editor.message": "訊息",
   "editor.graphqlMethodTip": "GraphQL 接口固定使用 POST 方法",

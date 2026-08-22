@@ -225,7 +225,7 @@ export function setLanguage(lang: "zh" | "zh-tw" | "en"): Promise<void> {
   return invoke<void>("set_language", { lang });
 }
 
-export function createApi(dir: string, name: string, protocol: "http" | "websocket" | "graphql" = "http"): Promise<string> {
+export function createApi(dir: string, name: string, protocol: "http" | "websocket" | "graphql" | "socketio" = "http"): Promise<string> {
   return invoke<string>("create_api", { dir, name, protocol });
 }
 

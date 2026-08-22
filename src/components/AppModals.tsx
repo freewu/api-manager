@@ -69,7 +69,7 @@ interface AppModalsProps {
   activeEnv: Environment | undefined;
   modal: ModalState | null;
   modalText: string;
-  modalProtocol: "http" | "websocket" | "graphql";
+  modalProtocol: "http" | "websocket" | "graphql" | "socketio";
   infoForm: InfoForm;
   demoCreate: boolean;
   workspace: string | null;
@@ -92,7 +92,7 @@ interface AppModalsProps {
   onSaveEnvValues: (variables: EnvVariable[]) => void;
   onCloseModal: () => void;
   onModalTextChange: (v: string) => void;
-  onModalProtocolChange: (v: "http" | "websocket" | "graphql") => void;
+  onModalProtocolChange: (v: "http" | "websocket" | "graphql" | "socketio") => void;
   onInfoFormChange: (f: InfoForm) => void;
   onDemoCreateChange: (v: boolean) => void;
   onDoNewApi: () => void;
@@ -303,10 +303,11 @@ export function AppModals({
             {t("editor.protocol")}
             <select
               value={modalProtocol}
-              onChange={(e) => onModalProtocolChange(e.target.value as "http" | "websocket" | "graphql")}
+              onChange={(e) => onModalProtocolChange(e.target.value as "http" | "websocket" | "graphql" | "socketio")}
             >
               <option value="http">{t("editor.httpType")}</option>
               <option value="websocket">{t("editor.wsType")}</option>
+              <option value="socketio">{t("editor.socketIoType")}</option>
               <option value="graphql">{t("editor.graphqlType")}</option>
             </select>
           </label>

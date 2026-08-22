@@ -199,6 +199,8 @@ export const EN: Record<string, string> = {
   "editor.protocol": "Protocol",
   "editor.httpType": "HTTP API",
   "editor.wsType": "WebSocket API",
+    "editor.socketIoType": "Socket.IO API",
+    "editor.socketIoUrlPlaceholder": "Socket.IO address (http/https)",
   "editor.graphqlType": "GraphQL API",
   "editor.message": "Message",
   "editor.graphqlMethodTip": "GraphQL APIs always use POST method",

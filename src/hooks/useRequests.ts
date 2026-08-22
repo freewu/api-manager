@@ -30,6 +30,8 @@ export function useRequests(opts: {
   const wsQueueRef = useRef<string[]>([]);
   /** 当前 WS 连接地址（写请求历史用） */
   const wsUrlRef = useRef("");
+  /** 当前实时连接类型（写请求历史 method 用：WS / SIO） */
+  const connKindRef = useRef<"WS" | "SIO">("WS");
   /** 最近一次发送的消息文本（保存示例用） */
   const wsLastSentRef = useRef<string>("");
   /** 最近一次收到的消息文本（保存示例用） */
@@ -38,6 +40,10 @@ export function useRequests(opts: {
   const wsLastRtRef = useRef(0);
   /** 待回显的请求（收到回显/连接错误时写入请求历史，一次发送对应一条记录） */
   const wsPendingRef = useRef<{ text: string; time: number } | null>(null);
+
+  // ===== Socket.IO 持久连接与交互记录（展示与 WebSocket 一致，仅协议实现不同） =====
+  const sioRef = useRef<{ disconnect: () => void; connected: boolean; emit: (e: string, d: unknown) => void; on: (e: string, cb: (d: unknown) => void) => void } | null>(null);
+  const sioQueueRef = useRef<unknown[]>([]);
   const [wsConnected, setWsConnected] = useState(false);
   const [wsConnecting, setWsConnecting] = useState(false);
   const [wsEntries, setWsEntries] = useState<WsLogEntry[]>([]);
@@ -63,7 +69,7 @@ export function useRequests(opts: {
     wsPendingRef.current = null;
     wsLastRtRef.current = Date.now() - pend.time;
     saveHistory({
-      method: "WS",
+      method: connKindRef.current,
       url: wsUrlRef.current,
       apiUuid: api?.uuid,
       apiName: api?.name,
@@ -97,8 +103,115 @@ export function useRequests(opts: {
     setWsEntries([]);
   };
 
+  /** 关闭当前 Socket.IO 连接并清空交互记录 */
+  const closeSocketIoConnection = () => {
+    const s = sioRef.current;
+    if (s) {
+      try {
+        s.disconnect();
+      } catch {
+        /* noop */
+      }
+    }
+    sioRef.current = null;
+    sioQueueRef.current = [];
+    setWsConnected(false);
+    setWsConnecting(false);
+    setWsEntries([]);
+  };
+
+  /** 建立 Socket.IO 连接（首次点「发送」时触发）：懒加载 socket.io-client，事件消息展示在交互记录 */
+  const openSocketIoConnection = async (url: string, query: [string, string][]) => {
+    connKindRef.current = "SIO";
+    setWsConnecting(true);
+    try {
+      const { io } = await import("socket.io-client");
+      const q: Record<string, string> = {};
+      for (const [k, v] of query) q[k] = v;
+      const socket = io(url, {
+        transports: ["websocket", "polling"],
+        reconnection: false,
+        timeout: 10000,
+        query: q,
+      });
+      sioRef.current = socket as unknown as typeof sioRef.current;
+      // 连接后服务器可能先推送一条欢迎消息，不把它当作「发送消息」的回显写入请求历史
+      let firstRecv = true;
+      socket.on("connect", () => {
+        setWsConnecting(false);
+        setWsConnected(true);
+        appendWsEntry("info", t("resp.wsConnected"));
+        const qq = sioQueueRef.current;
+        sioQueueRef.current = [];
+        for (const m of qq) doSioSend(socket, m);
+      });
+      socket.on("connect_error", (e: { message?: string }) => {
+        setWsConnected(false);
+        setWsConnecting(false);
+        appendWsEntry("error", `${t("app.wsConnectError")}：${e?.message ?? ""}`);
+        flushWsPending("", t("app.wsConnectError"));
+      });
+      socket.on("disconnect", () => {
+        setWsConnected(false);
+        setWsConnecting(false);
+        if (sioRef.current === socket) sioRef.current = null;
+        flushWsPending("", t("app.wsConnectError"));
+      });
+      // 默认消息事件 "message"（python-socketio 标准）；同时监听自定义事件名，统一展示
+      socket.on("message", (data: unknown) => {
+        const s = typeof data === "string" ? data : JSON.stringify(data);
+        appendWsEntry("recv", s);
+        wsLastRecvRef.current = s;
+        if (firstRecv) {
+          firstRecv = false;
+        } else {
+          flushWsPending(s);
+        }
+      });
+    } catch (e) {
+      setWsConnecting(false);
+      appendWsEntry("error", `${t("app.wsConnectError")}：${e}`);
+    }
+  };
+
+  /** 发送 Socket.IO 消息（默认事件名 message），收到回显时写入请求历史 */
+  const doSioSend = (socket: { emit: (e: string, d: unknown) => void }, text: unknown) => {
+    try {
+      socket.emit("message", text);
+      appendWsEntry("sent", typeof text === "string" ? text : JSON.stringify(text));
+      wsLastSentRef.current = typeof text === "string" ? text : JSON.stringify(text);
+      wsPendingRef.current = { text: wsLastSentRef.current, time: Date.now() };
+    } catch (e) {
+      appendWsEntry("error", `${t("app.wsSendFailed")}：${e}`);
+    }
+  };
+
+  /** 发送 Socket.IO 消息：复用已建立的连接；无连接时先建连再发送 */
+  const handleSocketIoSend = async (url: string, body: BodyData, query: [string, string][]) => {
+    wsUrlRef.current = url;
+    // JSON 模式：raw 为 JSON 文本，解析为对象后 emit（服务端按对象处理）
+    let payload: unknown = body.raw || "";
+    if (body.mode === "json") {
+      try {
+        payload = JSON.parse(body.raw || "null");
+      } catch {
+        /* 非合法 JSON 按文本发送 */
+      }
+    }
+    const s = sioRef.current;
+    if (s && s.connected) {
+      doSioSend(s, payload);
+    } else if (s) {
+      sioQueueRef.current.push(payload); // 连接中：排队待发
+    } else {
+      sioQueueRef.current = [payload];
+      await openSocketIoConnection(url, query); // 无连接：建立连接后再发
+    }
+  };
+
   /** 建立 WebSocket 连接（首次点「发送」时触发），此后保持长连接 */
   const openWsConnection = (url: string) => {
+    connKindRef.current = "WS";
     setWsConnecting(true);
     let ws: WebSocket;
     try {
@@ -169,12 +282,17 @@ export function useRequests(opts: {
     }
   };
 
-  // 切换接口 / 组件卸载时关闭 WS 连接
+  // 切换接口 / 组件卸载时关闭 WS 与 Socket.IO 连接
   useEffect(() => {
     closeWsConnection();
+    closeSocketIoConnection();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api?.uuid]);
-  useEffect(() => () => closeWsConnection(), []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => {
+    closeWsConnection();
+    closeSocketIoConnection();
+    // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSend = async () => {
     if (!api) return;
@@ -234,6 +352,17 @@ export function useRequests(opts: {
         setLastRequest({ method: "WS", url, headers, body: api.body.raw, timeoutMs: 30000 });
         setLastApiSnapshot(api);
         setSending(false); // WS 发送为异步短操作，立即复位按钮状态
+        return;
+      }
+      // Socket.IO：事件消息发送，交互记录展示在响应区（展示与 WebSocket 一致）
+      if (api.protocol === "socketio") {
+        const qs = api.query
+          .filter((q) => q.enabled && q.key)
+          .map((q) => [sub(q.key), sub(q.value)] as [string, string]);
+        handleSocketIoSend(url, api.body, qs);
+        setLastRequest({ method: "SIO", url, headers, body: api.body.raw, timeoutMs: 30000 });
+        setLastApiSnapshot(api);
+        setSending(false); // Socket.IO 发送为异步短操作，立即复位按钮状态
         return;
       }
 
@@ -299,7 +428,7 @@ export function useRequests(opts: {
   // 将最近一次请求与响应保存为示例 -> 工作区 .examples/<接口uuid>/<示例名称hash值>.json
   const handleSaveExample = async (name: string) => {
     if (!api || !lastRequest) return;
-    const isWs = api.protocol === "websocket";
+    const isWs = api.protocol === "websocket" || api.protocol === "socketio";
     if (!isWs && !response) return;
     const snap = lastApiSnapshot || api;
     try {
@@ -328,11 +457,11 @@ export function useRequests(opts: {
         if (!seen.has(k)) reqQuery.push([k, v]);
       }
       if (isWs) {
-        // WebSocket：保存最近一次发送的消息与收到的回显
+        // 实时（WebSocket/Socket.IO）：保存最近一次发送的消息与收到的回显
         await saveExample(api.uuid || crypto.randomUUID(), name, {
           name,
           time: Math.floor(Date.now() / 1000),
-          method: "WS",
+          method: api.protocol === "socketio" ? "SIO" : "WS",
           url: lastRequest.url,
           reqHeaders: [], // 浏览器 WebSocket API 无法自定义请求头
           reqPath: [],

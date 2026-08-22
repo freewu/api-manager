@@ -7,6 +7,7 @@ import { useT } from "../i18n";
 import iconHttp from "../assets/icon-http.png";
 import iconWs from "../assets/icon-websocket.png";
 import iconGql from "../assets/icon-graphql.png";
+import iconSocketIo from "../assets/icon-socketio.png";
 
 export type AppView = "api" | "history";
 
@@ -107,6 +108,7 @@ type DepFilter = "all" | "active" | "deprecated";
 const PROTOCOL_OPTIONS = [
   { id: "http", label: "HTTP" },
   { id: "websocket", label: "WebSocket" },
+  { id: "socketio", label: "Socket.IO" },
   { id: "graphql", label: "GraphQL" },
 ] as const;
 
@@ -220,7 +222,7 @@ function NodeRow({
         protocolFilters.length === 0 || protocolFilters.includes(n.protocol || "http");
       const mOk =
         methodFilters.length === 0 ||
-        (n.protocol === "websocket"
+        (n.protocol === "websocket" || n.protocol === "socketio"
           ? false
           : methodFilters.includes((n.method || "").toUpperCase()));
       return (
@@ -339,6 +341,8 @@ function NodeRow({
             "📁"
           ) : node.protocol === "websocket" ? (
             <img className="node-type-icon" src={iconWs} alt="WS" />
+          ) : node.protocol === "socketio" ? (
+            <img className="node-type-icon" src={iconSocketIo} alt="Socket.IO" />
           ) : node.protocol === "graphql" ? (
             <img className="node-type-icon" src={iconGql} alt="GraphQL" />
           ) : (

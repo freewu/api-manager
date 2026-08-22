@@ -189,7 +189,7 @@ pub struct ApiFile {
     /// 是否已标记废弃
     #[serde(default)]
     pub deprecated: bool,
-    /// 接口协议：http（HTTP 接口）或 websocket（WebSocket 接口）
+    /// 接口协议：http（HTTP 接口）、websocket（WebSocket 接口）或 socketio（Socket.IO 接口）
     #[serde(default = "default_protocol")]
     pub protocol: String,
 }
@@ -1225,6 +1225,23 @@ fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String> {
         { "id": format!("gql-order-{}", uuid::Uuid::new_v4()), "name": "返回成功", "status": 200, "content_type": "application/json", "body": "{\n  \"data\": {\n    \"order\": {\n      \"id\": 1001,\n      \"no\": \"SO20240101001\",\n      \"amount\": 99.5,\n      \"items\": [\n        { \"name\": \"鼠标\", \"price\": 49.5 },\n        { \"name\": \"键盘\", \"price\": 50.0 }\n      ]\n    }\n  }\n}" }
     ]);
     write("GraphQL", "查询订单.json", &gql_order)?;
+
+    // Socket.IO 分组（与 tests/socketio-server.py 一一对应）：实时消息交互，展示与 WebSocket 一致
+    write("Socket.IO", INFO_FILE, &serde_json::json!({ "name": "Socket.IO", "description": "Socket.IO 接口示例（与 tests/socketio-server.py 一一对应）" }))?;
+    let sio_desc = "Socket.IO 实时消息接口演示，配合测试服务 tests/socketio-server.py 使用。\n\n【启动测试服务】\n1. 安装依赖：pip install python-socketio simple-websocket\n2. 启动服务：python tests/socketio-server.py\n   - 默认监听 http://127.0.0.1:8090\n   - 自定义端口：python tests/socketio-server.py 9999\n\n【接口说明】\n- Socket.IO 连接地址为 http://127.0.0.1:8090（不提供 ws/wss 切换，由库内部协商传输方式）\n- 消息事件名固定为 message：发送的消息会原样回显，并附带本次连接的 query 参数\n- 浏览器端不可自定义请求头，Header 页签中的配置不会发送\n\n【测试步骤】\n1. 点击「发送」建立连接，连接成功后会先收到一条欢迎消息（type: welcome）\n2. 在消息输入框输入任意内容并发送\n3. 服务器回传消息内容及本次连接的 query 参数，例如：\n{\"type\":\"message\",\"query\":{\"token\":\"dev-token-123456\"},\"message\":\"hello\"}";
+    let mut sio_chat = api_file("实时聊天", "GET", "/", sio_desc);
+    sio_chat["protocol"] = serde_json::json!("socketio");
+    sio_chat["url"] = serde_json::json!("http://127.0.0.1:8090");
+    sio_chat["body"] = serde_json::json!({ "mode": "text", "raw": "hello socket.io", "form": [], "binaryPath": "" });
+    sio_chat["responses"] = serde_json::json!([]);
+    write("Socket.IO", "实时聊天.json", &sio_chat)?;
+
+    let mut sio_broadcast = api_file("广播通知", "GET", "/", "向所有已连接客户端广播一条消息（Socket.IO broadcast 事件）。\n\n【测试步骤】\n1. 先启动 tests/socketio-server.py（默认 http://127.0.0.1:8090）\n2. 点击「发送」建立连接并收到欢迎消息\n3. 发送消息：{\"cmd\":\"broadcast\",\"msg\":\"hello everyone\"}\n4. 所有连接的客户端都会收到这条广播（type: broadcast）");
+    sio_broadcast["protocol"] = serde_json::json!("socketio");
+    sio_broadcast["url"] = serde_json::json!("http://127.0.0.1:8090");
+    sio_broadcast["body"] = serde_json::json!({ "mode": "json", "raw": "{\n  \"cmd\": \"broadcast\",\n  \"msg\": \"hello everyone\"\n}", "form": [], "binaryPath": "" });
+    sio_broadcast["responses"] = serde_json::json!([]);
+    write("Socket.IO", "广播通知.json", &sio_broadcast)?;
 
     Ok(())
 }
@@ -7979,6 +7996,7 @@ fn create_api(
         deprecated: false,
         protocol: match protocol.as_deref() {
             Some("websocket") => "websocket".into(),
+            Some("socketio") => "socketio".into(),
             Some("graphql") => "graphql".into(),
             _ => "http".into(),
         },

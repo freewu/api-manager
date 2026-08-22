@@ -34,9 +34,9 @@ interface Props {
 }
 
 /**
- * 右侧渲染按接口类型拆分为 Http / WebSocket 两种：
+ * 右侧渲染按接口类型拆分为 Http / 实时（WebSocket、Socket.IO）两种：
  * - Http      ：Editor（请求编辑）+ Response（状态码 / 响应体）
- * - WebSocket ：Editor（消息编辑 / 发送）+ WsResponse（实时交互记录）
+ * - 实时       ：Editor（消息编辑 / 发送）+ WsResponse（实时交互记录）
  * 根据 api.protocol 加载不同的组件。
  */
 export function ApiWorkspace({
@@ -65,7 +65,8 @@ export function ApiWorkspace({
   wsEntries,
   onWsDisconnect,
 }: Props) {
-  const isWs = api.protocol === "websocket";
+  /** 实时类接口（WebSocket / Socket.IO）：右侧渲染为消息编辑 + 实时交互记录 */
+  const isWs = api.protocol === "websocket" || api.protocol === "socketio";
 
   const editor = (
     <Editor

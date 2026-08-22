@@ -44,7 +44,7 @@ function computeStats(node: TreeNode): Stats {
     if (n.kind === "api") {
       if (n.mockEnabled) mockEnabled++;
       if (n.deprecated) deprecatedApis++;
-      if (n.protocol === "websocket") {
+      if (n.protocol === "websocket" || n.protocol === "socketio") {
         wsApis++;
       } else {
         httpApis++;

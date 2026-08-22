@@ -46,7 +46,7 @@ fn parse_route(api: &ApiFile) -> Option<MockRoute> {
         return None;
     }
     // GraphQL 接口暂不支持 Mock（无法按路径生成路由）
-    if api.protocol == "graphql" {
+    if api.protocol == "graphql" || api.protocol == "socketio" {
         return None;
     }
     let path = if api.path.trim().is_empty() {

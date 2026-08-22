@@ -205,6 +205,8 @@ export const ZH: Record<string, string> = {
   "editor.protocol": "协议",
   "editor.httpType": "HTTP 接口",
   "editor.wsType": "WebSocket 接口",
+    "editor.socketIoType": "Socket.IO 接口",
+    "editor.socketIoUrlPlaceholder": "Socket.IO 地址（http/https）",
   "editor.graphqlType": "GraphQL 接口",
   "editor.message": "消息",
   "editor.graphqlMethodTip": "GraphQL 接口固定使用 POST 方法",
