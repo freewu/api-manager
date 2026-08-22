@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppSettings, TreeNode } from "../types";
 import { HistoryDay, HistorySummary } from "../commands";
 import { HistoryList } from "./HistoryList";
@@ -116,6 +116,8 @@ function NodeRow({
   node,
   depth,
   selectedPath,
+  openMap,
+  onToggleOpen,
   onSelect,
   onNewApi,
   onNewFolder,
@@ -146,6 +148,9 @@ function NodeRow({
   node: TreeNode;
   depth: number;
   selectedPath: string | null;
+  /** 文件夹展开状态（path → open），跨树刷新保留 */
+  openMap: Record<string, boolean>;
+  onToggleOpen: (path: string, open: boolean) => void;
   onSelect: (node: TreeNode) => void;
   onNewApi: (parent: string) => void;
   onNewFolder: (parent: string) => void;
@@ -182,7 +187,8 @@ function NodeRow({
   const isFolder = node.kind === "folder";
   // WebSocket 接口无 HTTP method
   const isWs = node.protocol === "websocket";
-  const [open, setOpen] = useState(node.collapsed !== true);
+  // 展开状态提升到 Sidebar 顶层（openMap），导入/刷新重建树后保持不变
+  const open = openMap[node.path] ?? node.collapsed !== true;
   // 已废弃：自身标记或继承自上层已废弃分组
   const deprecated = node.deprecated === true || depInherited;
 
@@ -255,9 +261,9 @@ function NodeRow({
         childrenMatch) ||
         (depFilter !== "all" && depChildrenMatch))
     ) {
-      setOpen(true);
+      onToggleOpen(node.path, true);
     }
-  }, [filter, protocolFilters, methodFilters, isFolder, childrenMatch, depFilter, depChildrenMatch]);
+  }, [filter, protocolFilters, methodFilters, isFolder, childrenMatch, depFilter, depChildrenMatch, node.path, onToggleOpen]);
 
   if (!visible) return null;
 
@@ -304,7 +310,7 @@ function NodeRow({
           if (src) onDropTarget(src, dropTarget);
         }}
         onClick={() => {
-          if (isFolder) setOpen(!open);
+          if (isFolder) onToggleOpen(node.path, !open);
           else onSelect(node);
         }}
         onContextMenu={(e) => {
@@ -394,12 +400,14 @@ function NodeRow({
       </div>
       {isFolder && open && node.children && (
         <div>
-          {node.children.map((child, i) => (
+          {node.children.map((child) => (
             <NodeRow
-              key={child.path + i}
+              key={child.path}
               node={child}
               depth={depth + 1}
               selectedPath={selectedPath}
+              openMap={openMap}
+              onToggleOpen={onToggleOpen}
               onSelect={onSelect}
               onNewApi={onNewApi}
               onNewFolder={onNewFolder}
@@ -448,6 +456,11 @@ export function Sidebar(props: Props) {
   const t = useT();
   const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onImportApiDoc, onImportExtra, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
   const [importMenu, setImportMenu] = useState(false);
+  /** 文件夹展开状态（path → open），跨 loadAll/导入刷新保留 */
+  const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
+  const toggleOpen = useCallback((path: string, open: boolean) => {
+    setOpenMap((m) => ({ ...m, [path]: open }));
+  }, []);
   const [filter, setFilter] = useState("");
   /** 高级搜索：是否展开过滤面板 */
   const [advOpen, setAdvOpen] = useState(false);
@@ -657,12 +670,14 @@ export function Sidebar(props: Props) {
       >
         {tree && tree.children && (
           <div>
-            {tree.children.map((child, i) => (
+            {tree.children.map((child) => (
               <NodeRow
-                key={child.path + i}
+                key={child.path}
                 node={child}
                 depth={0}
                 selectedPath={props.selectedPath}
+                openMap={openMap}
+                onToggleOpen={toggleOpen}
                 onSelect={props.onSelect}
                 onNewApi={onNewApi}
                 onNewFolder={onNewFolder}
