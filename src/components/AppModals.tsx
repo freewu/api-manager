@@ -16,6 +16,10 @@ import {
   VersionInfo,
 } from "../types";
 import { Modal } from "./Modal";
+import iconHttp from "../assets/icon-http.png";
+import iconWs from "../assets/icon-websocket.png";
+import iconSocketIo from "../assets/icon-socketio.png";
+import iconGql from "../assets/icon-graphql.png";
 
 // 弹窗组件按需懒加载：仅在对应弹窗打开时才下载对应 chunk
 const MarkdownModal = lazy(() => import("./MarkdownModal").then((m) => ({ default: m.MarkdownModal })));
@@ -277,6 +281,7 @@ export function AppModals({
       {modal?.type === "newApi" && (
         <Modal
           title={t("modal.newApi")}
+          className="modal-newapi"
           onClose={onCloseModal}
           footer={
             <>
@@ -299,18 +304,36 @@ export function AppModals({
             {t("modal.saveTo")}
             <input value={modal.parent || workspace!} disabled style={{ opacity: 0.6 }} />
           </label>
-          <label>
-            {t("editor.protocol")}
-            <select
-              value={modalProtocol}
-              onChange={(e) => onModalProtocolChange(e.target.value as "http" | "websocket" | "graphql" | "socketio")}
-            >
-              <option value="http">{t("editor.httpType")}</option>
-              <option value="websocket">{t("editor.wsType")}</option>
-              <option value="socketio">{t("editor.socketIoType")}</option>
-              <option value="graphql">{t("editor.graphqlType")}</option>
-            </select>
-          </label>
+          <div className="protocol-field">
+            <span className="protocol-field-label">{t("editor.protocol")}</span>
+            <div className="protocol-radios">
+              {(
+                [
+                  { value: "http", label: t("editor.httpType"), icon: iconHttp },
+                  { value: "websocket", label: t("editor.wsType"), icon: iconWs },
+                  { value: "socketio", label: t("editor.socketIoType"), icon: iconSocketIo },
+                  { value: "graphql", label: t("editor.graphqlType"), icon: iconGql },
+                ] as const
+              ).map((o) => (
+                <label
+                  key={o.value}
+                  className={`protocol-radio${modalProtocol === o.value ? " active" : ""}`}
+                  title={o.label}
+                >
+                  <input
+                    type="radio"
+                    name="api-protocol"
+                    checked={modalProtocol === o.value}
+                    onChange={() =>
+                      onModalProtocolChange(o.value as "http" | "websocket" | "graphql" | "socketio")
+                    }
+                  />
+                  <img className="protocol-radio-icon" src={o.icon} alt="" />
+                  <span className="protocol-radio-name">{o.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
         </Modal>
       )}
 
