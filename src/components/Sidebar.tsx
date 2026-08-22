@@ -43,6 +43,8 @@ interface Props {
   onImportInsomnia?: () => void;
   onImportJmeter?: () => void;
   onImportApiDoc?: () => void;
+  /** 扩展格式导入（apidog/bruno/apizza/nei/doclever/io-docs/easydoc/docway/hoppscotch/metersphere） */
+  onImportExtra?: (format: string) => void;
   /** 当前设置（导入菜单按 importTypes 开关过滤格式） */
   settings?: AppSettings;
   onExport?: () => void;
@@ -444,7 +446,7 @@ function NodeRow({
 
 export function Sidebar(props: Props) {
   const t = useT();
-  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onImportApiDoc, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
+  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onImportApiDoc, onImportExtra, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
   const [importMenu, setImportMenu] = useState(false);
   const [filter, setFilter] = useState("");
   /** 高级搜索：是否展开过滤面板 */
@@ -936,6 +938,116 @@ export function Sidebar(props: Props) {
                     >
                       <FormatIcon value="apidoc" className="import-menu-icon" />
                       apiDoc 文档
+                    </button>
+                  )}
+                  {settings?.importTypes?.apidog !== false && onImportExtra && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportExtra("apidog");
+                      }}
+                    >
+                      <FormatIcon value="apidog" className="import-menu-icon" />
+                      apiDog
+                    </button>
+                  )}
+                  {settings?.importTypes?.bruno !== false && onImportExtra && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportExtra("bruno");
+                      }}
+                    >
+                      <FormatIcon value="bruno" className="import-menu-icon" />
+                      Bruno
+                    </button>
+                  )}
+                  {settings?.importTypes?.apizza !== false && onImportExtra && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportExtra("apizza");
+                      }}
+                    >
+                      <FormatIcon value="apizza" className="import-menu-icon" />
+                      Apizza
+                    </button>
+                  )}
+                  {settings?.importTypes?.nei !== false && onImportExtra && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportExtra("nei");
+                      }}
+                    >
+                      <FormatIcon value="nei" className="import-menu-icon" />
+                      NEI
+                    </button>
+                  )}
+                  {settings?.importTypes?.doclever !== false && onImportExtra && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportExtra("doclever");
+                      }}
+                    >
+                      <FormatIcon value="doclever" className="import-menu-icon" />
+                      DOClever
+                    </button>
+                  )}
+                  {settings?.importTypes?.["io-docs"] !== false && onImportExtra && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportExtra("io-docs");
+                      }}
+                    >
+                      <FormatIcon value="io-docs" className="import-menu-icon" />
+                      IO-Docs
+                    </button>
+                  )}
+                  {settings?.importTypes?.easydoc !== false && onImportExtra && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportExtra("easydoc");
+                      }}
+                    >
+                      <FormatIcon value="easydoc" className="import-menu-icon" />
+                      EasyDoc
+                    </button>
+                  )}
+                  {settings?.importTypes?.docway !== false && onImportExtra && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportExtra("docway");
+                      }}
+                    >
+                      <FormatIcon value="docway" className="import-menu-icon" />
+                      DocWay
+                    </button>
+                  )}
+                  {settings?.importTypes?.hoppscotch !== false && onImportExtra && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportExtra("hoppscotch");
+                      }}
+                    >
+                      <FormatIcon value="hoppscotch" className="import-menu-icon" />
+                      Hoppscotch
+                    </button>
+                  )}
+                  {settings?.importTypes?.metersphere !== false && onImportExtra && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportExtra("metersphere");
+                      }}
+                    >
+                      <FormatIcon value="metersphere" className="import-menu-icon" />
+                      MeterSphere
                     </button>
                   )}
                 </div>

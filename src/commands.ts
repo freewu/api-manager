@@ -130,6 +130,11 @@ export async function importApiDoc(): Promise<OpenApiImportResult | null> {
   return invoke<OpenApiImportResult | null>("import_apidoc");
 }
 
+/** 导入扩展格式（apidog/bruno/apizza/nei/doclever/io-docs/easydoc/docway/hoppscotch/metersphere） */
+export async function importExtra(format: string): Promise<OpenApiImportResult | null> {
+  return invoke<OpenApiImportResult | null>("import_extra", { format });
+}
+
 export interface MarkdownDoc {
   name: string;
   md: string;

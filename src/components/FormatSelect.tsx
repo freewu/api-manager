@@ -23,6 +23,16 @@ const FORMAT_ICON_FILES: Record<string, string> = {
   insomnia: "insomnia.png",
   jmeter: "jmeter.png",
   apidoc: "apidoc.png",
+  apidog: "apidog.png",
+  bruno: "Bruno.png",
+  apizza: "apizza.png",
+  nei: "nei.png",
+  doclever: "doclever.png",
+  "io-docs": "io-doc.png",
+  easydoc: "easydoc.png",
+  hoppscotch: "hoppscotch.svg",
+  metersphere: "MeterSphere.png",
+  // docway 无官方图标，使用占位方块
 };
 
 const formatIconImgs = import.meta.glob<string>("../assets/import/*.{png,svg}", {

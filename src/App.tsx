@@ -23,6 +23,7 @@ import {
   importInsomnia,
   importJmeter,
   importApiDoc,
+  importExtra,
   importMarkdown,
   renderApiMarkdown,
   renderGroupMarkdown,
@@ -636,6 +637,18 @@ export default function App() {
       if (!result) return; // 用户取消
       await loadAll(workspace!);
       showToast(t("toast.importedApiDoc", { count: result.count }));
+      void reloadMockIfRunning();
+    } catch (e) {
+      showToast(t("toast.importFailed", { err: String(e) }));
+    }
+  };
+
+  const handleImportExtra = async (format: string) => {
+    try {
+      const result = await importExtra(format);
+      if (!result) return; // 用户取消
+      await loadAll(workspace!);
+      showToast(t("toast.importedExtra", { count: result.count }));
       void reloadMockIfRunning();
     } catch (e) {
       showToast(t("toast.importFailed", { err: String(e) }));
@@ -1564,6 +1577,7 @@ export default function App() {
           onImportInsomnia={() => void handleImportInsomnia()}
           onImportJmeter={() => void handleImportJmeter()}
           onImportApiDoc={() => void handleImportApiDoc()}
+          onImportExtra={(format) => void handleImportExtra(format)}
           settings={settings}
           onViewMarkdown={(node) => void handleViewMarkdown(node)}
           onViewApiDoc={(node) => void handleViewApiDoc(node)}
