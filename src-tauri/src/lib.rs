@@ -1830,6 +1830,40 @@ fn export_selection(
             fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
             Ok(Some(path.to_string_lossy().to_string()))
         }
+        "eolink" => {
+            let v = export::to_eolink(&apis);
+            let content = serde_json::to_string_pretty(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 Eolink")
+                .set_file_name("eolink-project.json")
+                .add_filter("Eolink 项目", &["json"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "insomnia" => {
+            let v = export::to_insomnia(&apis);
+            let content = serde_yaml::to_string(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 Insomnia")
+                .set_file_name("insomnia-collection.yml")
+                .add_filter("Insomnia", &["yml", "yaml"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
         "docsify" => {
             let picked = app
                 .dialog()
@@ -3568,6 +3602,721 @@ fn yapi_api_to_api(dir: &Path, title: &str, api: &Value) -> Result<usize, String
         mock: MockConfig::default(),
         examples: vec![],
         responses,
+        doc_params: vec![],
+        deprecated: false,
+        protocol,
+    };
+    write_pretty(&file_path, &api_file)?;
+    Ok(1)
+}
+
+// ==================== Eolink 导入 ====================
+
+/// 导入 Eolink 导出文件（.json）
+#[tauri::command]
+fn import_eolink(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+) -> Result<Option<OpenApiImportResult>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("Eolink", &["json"])
+        .blocking_pick_file();
+    let Some(path) = picked else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let root = workspace_root(&state)?;
+    let result = import_eolink_file(&root, &path)?;
+    Ok(Some(result))
+}
+
+fn import_eolink_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, String> {
+    let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
+    let json: Value =
+        serde_json::from_str(&content).map_err(|e| format!("解析 Eolink 文件失败: {e}"))?;
+    let project = json.get("projectInfo").cloned().unwrap_or(Value::Null);
+    let project_name = project
+        .get("projectName")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Eolink 导入")
+        .to_string();
+    let folder = unique_path(root, &project_name, "");
+    fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
+    let src_name = file
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    // 环境 host 作为 base_url
+    let env_host = json
+        .get("environmentList")
+        .and_then(|v| v.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|e| e.get("envHost"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let base_url = if env_host.is_empty() {
+        None
+    } else {
+        Some(env_host)
+    };
+    let desc = project
+        .get("projectDesc")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    write_pretty(
+        &folder.join(INFO_FILE),
+        &InfoJson {
+            name: Some(project_name.clone()),
+            description: if desc.is_empty() {
+                format!("从 Eolink 导出文件导入（{src_name}）")
+            } else {
+                desc
+            },
+            base_url,
+            mock_port: None,
+            order: None,
+            collapsed: None,
+            deprecated: None,
+        },
+    )?;
+    let mut count = 0usize;
+    if let Some(groups) = json.get("apiGroupList").and_then(|v| v.as_array()) {
+        for g in groups {
+            count += eolink_group_to_apis(&folder, g)?;
+        }
+    }
+    Ok(OpenApiImportResult {
+        folder: folder.to_string_lossy().to_string(),
+        count,
+    })
+}
+
+/// Eolink 分组递归：本组建目录，apiList 写入本组，childGroupList 递归子目录
+fn eolink_group_to_apis(dir: &Path, group: &Value) -> Result<usize, String> {
+    let name = group
+        .get("groupName")
+        .and_then(|v| v.as_str())
+        .unwrap_or("未命名分组")
+        .to_string();
+    let sub_base = sanitize_filename(&name);
+    let sub_base = if sub_base.is_empty() {
+        "子分组".to_string()
+    } else {
+        sub_base
+    };
+    let sub_dir = dir.join(&sub_base);
+    if !sub_dir.is_dir() {
+        fs::create_dir_all(&sub_dir).map_err(|e| format!("创建分组失败: {e}"))?;
+        write_pretty(
+            &sub_dir.join(INFO_FILE),
+            &InfoJson {
+                name: Some(name.clone()),
+                description: String::new(),
+                base_url: None,
+                mock_port: None,
+                order: None,
+                collapsed: None,
+                deprecated: None,
+            },
+        )?;
+    }
+    let mut count = 0usize;
+    if let Some(apis) = group.get("apiList").and_then(|v| v.as_array()) {
+        for a in apis {
+            count += eolink_api_to_api(&sub_dir, a)?;
+        }
+    }
+    if let Some(children) = group.get("childGroupList").and_then(|v| v.as_array()) {
+        for c in children {
+            count += eolink_group_to_apis(&sub_dir, c)?;
+        }
+    }
+    Ok(count)
+}
+
+/// Eolink API 对象 → ApiFile
+fn eolink_api_to_api(dir: &Path, api: &Value) -> Result<usize, String> {
+    let method = api
+        .get("apiMethod")
+        .and_then(|v| v.as_str())
+        .unwrap_or("GET")
+        .to_uppercase();
+    let raw_uri = api
+        .get("apiUri")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    if raw_uri.is_empty() {
+        return Ok(0);
+    }
+    let protocol = match api.get("apiProtocol").and_then(|v| v.as_str()) {
+        Some(p) if p.eq_ignore_ascii_case("ws") || p.eq_ignore_ascii_case("websocket") => {
+            "websocket".to_string()
+        }
+        _ => "http".to_string(),
+    };
+    let (path, mut params) = if protocol == "websocket" {
+        (raw_uri.clone(), Vec::new())
+    } else {
+        extract_path(&raw_uri)
+    };
+    let info = api.get("requestInfo").cloned().unwrap_or(Value::Null);
+    // 请求头
+    let mut headers = Vec::new();
+    if let Some(hs) = info.get("requestHeaderList").and_then(|v| v.as_array()) {
+        for h in hs {
+            let key = h.get("key").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+            if key.is_empty() {
+                continue;
+            }
+            let value = h
+                .get("example")
+                .and_then(|v| v.as_str())
+                .or_else(|| h.get("value").and_then(|v| v.as_str()))
+                .unwrap_or("")
+                .to_string();
+            let desc = h.get("desc").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            headers.push(KeyValue {
+                key,
+                value,
+                enabled: true,
+                is_file: false,
+                description: desc,
+            });
+        }
+    }
+    // 查询参数
+    let mut query = Vec::new();
+    if let Some(qs) = info.get("requestQueryList").and_then(|v| v.as_array()) {
+        for q in qs {
+            let key = q.get("key").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+            if key.is_empty() {
+                continue;
+            }
+            let value = q
+                .get("example")
+                .and_then(|v| v.as_str())
+                .or_else(|| q.get("value").and_then(|v| v.as_str()))
+                .unwrap_or("")
+                .to_string();
+            let desc = q.get("desc").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            query.push(KeyValue {
+                key,
+                value,
+                enabled: true,
+                is_file: false,
+                description: desc,
+            });
+        }
+    }
+    // 路径参数（requestRestList）补充 value/desc
+    if let Some(rs) = info.get("requestRestList").and_then(|v| v.as_array()) {
+        for r in rs {
+            let key = r.get("key").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+            if key.is_empty() {
+                continue;
+            }
+            let value = r
+                .get("example")
+                .and_then(|v| v.as_str())
+                .or_else(|| r.get("value").and_then(|v| v.as_str()))
+                .unwrap_or("")
+                .to_string();
+            let desc = r.get("desc").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            if let Some(p) = params.iter_mut().find(|p| p.key == key) {
+                p.value = value;
+                p.description = desc;
+            } else {
+                params.push(KeyValue {
+                    key,
+                    value,
+                    enabled: true,
+                    is_file: false,
+                    description: desc,
+                });
+            }
+        }
+    }
+    // 请求体
+    let mut body = BodyData::default();
+    let body_type = info
+        .get("requestBodyType")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_lowercase();
+    match body_type.as_str() {
+        "json" => {
+            if let Some(list) = info.get("requestBodyJsonList").and_then(|v| v.as_array()) {
+                let v = eolink_json_list_to_value(list);
+                if v.as_object().map(|m| !m.is_empty()).unwrap_or(false) {
+                    body.mode = "json".into();
+                    body.raw = serde_json::to_string_pretty(&v).unwrap_or_default();
+                }
+            }
+        }
+        "x-www-form-urlencoded" | "form" => {
+            if let Some(fl) = info.get("requestBodyFormList").and_then(|v| v.as_array()) {
+                let mut form = Vec::new();
+                for f in fl {
+                    let key = f.get("key").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+                    if key.is_empty() {
+                        continue;
+                    }
+                    let value = f
+                        .get("example")
+                        .and_then(|v| v.as_str())
+                        .or_else(|| f.get("value").and_then(|v| v.as_str()))
+                        .unwrap_or("")
+                        .to_string();
+                    let desc = f.get("desc").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    let is_file = f
+                        .get("type")
+                        .and_then(|v| v.as_str())
+                        .map(|t| t.eq_ignore_ascii_case("file"))
+                        .unwrap_or(false);
+                    form.push(KeyValue {
+                        key,
+                        value,
+                        enabled: true,
+                        is_file,
+                        description: desc,
+                    });
+                }
+                if !form.is_empty() {
+                    body.mode = "form".into();
+                    body.form = form;
+                }
+            }
+        }
+        "raw" | "text" => {
+            if let Some(text) = info.get("requestBodyRaw").and_then(|v| v.as_str()) {
+                let trimmed = text.trim();
+                if !trimmed.is_empty() {
+                    body.mode = "raw".into();
+                    body.raw = trimmed.to_string();
+                }
+            }
+        }
+        _ => {}
+    }
+    // 响应示例
+    let mut responses = Vec::new();
+    if let Some(list) = api.get("responseInfoList").and_then(|v| v.as_array()) {
+        for r in list {
+            let status = r
+                .get("responseCode")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(200)
+                .min(u64::from(u16::MAX)) as u16;
+            let content_type = match r
+                .get("responseContentType")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+            {
+                s if s.eq_ignore_ascii_case("json") => "application/json".to_string(),
+                s if s.eq_ignore_ascii_case("xml") => "application/xml".to_string(),
+                s if s.eq_ignore_ascii_case("html") => "text/html".to_string(),
+                s if s.eq_ignore_ascii_case("text") => "text/plain".to_string(),
+                _ => "application/json".to_string(),
+            };
+            let mut rbody = String::new();
+            if let Some(rl) = r.get("responseBodyJsonList").and_then(|v| v.as_array()) {
+                let v = eolink_json_list_to_value(rl);
+                if v.as_object().map(|m| !m.is_empty()).unwrap_or(false) {
+                    rbody = serde_json::to_string_pretty(&v).unwrap_or_default();
+                }
+            } else if let Some(text) = r.get("responseBodyRaw").and_then(|v| v.as_str()) {
+                rbody = text.trim().to_string();
+            }
+            let rname = r
+                .get("responseName")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            if !rbody.is_empty() {
+                responses.push(ResponseItem {
+                    id: uuid::Uuid::new_v4().to_string(),
+                    name: if rname.is_empty() {
+                        format!("HTTP {status}")
+                    } else {
+                        rname
+                    },
+                    status,
+                    content_type,
+                    body: rbody,
+                });
+            }
+        }
+    }
+    let name = api
+        .get("apiName")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let name = if name.is_empty() {
+        format!("{} {}", method, path)
+    } else {
+        name
+    };
+    let mut desc = api
+        .get("apiDesc")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if let Some(note) = api.get("apiNote").and_then(|v| v.as_str()) {
+        if !note.trim().is_empty() {
+            if !desc.is_empty() {
+                desc.push('\n');
+            }
+            desc.push_str(note);
+        }
+    }
+    let file_base = sanitize_filename(&name);
+    let file_path = unique_path(dir, &file_base, ".json");
+    let api_file = ApiFile {
+        uuid: uuid::Uuid::new_v4().to_string(),
+        name: name.clone(),
+        method: method.clone(),
+        path: path.clone(),
+        url: path.clone(),
+        description: desc,
+        headers,
+        query,
+        params,
+        body,
+        mock: MockConfig::default(),
+        examples: vec![],
+        responses,
+        doc_params: vec![],
+        deprecated: false,
+        protocol,
+    };
+    write_pretty(&file_path, &api_file)?;
+    Ok(1)
+}
+
+/// Eolink JSON 字段列表（含嵌套 children）→ serde_json Value
+fn eolink_json_list_to_value(list: &[Value]) -> Value {
+    let mut map = serde_json::Map::new();
+    for item in list {
+        let key = item.get("key").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+        if key.is_empty() {
+            continue;
+        }
+        let kids = item.get("children").and_then(|v| v.as_array());
+        let value = if let Some(kids) = kids {
+            if kids.is_empty() {
+                Value::Null
+            } else {
+                eolink_json_list_to_value(kids)
+            }
+        } else {
+            match item.get("example") {
+                Some(v) => v.clone(),
+                None => match item.get("value") {
+                    Some(v) => v.clone(),
+                    None => Value::Null,
+                },
+            }
+        };
+        map.insert(key, value);
+    }
+    Value::Object(map)
+}
+
+// ==================== Insomnia 导入 ====================
+
+/// 导入 Insomnia 导出文件（.yml / .json）
+#[tauri::command]
+fn import_insomnia(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+) -> Result<Option<OpenApiImportResult>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("Insomnia", &["yml", "yaml", "json"])
+        .blocking_pick_file();
+    let Some(path) = picked else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let root = workspace_root(&state)?;
+    let result = import_insomnia_file(&root, &path)?;
+    Ok(Some(result))
+}
+
+fn import_insomnia_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, String> {
+    let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
+    let doc: Value = serde_yaml::from_str(&content).map_err(|e| format!("解析 Insomnia 文件失败: {e}"))?;
+    let coll_name = doc
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Insomnia 导入")
+        .to_string();
+    let folder = unique_path(root, &coll_name, "");
+    fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
+    // 集合级环境变量 baseUrl
+    let base_url = doc
+        .get("environment")
+        .and_then(|e| e.get("baseUrl"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let src_name = file
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    write_pretty(
+        &folder.join(INFO_FILE),
+        &InfoJson {
+            name: Some(coll_name.clone()),
+            description: format!("从 Insomnia 导出文件导入（{src_name}）"),
+            base_url,
+            mock_port: None,
+            order: None,
+            collapsed: None,
+            deprecated: None,
+        },
+    )?;
+    let mut count = 0usize;
+    let coll_env = doc
+        .get("environment")
+        .cloned()
+        .unwrap_or(Value::Null);
+    if let Some(children) = doc.get("children").and_then(|v| v.as_array()) {
+        for c in children {
+            count += insomnia_node_to_apis(&folder, c, &coll_env)?;
+        }
+    }
+    Ok(OpenApiImportResult {
+        folder: folder.to_string_lossy().to_string(),
+        count,
+    })
+}
+
+/// Insomnia 节点递归：有 url/method 的是请求，否则是文件夹
+fn insomnia_node_to_apis(dir: &Path, node: &Value, coll_env: &Value) -> Result<usize, String> {
+    let name = node
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("未命名")
+        .to_string();
+    let url = node
+        .get("url")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let method = node
+        .get("method")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if !url.is_empty() && !method.is_empty() {
+        return insomnia_request_to_api(dir, &name, node, &url, &method, coll_env);
+    }
+    let kids = node.get("children").and_then(|v| v.as_array());
+    let Some(kids) = kids else {
+        return Ok(0);
+    };
+    if kids.is_empty() {
+        return Ok(0); // 空文件夹不创建
+    }
+    let sub_base = sanitize_filename(&name);
+    let sub_base = if sub_base.is_empty() {
+        "子文件夹".to_string()
+    } else {
+        sub_base
+    };
+    let sub_dir = dir.join(&sub_base);
+    if !sub_dir.is_dir() {
+        fs::create_dir_all(&sub_dir).map_err(|e| format!("创建分组失败: {e}"))?;
+        write_pretty(
+            &sub_dir.join(INFO_FILE),
+            &InfoJson {
+                name: Some(name.clone()),
+                description: String::new(),
+                base_url: None,
+                mock_port: None,
+                order: None,
+                collapsed: None,
+                deprecated: None,
+            },
+        )?;
+    }
+    let mut count = 0usize;
+    for c in kids {
+        count += insomnia_node_to_apis(&sub_dir, c, coll_env)?;
+    }
+    Ok(count)
+}
+
+/// Insomnia 请求对象 → ApiFile
+fn insomnia_request_to_api(
+    dir: &Path,
+    name: &str,
+    node: &Value,
+    url: &str,
+    method: &str,
+    coll_env: &Value,
+) -> Result<usize, String> {
+    let protocol = if url.starts_with("ws://") || url.starts_with("wss://") {
+        "websocket".to_string()
+    } else {
+        "http".to_string()
+    };
+    // {{baseUrl}} 等模板变量替换（节点级环境优先，集合级兜底）
+    let mut env_map: Vec<(String, String)> = Vec::new();
+    let mut collect_env = |env: &Value| {
+        if let Some(m) = env.as_object() {
+            for (k, v) in m {
+                if let Some(s) = v.as_str() {
+                    env_map.push((k.clone(), s.to_string()));
+                }
+            }
+        }
+    };
+    if let Some(env) = node.get("environment") {
+        collect_env(env);
+    }
+    collect_env(coll_env);
+    let replace_vars = |s: &str| -> String {
+        let mut out = s.to_string();
+        for (k, v) in &env_map {
+            out = out.replace(&format!("{{{{{k}}}}}"), v);
+        }
+        out
+    };
+    let url2 = replace_vars(url);
+    let (path, params) = if protocol == "websocket" {
+        (url2.clone(), Vec::new())
+    } else {
+        extract_path(&url2)
+    };
+    // 请求头
+    let mut headers = Vec::new();
+    if let Some(hs) = node.get("headers").and_then(|v| v.as_array()) {
+        for h in hs {
+            let key = h.get("name").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+            if key.is_empty() {
+                continue;
+            }
+            let value = h.get("value").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let desc = h.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            headers.push(KeyValue {
+                key,
+                value,
+                enabled: true,
+                is_file: false,
+                description: desc,
+            });
+        }
+    }
+    // 查询参数
+    let mut query = Vec::new();
+    if let Some(ps) = node.get("parameters").and_then(|v| v.as_array()) {
+        for p in ps {
+            let key = p.get("name").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+            if key.is_empty() {
+                continue;
+            }
+            let value = p.get("value").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let desc = p.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            query.push(KeyValue {
+                key,
+                value,
+                enabled: true,
+                is_file: false,
+                description: desc,
+            });
+        }
+    }
+    // 请求体
+    let mut body = BodyData::default();
+    if let Some(b) = node.get("body") {
+        let mime = b.get("mimeType").and_then(|v| v.as_str()).unwrap_or("").to_lowercase();
+        let text = b.get("text").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+        if mime.contains("json") && !text.is_empty() {
+            body.mode = "json".into();
+            body.raw = text;
+        } else if (mime.contains("form") || mime.contains("urlencoded")) && !text.is_empty() {
+            // x-www-form-urlencoded → 表单字段
+            let mut form = Vec::new();
+            for pair in text.split('&') {
+                let mut it = pair.splitn(2, '=');
+                let key = it.next().unwrap_or("").trim().to_string();
+                if key.is_empty() {
+                    continue;
+                }
+                let value = it.next().unwrap_or("").to_string();
+                form.push(KeyValue {
+                    key,
+                    value,
+                    enabled: true,
+                    is_file: false,
+                    description: String::new(),
+                });
+            }
+            if !form.is_empty() {
+                body.mode = "form".into();
+                body.form = form;
+            }
+        } else if !text.is_empty() {
+            body.mode = "raw".into();
+            body.raw = text;
+        }
+    }
+    // 鉴权：bearer → Authorization 头
+    if let Some(auth) = node.get("authentication") {
+        let atype = auth.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        if atype == "bearer" {
+            if let Some(token) = auth.get("token").and_then(|v| v.as_str()) {
+                let token = replace_vars(token);
+                if !headers.iter().any(|h| h.key.eq_ignore_ascii_case("authorization")) {
+                    headers.push(KeyValue {
+                        key: "Authorization".into(),
+                        value: format!("Bearer {token}"),
+                        enabled: true,
+                        is_file: false,
+                        description: String::new(),
+                    });
+                }
+            }
+        }
+    }
+    let api_name = if name.trim().is_empty() {
+        format!("{} {}", method.to_uppercase(), path)
+    } else {
+        name.trim().to_string()
+    };
+    let file_base = sanitize_filename(&api_name);
+    let file_path = unique_path(dir, &file_base, ".json");
+    let api_file = ApiFile {
+        uuid: uuid::Uuid::new_v4().to_string(),
+        name: api_name.clone(),
+        method: method.to_uppercase(),
+        path: path.clone(),
+        url: path.clone(),
+        description: node
+            .get("description")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        headers,
+        query,
+        params,
+        body,
+        mock: MockConfig::default(),
+        examples: vec![],
+        responses: vec![],
         doc_params: vec![],
         deprecated: false,
         protocol,
@@ -5886,6 +6635,8 @@ pub fn run() {
             import_wadl,
             import_har,
             import_yapi,
+            import_eolink,
+            import_insomnia,
             render_api_markdown,
             render_group_markdown,
             export_api_markdown,
@@ -7232,6 +7983,183 @@ let v = export::to_yapi(&apis);
         let folder = PathBuf::from(&re.folder);
         assert!(folder.join("用户模块").join("获取用户.json").exists());
         assert!(folder.join("订单列表.json").exists());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_import_eolink_file() {
+        let root = std::env::temp_dir().join(format!("apimgr-eolink-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let file = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../tests/data/eolink.json"
+        ));
+        let result = import_eolink_file(&root, &file).expect("eolink 导入失败");
+        assert_eq!(result.count, 1, "接口数应为 1，实际 {}", result.count);
+        let folder = PathBuf::from(&result.folder);
+        assert_eq!(folder.file_name().unwrap().to_string_lossy(), "订单管理服务");
+        // 顶层组「订单模块」→ 子组「订单操作」→ 创建订单.json
+        let om = folder.join("订单模块");
+        assert!(om.is_dir(), "订单模块分组应存在");
+        let op = om.join("订单操作");
+        assert!(op.is_dir(), "订单操作分组应存在");
+        let api: ApiFile = serde_json::from_str(
+            &fs::read_to_string(op.join("创建订单.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(api.method, "POST");
+        assert_eq!(api.path, "/order/{orderType}/create");
+        // 路径参数 orderType（requestRestList 补了 example）
+        assert!(api.params.iter().any(|p| p.key == "orderType" && p.value == "normal"));
+        // 查询参数 channel
+        assert!(api.query.iter().any(|q| q.key == "channel" && q.value == "app"));
+        // 请求头 Authorization
+        assert!(api.headers.iter().any(|h| h.key == "Authorization"));
+        // json body 嵌套结构
+        assert_eq!(api.body.mode, "json");
+        assert!(api.body.raw.contains("userId"));
+        assert!(api.body.raw.contains("receiverName"));
+        // 描述合并 apiDesc + apiNote
+        assert!(api.description.contains("批量下单"));
+        assert!(api.description.contains("鉴权token"));
+        // 2 个响应示例（200/400）
+        assert_eq!(api.responses.len(), 2);
+        assert!(api.responses.iter().any(|r| r.status == 200 && r.body.contains("orderId")));
+        assert!(api.responses.iter().any(|r| r.status == 400));
+        // INFO_FILE base_url 来自环境 host
+        let info: InfoJson =
+            serde_json::from_str(&fs::read_to_string(folder.join(INFO_FILE)).unwrap()).unwrap();
+        assert!(info.base_url.as_deref().unwrap_or("").contains("api.local"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_import_insomnia_file() {
+        let root = std::env::temp_dir().join(format!("apimgr-ins-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let file = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../tests/data/Insomnia.yml"
+        ));
+        let result = import_insomnia_file(&root, &file).expect("insomnia 导入失败");
+        assert_eq!(result.count, 1, "接口数应为 1，实际 {}", result.count);
+        let folder = PathBuf::from(&result.folder);
+        assert_eq!(folder.file_name().unwrap().to_string_lossy(), "Project API");
+        let um = folder.join("用户模块");
+        assert!(um.is_dir(), "用户模块分组应存在");
+        let api: ApiFile = serde_json::from_str(
+            &fs::read_to_string(um.join("创建用户 POST.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(api.method, "POST");
+        // {{baseUrl}} 由集合级 environment 替换
+        assert_eq!(api.path, "/user");
+        assert_eq!(api.body.mode, "json");
+        assert!(api.body.raw.contains("test"));
+        // bearer token → Authorization 头
+        assert!(api.headers.iter().any(|h| {
+            h.key.eq_ignore_ascii_case("authorization") && h.value.contains("demo-token")
+        }));
+        // INFO_FILE base_url
+        let info: InfoJson =
+            serde_json::from_str(&fs::read_to_string(folder.join(INFO_FILE)).unwrap()).unwrap();
+        assert_eq!(info.base_url.as_deref(), Some("https://api.example.com"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_export_eolink_insomnia_roundtrip() {
+        let root = std::env::temp_dir().join(format!("apimgr-ei-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let make = |name: &str, method: &str, path: &str| ApiFile {
+            uuid: uuid::Uuid::new_v4().to_string(),
+            name: name.into(),
+            method: method.into(),
+            path: path.into(),
+            url: path.into(),
+            description: format!("{name} 描述"),
+            headers: vec![KeyValue {
+                key: "Authorization".into(),
+                value: "Bearer tok123".into(),
+                enabled: true,
+                is_file: false,
+                description: "鉴权".into(),
+            }],
+            query: vec![KeyValue {
+                key: "page".into(),
+                value: "1".into(),
+                enabled: true,
+                is_file: false,
+                description: String::new(),
+            }],
+            params: vec![KeyValue {
+                key: "orderType".into(),
+                value: "normal".into(),
+                enabled: true,
+                is_file: false,
+                description: String::new(),
+            }],
+            body: BodyData {
+                mode: "json".into(),
+                raw: "{\"userId\":1,\"addr\":{\"city\":\"赣州\"}}".into(),
+                form: vec![],
+                binary_path: String::new(),
+            },
+            mock: MockConfig::default(),
+            examples: vec![],
+            responses: vec![ResponseItem {
+                id: "r1".into(),
+                name: "HTTP 200".into(),
+                status: 200,
+                content_type: "application/json".into(),
+                body: "{\"code\":0}".into(),
+            }],
+            doc_params: vec![],
+            deprecated: false,
+            protocol: "http".into(),
+        };
+        let apis: Vec<(Vec<(String, bool)>, ApiFile)> = vec![(
+            vec![("订单模块".to_string(), true), ("订单操作".to_string(), true)],
+            make("创建订单", "POST", "/order/{orderType}/create"),
+        )];
+        // Eolink 导出 → 再导入
+        let ev = export::to_eolink(&apis);
+        assert_eq!(ev["apiGroupList"][0]["groupName"], "订单模块");
+        let eapi = &ev["apiGroupList"][0]["childGroupList"][0]["apiList"][0];
+        assert_eq!(eapi["apiMethod"], "POST");
+        assert_eq!(eapi["apiUri"], "/order/{orderType}/create");
+        assert_eq!(eapi["requestInfo"]["requestRestList"][0]["key"], "orderType");
+        assert_eq!(eapi["requestInfo"]["requestQueryList"][0]["key"], "page");
+        // serde_json Map 键按字母序，用 find 断言
+        let bl = eapi["requestInfo"]["requestBodyJsonList"]
+            .as_array()
+            .unwrap();
+        assert!(bl.iter().any(|x| x["key"] == "addr"));
+        let addr = bl.iter().find(|x| x["key"] == "addr").unwrap();
+        assert_eq!(addr["children"][0]["key"], "city");
+        assert!(bl.iter().any(|x| x["key"] == "userId"));
+        assert_eq!(eapi["responseInfoList"][0]["responseCode"], 200);
+        let etmp = root.join("eolink-out.json");
+        fs::write(&etmp, serde_json::to_string_pretty(&ev).unwrap()).unwrap();
+        let re = import_eolink_file(&root, &etmp).expect("eolink round-trip 失败");
+        assert_eq!(re.count, 1, "eolink round-trip 接口数应为 1");
+        // Insomnia 导出 → 再导入
+        let iv = export::to_insomnia(&apis);
+        assert_eq!(iv["type"], "collection.insomnia.rest/5.0");
+        assert_eq!(iv["children"][0]["name"], "订单模块");
+        let req = &iv["children"][0]["children"][0]["children"][0];
+        assert_eq!(req["method"], "POST");
+        assert!(req["url"].as_str().unwrap().contains("baseUrl"));
+        assert_eq!(req["authentication"]["type"], "bearer");
+        assert_eq!(req["authentication"]["token"], "tok123");
+        assert_eq!(req["body"]["mimeType"], "application/json");
+        let itmp = root.join("insomnia-out.yml");
+        fs::write(&itmp, serde_yaml::to_string(&iv).unwrap()).unwrap();
+        let ri = import_insomnia_file(&root, &itmp).expect("insomnia round-trip 失败");
+        assert_eq!(ri.count, 1, "insomnia round-trip 接口数应为 1");
         let _ = fs::remove_dir_all(&root);
     }
 

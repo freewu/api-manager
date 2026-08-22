@@ -212,7 +212,9 @@ export type ExportFormat =
   | "apipost"
   | "raml"
   | "wadl"
-  | "yapi";
+  | "yapi"
+  | "eolink"
+  | "insomnia";
 
 /** 主页「导入」菜单支持的格式 */
 export type ImportFormat =
@@ -224,7 +226,9 @@ export type ImportFormat =
   | "raml"
   | "wadl"
   | "har"
-  | "yapi";
+  | "yapi"
+  | "eolink"
+  | "insomnia";
 
 /** 导入格式中必选（不可关闭）的类型 */
 export const REQUIRED_IMPORT_FORMATS: ImportFormat[] = ["postman", "openapi"];
@@ -285,6 +289,8 @@ export const defaultSettings = (): AppSettings => ({
     wadl: true,
     har: true,
     yapi: true,
+    eolink: true,
+    insomnia: true,
   },
   exportTypes: {
     postman: true,
@@ -297,6 +303,8 @@ export const defaultSettings = (): AppSettings => ({
     raml: true,
     wadl: true,
     yapi: true,
+    eolink: true,
+    insomnia: true,
   },
   htmlNav: "right",
   language: "zh",

@@ -49,6 +49,8 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
           { value: "raml", label: t("export.raml") },
           { value: "wadl", label: t("export.wadl") },
           { value: "yapi", label: t("export.yapi") },
+          { value: "eolink", label: t("export.eolink") },
+          { value: "insomnia", label: t("export.insomnia") },
           { value: "docsify", label: t("export.docsify") },
           { value: "markdown", label: t("export.markdown") },
           { value: "html", label: t("export.html") },

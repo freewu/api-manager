@@ -19,6 +19,8 @@ import {
   importWadl,
   importHar,
   importYapi,
+  importEolink,
+  importInsomnia,
   importMarkdown,
   renderApiMarkdown,
   renderGroupMarkdown,
@@ -581,6 +583,30 @@ export default function App() {
       if (!result) return; // 用户取消
       await loadAll(workspace!);
       showToast(t("toast.importedYapi", { count: result.count }));
+      void reloadMockIfRunning();
+    } catch (e) {
+      showToast(t("toast.importFailed", { err: String(e) }));
+    }
+  };
+
+  const handleImportEolink = async () => {
+    try {
+      const result = await importEolink();
+      if (!result) return; // 用户取消
+      await loadAll(workspace!);
+      showToast(t("toast.importedEolink", { count: result.count }));
+      void reloadMockIfRunning();
+    } catch (e) {
+      showToast(t("toast.importFailed", { err: String(e) }));
+    }
+  };
+
+  const handleImportInsomnia = async () => {
+    try {
+      const result = await importInsomnia();
+      if (!result) return; // 用户取消
+      await loadAll(workspace!);
+      showToast(t("toast.importedInsomnia", { count: result.count }));
       void reloadMockIfRunning();
     } catch (e) {
       showToast(t("toast.importFailed", { err: String(e) }));
@@ -1494,6 +1520,8 @@ export default function App() {
           onImportWadl={() => void handleImportWadl()}
           onImportHar={() => void handleImportHar()}
           onImportYapi={() => void handleImportYapi()}
+          onImportEolink={() => void handleImportEolink()}
+          onImportInsomnia={() => void handleImportInsomnia()}
           settings={settings}
           onViewMarkdown={(node) => void handleViewMarkdown(node)}
           onExport={() => openExport()}

@@ -112,6 +112,16 @@ export function importYapi(): Promise<OpenApiImportResult | null> {
   return invoke<OpenApiImportResult | null>("import_yapi");
 }
 
+/** 导入 Eolink 导出文件（弹窗选 .json） */
+export function importEolink(): Promise<OpenApiImportResult | null> {
+  return invoke<OpenApiImportResult | null>("import_eolink");
+}
+
+/** 导入 Insomnia 导出文件（弹窗选 .yml/.json） */
+export function importInsomnia(): Promise<OpenApiImportResult | null> {
+  return invoke<OpenApiImportResult | null>("import_insomnia");
+}
+
 export interface MarkdownDoc {
   name: string;
   md: string;
