@@ -1833,7 +1833,7 @@ fn insomnia_folder_value(n: &PNode) -> Value {
 /// 接口 → Insomnia 请求节点
 fn insomnia_request_value(api: &ApiFile) -> Value {
     let is_ws = api.protocol == "websocket";
-    let mut url = if is_ws {
+    let url = if is_ws {
         api.path.clone()
     } else {
         format!("{{{{baseUrl}}}}{}", api.path)
@@ -2128,7 +2128,7 @@ pub fn to_apidoc(apis: &[(Vec<(String, bool)>, ApiFile)]) -> (Value, Value) {
         node.apis.push(api);
     }
     // 顶层分组列表（保持顺序）
-    let mut top_groups: Vec<&PNode> = root.children.values().collect();
+    let top_groups: Vec<&PNode> = root.children.values().collect();
     let root_name = top_groups.first().map(|n| n.name.as_str()).unwrap_or("API 文档");
     let mut groups: Vec<Value> = Vec::new();
     let mut group_order: Vec<String> = Vec::new();

@@ -3831,7 +3831,7 @@ fn apidog_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
     }
     let is_ws = raw_url.starts_with("ws://") || raw_url.starts_with("wss://");
     let protocol = if is_ws { "websocket".to_string() } else { "http".to_string() };
-    let (path, mut params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
+    let (path, params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
     let name = str_field(a, "name");
     let name = if name.is_empty() { format!("{method} {path}") } else { name };
     let description = str_field(a, "description");
@@ -4023,7 +4023,7 @@ fn bruno_req_to_api(dir: &Path, r: &Value, vars: &HashMap<String, String>) -> Re
     }
     let is_ws = raw_url.starts_with("ws://") || raw_url.starts_with("wss://");
     let protocol = if is_ws { "websocket".to_string() } else { "http".to_string() };
-    let (path, mut params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
+    let (path, params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
     let name = str_field(&info, "name");
     let name = if name.is_empty() { format!("{method} {path}") } else { name };
     // headers：object {k: v}
@@ -4173,7 +4173,7 @@ fn apizza_api_to_api(dir: &Path, a: &Value, vars: &HashMap<String, String>) -> R
     }
     let is_ws = raw_url.starts_with("ws://") || raw_url.starts_with("wss://");
     let protocol = if is_ws { "websocket".to_string() } else { "http".to_string() };
-    let (path, mut params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
+    let (path, params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
     let name = str_field(a, "apiName");
     let name = if name.is_empty() { format!("{method} {path}") } else { name };
     let mut headers = Vec::new();
@@ -4383,42 +4383,43 @@ fn import_nei_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, Str
     }
     // groups：parentId → 目录
     let mut group_dirs: HashMap<i64, PathBuf> = HashMap::new();
-    let mut groups: Vec<&Value> = Vec::new();
-    if let Some(gs) = v.get("groups").and_then(|x| x.as_array()) {
-        groups = gs.iter().collect();
-        for g in &groups {
-            let parent = g.get("parentId").and_then(|x| x.as_i64()).unwrap_or(0);
-            if parent == 0 {
-                let gname = str_field(g, "name");
-                if !gname.is_empty() {
-                    let sub = mk_group_dir(&folder, &gname, &str_field(g, "description"))?;
-                    if let Some(id) = g.get("id").and_then(|x| x.as_i64()) {
-                        group_dirs.insert(id, sub);
-                    }
+    let groups: Vec<&Value> = v
+        .get("groups")
+        .and_then(|x| x.as_array())
+        .map(|gs| gs.iter().collect())
+        .unwrap_or_default();
+    for g in &groups {
+        let parent = g.get("parentId").and_then(|x| x.as_i64()).unwrap_or(0);
+        if parent == 0 {
+            let gname = str_field(g, "name");
+            if !gname.is_empty() {
+                let sub = mk_group_dir(&folder, &gname, &str_field(g, "description"))?;
+                if let Some(id) = g.get("id").and_then(|x| x.as_i64()) {
+                    group_dirs.insert(id, sub);
                 }
             }
         }
-        loop {
-            let mut added = false;
-            for g in &groups {
-                let id = g.get("id").and_then(|x| x.as_i64());
-                let parent = g.get("parentId").and_then(|x| x.as_i64()).unwrap_or(0);
-                let Some(id) = id else { continue };
-                if group_dirs.contains_key(&id) {
-                    continue;
-                }
-                if let Some(pdir) = group_dirs.get(&parent) {
-                    let gname = str_field(g, "name");
-                    if !gname.is_empty() {
-                        let sub = mk_group_dir(pdir, &gname, &str_field(g, "description"))?;
-                        group_dirs.insert(id, sub);
-                        added = true;
-                    }
+    }
+    loop {
+        let mut added = false;
+        for g in &groups {
+            let id = g.get("id").and_then(|x| x.as_i64());
+            let parent = g.get("parentId").and_then(|x| x.as_i64()).unwrap_or(0);
+            let Some(id) = id else { continue };
+            if group_dirs.contains_key(&id) {
+                continue;
+            }
+            if let Some(pdir) = group_dirs.get(&parent) {
+                let gname = str_field(g, "name");
+                if !gname.is_empty() {
+                    let sub = mk_group_dir(pdir, &gname, &str_field(g, "description"))?;
+                    group_dirs.insert(id, sub);
+                    added = true;
                 }
             }
-            if !added {
-                break;
-            }
+        }
+        if !added {
+            break;
         }
     }
     let mut count = 0usize;
@@ -4630,7 +4631,7 @@ fn doclever_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
     }
     let is_ws = raw_url.starts_with("ws://") || raw_url.starts_with("wss://");
     let protocol = if is_ws { "websocket".to_string() } else { "http".to_string() };
-    let (path, mut params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
+    let (path, params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
     let name = str_field(a, "name");
     let name = if name.is_empty() { format!("{method} {path}") } else { name };
     let mut headers = Vec::new();
@@ -4755,7 +4756,7 @@ fn io_docs_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
     if raw_url.is_empty() {
         return Ok(0);
     }
-    let (path, mut params) = extract_path(&raw_url);
+    let (path, params) = extract_path(&raw_url);
     let name = str_field(a, "name");
     let name = if name.is_empty() { format!("{method} {path}") } else { name };
     let mut headers = Vec::new();
@@ -4897,7 +4898,7 @@ fn easydoc_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
     }
     let is_ws = raw_url.starts_with("ws://") || raw_url.starts_with("wss://");
     let protocol = if is_ws { "websocket".to_string() } else { "http".to_string() };
-    let (path, mut params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
+    let (path, params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
     let name = str_field(a, "title");
     let name = if name.is_empty() { format!("{method} {path}") } else { name };
     let mut headers = Vec::new();
@@ -5036,7 +5037,7 @@ fn docway_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
     }
     let is_ws = raw_url.starts_with("ws://") || raw_url.starts_with("wss://");
     let protocol = if is_ws { "websocket".to_string() } else { "http".to_string() };
-    let (path, mut params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
+    let (path, params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
     let name = str_field(a, "name");
     let name = if name.is_empty() { format!("{method} {path}") } else { name };
     let mut headers = Vec::new();
@@ -5163,7 +5164,7 @@ fn hoppscotch_req_to_api(dir: &Path, r: &Value) -> Result<usize, String> {
     }
     let is_ws = raw_url.starts_with("ws://") || raw_url.starts_with("wss://");
     let protocol = if is_ws { "websocket".to_string() } else { "http".to_string() };
-    let (path, mut params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
+    let (path, params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
     let name = str_field(r, "name");
     let name = if name.is_empty() { format!("{method} {path}") } else { name };
     let mut headers = Vec::new();
@@ -5299,7 +5300,7 @@ fn metersphere_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
     }
     let is_ws = raw_url.starts_with("ws://") || raw_url.starts_with("wss://");
     let protocol = if is_ws { "websocket".to_string() } else { "http".to_string() };
-    let (path, mut params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
+    let (path, params) = if is_ws { (raw_url.clone(), Vec::new()) } else { extract_path(&raw_url) };
     let name = str_field(a, "name");
     let name = if name.is_empty() { format!("{method} {path}") } else { name };
     let mut headers = Vec::new();
@@ -5384,8 +5385,6 @@ fn rap2_build_value(
 ) -> Value {
     let mut m = serde_json::Map::new();
     let mut arr_items: Vec<Value> = Vec::new();
-    let mut has_arr = false;
-    let mut has_obj = false;
     for p in props {
         let pid = p.get("parentId").and_then(|x| x.as_i64()).unwrap_or(-1);
         if pid != parent_id {
@@ -5399,14 +5398,12 @@ fn rap2_build_value(
         let val = rap2_prop_value(p);
         let lower = ty.to_ascii_lowercase();
         if lower.contains("object") {
-            has_obj = true;
             let child = rap2_build_value(props, p.get("id").and_then(|x| x.as_i64()).unwrap_or(-1), false, depth + 1);
             m.insert(name.clone(), if child.is_object() && child.as_object().map(|c| c.is_empty()).unwrap_or(true) && !val.is_null() { val } else { child });
         } else if lower.contains("array") {
-            has_arr = true;
             // 数组元素：寻找该数组下的 Object 子属性
             let elem_id = p.get("id").and_then(|x| x.as_i64()).unwrap_or(-1);
-            let mut elem_obj = rap2_build_value(props, elem_id, false, depth + 1);
+            let elem_obj = rap2_build_value(props, elem_id, false, depth + 1);
             if elem_obj.as_object().map(|c| c.is_empty()).unwrap_or(true) {
                 arr_items.push(Value::String(String::new()));
             } else {
@@ -5470,9 +5467,26 @@ fn rap2_interface_to_api(it: &Value) -> ApiFile {
     let raw_url = str_field(it, "url");
     let method = str_field(it, "method").to_uppercase();
     let mut path = raw_url.clone();
-    let mut query_txt = String::new();
+    let mut url_query: Vec<KeyValue> = Vec::new();
     if let Some(qi) = path.find('?') {
-        query_txt = path[qi + 1..].to_string();
+        for pair in path[qi + 1..].split('&') {
+            if pair.is_empty() {
+                continue;
+            }
+            let (k, v) = match pair.split_once('=') {
+                Some((a, b)) => (a, b),
+                None => (pair, ""),
+            };
+            if !k.is_empty() {
+                url_query.push(KeyValue {
+                    key: k.to_string(),
+                    value: v.to_string(),
+                    enabled: true,
+                    is_file: false,
+                    description: String::new(),
+                });
+            }
+        }
         path = path[..qi].to_string();
     }
     let props: Vec<Value> = it
@@ -5481,7 +5495,7 @@ fn rap2_interface_to_api(it: &Value) -> ApiFile {
         .cloned()
         .unwrap_or_default();
     let mut headers: Vec<KeyValue> = Vec::new();
-    let mut query: Vec<KeyValue> = Vec::new();
+    let mut query: Vec<KeyValue> = url_query;
     let mut params: Vec<KeyValue> = Vec::new();
     let mut body_parts: serde_json::Map<String, Value> = serde_json::Map::new();
     let mut response_objs: serde_json::Map<String, Value> = serde_json::Map::new();
@@ -5849,7 +5863,7 @@ fn apidoc_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
     }
     let is_ws = raw_url.starts_with("ws://") || raw_url.starts_with("wss://");
     let protocol = if is_ws { "websocket".to_string() } else { "http".to_string() };
-    let (path, mut params) = if is_ws {
+    let (path, params) = if is_ws {
         (raw_url.clone(), Vec::new())
     } else {
         extract_path(&raw_url)
@@ -6352,7 +6366,7 @@ fn jmeter_sampler_to_api(
     } else {
         "http".to_string()
     };
-    let (clean_path, mut params) = if is_ws {
+    let (clean_path, params) = if is_ws {
         (path.clone(), Vec::new())
     } else {
         extract_path(&path)
