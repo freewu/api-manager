@@ -64,6 +64,8 @@ import { AppToolbar } from "./components/AppToolbar";
 import { Landing } from "./components/Landing";
 import { RightPane } from "./components/RightPane";
 import { AppView, Sidebar } from "./components/Sidebar";
+import { ApiDocModal } from "./components/ApiDocModal";
+import { buildApiDocComment } from "./utils/apidoc";
 import { useHistory } from "./hooks/useHistory";
 import { setLang, useT } from "./i18n";
 
@@ -140,6 +142,7 @@ export default function App() {
   const [emptyMenu, setEmptyMenu] = useState<{ x: number; y: number } | null>(null);
   /** 接口 Markdown 文档预览弹窗 */
   const [mdView, setMdView] = useState<{ node: TreeNode; doc: MarkdownDoc } | null>(null);
+  const [apiDocView, setApiDocView] = useState<{ node: TreeNode; text: string } | null>(null);
   /** 导出弹窗：preselect 为右键节点预选路径 */
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -634,6 +637,17 @@ export default function App() {
           ? await renderGroupMarkdown(node.path)
           : await renderApiMarkdown(node.path);
       setMdView({ node, doc });
+    } catch (e) {
+      showToast(t("toast.markdownFailed", { err: String(e) }));
+    }
+  };
+
+  /** 查看接口 apiDoc 注释（可一键复制） */
+  const handleViewApiDoc = async (node: TreeNode) => {
+    try {
+      const api = await readApi(node.path);
+      const groupPath = node.path.split(/[\\/]/).slice(0, -1).join("/");
+      setApiDocView({ node, text: buildApiDocComment(api, groupPath) });
     } catch (e) {
       showToast(t("toast.markdownFailed", { err: String(e) }));
     }
@@ -1538,6 +1552,7 @@ export default function App() {
           onImportJmeter={() => void handleImportJmeter()}
           settings={settings}
           onViewMarkdown={(node) => void handleViewMarkdown(node)}
+          onViewApiDoc={(node) => void handleViewApiDoc(node)}
           onExport={() => openExport()}
           onExportNode={(node) => openExport(node)}
           vcs={null} // 同步远程功能暂时隐藏（后端命令保留，恢复时改回 vcs && settings.syncRemote ? vcs : null）
@@ -1683,6 +1698,14 @@ export default function App() {
         onDoSaveInfo={() => void doSaveInfo()}
         onCloseDemoModal={(create) => void closeDemoModal(create)}
       />
+
+      {apiDocView && (
+        <ApiDocModal
+          name={apiDocView.node.name}
+          text={apiDocView.text}
+          onClose={() => setApiDocView(null)}
+        />
+      )}
     </div>
   );
 }

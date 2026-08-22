@@ -28,6 +28,7 @@ interface Props {
   onVersions: (node: TreeNode) => void;
   onStats?: (node: TreeNode) => void;
   onViewMarkdown?: (node: TreeNode) => void;
+  onViewApiDoc?: (node: TreeNode) => void;
   onOpenSettings?: () => void;
   onImportPostman?: () => void;
   onImportOpenApi?: () => void;
@@ -123,6 +124,7 @@ function NodeRow({
   onVersions,
   onStats,
   onViewMarkdown,
+  onViewApiDoc,
   enableVersion,
   onContextMenu,
   filter,
@@ -152,6 +154,7 @@ function NodeRow({
   onVersions: (node: TreeNode) => void;
   onStats?: (node: TreeNode) => void;
   onViewMarkdown?: (node: TreeNode) => void;
+  onViewApiDoc?: (node: TreeNode) => void;
   enableVersion: boolean;
   tree: null;
   onContextMenu: (e: React.MouseEvent, node: TreeNode) => void;
@@ -405,6 +408,7 @@ function NodeRow({
               onVersions={onVersions}
               onStats={onStats}
               onViewMarkdown={onViewMarkdown}
+              onViewApiDoc={onViewApiDoc}
               enableVersion={enableVersion}
               onContextMenu={onContextMenu}
               filter={filter}
@@ -439,7 +443,7 @@ function NodeRow({
 
 export function Sidebar(props: Props) {
   const t = useT();
-  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
+  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
   const [importMenu, setImportMenu] = useState(false);
   const [filter, setFilter] = useState("");
   /** 高级搜索：是否展开过滤面板 */
@@ -1042,6 +1046,16 @@ export function Sidebar(props: Props) {
                   }}
                 >
                   📝 {t("sidebar.viewMarkdown")}
+                </button>
+              )}
+              {onViewApiDoc && (
+                <button
+                  onClick={() => {
+                    onViewApiDoc(menu.node);
+                    setMenu(null);
+                  }}
+                >
+                  📄 {t("sidebar.viewApiDoc")}
                 </button>
               )}
               <button

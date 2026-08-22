@@ -107,3 +107,29 @@
   line-height: 1.6;
   color: var(--text-dim);
 }
+
+/* apiDoc 注释弹窗 */
+.apidoc-modal {
+  width: min(720px, 92vw);
+  height: min(560px, 82vh);
+  display: flex;
+  flex-direction: column;
+}
+.apidoc-modal .modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 18px;
+}
+.apidoc-modal .modal-foot {
+  flex-shrink: 0;
+}
+.apidoc-source {
+  margin: 0;
+  white-space: pre;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--text-dim);
+}
