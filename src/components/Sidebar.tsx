@@ -37,6 +37,7 @@ interface Props {
   onImportRaml?: () => void;
   onImportWadl?: () => void;
   onImportHar?: () => void;
+  onImportYapi?: () => void;
   /** 当前设置（导入菜单按 importTypes 开关过滤格式） */
   settings?: AppSettings;
   onExport?: () => void;
@@ -435,7 +436,7 @@ function NodeRow({
 
 export function Sidebar(props: Props) {
   const t = useT();
-  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
+  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onExport, onExportNode, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
   const [importMenu, setImportMenu] = useState(false);
   const [filter, setFilter] = useState("");
   /** 高级搜索：是否展开过滤面板 */
@@ -872,6 +873,17 @@ export function Sidebar(props: Props) {
                     >
                       <FormatIcon value="har" className="import-menu-icon" />
                       HAR 抓包文件
+                    </button>
+                  )}
+                  {settings?.importTypes?.yapi !== false && onImportYapi && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportYapi();
+                      }}
+                    >
+                      <FormatIcon value="yapi" className="import-menu-icon" />
+                      YApi 项目导出
                     </button>
                   )}
                 </div>

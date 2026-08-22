@@ -1813,6 +1813,23 @@ fn export_selection(
             fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
             Ok(Some(path.to_string_lossy().to_string()))
         }
+        "yapi" => {
+            let v = export::to_yapi(&apis);
+            let content = serde_json::to_string_pretty(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 YApi")
+                .set_file_name("yapi-project.json")
+                .add_filter("YApi 项目", &["json"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
         "docsify" => {
             let picked = app
                 .dialog()
@@ -3271,6 +3288,291 @@ fn har_entry_to_api(dir: &Path, entry: &Value) -> Result<usize, String> {
         protocol: "http".into(),
     };
     write_pretty(&file_path, &api)?;
+    Ok(1)
+}
+
+// ==================== YApi 导入 ====================
+
+/// 导入 YApi 导出文件（.json）：自动识别 Swagger（复用 openapi 导入）与 YApi 原生树格式
+#[tauri::command]
+fn import_yapi(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+) -> Result<Option<OpenApiImportResult>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("YApi", &["json"])
+        .blocking_pick_file();
+    let Some(path) = picked else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let root = workspace_root(&state)?;
+    let result = import_yapi_file(&root, &path)?;
+    Ok(Some(result))
+}
+
+/// 解析 YApi 导出文件：Swagger 结构走 openapi 导入；否则按原生树（name/children/api）导入
+fn import_yapi_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, String> {
+    let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
+    let json: Value =
+        serde_json::from_str(&content).map_err(|e| format!("解析 YApi 文件失败: {e}"))?;
+    // Swagger / OpenAPI 结构：YApi 的 swagger 数据导出
+    if json.get("swagger").is_some() || json.get("openapi").is_some() {
+        return import_openapi_file(root, file);
+    }
+    // YApi 原生导出：顶层为分组数组（name/children/api）
+    let arr = json.as_array().ok_or_else(|| {
+        "不是有效的 YApi 文件（既非 Swagger 也非分组树结构）".to_string()
+    })?;
+    let dir_name = "YApi 导入".to_string();
+    let folder = unique_path(root, &dir_name, "");
+    fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
+    let src_name = file
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    write_pretty(
+        &folder.join(INFO_FILE),
+        &InfoJson {
+            name: Some("YApi 导入".into()),
+            description: format!("从 YApi 导出文件导入（{src_name}）"),
+            base_url: None,
+            mock_port: None,
+            order: None,
+            collapsed: None,
+            deprecated: None,
+        },
+    )?;
+    let mut count = 0usize;
+    for g in arr {
+        count += yapi_node_to_apis(&folder, g)?;
+    }
+    Ok(OpenApiImportResult {
+        folder: folder.to_string_lossy().to_string(),
+        count,
+    })
+}
+
+/// YApi 节点递归：有 children 建分组，有 api 写接口文件
+fn yapi_node_to_apis(dir: &Path, node: &Value) -> Result<usize, String> {
+    let name = node
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("未命名")
+        .to_string();
+    if let Some(api) = node.get("api") {
+        return yapi_api_to_api(dir, &name, api);
+    }
+    let kids = node.get("children").and_then(|v| v.as_array());
+    let Some(kids) = kids else {
+        // 既无 api 也无 children 的占位节点，跳过
+        return Ok(0);
+    };
+    if kids.is_empty() {
+        return Ok(0); // 空分组不创建
+    }
+    let sub_base = sanitize_filename(&name);
+    let sub_base = if sub_base.is_empty() {
+        "子分组".to_string()
+    } else {
+        sub_base
+    };
+    let sub_dir = dir.join(&sub_base);
+    // 同名分组已存在时复用目录
+    if !sub_dir.is_dir() {
+        fs::create_dir_all(&sub_dir).map_err(|e| format!("创建分组失败: {e}"))?;
+        write_pretty(
+            &sub_dir.join(INFO_FILE),
+            &InfoJson {
+                name: Some(name.clone()),
+                description: String::new(),
+                base_url: None,
+                mock_port: None,
+                order: None,
+                collapsed: None,
+                deprecated: None,
+            },
+        )?;
+    }
+    let mut count = 0usize;
+    for c in kids {
+        count += yapi_node_to_apis(&sub_dir, c)?;
+    }
+    Ok(count)
+}
+
+/// YApi api 对象 → ApiFile
+fn yapi_api_to_api(dir: &Path, title: &str, api: &Value) -> Result<usize, String> {
+    let method = api
+        .get("method")
+        .and_then(|v| v.as_str())
+        .unwrap_or("GET")
+        .to_uppercase();
+    let raw_path = api.get("path").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+    if raw_path.is_empty() {
+        return Ok(0);
+    }
+    let protocol = match api.get("protocol").and_then(|v| v.as_str()) {
+        Some(p) if p.eq_ignore_ascii_case("ws") || p.eq_ignore_ascii_case("websocket") => {
+            "websocket".to_string()
+        }
+        _ => "http".to_string(),
+    };
+    let (path, params) = if protocol == "websocket" {
+        // WS 地址保留完整 ws:// 前缀
+        (raw_path.clone(), Vec::new())
+    } else {
+        extract_path(&raw_path)
+    };
+    // 请求头
+    let mut headers = Vec::new();
+    if let Some(hs) = api.get("req_headers").and_then(|v| v.as_array()) {
+        for h in hs {
+            let key = h.get("name").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+            if key.is_empty() {
+                continue;
+            }
+            let value = h.get("value").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let desc = h.get("desc").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            headers.push(KeyValue {
+                key,
+                value,
+                enabled: true,
+                is_file: false,
+                description: desc,
+            });
+        }
+    }
+    // 查询参数
+    let mut query = Vec::new();
+    if let Some(qs) = api.get("req_query").and_then(|v| v.as_array()) {
+        for q in qs {
+            let key = q.get("name").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+            if key.is_empty() {
+                continue;
+            }
+            let value = q
+                .get("example")
+                .and_then(|v| v.as_str())
+                .or_else(|| q.get("value").and_then(|v| v.as_str()))
+                .unwrap_or("")
+                .to_string();
+            let desc = q
+                .get("desc")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            query.push(KeyValue {
+                key,
+                value,
+                enabled: true,
+                is_file: false,
+                description: desc,
+            });
+        }
+    }
+    // 请求体
+    let mut body = BodyData::default();
+    let body_type = api.get("req_body_type").and_then(|v| v.as_str()).unwrap_or("").to_lowercase();
+    match body_type.as_str() {
+        "json" => {
+            if let Some(other) = api.get("req_body_other").and_then(|v| v.as_str()) {
+                let trimmed = other.trim();
+                if !trimmed.is_empty() {
+                    // 尝试格式化 JSON
+                    if let Ok(v) = serde_json::from_str::<Value>(trimmed) {
+                        body.raw = serde_json::to_string_pretty(&v).unwrap_or_else(|_| trimmed.to_string());
+                    } else {
+                        body.raw = trimmed.to_string();
+                    }
+                    body.mode = "json".into();
+                }
+            }
+        }
+        "form" => {
+            let mut form = Vec::new();
+            if let Some(fs) = api.get("req_body_form").and_then(|v| v.as_array()) {
+                for f in fs {
+                    let key = f.get("name").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+                    if key.is_empty() {
+                        continue;
+                    }
+                    let value = f.get("value").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    let desc = f.get("desc").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    let is_file = f.get("type").and_then(|v| v.as_str()).unwrap_or("") == "file";
+                    form.push(KeyValue {
+                        key,
+                        value,
+                        enabled: true,
+                        is_file,
+                        description: desc,
+                    });
+                }
+            }
+            if !form.is_empty() {
+                body.mode = "form".into();
+                body.form = form;
+            }
+        }
+        "raw" | "text" | "file" => {
+            if let Some(other) = api.get("req_body_other").and_then(|v| v.as_str()) {
+                let trimmed = other.trim();
+                if !trimmed.is_empty() {
+                    body.mode = "raw".into();
+                    body.raw = trimmed.to_string();
+                }
+            }
+        }
+        _ => {}
+    }
+    // 响应示例
+    let mut responses = Vec::new();
+    if let Some(res) = api.get("res_body").and_then(|v| v.as_str()) {
+        let trimmed = res.trim();
+        if !trimmed.is_empty() {
+            let content_type = match api.get("res_body_type").and_then(|v| v.as_str()) {
+                Some(t) if t.eq_ignore_ascii_case("json") => "application/json".to_string(),
+                _ => "text/plain".to_string(),
+            };
+            responses.push(ResponseItem {
+                id: uuid::Uuid::new_v4().to_string(),
+                name: "HTTP 200".into(),
+                status: 200,
+                content_type,
+                body: trimmed.to_string(),
+            });
+        }
+    }
+    let desc = api.get("desc").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let name = if title.trim().is_empty() {
+        format!("{} {}", method, path)
+    } else {
+        title.trim().to_string()
+    };
+    let file_base = sanitize_filename(&name);
+    let file_path = unique_path(dir, &file_base, ".json");
+    let api_file = ApiFile {
+        uuid: uuid::Uuid::new_v4().to_string(),
+        name: name.clone(),
+        method: method.clone(),
+        path: path.clone(),
+        url: path.clone(),
+        description: desc,
+        headers,
+        query,
+        params,
+        body,
+        mock: MockConfig::default(),
+        examples: vec![],
+        responses,
+        doc_params: vec![],
+        deprecated: false,
+        protocol,
+    };
+    write_pretty(&file_path, &api_file)?;
     Ok(1)
 }
 
@@ -5583,6 +5885,7 @@ pub fn run() {
             import_raml,
             import_wadl,
             import_har,
+            import_yapi,
             render_api_markdown,
             render_group_markdown,
             export_api_markdown,
@@ -6686,6 +6989,249 @@ mod tests {
         assert_eq!(ev.body.form[0].key, "a");
         assert_eq!(ev.body.form[0].value, "1");
         assert_eq!(ev.body.form[1].value, "张三");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_import_yapi_swagger() {
+        // YApi 的 swagger 数据导出（tests/data/yapi.json）应走 openapi 导入
+        let root = std::env::temp_dir().join(format!("apimgr-yapi-s-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let file = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../tests/data/yapi.json"
+        ));
+        let result = import_yapi_file(&root, &file).expect("yapi(swagger) 导入失败");
+        // paths: /user/{uid} get、/user/add post、/order/list get
+        assert_eq!(result.count, 3, "接口数应为 3，实际 {}", result.count);
+        let folder = PathBuf::from(&result.folder);
+        assert!(folder.join(INFO_FILE).exists());
+        // 按 tag 分组的「用户模块」应存在，且含 GET _user_{uid}.json
+        let um = folder.join("用户模块");
+        assert!(um.is_dir(), "用户模块分组应存在");
+        assert!(um.join("GET _user_{uid}.json").exists());
+        let api: ApiFile = serde_json::from_str(
+            &fs::read_to_string(um.join("GET _user_{uid}.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(api.method, "GET");
+        assert_eq!(api.path, "/user/{uid}");
+        // path 参数 uid + query 参数 withExtra
+        assert!(api.params.iter().any(|p| p.key == "uid"));
+        assert!(api.query.iter().any(|q| q.key == "withExtra"));
+        // Authorization header
+        assert!(api.headers.iter().any(|h| h.key.eq_ignore_ascii_case("Authorization")));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_import_yapi_native() {
+        // YApi 原生导出树：分组/接口/表单/json body/WS
+        let root = std::env::temp_dir().join(format!("apimgr-yapi-n-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let doc = serde_json::json!([
+            {
+                "name": "用户模块",
+                "desc": "",
+                "children": [
+                    {
+                        "name": "获取用户",
+                        "api": {
+                            "method": "GET",
+                            "path": "/user/:uid",
+                            "title": "获取用户",
+                            "desc": "根据ID查询",
+                            "req_query": [
+                                { "name": "withExtra", "value": "", "desc": "是否扩展", "example": "true" }
+                            ],
+                            "req_headers": [
+                                { "name": "X-Token", "value": "abc", "desc": "令牌" }
+                            ],
+                            "req_body_type": null,
+                            "req_body_other": "",
+                            "req_body_form": [],
+                            "res_body_type": "json",
+                            "res_body": "{\"code\":0}",
+                            "protocol": "http"
+                        }
+                    },
+                    {
+                        "name": "新增用户",
+                        "api": {
+                            "method": "POST",
+                            "path": "/user/add",
+                            "title": "新增用户",
+                            "desc": "",
+                            "req_body_type": "json",
+                            "req_body_other": "{\"name\":\"张三\"}",
+                            "res_body_type": null,
+                            "res_body": "",
+                            "protocol": "http"
+                        }
+                    },
+                    {
+                        "name": "上传头像",
+                        "api": {
+                            "method": "POST",
+                            "path": "/user/avatar",
+                            "title": "上传头像",
+                            "desc": "",
+                            "req_body_type": "form",
+                            "req_body_form": [
+                                { "name": "file", "type": "file", "desc": "图片" },
+                                { "name": "tag", "value": "avatar", "type": "text" }
+                            ],
+                            "res_body_type": null,
+                            "res_body": "",
+                            "protocol": "http"
+                        }
+                    },
+                    {
+                        "name": "消息推送",
+                        "api": {
+                            "method": "GET",
+                            "path": "ws://example.com/chat",
+                            "title": "消息推送",
+                            "desc": "",
+                            "req_body_type": null,
+                            "req_body_other": "",
+                            "res_body_type": null,
+                            "res_body": "",
+                            "protocol": "ws"
+                        }
+                    },
+                    {
+                        "name": "空分组",
+                        "desc": "",
+                        "children": []
+                    }
+                ]
+            }
+        ]);
+        let file = root.join("yapi-native.json");
+        fs::write(&file, serde_json::to_string_pretty(&doc).unwrap()).unwrap();
+        let result = import_yapi_file(&root, &file).expect("yapi 原生导入失败");
+        assert_eq!(result.count, 4, "接口数应为 4，实际 {}", result.count);
+        let folder = PathBuf::from(&result.folder);
+        let um = folder.join("用户模块");
+        assert!(um.is_dir(), "用户模块分组应存在");
+        assert!(!um.join("空分组").exists(), "空分组不应创建");
+        // 获取用户：query/header/路径参数 :uid → {uid}
+        let get: ApiFile = serde_json::from_str(
+            &fs::read_to_string(um.join("获取用户.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(get.method, "GET");
+        assert_eq!(get.path, "/user/{uid}");
+        assert!(get.params.iter().any(|p| p.key == "uid"));
+        assert!(get.query.iter().any(|q| q.key == "withExtra" && q.value == "true"));
+        assert!(get.headers.iter().any(|h| h.key == "X-Token"));
+        assert_eq!(get.responses[0].body, "{\"code\":0}");
+        // 新增用户：json body 格式化
+        let add: ApiFile = serde_json::from_str(
+            &fs::read_to_string(um.join("新增用户.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(add.body.mode, "json");
+        assert!(add.body.raw.contains("张三"));
+        // 上传头像：form 文件字段
+        let up: ApiFile = serde_json::from_str(
+            &fs::read_to_string(um.join("上传头像.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(up.body.mode, "form");
+        assert!(up.body.form.iter().any(|f| f.key == "file" && f.is_file));
+        assert!(up.body.form.iter().any(|f| f.key == "tag" && f.value == "avatar"));
+        // WS 接口
+        let ws: ApiFile = serde_json::from_str(
+            &fs::read_to_string(um.join("消息推送.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(ws.protocol, "websocket");
+        assert!(ws.path.starts_with("ws://"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_export_yapi_roundtrip() {
+        // 导出 YApi 原生格式后能再导入回来
+        let root = std::env::temp_dir().join(format!("apimgr-yapi-e-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let make = |name: &str, method: &str, path: &str| ApiFile {
+            uuid: uuid::Uuid::new_v4().to_string(),
+            name: name.into(),
+            method: method.into(),
+            path: path.into(),
+            url: path.into(),
+            description: format!("{name} 描述"),
+            headers: vec![KeyValue {
+                key: "X-Token".into(),
+                value: "abc".into(),
+                enabled: true,
+                is_file: false,
+                description: "令牌".into(),
+            }],
+            query: vec![KeyValue {
+                key: "page".into(),
+                value: "1".into(),
+                enabled: true,
+                is_file: false,
+                description: String::new(),
+            }],
+            params: vec![KeyValue {
+                key: "id".into(),
+                value: String::new(),
+                enabled: true,
+                is_file: false,
+                description: String::new(),
+            }],
+            body: BodyData {
+                mode: "json".into(),
+                raw: "{\"a\":1}".into(),
+                form: vec![],
+                binary_path: String::new(),
+            },
+            mock: MockConfig::default(),
+            examples: vec![],
+            responses: vec![ResponseItem {
+                id: "r1".into(),
+                name: "HTTP 200".into(),
+                status: 200,
+                content_type: "application/json".into(),
+                body: "{\"ok\":true}".into(),
+            }],
+            doc_params: vec![],
+            deprecated: false,
+            protocol: "http".into(),
+        };
+        let apis: Vec<(Vec<(String, bool)>, ApiFile)> = vec![
+            (vec![("用户模块".to_string(), true)], make("获取用户", "GET", "/user/{id}")),
+            (vec![], make("订单列表", "GET", "/order/list")),
+        ];
+let v = export::to_yapi(&apis);
+        let arr = v.as_array().expect("yapi 导出应为数组");
+        // 根级「订单列表」+ 分组「用户模块」
+        assert_eq!(arr.len(), 2);
+        let um = arr
+            .iter()
+            .find(|n| n.get("name").and_then(|x| x.as_str()) == Some("用户模块"))
+            .expect("用户模块分组");
+        let api_item = um["children"][0].clone();
+        assert_eq!(api_item["api"]["method"], "GET");
+        assert_eq!(api_item["api"]["path"], "/user/:id", "路径参数应为 :id 语法");
+        assert_eq!(api_item["api"]["req_query"][0]["name"], "page");
+        assert_eq!(api_item["api"]["res_body"], "{\"ok\":true}");
+        // round-trip：导出 → 再导入
+        let tmp = root.join("round.json");
+        fs::write(&tmp, serde_json::to_string_pretty(&v).unwrap()).unwrap();
+        let re = import_yapi_file(&root, &tmp).expect("yapi round-trip 失败");
+        assert_eq!(re.count, 2, "round-trip 接口数应为 2");
+        let folder = PathBuf::from(&re.folder);
+        assert!(folder.join("用户模块").join("获取用户.json").exists());
+        assert!(folder.join("订单列表.json").exists());
         let _ = fs::remove_dir_all(&root);
     }
 

@@ -41,6 +41,7 @@ const IMPORT_FORMATS: { value: ImportFormat; labelKey: string }[] = [
   { value: "raml", labelKey: "export.raml" },
   { value: "wadl", labelKey: "export.wadl" },
   { value: "har", labelKey: "export.har" },
+  { value: "yapi", labelKey: "export.yapi" },
 ];
 
 /** 导出格式列表（含可开关的） */
@@ -54,6 +55,7 @@ const EXPORT_FORMATS: { value: ExportFormat; labelKey: string }[] = [
   { value: "apipost", labelKey: "export.apipost" },
   { value: "raml", labelKey: "export.raml" },
   { value: "wadl", labelKey: "export.wadl" },
+  { value: "yapi", labelKey: "export.yapi" },
 ];
 
 /** 左侧导航（目录）项：点击滚动到对应分区 */

@@ -211,7 +211,8 @@ export type ExportFormat =
   | "apifox"
   | "apipost"
   | "raml"
-  | "wadl";
+  | "wadl"
+  | "yapi";
 
 /** 主页「导入」菜单支持的格式 */
 export type ImportFormat =
@@ -222,7 +223,8 @@ export type ImportFormat =
   | "apipost"
   | "raml"
   | "wadl"
-  | "har";
+  | "har"
+  | "yapi";
 
 /** 导入格式中必选（不可关闭）的类型 */
 export const REQUIRED_IMPORT_FORMATS: ImportFormat[] = ["postman", "openapi"];
@@ -282,6 +284,7 @@ export const defaultSettings = (): AppSettings => ({
     raml: true,
     wadl: true,
     har: true,
+    yapi: true,
   },
   exportTypes: {
     postman: true,
@@ -293,6 +296,7 @@ export const defaultSettings = (): AppSettings => ({
     html: true,
     raml: true,
     wadl: true,
+    yapi: true,
   },
   htmlNav: "right",
   language: "zh",

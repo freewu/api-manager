@@ -107,6 +107,11 @@ export function importHar(): Promise<OpenApiImportResult | null> {
   return invoke<OpenApiImportResult | null>("import_har");
 }
 
+/** 导入 YApi 导出文件（弹窗选 .json；自动识别 Swagger / YApi 原生树） */
+export function importYapi(): Promise<OpenApiImportResult | null> {
+  return invoke<OpenApiImportResult | null>("import_yapi");
+}
+
 export interface MarkdownDoc {
   name: string;
   md: string;

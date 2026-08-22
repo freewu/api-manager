@@ -18,6 +18,7 @@ import {
   importRaml,
   importWadl,
   importHar,
+  importYapi,
   importMarkdown,
   renderApiMarkdown,
   renderGroupMarkdown,
@@ -568,6 +569,18 @@ export default function App() {
       if (!result) return; // 用户取消
       await loadAll(workspace!);
       showToast(t("toast.importedHar", { count: result.count }));
+      void reloadMockIfRunning();
+    } catch (e) {
+      showToast(t("toast.importFailed", { err: String(e) }));
+    }
+  };
+
+  const handleImportYapi = async () => {
+    try {
+      const result = await importYapi();
+      if (!result) return; // 用户取消
+      await loadAll(workspace!);
+      showToast(t("toast.importedYapi", { count: result.count }));
       void reloadMockIfRunning();
     } catch (e) {
       showToast(t("toast.importFailed", { err: String(e) }));
@@ -1480,6 +1493,7 @@ export default function App() {
           onImportRaml={() => void handleImportRaml()}
           onImportWadl={() => void handleImportWadl()}
           onImportHar={() => void handleImportHar()}
+          onImportYapi={() => void handleImportYapi()}
           settings={settings}
           onViewMarkdown={(node) => void handleViewMarkdown(node)}
           onExport={() => openExport()}
