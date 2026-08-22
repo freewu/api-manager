@@ -402,7 +402,7 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
           <section id="settings-export" className="settings-section">
             <div className="settings-panel-title">{t("settings.nav.export")}</div>
             <div className="settings-feature">
-              <div className="settings-row">
+              <div className="settings-row settings-toggle-row">
                 <span className="settings-label">{t("settings.exportEnabled")}</span>
                 <Switch
                   checked={settings.exportEnabled !== false}
@@ -454,7 +454,7 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
           <section id="settings-import" className="settings-section">
             <div className="settings-panel-title">{t("settings.nav.import")}</div>
             <div className="settings-feature">
-              <div className="settings-row">
+              <div className="settings-row settings-toggle-row">
                 <span className="settings-label">{t("settings.importEnabled")}</span>
                 <Switch
                   checked={settings.importEnabled !== false}

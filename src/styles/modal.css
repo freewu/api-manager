@@ -198,6 +198,9 @@
   color: var(--text-dim);
   flex-shrink: 0;
 }
+.settings-toggle-row {
+  justify-content: space-between;
+}
 .settings-options {
   display: flex;
   gap: 8px;
