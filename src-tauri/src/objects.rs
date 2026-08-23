@@ -880,8 +880,8 @@ pub fn object_usage(root: &Path, store: &ObjectStore) -> Result<Vec<ObjectUsageI
             let path = entry.path();
             if path.is_dir() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if name.starts_with(".") && name != ".git" {
-                    continue; // 跳过 .history / .examples / .object / .versions 等隐藏目录
+                if (name.starts_with(".") && name != ".git") || name == "data" {
+                    continue; // 跳过 .history/.examples/.object/.versions 等隐藏目录及 data（对象存储目录）
                 }
                 walk_dir(&path, by);
                 continue;
