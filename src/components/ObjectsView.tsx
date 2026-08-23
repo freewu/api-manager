@@ -430,21 +430,11 @@ export default function ObjectsView({
     <div className="objects-view">
       {/* ===== 左侧：分组 + 对象列表（与接口管理 Sidebar 布局一致） ===== */}
       <div className="objects-left">
-        <div className="objects-left-header">
-          <span className="objects-left-title">🗂️ {t("objects.title")}</span>
-          <div className="objects-left-actions">
-            <button className="btn-link" onClick={addObject} title={t("objects.newObject")}>
-              ＋
-            </button>
-            <button className="btn-link" onClick={addGroup} title={t("objects.newGroup")}>
-              ＋📁
-            </button>
-            <button className="btn-link" onClick={() => setImportOpen(true)} title={t("objects.importJson")}>
-              ⇪
-            </button>
-          </div>
+        <div className="history-side-header">
+          <span className="history-side-title">🗂️ {t("objects.title")}</span>
+          <span className="history-side-count">{store.objects.length}</span>
         </div>
-        <div className="objects-search-row">
+        <div className="history-side-toolbar">
           <div className="search-box">
             <span className="objects-search-icon">🔍</span>
             <input
@@ -454,6 +444,9 @@ export default function ObjectsView({
               spellCheck={false}
             />
           </div>
+          <button className="icon-btn" onClick={() => setImportOpen(true)} title={t("objects.importJson")}>
+            ⇪
+          </button>
         </div>
         <div className="tree objects-list">
           {store.objects.length === 0 && <div className="objects-empty">{t("objects.empty")}</div>}
@@ -491,15 +484,34 @@ export default function ObjectsView({
               ))}
             </>
           )}
+          {!kw && (
+            <>
+              <div
+                className="node"
+                style={{ paddingLeft: 10, color: "var(--text-faint)", fontSize: 12 }}
+                onClick={addObject}
+              >
+                ＋ {t("objects.newObject")}
+              </div>
+              <div
+                className="node"
+                style={{ paddingLeft: 10, color: "var(--text-faint)", fontSize: 12 }}
+                onClick={addGroup}
+              >
+                ＋ {t("objects.newGroup")}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* ===== 右侧：对象配置 ===== */}
-      <div className="objects-right">
+      {/* ===== 右侧：对象内容（与请求历史详情一致） ===== */}
+      <div className="objects-right history-view-content">
         {!selected ? (
           <div className="objects-right-empty">{t("objects.empty")}</div>
         ) : (
-          <div className="objects-editor">
+          <div className="history-detail">
+            <div className="objects-editor">
             <div className="objects-editor-head">
               <div className="objects-editor-title">
                 <input
@@ -764,6 +776,7 @@ export default function ObjectsView({
                 </button>
               </div>
               <pre className="objects-codegen-pre">{genCode || "//"}</pre>
+            </div>
             </div>
           </div>
         )}
