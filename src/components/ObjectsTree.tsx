@@ -29,12 +29,8 @@ export default function ObjectsTree({
   const t = useT();
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
-  const [importOpen, setImportOpen] = useState(false);
-  const [importMode, setImportMode] = useState<"json" | "ddl">("json");
-  const [importName, setImportName] = useState("");
-  const [importGroup, setImportGroup] = useState("");
-  const [importJson, setImportJson] = useState("");
-  const [importDdlText, setImportDdlText] = useState("");
+  /** 删除确认弹窗（对象 / 分组） */
+  const [confirmDel, setConfirmDel] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
   /** 新增对象弹窗（名称 + JSON，JSON 可为空） */
   const [newOpen, setNewOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -79,19 +75,6 @@ export default function ObjectsTree({
       window.removeEventListener("keydown", onKey);
     };
   }, [ctxMenu, objMenu]);
-
-  // 导入弹窗按 ESC 关闭
-  useEffect(() => {
-    if (!importOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        setImportOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [importOpen]);
 
   const usageOf = useMemo(() => {
     const m: Record<string, ObjectUsageItem> = {};
@@ -173,7 +156,7 @@ export default function ObjectsTree({
       <div key={g.id}>
         <div
           className="node objects-group-row"
-          style={{ padding: "5px 6px 5px " + (6 + depth * 14) + "px" }}
+          style={{ padding: "5px 6px 5px " + (4 + depth * 4) + "px" }}
           onClick={() =>
             setOpenGroups((prev) => {
               const next = new Set(prev);
@@ -191,8 +174,8 @@ export default function ObjectsTree({
             if (dragUuid) moveObject(dragUuid, g.id);
           }}
         >
-          <span className={`caret${isOpen ? " open" : ""}`}>▸</span>
-          <span className="node-icon">📁</span>
+          <span className={`caret${isOpen ? " open" : ""}`}>{isOpen ? "▾" : "▸"}</span>
+          <span className="node-icon">{isOpen ? "📂" : "📁"}</span>
           <span className="node-name">{g.name}</span>
           <span
             className="objects-group-count"
@@ -356,12 +339,18 @@ export default function ObjectsTree({
   };
 
   const deleteGroup = (id: string) => {
-    if (!window.confirm(t("objects.confirmDeleteGroup", { name: id.split("/").pop() || id }))) return;
-    const groups = store.groups.filter((g) => g.id !== id && !g.id.startsWith(id + "/"));
-    const objects = store.objects.map((o) =>
-      o.group === id || o.group.startsWith(id + "/") ? { ...o, group: "" } : o
-    );
-    void saveStore({ groups, objects });
+    const name = id.split("/").pop() || id;
+    setConfirmDel({
+      title: t("objects.confirmTitle"),
+      message: t("objects.confirmDeleteGroup", { name }),
+      onConfirm: () => {
+        const groups = store.groups.filter((g) => g.id !== id && !g.id.startsWith(id + "/"));
+        const objects = store.objects.map((o) =>
+          o.group === id || o.group.startsWith(id + "/") ? { ...o, group: "" } : o
+        );
+        void saveStore({ groups, objects });
+      },
+    });
   };
 
   /** 打开「新增对象」弹窗（groupId 为该对象所属分组，可为空串 = 未分组） */
@@ -416,27 +405,27 @@ export default function ObjectsTree({
   };
 
   const deleteObject = (o: ObjectDef) => {
-    if (!window.confirm(t("objects.confirmDelete", { name: o.name }))) return;
-    // 按稳定 uuid 删除（hash 为结构签名可能重复，按 hash 删除会误伤同结构对象）
-    void saveStore({
-      groups: store.groups,
-      objects: store.objects
-        .filter((x) => x.uuid !== o.uuid)
-        .map((x) => ({
-          ...x,
-          properties: x.properties.map((p) => (p.refHash === o.hash ? { ...p, refHash: "" } : p)),
-        })),
+    setConfirmDel({
+      title: t("objects.confirmTitle"),
+      message: t("objects.confirmDelete", { name: o.name }),
+      onConfirm: () => {
+        // 按稳定 uuid 删除（hash 为结构签名可能重复，按 hash 删除会误伤同结构对象）
+        void saveStore({
+          groups: store.groups,
+          objects: store.objects
+            .filter((x) => x.uuid !== o.uuid)
+            .map((x) => ({
+              ...x,
+              properties: x.properties.map((p) => (p.refHash === o.hash ? { ...p, refHash: "" } : p)),
+            })),
+        });
+        if (selectedUuid === o.uuid) onSelectObject(null);
+      },
     });
-    if (selectedUuid === o.uuid) onSelectObject(null);
   };
 
-  // ===== JSON / SQL DDL 导入 =====
+  // ===== 文件导入结果处理（.json / .sql） =====
   const finishImport = (res: ObjectImportResult) => {
-    setImportOpen(false);
-    setImportName("");
-    setImportGroup("");
-    setImportJson("");
-    setImportDdlText("");
     const msgs: string[] = [];
     if (res.created.length) msgs.push(t("objects.importCreated", { n: res.created.length }));
     if (res.reused.length) msgs.push(t("objects.importReused", { n: res.reused.length }));
@@ -448,33 +437,10 @@ export default function ObjectsTree({
     }
   };
 
-  const doImport = async () => {
-    try {
-      if (importMode === "json") {
-        if (!importName.trim()) {
-          onToast(t("objects.importName"));
-          return;
-        }
-        JSON.parse(importJson);
-        const res = await onImport(importName.trim(), importGroup.trim(), importJson);
-        finishImport(res);
-      } else {
-        if (!importDdlText.trim()) {
-          onToast(t("objects.importDdlEmpty"));
-          return;
-        }
-        const res = await onImportDdl(importGroup.trim(), importDdlText);
-        finishImport(res);
-      }
-    } catch {
-      onToast(t("objects.jsonInvalid"));
-    }
-  };
-
   return (
     <div className="history-list-side">
       <div className="history-side-toolbar">
-        <div className="search-box">
+        <div className="search-box objects-search-box">
           <span className="objects-search-icon">🔍</span>
           <input
             value={search}
@@ -483,16 +449,6 @@ export default function ObjectsTree({
             spellCheck={false}
           />
         </div>
-        <button
-          className="icon-btn"
-          onClick={allExpanded ? collapseAll : expandAll}
-          title={allExpanded ? t("objects.collapseAll") : t("objects.expandAll")}
-        >
-          {allExpanded ? "⤴" : "⤵"}
-        </button>
-        <button className="icon-btn" onClick={() => setImportOpen(true)} title={t("objects.importJson")}>
-          ⇪
-        </button>
       </div>
       <div
         className="tree objects-list"
@@ -564,8 +520,15 @@ export default function ObjectsTree({
         )}
       </div>
 
-      {/* 底部工具栏：文件导入（.json / .sql），右下角 */}
+      {/* 底部工具栏：左 = 展开/收起，右 = 文件导入（.json / .sql） */}
       <div className="objects-side-footer">
+        <button
+          className="icon-btn objects-expand-btn"
+          onClick={allExpanded ? collapseAll : expandAll}
+          title={allExpanded ? t("objects.collapseAll") : t("objects.expandAll")}
+        >
+          {allExpanded ? "⤴" : "⤵"}
+        </button>
         <input
           ref={fileRef}
           type="file"
@@ -638,6 +601,30 @@ export default function ObjectsTree({
           >
             ▦ {t("objects.newObject")}
           </button>
+        </div>
+      )}
+
+      {/* 删除确认弹窗（对象 / 分组） */}
+      {confirmDel && (
+        <div className="objects-import-mask" onClick={() => setConfirmDel(null)}>
+          <div className="objects-import-modal objects-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="objects-import-title">{confirmDel.title}</div>
+            <div className="objects-confirm-body">{confirmDel.message}</div>
+            <div className="objects-import-actions">
+              <button className="btn" onClick={() => setConfirmDel(null)}>
+                {t("common.cancel")}
+              </button>
+              <button
+                className="btn danger"
+                onClick={() => {
+                  confirmDel.onConfirm();
+                  setConfirmDel(null);
+                }}
+              >
+                {t("common.delete")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -728,95 +715,6 @@ export default function ObjectsTree({
         </div>
       )}
 
-      {/* JSON / SQL DDL 导入弹窗 */}
-      {importOpen && (
-        <div className="objects-import-mask" onClick={() => setImportOpen(false)}>
-          <div className="objects-import-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="objects-import-title">{t("objects.importTitle")}</div>
-            <div className="objects-import-modes">
-              <button
-                className={`objects-import-mode ${importMode === "json" ? "active" : ""}`}
-                onClick={() => setImportMode("json")}
-              >
-                JSON
-              </button>
-              <button
-                className={`objects-import-mode ${importMode === "ddl" ? "active" : ""}`}
-                onClick={() => setImportMode("ddl")}
-              >
-                SQL DDL
-              </button>
-            </div>
-            <div className="objects-import-body">
-              {importMode === "json" && (
-                <>
-                  <label>
-                    <span>{t("objects.importName")}</span>
-                    <input value={importName} onChange={(e) => setImportName(e.target.value)} spellCheck={false} />
-                  </label>
-                  <label>
-                    <span>{t("objects.importGroup")}</span>
-                    <select value={importGroup} onChange={(e) => setImportGroup(e.target.value)}>
-                      <option value="">{t("objects.ungrouped")}</option>
-                      {store.groups.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>{t("objects.importJsonLabel")}</span>
-                    <textarea
-                      value={importJson}
-                      onChange={(e) => setImportJson(e.target.value)}
-                      rows={8}
-                      spellCheck={false}
-                      placeholder={'{\n  "id": 1,\n  "name": "alice",\n  "address": { "city": "bj" }\n}'}
-                    />
-                  </label>
-                  <div className="objects-import-tip">{t("objects.importJsonTip")}</div>
-                </>
-              )}
-              {importMode === "ddl" && (
-                <>
-                  <label>
-                    <span>{t("objects.importGroup")}</span>
-                    <select value={importGroup} onChange={(e) => setImportGroup(e.target.value)}>
-                      <option value="">{t("objects.ungrouped")}</option>
-                      {store.groups.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>{t("objects.importDdlLabel")}</span>
-                    <textarea
-                      value={importDdlText}
-                      onChange={(e) => setImportDdlText(e.target.value)}
-                      rows={8}
-                      spellCheck={false}
-                      placeholder={"CREATE TABLE users (\n  id BIGINT PRIMARY KEY,\n  name VARCHAR(50) NOT NULL COMMENT '用户名称'\n);"}
-                    />
-                  </label>
-                  <div className="objects-import-tip">{t("objects.importDdlTip")}</div>
-                </>
-              )}
-            </div>
-            <div className="objects-import-actions">
-              <button className="btn" onClick={() => setImportOpen(false)}>
-                {t("common.cancel")}
-              </button>
-              <button className="btn primary" onClick={() => void doImport()}>
-                {t("common.confirm")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 对象版本查看弹窗 */}
       {versionModal && (
         <ObjectVersionModal current={versionModal} onClose={() => setVersionModal(null)} />
@@ -852,7 +750,7 @@ function ObjectRow({
   return (
     <div
       className={`node objects-object-row${selected ? " selected" : ""}`}
-      style={{ padding: "5px 6px 5px " + (6 + depth * 14) + "px" }}
+      style={{ padding: "5px 6px 5px " + (4 + depth * 4) + "px" }}
       onClick={onSelect}
       onContextMenu={(e) => onContextMenu(e, obj.uuid)}
       draggable

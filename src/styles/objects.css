@@ -460,3 +460,31 @@
 .objects-import-file-btn:hover {
   background: var(--bg-hover);
 }
+
+/* 搜索框占满一行 */
+.objects-search-box {
+  flex: 1;
+}
+.objects-search-box input {
+  width: 100%;
+}
+
+/* 底部工具栏：左展开/收起，右文件导入 */
+.objects-side-footer {
+  justify-content: space-between;
+}
+.objects-expand-btn {
+  font-size: 13px;
+}
+
+/* 删除确认弹窗 */
+.objects-confirm-modal {
+  width: min(420px, 90vw);
+}
+.objects-confirm-body {
+  font-size: 13px;
+  color: var(--text);
+  padding: 4px 2px 10px;
+  line-height: 1.7;
+  word-break: break-all;
+}
