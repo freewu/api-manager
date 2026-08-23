@@ -485,3 +485,45 @@
   color: var(--text-faint);
   font-size: 13px;
 }
+
+/* 接口描述：Markdown 编辑/预览切换 */
+.desc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+.desc-mode-btn {
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.desc-mode-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.desc-mode-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.desc-mode-tip {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.desc-preview {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  width: 100%;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  user-select: text;
+}

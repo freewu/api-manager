@@ -2,6 +2,7 @@ import { Fragment, lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { ApiFile, BODY_MODES, BodyData, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, ObjectDef, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { ExamplesTab } from "./ExamplesTab";
+import { renderMarkdown } from "../commands";
 import { useT } from "../i18n";
 import { pickFile, listExamples } from "../commands";
 
@@ -743,19 +744,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           </div>
         )}
 
-        {tab === "desc" && (
-          <div className="desc-root">
-            <textarea
-              className="desc-area"
-              value={api.description}
-              placeholder={t("editor.descPlaceholder")}
-              onChange={(e) => set({ description: e.target.value })}
-              onBlur={onCommit}
-              spellCheck={false}
-            />
-            <div className="desc-hint">{t("editor.descHint")}</div>
-          </div>
-        )}
+        {tab === "desc" && <DescEditor value={api.description} onChange={(v) => set({ description: v })} onCommit={onCommit} />}
 
         {tab === "doc" && <DocParamsEditor api={api} set={set} objectsList={objectsList} />}
 
@@ -1192,6 +1181,68 @@ function DocParamsEditor({ api, set, objectsList }: { api: ApiFile; set: (p: Par
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/** 接口描述：Markdown 编辑 / 预览切换（预览由后端 md_to_html 渲染） */
+function DescEditor({
+  value,
+  onChange,
+  onCommit,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onCommit?: () => void;
+}) {
+  const t = useT();
+  const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [html, setHtml] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const toPreview = async () => {
+    setBusy(true);
+    try {
+      setHtml(await renderMarkdown(value || ""));
+      setMode("preview");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="desc-root">
+      <div className="desc-toolbar">
+        <button
+          className={`btn-sm desc-mode-btn${mode === "edit" ? " active" : ""}`}
+          onClick={() => setMode("edit")}
+        >
+          ✏️ {t("editor.descEdit")}
+        </button>
+        <button
+          className={`btn-sm desc-mode-btn${mode === "preview" ? " active" : ""}`}
+          disabled={busy}
+          onClick={() => void toPreview()}
+        >
+          👁 {t("editor.descPreview")}
+        </button>
+        {mode === "preview" && (
+          <span className="desc-mode-tip">{t("editor.descPreviewTip")}</span>
+        )}
+      </div>
+      {mode === "edit" ? (
+        <textarea
+          className="desc-area"
+          value={value}
+          placeholder={t("editor.descPlaceholder")}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onCommit}
+          spellCheck={false}
+        />
+      ) : (
+        <div className="desc-preview md-preview" dangerouslySetInnerHTML={{ __html: html }} />
+      )}
+      <div className="desc-hint">{t("editor.descHint")}</div>
     </div>
   );
 }

@@ -1679,6 +1679,12 @@ fn group_of(path: &str, root: &str) -> String {
         .unwrap_or_default()
 }
 
+/// 将任意 Markdown 文本渲染为 HTML 片段（用于接口描述预览）
+#[tauri::command]
+fn render_markdown(text: String) -> String {
+    markdown::md_to_html(&text)
+}
+
 /// 渲染接口的 Markdown 文档（含 HTML 预览版）
 #[tauri::command]
 fn render_api_markdown(state: State<'_, WorkspaceState>, path: String) -> Result<MarkdownDoc, String> {
@@ -9704,6 +9710,7 @@ pub fn run() {
             import_extra,
             render_api_markdown,
             render_group_markdown,
+            render_markdown,
             export_api_markdown,
             import_markdown,
             export_selection,

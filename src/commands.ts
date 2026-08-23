@@ -146,6 +146,11 @@ export interface MarkdownDoc {
   html: string;
 }
 
+/** 将 Markdown 文本渲染为 HTML 片段（接口描述预览） */
+export function renderMarkdown(text: string): Promise<string> {
+  return invoke<string>("render_markdown", { text });
+}
+
 /** 渲染接口的 Markdown 文档（含 HTML 预览） */
 export function renderApiMarkdown(path: string): Promise<MarkdownDoc> {
   return invoke<MarkdownDoc>("render_api_markdown", { path });
