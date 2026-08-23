@@ -110,8 +110,8 @@ export default function App() {
     doImport: importObjectsJson,
     doImportDdl: importObjectsDdl,
   } = objects;
-  // 对象管理中当前选中对象（左侧树点击 → 右侧展开配置）
-  const [objectsSelectedHash, setObjectsSelectedHash] = useState<string | null>(null);
+  // 对象管理中当前选中对象（按 uuid 定位，左侧树点击 → 右侧展开配置）
+  const [objectsSelectedUuid, setObjectsSelectedUuid] = useState<string | null>(null);
 
   // ---------- 弹窗操作 ----------
   const modals = useModals({
@@ -547,8 +547,8 @@ export default function App() {
               onObjectsImport={importObjectsJson}
               onObjectsImportDdl={importObjectsDdl}
               onObjectsToast={showToast}
-              objectsSelectedHash={objectsSelectedHash}
-              onObjectsSelect={setObjectsSelectedHash}
+              objectsSelectedUuid={objectsSelectedUuid}
+              onObjectsSelect={setObjectsSelectedUuid}
             />
             <RightPane
               view={view}
@@ -602,8 +602,8 @@ export default function App() {
               onObjectsImport={importObjectsJson}
               onObjectsImportDdl={importObjectsDdl}
               onObjectsJumpApi={jumpToApi}
-              objectsSelectedHash={objectsSelectedHash}
-              onObjectsSelect={setObjectsSelectedHash}
+              objectsSelectedUuid={objectsSelectedUuid}
+              onObjectsSelect={setObjectsSelectedUuid}
               onObjectsToast={showToast}
               objectsList={objectsStore.objects}
             />

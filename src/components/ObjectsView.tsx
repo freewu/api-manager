@@ -18,9 +18,9 @@ interface Props {
   onImportDdl: (group: string, ddl: string) => Promise<ObjectImportResult>;
   onJumpApi: (path: string) => void;
   onToast: (msg: string) => void;
-  /** 当前选中对象 hash（null = 未选中） */
-  selectedHash: string | null;
-  onSelectObject: (hash: string | null) => void;
+  /** 当前选中对象 uuid（null = 未选中） */
+  selectedUuid: string | null;
+  onSelectObject: (uuid: string | null) => void;
 }
 
 const ITEM_KINDS = ["string", "number", "boolean", "object", "any"];
@@ -38,20 +38,20 @@ export default function ObjectsView({
   onImportDdl: _onImportDdl,
   onJumpApi: _onJumpApi,
   onToast,
-  selectedHash,
+  selectedUuid,
   onSelectObject,
 }: Props) {
   const t = useT();
   const selected = useMemo(
-    () => store.objects.find((o) => o.hash === selectedHash) || null,
-    [store.objects, selectedHash]
+    () => store.objects.find((o) => o.uuid === selectedUuid) || null,
+    [store.objects, selectedUuid]
   );
 
   // 编辑草稿：选中对象变化时重置
   const [draft, setDraft] = useState<ObjectDef | null>(null);
   useEffect(() => {
     setDraft(selected ? JSON.parse(JSON.stringify(selected)) : null);
-  }, [selectedHash, store.objects]);
+  }, [selectedUuid, store.objects]);
 
   const dirty = useMemo(() => {
     if (!selected || !draft) return false;
@@ -90,14 +90,14 @@ export default function ObjectsView({
     }
     const next = {
       groups: store.groups,
-      objects: store.objects.map((o) => (o.hash === selectedHash ? snapshot : o)),
+      objects: store.objects.map((o) => (o.uuid === selectedUuid ? snapshot : o)),
     };
     try {
       const fresh = await onSave(next);
       onToast(t("objects.saved"));
-      // 对象 hash 可能被后端重算，按名称重新定位选中项
-      const updated = fresh.objects.find((o) => o.name === draft.name);
-      if (updated) onSelectObject(updated.hash);
+      // 按稳定 uuid 重新定位选中项
+      const updated = fresh.objects.find((o) => o.uuid === snapshot.uuid);
+      if (updated) onSelectObject(updated.uuid);
     } catch {
       onToast(t("toast.saveFailed"));
     }
@@ -255,7 +255,7 @@ export default function ObjectsView({
                         >
                           <option value="">—</option>
                           {store.objects
-                            .filter((o) => o.hash !== selected.hash)
+                            .filter((o) => o.uuid !== selected.uuid)
                             .map((o) => (
                               <option key={o.hash} value={o.hash}>
                                 {o.name}
@@ -267,7 +267,10 @@ export default function ObjectsView({
                       <button
                         className="objects-ref-jump"
                         title={t("objects.refJump")}
-                        onClick={() => onSelectObject(p.refHash)}
+                        onClick={() => {
+                          const target = store.objects.find((x) => x.hash === p.refHash);
+                          if (target) onSelectObject(target.uuid);
+                        }}
                       >
                         →
                       </button>

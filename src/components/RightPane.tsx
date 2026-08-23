@@ -58,9 +58,9 @@ interface RightPaneProps {
   onObjectsJumpApi: (path: string) => void;
   onObjectsToast: (msg: string) => void;
   objectsList?: ObjectDef[];
-  /** 对象管理中当前选中对象 hash（右侧展开对象配置） */
-  objectsSelectedHash: string | null;
-  onObjectsSelect: (hash: string | null) => void;
+  /** 对象管理中当前选中对象 uuid（右侧展开对象配置） */
+  objectsSelectedUuid: string | null;
+  onObjectsSelect: (uuid: string | null) => void;
 }
 
 export function RightPane({
@@ -106,7 +106,7 @@ export function RightPane({
   onObjectsJumpApi,
   onObjectsToast,
   objectsList,
-  objectsSelectedHash,
+  objectsSelectedUuid,
   onObjectsSelect,
 }: RightPaneProps) {
   const t = useT();
@@ -138,7 +138,7 @@ export function RightPane({
             onImportDdl={onObjectsImportDdl}
             onJumpApi={onObjectsJumpApi}
             onToast={onObjectsToast}
-            selectedHash={objectsSelectedHash}
+            selectedUuid={objectsSelectedUuid}
             onSelectObject={onObjectsSelect}
           />
         ) : view === "history" ? (

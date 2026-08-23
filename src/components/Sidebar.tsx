@@ -81,8 +81,8 @@ interface Props {
   objectsStore: ObjectStore;
   objectsUsage: ObjectUsageItem[];
   onObjectsSave: (store: ObjectStore) => Promise<ObjectStore>;
-  objectsSelectedHash: string | null;
-  onObjectsSelect: (hash: string | null) => void;
+  objectsSelectedUuid: string | null;
+  onObjectsSelect: (uuid: string | null) => void;
   onObjectsImport: (name: string, group: string, json: string) => Promise<ObjectImportResult>;
   onObjectsImportDdl: (group: string, ddl: string) => Promise<ObjectImportResult>;
   onObjectsToast: (msg: string) => void;
@@ -782,7 +782,7 @@ export function Sidebar(props: Props) {
           onImport={props.onObjectsImport}
           onImportDdl={props.onObjectsImportDdl}
           onToast={props.onObjectsToast}
-          selectedHash={props.objectsSelectedHash}
+          selectedUuid={props.objectsSelectedUuid}
           onSelectObject={props.onObjectsSelect}
         />
       )}

@@ -10,9 +10,9 @@ interface Props {
   onImport: (name: string, group: string, json: string) => Promise<ObjectImportResult>;
   onImportDdl: (group: string, ddl: string) => Promise<ObjectImportResult>;
   onToast: (msg: string) => void;
-  /** 当前选中对象 hash（受控，右侧展开配置） */
-  selectedHash: string | null;
-  onSelectObject: (hash: string | null) => void;
+  /** 当前选中对象 uuid（受控，右侧展开配置；uuid 为稳定唯一标识） */
+  selectedUuid: string | null;
+  onSelectObject: (uuid: string | null) => void;
 }
 
 /** 对象管理：左侧树形目录（分组 = 目录，多级；不显示根目录） */
@@ -23,7 +23,7 @@ export default function ObjectsTree({
   onImport,
   onImportDdl,
   onToast,
-  selectedHash,
+  selectedUuid,
   onSelectObject,
 }: Props) {
   const t = useT();
@@ -36,12 +36,12 @@ export default function ObjectsTree({
   const [importJson, setImportJson] = useState("");
   const [importDdlText, setImportDdlText] = useState("");
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
-  /** 对象行右键菜单 */
-  const [objMenu, setObjMenu] = useState<{ x: number; y: number; hash: string } | null>(null);
+  /** 对象行右键菜单（uuid） */
+  const [objMenu, setObjMenu] = useState<{ x: number; y: number; uuid: string } | null>(null);
   /** 版本查看弹窗（对象 uuid） */
   const [versionModal, setVersionModal] = useState<ObjectDef | null>(null);
-  // 拖拽中的对象 hash
-  const [dragHash, setDragHash] = useState<string | null>(null);
+  // 拖拽中的对象 uuid
+  const [dragUuid, setDragUuid] = useState<string | null>(null);
 
   // 右键菜单：点击任意处 / Esc 时关闭
   useEffect(() => {
@@ -134,11 +134,11 @@ export default function ObjectsTree({
   // ===== 保存：回读后端权威 store（hash 重算），按名称维持选中 =====
   const saveStore = async (next: ObjectStore) => {
     const fresh = await onSave(next);
-    if (selectedHash) {
-      const prev = store.objects.find((o) => o.hash === selectedHash);
+    if (selectedUuid) {
+      const prev = store.objects.find((o) => o.uuid === selectedUuid);
       if (prev) {
-        const updated = fresh.objects.find((o) => o.name === prev.name);
-        if (updated && updated.hash !== prev.hash) onSelectObject(updated.hash);
+        const updated = fresh.objects.find((o) => o.uuid === prev.uuid);
+        if (updated && updated.uuid !== prev.uuid) onSelectObject(updated.uuid);
       }
     }
     return fresh;
@@ -164,12 +164,12 @@ export default function ObjectsTree({
             })
           }
           onDragOver={(e) => {
-            if (dragHash) e.preventDefault();
+            if (dragUuid) e.preventDefault();
           }}
           onDrop={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (dragHash) moveObject(dragHash, g.id);
+            if (dragUuid) moveObject(dragUuid, g.id);
           }}
         >
           <span className={`caret${isOpen ? " open" : ""}`}>▸</span>
@@ -218,21 +218,21 @@ export default function ObjectsTree({
           <>
             {items.map((o) => (
               <ObjectRow
-                key={o.hash}
+                key={o.uuid}
                 obj={o}
                 depth={depth + 1}
                 usageCount={usageOf[o.hash]?.apiCount ?? 0}
-                selected={selectedHash === o.hash}
-                onSelect={() => onSelectObject(o.hash)}
+                selected={selectedUuid === o.uuid}
+                onSelect={() => onSelectObject(o.uuid)}
                 onRename={() => renameObject(o)}
                 onDelete={() => deleteObject(o)}
-                onContextMenu={(e, hash) => {
+                onContextMenu={(e, uuid) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setObjMenu({ x: e.clientX, y: e.clientY, hash });
+                  setObjMenu({ x: e.clientX, y: e.clientY, uuid });
                 }}
-                onDragStart={() => setDragHash(o.hash)}
-                onDragEnd={() => setDragHash(null)}
+                onDragStart={() => setDragUuid(o.uuid)}
+                onDragEnd={() => setDragUuid(null)}
               />
             ))}
             {g.children.map((c) => renderGroup(c, depth + 1))}
@@ -243,12 +243,12 @@ export default function ObjectsTree({
   };
 
   // ===== 增删改（构造新 store 保存，目录结构即分组） =====
-  const moveObject = (hash: string, groupId: string) => {
-    const o = store.objects.find((x) => x.hash === hash);
+  const moveObject = (uuid: string, groupId: string) => {
+    const o = store.objects.find((x) => x.uuid === uuid);
     if (!o || o.group === groupId) return;
     void saveStore({
       groups: store.groups,
-      objects: store.objects.map((x) => (x.hash === hash ? { ...x, group: groupId } : x)),
+      objects: store.objects.map((x) => (x.uuid === uuid ? { ...x, group: groupId } : x)),
     });
   };
 
@@ -312,7 +312,7 @@ export default function ObjectsTree({
     const fresh = await saveStore({ groups: store.groups, objects: [o, ...store.objects] });
     // 新建后直接在右侧展开配置
     const created = fresh.objects.find((x) => x.name === name.trim());
-    if (created) onSelectObject(created.hash);
+    if (created) onSelectObject(created.uuid);
   };
 
   const renameObject = (o: ObjectDef) => {
@@ -320,22 +320,23 @@ export default function ObjectsTree({
     if (!name || !name.trim() || name.trim() === o.name) return;
     void saveStore({
       groups: store.groups,
-      objects: store.objects.map((x) => (x.hash === o.hash ? { ...x, name: name.trim() } : x)),
+      objects: store.objects.map((x) => (x.uuid === o.uuid ? { ...x, name: name.trim() } : x)),
     });
   };
 
   const deleteObject = (o: ObjectDef) => {
     if (!window.confirm(t("objects.confirmDelete", { name: o.name }))) return;
+    // 按稳定 uuid 删除（hash 为结构签名可能重复，按 hash 删除会误伤同结构对象）
     void saveStore({
       groups: store.groups,
       objects: store.objects
-        .filter((x) => x.hash !== o.hash)
+        .filter((x) => x.uuid !== o.uuid)
         .map((x) => ({
           ...x,
           properties: x.properties.map((p) => (p.refHash === o.hash ? { ...p, refHash: "" } : p)),
         })),
     });
-    if (selectedHash === o.hash) onSelectObject(null);
+    if (selectedUuid === o.uuid) onSelectObject(null);
   };
 
   // ===== JSON / SQL DDL 导入 =====
@@ -349,7 +350,11 @@ export default function ObjectsTree({
     if (res.created.length) msgs.push(t("objects.importCreated", { n: res.created.length }));
     if (res.reused.length) msgs.push(t("objects.importReused", { n: res.reused.length }));
     onToast(msgs.join("，"));
-    onSelectObject(res.topHash || (res.objects[0] && res.objects[0].hash) || null);
+    const top = res.topHash || (res.objects[0] && res.objects[0].hash) || null;
+    if (top) {
+      const found = store.objects.find((x) => x.hash === top);
+      if (found) onSelectObject(found.uuid);
+    }
   };
 
   const doImport = async () => {
@@ -404,41 +409,41 @@ export default function ObjectsTree({
         {!kw &&
           (objectsByGroup[""] || []).map((o) => (
             <ObjectRow
-              key={o.hash}
+              key={o.uuid}
               obj={o}
               depth={0}
               usageCount={usageOf[o.hash]?.apiCount ?? 0}
-              selected={selectedHash === o.hash}
-              onSelect={() => onSelectObject(o.hash)}
+              selected={selectedUuid === o.uuid}
+              onSelect={() => onSelectObject(o.uuid)}
               onRename={() => renameObject(o)}
               onDelete={() => deleteObject(o)}
-              onContextMenu={(e, hash) => {
+              onContextMenu={(e, uuid) => {
                 e.preventDefault();
                 e.stopPropagation();
-                setObjMenu({ x: e.clientX, y: e.clientY, hash });
+                setObjMenu({ x: e.clientX, y: e.clientY, uuid });
               }}
-              onDragStart={() => setDragHash(o.hash)}
-              onDragEnd={() => setDragHash(null)}
+              onDragStart={() => setDragUuid(o.uuid)}
+              onDragEnd={() => setDragUuid(null)}
             />
           ))}
         {kw &&
           (objectsByGroup[""] || []).filter(filterMatch).map((o) => (
             <ObjectRow
-              key={o.hash}
+              key={o.uuid}
               obj={o}
               depth={0}
               usageCount={usageOf[o.hash]?.apiCount ?? 0}
-              selected={selectedHash === o.hash}
-              onSelect={() => onSelectObject(o.hash)}
+              selected={selectedUuid === o.uuid}
+              onSelect={() => onSelectObject(o.uuid)}
               onRename={() => renameObject(o)}
               onDelete={() => deleteObject(o)}
-              onContextMenu={(e, hash) => {
+              onContextMenu={(e, uuid) => {
                 e.preventDefault();
                 e.stopPropagation();
-                setObjMenu({ x: e.clientX, y: e.clientY, hash });
+                setObjMenu({ x: e.clientX, y: e.clientY, uuid });
               }}
-              onDragStart={() => setDragHash(o.hash)}
-              onDragEnd={() => setDragHash(null)}
+              onDragStart={() => setDragUuid(o.uuid)}
+              onDragEnd={() => setDragUuid(null)}
             />
           ))}
         {!kw && (
@@ -466,7 +471,7 @@ export default function ObjectsTree({
         <div className="node-ctx-menu" style={{ left: objMenu.x, top: objMenu.y }}>
           <button
             onClick={() => {
-              const o = store.objects.find((x) => x.hash === objMenu.hash);
+              const o = store.objects.find((x) => x.uuid === objMenu.uuid);
               setObjMenu(null);
               if (o) setVersionModal(o);
             }}
@@ -475,7 +480,7 @@ export default function ObjectsTree({
           </button>
           <button
             onClick={() => {
-              const o = store.objects.find((x) => x.hash === objMenu.hash);
+              const o = store.objects.find((x) => x.uuid === objMenu.uuid);
               setObjMenu(null);
               if (o) renameObject(o);
             }}
@@ -485,7 +490,7 @@ export default function ObjectsTree({
           <button
             className="danger"
             onClick={() => {
-              const o = store.objects.find((x) => x.hash === objMenu.hash);
+              const o = store.objects.find((x) => x.uuid === objMenu.uuid);
               setObjMenu(null);
               if (o) deleteObject(o);
             }}
@@ -633,7 +638,7 @@ function ObjectRow({
   onSelect: () => void;
   onRename: () => void;
   onDelete: () => void;
-  onContextMenu: (e: React.MouseEvent, hash: string) => void;
+  onContextMenu: (e: React.MouseEvent, uuid: string) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
 }) {
@@ -643,10 +648,10 @@ function ObjectRow({
       className={`node objects-object-row${selected ? " selected" : ""}`}
       style={{ paddingLeft: 10 + depth * 14 }}
       onClick={onSelect}
-      onContextMenu={(e) => onContextMenu(e, obj.hash)}
+      onContextMenu={(e) => onContextMenu(e, obj.uuid)}
       draggable
       onDragStart={(e) => {
-        e.dataTransfer.setData("text/plain", obj.hash);
+        e.dataTransfer.setData("text/plain", obj.uuid);
         e.dataTransfer.effectAllowed = "move";
         onDragStart();
       }}

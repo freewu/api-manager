@@ -245,10 +245,21 @@ pub fn save_objects(root: &Path, store: &ObjectStore) -> Result<String, String> 
         std::fs::create_dir_all(dir.join(&g.id)).map_err(|e| format!("创建分组目录失败: {e}"))?;
     }
 
-    // 重算 hash + 修复失效引用（uuid 为空时生成稳定标识，兼容旧数据）
+    // 重算 hash（结构签名）+ 修复失效引用（uuid 为空时生成稳定标识，兼容旧数据）
+    // hash 仅保证"相同结构复用"，不保证对象唯一：store 内 hash 冲突时追加 -2/-3 后缀，
+    // 避免删除/定位按 hash 误伤其他对象（对象唯一性以 uuid 为准）
     let mut objects: Vec<ObjectDef> = Vec::new();
+    let mut used_hashes: std::collections::HashSet<String> = std::collections::HashSet::new();
     for mut o in store.objects.clone() {
-        o.hash = object_hash(&o.properties);
+        let base = object_hash(&o.properties);
+        let mut h = base.clone();
+        let mut n = 2;
+        while used_hashes.contains(&h) {
+            h = format!("{base}-{n}");
+            n += 1;
+        }
+        used_hashes.insert(h.clone());
+        o.hash = h;
         if o.uuid.trim().is_empty() {
             o.uuid = uuid::Uuid::new_v4().to_string();
         }
@@ -1298,5 +1309,38 @@ CREATE TABLE `my_users` (
         assert!(list_object_versions(&root, "../").unwrap().is_empty());
         // 无效 uuid 保存报错
         assert!(save_object_version(&root, "bad/../uuid", &obj).is_err());
+    }
+
+    #[test]
+    fn test_same_structure_objects_keep_unique_hash() {
+        let root = tmpdir("dup-hash");
+        let mut store = ObjectStore::default();
+        // 两个空属性对象（结构 hash 相同）——删除其中一个不得误伤另一个
+        for u in ["dddddddddddddddddddddddddddddddd", "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"] {
+            store.objects.push(ObjectDef {
+                uuid: u.into(),
+                hash: "tmp".into(),
+                name: format!("对象{u}").into(),
+                group: String::new(),
+                description: String::new(),
+                properties: vec![],
+                created_at: 1,
+                updated_at: 2,
+            });
+        }
+        save_objects(&root, &store).unwrap();
+        let loaded = list_objects(&root).unwrap();
+        assert_eq!(loaded.objects.len(), 2);
+        let h1 = &loaded.objects[0].hash;
+        let h2 = &loaded.objects[1].hash;
+        assert_ne!(h1, h2, "同结构对象的 hash 应唯一（-2 后缀）");
+        assert!(h1.starts_with(h2) || h2.starts_with(h1), "冲突 hash 应保留结构签名前缀");
+
+        // 按 uuid 删除一个，另一个保留
+        store.objects.retain(|o| o.uuid != "dddddddddddddddddddddddddddddddd");
+        save_objects(&root, &store).unwrap();
+        let loaded = list_objects(&root).unwrap();
+        assert_eq!(loaded.objects.len(), 1);
+        assert_eq!(loaded.objects[0].name, "对象eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
     }
 }
