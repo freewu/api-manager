@@ -156,7 +156,7 @@ export default function ObjectsTree({
       <div key={g.id}>
         <div
           className="node objects-group-row"
-          style={{ padding: "5px 6px 5px " + (4 + depth * 4) + "px" }}
+          style={{ paddingLeft: 6 + depth * 14 }}
           onClick={() =>
             setOpenGroups((prev) => {
               const next = new Set(prev);
@@ -174,8 +174,8 @@ export default function ObjectsTree({
             if (dragUuid) moveObject(dragUuid, g.id);
           }}
         >
-          <span className={`caret${isOpen ? " open" : ""}`}>{isOpen ? "▾" : "▸"}</span>
-          <span className="node-icon">{isOpen ? "📂" : "📁"}</span>
+          <span className={`caret${isOpen ? " open" : ""}`}>▶</span>
+          <span className="node-icon">📁</span>
           <span className="node-name">{g.name}</span>
           <span
             className="objects-group-count"
@@ -504,7 +504,7 @@ export default function ObjectsTree({
           <>
             <div
               className="node"
-              style={{ padding: "5px 6px 5px 6px", color: "var(--text-faint)", fontSize: 12 }}
+              style={{ paddingLeft: 6, color: "var(--text-faint)", fontSize: 12 }}
               onClick={() => openNewObject("")}
             >
               ＋ {t("objects.newObject")}
@@ -750,7 +750,7 @@ function ObjectRow({
   return (
     <div
       className={`node objects-object-row${selected ? " selected" : ""}`}
-      style={{ padding: "5px 6px 5px " + (4 + depth * 4) + "px" }}
+      style={{ paddingLeft: 6 + depth * 14 }}
       onClick={onSelect}
       onContextMenu={(e) => onContextMenu(e, obj.uuid)}
       draggable
