@@ -548,8 +548,3 @@
   padding: 12px 14px;
   user-select: text;
 }
-
-/* 代码生成头部：语言选择 + 复制（去掉原生 select 样式） */
-.objects-codegen-head select {
-  display: none;
-}
