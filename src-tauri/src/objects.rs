@@ -383,6 +383,411 @@ pub fn import_json_object(
     })
 }
 
+/// 通过 SQL CREATE TABLE 建表语句生成对象（每个表一个对象）。
+/// 类型映射见 map_sql_type；列名 → key，NOT NULL/PRIMARY KEY → 必填，COMMENT → 描述；
+/// 表级约束（PRIMARY KEY(...)/FOREIGN KEY/UNIQUE KEY/CONSTRAINT/CHECK/INDEX）自动忽略。
+pub fn import_ddl(root: &Path, group: &str, ddl: &str) -> Result<ObjectImportResult, String> {
+    let mut store = list_objects(root)?;
+    let mut created: Vec<String> = Vec::new();
+    let mut reused: Vec<String> = Vec::new();
+    let mut generated: Vec<ObjectDef> = Vec::new();
+    let group = group.trim().to_string();
+
+    let tables = parse_create_tables(ddl);
+    if tables.is_empty() {
+        return Err("未识别到 CREATE TABLE 语句".into());
+    }
+    let mut top_hash = String::new();
+    for (table_name, body) in tables {
+        let mut props: Vec<ObjectProp> = Vec::new();
+        for col in split_columns(&body) {
+            if let Some((key, kind, required, desc)) = parse_column(&col) {
+                props.push(ObjectProp {
+                    key,
+                    kind,
+                    required,
+                    description: desc,
+                    ..ObjectProp::default()
+                });
+            }
+        }
+        let hash = object_hash(&props);
+        // hash 相同：复用已有对象（含本轮已生成）
+        if find_object(&store, &hash).is_some() || generated.iter().any(|g| g.hash == hash) {
+            if !reused.contains(&hash) {
+                reused.push(hash.clone());
+            }
+            if top_hash.is_empty() {
+                top_hash = hash.clone();
+            }
+            continue;
+        }
+        let now = now_ts();
+        let def = ObjectDef {
+            hash: hash.clone(),
+            name: table_name.clone(),
+            group: group.clone(),
+            description: String::new(),
+            properties: props,
+            created_at: now,
+            updated_at: now,
+        };
+        if top_hash.is_empty() {
+            top_hash = hash.clone();
+        }
+        generated.push(def);
+        created.push(hash.clone());
+    }
+    if !generated.is_empty() {
+        store.objects.extend(generated.clone());
+        save_objects(root, &store)?;
+    }
+    Ok(ObjectImportResult {
+        objects: generated,
+        created,
+        reused,
+        top_hash,
+    })
+}
+
+/// 提取 DDL 中所有 CREATE TABLE 语句 → (表名, 表体内容)
+fn parse_create_tables(ddl: &str) -> Vec<(String, String)> {
+    let bytes = ddl.as_bytes();
+    let lower = ddl.to_ascii_lowercase();
+    let n = bytes.len();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < n {
+        let Some(rel) = lower[i..].find("create table") else { break };
+        let ct = i + rel;
+        let mut p = ct + "create table".len();
+        let seg = &lower[p..];
+        if seg.trim_start().starts_with("if not exists") {
+            p += seg.find("if not exists").unwrap() + "if not exists".len();
+        }
+        while p < n && bytes[p].is_ascii_whitespace() {
+            p += 1;
+        }
+        let name_start = p;
+        while p < n && !bytes[p].is_ascii_whitespace() && bytes[p] != b'(' {
+            p += 1;
+        }
+        let raw_name = ddl[name_start..p].trim();
+        if raw_name.is_empty() {
+            i = p;
+            continue;
+        }
+        // 跳到 '('（遇到 ';' 说明无表体，跳过该段）
+        while p < n && bytes[p] != b'(' {
+            if bytes[p] == b';' {
+                break;
+            }
+            p += 1;
+        }
+        if p >= n || bytes[p] != b'(' {
+            i = p;
+            continue;
+        }
+        // 括号匹配收集表体（忽略注释与字符串字面量；char_indices 保持字节偏移，避免中文被逐字节拆分）
+        let body_start = p + 1;
+        let mut it = ddl[body_start..].char_indices().peekable();
+        let mut depth = 1usize;
+        let mut in_str = false;
+        let mut line_comment = false;
+        let mut block_comment = false;
+        let mut body = String::new();
+        let mut end_rel = 0usize;
+        while depth > 0 {
+            let Some((rel, c)) = it.next() else { break };
+            end_rel = rel + c.len_utf8();
+            if line_comment {
+                if c == '\n' {
+                    line_comment = false;
+                }
+                body.push(' ');
+                continue;
+            }
+            if block_comment {
+                if c == '*' && it.peek().map(|(_, x)| *x) == Some('/') {
+                    block_comment = false;
+                    it.next();
+                    body.push(' ');
+                    body.push(' ');
+                } else {
+                    body.push(' ');
+                }
+                continue;
+            }
+            if in_str {
+                if c == '\'' {
+                    if it.peek().map(|(_, x)| *x) == Some('\'') {
+                        body.push('\'');
+                        body.push('\'');
+                        it.next();
+                    } else {
+                        in_str = false;
+                        body.push('\'');
+                    }
+                } else {
+                    body.push(c);
+                }
+                continue;
+            }
+            match c {
+                '\'' => {
+                    in_str = true;
+                    body.push('\'');
+                }
+                '-' if it.peek().map(|(_, x)| *x) == Some('-') => {
+                    line_comment = true;
+                    it.next();
+                    body.push(' ');
+                    body.push(' ');
+                }
+                '/' if it.peek().map(|(_, x)| *x) == Some('*') => {
+                    block_comment = true;
+                    it.next();
+                    body.push(' ');
+                    body.push(' ');
+                }
+                '(' => {
+                    depth += 1;
+                    body.push('(');
+                }
+                ')' => {
+                    depth -= 1;
+                    if depth > 0 {
+                        body.push(')');
+                    }
+                }
+                _ => body.push(c),
+            }
+        }
+        out.push((clean_table_name(raw_name), body));
+        i = body_start + end_rel;
+    }
+    out
+}
+
+/// 表名清洗：schema.table / "quoted" / `backtick` / [bracket] → 取末段并去引号
+fn clean_table_name(raw: &str) -> String {
+    let mut last = raw.rsplit('.').next().unwrap_or(raw);
+    for ch in ['"', '`', '[', ']'] {
+        last = last.trim_matches(ch);
+    }
+    last.to_string()
+}
+
+/// 按顶层逗号分割列定义（忽略括号内与字符串内的逗号；按字符迭代避免中文被拆字节）
+fn split_columns(body: &str) -> Vec<String> {
+    let mut cols = Vec::new();
+    let mut cur = String::new();
+    let mut depth = 0usize;
+    let mut in_str = false;
+    let mut chars = body.chars().peekable();
+    while let Some(c) = chars.next() {
+        if in_str {
+            if c == '\'' {
+                if chars.peek() == Some(&'\'') {
+                    cur.push('\'');
+                    cur.push('\'');
+                    chars.next();
+                } else {
+                    in_str = false;
+                    cur.push('\'');
+                }
+            } else {
+                cur.push(c);
+            }
+            continue;
+        }
+        match c {
+            '\'' => {
+                in_str = true;
+                cur.push('\'');
+            }
+            '(' => {
+                depth += 1;
+                cur.push('(');
+            }
+            ')' => {
+                if depth > 0 {
+                    depth -= 1;
+                }
+                cur.push(')');
+            }
+            ',' if depth == 0 => {
+                cols.push(cur.trim().to_string());
+                cur.clear();
+            }
+            _ => cur.push(c),
+        }
+    }
+    if !cur.trim().is_empty() {
+        cols.push(cur.trim().to_string());
+    }
+    cols
+}
+
+/// 解析单列定义 → (列名, 类型映射, 必填, 描述)；表级约束返回 None
+fn parse_column(col: &str) -> Option<(String, String, bool, String)> {
+    let t = col.trim();
+    if t.is_empty() {
+        return None;
+    }
+    let upper = t.to_ascii_uppercase();
+    for kw in [
+        "PRIMARY KEY",
+        "UNIQUE KEY",
+        "UNIQUE INDEX",
+        "FOREIGN KEY",
+        "CONSTRAINT",
+        "CHECK",
+        "KEY",
+        "INDEX",
+        "FULLTEXT",
+    ] {
+        if upper.starts_with(kw) {
+            return None;
+        }
+    }
+    let (name, rest) = split_name_rest(t)?;
+    let name = name
+        .trim_matches('"')
+        .trim_matches('`')
+        .trim_matches('[')
+        .trim_matches(']')
+        .to_string();
+    let rest = rest.trim();
+    if rest.is_empty() {
+        return None;
+    }
+    // 类型 token（可能带 (…) 参数，如 VARCHAR(50) / DECIMAL(10,2)）
+    let b = rest.as_bytes();
+    let mut p = 0;
+    while p < b.len() && !b[p].is_ascii_whitespace() && b[p] != b'(' {
+        p += 1;
+    }
+    let type_tok: String = rest[..p]
+        .chars()
+        .take_while(|c| c.is_ascii_alphabetic() || *c == '_')
+        .collect();
+    let mut q = p;
+    if q < b.len() && b[q] == b'(' {
+        let mut depth = 0usize;
+        while q < b.len() {
+            match b[q] {
+                b'(' => depth += 1,
+                b')' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        q += 1;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+            q += 1;
+        }
+    }
+    let attrs = rest[q..].to_string();
+    let upper_attrs = attrs.to_ascii_uppercase();
+    let required = upper_attrs.contains("NOT NULL") || upper_attrs.contains("PRIMARY KEY");
+    let desc = extract_comment(&attrs);
+    Some((name, map_sql_type(&type_tok).to_string(), required, desc))
+}
+
+/// 拆分列名与其余部分（支持 "quoted name" / `name` / [name]）
+fn split_name_rest(t: &str) -> Option<(&str, &str)> {
+    let t = t.trim_start();
+    if t.is_empty() {
+        return None;
+    }
+    let first = t.as_bytes()[0];
+    let close = match first {
+        b'"' => Some(b'"'),
+        b'`' => Some(b'`'),
+        b'[' => Some(b']'),
+        _ => None,
+    };
+    if let Some(close) = close {
+        let b = t.as_bytes();
+        let mut i = 1;
+        while i < b.len() && b[i] != close {
+            i += 1;
+        }
+        if i >= b.len() {
+            return None;
+        }
+        Some((&t[..=i], t[i + 1..].trim_start()))
+    } else {
+        match t.find(char::is_whitespace) {
+            Some(i) => Some((&t[..i], t[i..].trim_start())),
+            None => Some((t, "")),
+        }
+    }
+}
+
+/// 提取列定义中的 COMMENT '...' 作为描述
+fn extract_comment(attrs: &str) -> String {
+    let lower = attrs.to_ascii_lowercase();
+    let mut idx = 0;
+    while let Some(rel) = lower[idx..].find("comment") {
+        let pos = idx + rel;
+        let rest = &attrs[pos + "comment".len()..];
+        let rest_trim = rest.trim_start();
+        if let Some(inner) = rest_trim.strip_prefix('\'') {
+            let mut out = String::new();
+            let mut chars = inner.chars().peekable();
+            while let Some(c) = chars.next() {
+                if c == '\'' {
+                    if chars.peek() == Some(&'\'') {
+                        out.push('\'');
+                        chars.next();
+                    } else {
+                        break;
+                    }
+                } else {
+                    out.push(c);
+                }
+            }
+            return out;
+        }
+        idx = pos + 1;
+    }
+    String::new()
+}
+
+/// SQL 类型 → 对象属性类型
+fn map_sql_type(t: &str) -> &'static str {
+    let t = t.to_ascii_uppercase();
+    if t.starts_with("INT")
+        || t.starts_with("SERIAL")
+        || t.starts_with("BIGINT")
+        || t.starts_with("SMALLINT")
+        || t.starts_with("TINYINT")
+        || t.starts_with("MEDIUMINT")
+        || t.starts_with("DEC")
+        || t.starts_with("NUM")
+        || t.starts_with("FLOAT")
+        || t.starts_with("DOUBLE")
+        || t.starts_with("REAL")
+        || t.starts_with("MONEY")
+        || t == "YEAR"
+    {
+        "number"
+    } else if t.starts_with("BOOL") || t == "BIT" {
+        "boolean"
+    } else if t.starts_with("DATE") || t.starts_with("TIME") || t.starts_with("TIMESTAMP") {
+        "string"
+    } else if t.starts_with("JSON") {
+        "any"
+    } else {
+        // VARCHAR / CHAR / TEXT / BLOB / CLOB / BINARY / ENUM / UUID 等
+        "string"
+    }
+}
+
 fn capitalize(s: &str) -> String {
     let mut c = s.chars();
     match c.next() {
@@ -530,6 +935,90 @@ mod tests {
         assert!(r.is_err());
         let r2 = import_json_object(&root, "X", "", "[1,2,3]");
         assert!(r2.is_err(), "顶层数组应报错");
+    }
+
+    #[test]
+    fn test_parse_create_tables_basic() {
+        let ddl = r#"
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL COMMENT '用户名称',
+  age INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS public.orders (
+  order_id INT NOT NULL,
+  amount DECIMAL(10,2),
+  note TEXT,
+  PRIMARY KEY (order_id)
+);
+"#;
+        let tables = parse_create_tables(ddl);
+        assert_eq!(tables.len(), 2);
+        assert_eq!(tables[0].0, "users");
+        assert_eq!(tables[1].0, "orders", "IF NOT EXISTS 与 schema 前缀应处理");
+        let cols = split_columns(&tables[0].1);
+        assert_eq!(cols.len(), 4);
+        let (name, kind, required, desc) = parse_column(&cols[0]).unwrap();
+        assert_eq!(name, "id");
+        assert_eq!(kind, "number");
+        assert!(required, "PRIMARY KEY 应必填");
+        let (name, kind, required, desc) = parse_column(&cols[1]).unwrap();
+        assert_eq!(name, "name");
+        assert_eq!(kind, "string");
+        assert!(required);
+        assert_eq!(desc, "用户名称", "COMMENT 应提取为描述");
+        let (_, kind, required, _) = parse_column(&cols[2]).unwrap();
+        assert_eq!(kind, "number");
+        assert!(!required);
+        // 表级约束应被忽略
+        let constraint_cols: Vec<_> = split_columns(&tables[1].1);
+        let parsed: Vec<_> = constraint_cols.iter().filter_map(|c| parse_column(c)).collect();
+        assert_eq!(parsed.len(), 3, "PRIMARY KEY(...) 约束行应被跳过");
+    }
+
+    #[test]
+    fn test_import_ddl_creates_and_reuses() {
+        let root = tmpdir("ddl");
+        let ddl = "CREATE TABLE t_user (id INT NOT NULL, name VARCHAR(50));";
+        let res = import_ddl(&root, "db", ddl).unwrap();
+        assert_eq!(res.created.len(), 1);
+        assert_eq!(res.objects[0].name, "t_user");
+        assert_eq!(res.objects[0].group, "db");
+        assert_eq!(res.objects[0].properties.len(), 2);
+        // 相同结构再次导入 → 复用
+        let res2 = import_ddl(&root, "db", ddl).unwrap();
+        assert_eq!(res2.created.len(), 0);
+        assert_eq!(res2.reused.len(), 1);
+        // 多表
+        let ddl2 = "CREATE TABLE a (x INT);\nCREATE TABLE b (y VARCHAR(10) NOT NULL);";
+        let res3 = import_ddl(&root, "", ddl2).unwrap();
+        assert_eq!(res3.created.len(), 2);
+    }
+
+    #[test]
+    fn test_import_ddl_quoted_and_comments() {
+        let root = tmpdir("ddl2");
+        let ddl = r#"
+-- 用户表
+CREATE TABLE `my_users` (
+  `first name` VARCHAR(30) NOT NULL COMMENT '名字',
+  -- 备注字段
+  bio TEXT,
+  CONSTRAINT pk PRIMARY KEY (`first name`)
+);
+"#;
+        let res = import_ddl(&root, "", ddl).unwrap();
+        assert_eq!(res.created.len(), 1);
+        let o = &res.objects[0];
+        assert_eq!(o.name, "my_users", "反引号表名应清洗");
+        assert_eq!(o.properties.len(), 2, "CONSTRAINT 行与 -- 注释应忽略");
+        let first = o.properties.iter().find(|p| p.key == "first name").unwrap();
+        assert!(first.required);
+        assert_eq!(first.description, "名字");
+        let bio = o.properties.iter().find(|p| p.key == "bio").unwrap();
+        assert_eq!(bio.kind, "string");
+        assert!(!bio.required);
     }
 
     #[test]

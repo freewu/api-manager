@@ -103,7 +103,13 @@ export default function App() {
 
   // ---------- 对象管理 ----------
   const objects = useObjects(workspace);
-  const { store: objectsStore, usage: objectsUsage, save: saveObjectsStore, doImport: importObjectsJson } = objects;
+  const {
+    store: objectsStore,
+    usage: objectsUsage,
+    save: saveObjectsStore,
+    doImport: importObjectsJson,
+    doImportDdl: importObjectsDdl,
+  } = objects;
 
   // ---------- 弹窗操作 ----------
   const modals = useModals({
@@ -584,6 +590,7 @@ export default function App() {
               objectsUsage={objectsUsage}
               onObjectsSave={saveObjectsStore}
               onObjectsImport={importObjectsJson}
+              onObjectsImportDdl={importObjectsDdl}
               onObjectsJumpApi={jumpToApi}
               onObjectsToast={showToast}
               objectsList={objectsStore.objects}

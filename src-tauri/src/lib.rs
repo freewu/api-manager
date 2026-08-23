@@ -9123,6 +9123,17 @@ fn import_json_object(
     objects::import_json_object(&root, &name, &group, &json)
 }
 
+/// 从 SQL CREATE TABLE 建表语句生成对象（每个表一个对象）
+#[tauri::command]
+fn import_ddl(
+    state: State<'_, WorkspaceState>,
+    group: String,
+    ddl: String,
+) -> Result<objects::ObjectImportResult, String> {
+    let root = workspace_root(&state)?;
+    objects::import_ddl(&root, &group, &ddl)
+}
+
 /// 对象被接口文档引用的统计（接口数量 + 引用接口列表）
 #[tauri::command]
 fn object_usage(
@@ -9706,6 +9717,7 @@ pub fn run() {
             list_objects,
             save_objects,
             import_json_object,
+            import_ddl,
             object_usage,
             mock_reload
         ])

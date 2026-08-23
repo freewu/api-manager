@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ObjectImportResult, ObjectStore, ObjectUsageItem } from "../types";
-import { importJsonObject, listObjects, objectUsage, saveObjects } from "../commands";
+import { importDdl, importJsonObject, listObjects, objectUsage, saveObjects } from "../commands";
 
 /** 对象管理：加载 / 保存 / JSON 导入 / 引用统计 */
 export function useObjects(workspace: string | null) {
@@ -51,5 +51,20 @@ export function useObjects(workspace: string | null) {
     []
   );
 
-  return { store, usage, loaded, refresh, save, doImport };
+  const doImportDdl = useCallback(
+    async (group: string, ddl: string): Promise<ObjectImportResult> => {
+      const res = await importDdl(group, ddl);
+      const s = await listObjects();
+      setStore(s);
+      try {
+        setUsage(await objectUsage(s));
+      } catch {
+        setUsage([]);
+      }
+      return res;
+    },
+    []
+  );
+
+  return { store, usage, loaded, refresh, save, doImport, doImportDdl };
 }

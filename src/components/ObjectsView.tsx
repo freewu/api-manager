@@ -17,6 +17,7 @@ interface Props {
   usage: ObjectUsageItem[];
   onSave: (store: ObjectStore) => Promise<void>;
   onImport: (name: string, group: string, json: string) => Promise<ObjectImportResult>;
+  onImportDdl: (group: string, ddl: string) => Promise<ObjectImportResult>;
   onJumpApi: (path: string) => void;
   onToast: (msg: string) => void;
 }
@@ -28,6 +29,7 @@ export default function ObjectsView({
   usage,
   onSave,
   onImport,
+  onImportDdl,
   onJumpApi,
   onToast,
 }: Props) {
@@ -38,9 +40,11 @@ export default function ObjectsView({
   const [dirty, setDirty] = useState(false);
   const [selectedHash, setSelectedHash] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [importMode, setImportMode] = useState<"json" | "ddl">("json");
   const [importName, setImportName] = useState("");
   const [importGroup, setImportGroup] = useState("");
   const [importJson, setImportJson] = useState("");
+  const [importDdlText, setImportDdlText] = useState("");
   const [genLang, setGenLang] = useState("typescript");
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -236,29 +240,42 @@ export default function ObjectsView({
     }
   };
 
-  // ===== JSON 导入 =====
-  const doImport = async () => {
-    if (!importName.trim()) {
-      onToast(t("objects.importName"));
-      return;
-    }
-    try {
-      JSON.parse(importJson);
-    } catch {
-      onToast(t("objects.jsonInvalid"));
-      return;
-    }
-    const res = await onImport(importName.trim(), importGroup.trim(), importJson);
+  // ===== JSON / SQL DDL 导入 =====
+  const finishImport = (res: ObjectImportResult) => {
     setImportOpen(false);
     setImportName("");
     setImportGroup("");
     setImportJson("");
+    setImportDdlText("");
     const msgs: string[] = [];
     if (res.created.length) msgs.push(t("objects.importCreated", { n: res.created.length }));
     if (res.reused.length) msgs.push(t("objects.importReused", { n: res.reused.length }));
     onToast(msgs.join("，"));
     // 选中顶层对象（复用场景 topHash 指向已有对象）
     setSelectedHash(res.topHash || (res.objects[0] && res.objects[0].hash) || null);
+  };
+
+  const doImport = async () => {
+    try {
+      if (importMode === "json") {
+        if (!importName.trim()) {
+          onToast(t("objects.importName"));
+          return;
+        }
+        JSON.parse(importJson);
+        const res = await onImport(importName.trim(), importGroup.trim(), importJson);
+        finishImport(res);
+      } else {
+        if (!importDdlText.trim()) {
+          onToast(t("objects.importDdlEmpty"));
+          return;
+        }
+        const res = await onImportDdl(importGroup.trim(), importDdlText);
+        finishImport(res);
+      }
+    } catch {
+      onToast(t("objects.jsonInvalid"));
+    }
   };
 
   // 分组层级渲染
@@ -648,38 +665,82 @@ export default function ObjectsView({
         )}
       </div>
 
-      {/* JSON 导入弹窗 */}
+      {/* JSON / SQL DDL 导入弹窗 */}
       {importOpen && (
         <div className="objects-import-mask" onClick={() => setImportOpen(false)}>
           <div className="objects-import-modal" onClick={(e) => e.stopPropagation()}>
             <div className="objects-import-title">{t("objects.importTitle")}</div>
+            <div className="objects-import-modes">
+              <button
+                className={`objects-import-mode ${importMode === "json" ? "active" : ""}`}
+                onClick={() => setImportMode("json")}
+              >
+                JSON
+              </button>
+              <button
+                className={`objects-import-mode ${importMode === "ddl" ? "active" : ""}`}
+                onClick={() => setImportMode("ddl")}
+              >
+                SQL DDL
+              </button>
+            </div>
             <div className="objects-import-body">
-              <label>
-                <span>{t("objects.importName")}</span>
-                <input value={importName} onChange={(e) => setImportName(e.target.value)} spellCheck={false} />
-              </label>
-              <label>
-                <span>{t("objects.importGroup")}</span>
-                <select value={importGroup} onChange={(e) => setImportGroup(e.target.value)}>
-                  <option value="">{t("objects.ungrouped")}</option>
-                  {store.groups.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>{t("objects.importJsonLabel")}</span>
-                <textarea
-                  value={importJson}
-                  onChange={(e) => setImportJson(e.target.value)}
-                  rows={10}
-                  spellCheck={false}
-                  placeholder={'{\n  "id": 1,\n  "name": "alice",\n  "address": { "city": "bj" }\n}'}
-                />
-              </label>
-              <div className="objects-import-tip">{t("objects.importJsonTip")}</div>
+              {importMode === "json" && (
+                <>
+                  <label>
+                    <span>{t("objects.importName")}</span>
+                    <input value={importName} onChange={(e) => setImportName(e.target.value)} spellCheck={false} />
+                  </label>
+                  <label>
+                    <span>{t("objects.importGroup")}</span>
+                    <select value={importGroup} onChange={(e) => setImportGroup(e.target.value)}>
+                      <option value="">{t("objects.ungrouped")}</option>
+                      {store.groups.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>{t("objects.importJsonLabel")}</span>
+                    <textarea
+                      value={importJson}
+                      onChange={(e) => setImportJson(e.target.value)}
+                      rows={10}
+                      spellCheck={false}
+                      placeholder={'{\n  "id": 1,\n  "name": "alice",\n  "address": { "city": "bj" }\n}'}
+                    />
+                  </label>
+                  <div className="objects-import-tip">{t("objects.importJsonTip")}</div>
+                </>
+              )}
+              {importMode === "ddl" && (
+                <>
+                  <label>
+                    <span>{t("objects.importGroup")}</span>
+                    <select value={importGroup} onChange={(e) => setImportGroup(e.target.value)}>
+                      <option value="">{t("objects.ungrouped")}</option>
+                      {store.groups.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>{t("objects.importDdlLabel")}</span>
+                    <textarea
+                      value={importDdlText}
+                      onChange={(e) => setImportDdlText(e.target.value)}
+                      rows={10}
+                      spellCheck={false}
+                      placeholder={'CREATE TABLE users (\n  id BIGINT PRIMARY KEY,\n  name VARCHAR(50) NOT NULL COMMENT \'用户名称\',\n  age INT\n);'}
+                    />
+                  </label>
+                  <div className="objects-import-tip">{t("objects.importDdlTip")}</div>
+                </>
+              )}
             </div>
             <div className="objects-import-actions">
               <button className="btn" onClick={() => setImportOpen(false)}>

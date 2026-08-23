@@ -54,6 +54,7 @@ interface RightPaneProps {
   objectsUsage: ObjectUsageItem[];
   onObjectsSave: (store: ObjectStore) => Promise<void>;
   onObjectsImport: (name: string, group: string, json: string) => Promise<ObjectImportResult>;
+  onObjectsImportDdl: (group: string, ddl: string) => Promise<ObjectImportResult>;
   onObjectsJumpApi: (path: string) => void;
   onObjectsToast: (msg: string) => void;
   objectsList?: ObjectDef[];
@@ -98,6 +99,7 @@ export function RightPane({
   objectsUsage,
   onObjectsSave,
   onObjectsImport,
+  onObjectsImportDdl,
   onObjectsJumpApi,
   onObjectsToast,
   objectsList,
@@ -128,6 +130,7 @@ export function RightPane({
             usage={objectsUsage}
             onSave={onObjectsSave}
             onImport={onObjectsImport}
+            onImportDdl={onObjectsImportDdl}
             onJumpApi={onObjectsJumpApi}
             onToast={onObjectsToast}
           />

@@ -420,6 +420,10 @@ export function importJsonObject(
   return invoke<ObjectImportResult>("import_json_object", { name, group, json });
 }
 
+export function importDdl(group: string, ddl: string): Promise<ObjectImportResult> {
+  return invoke<ObjectImportResult>("import_ddl", { group, ddl });
+}
+
 export function objectUsage(store: ObjectStore): Promise<ObjectUsageItem[]> {
   return invoke<ObjectUsageItem[]>("object_usage", { store });
 }

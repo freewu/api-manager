@@ -469,3 +469,28 @@
   gap: 8px;
   margin-top: 14px;
 }
+
+/* 导入弹窗：JSON / SQL DDL 模式切换 */
+.objects-import-modes {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.objects-import-mode {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+}
+.objects-import-mode:hover {
+  background: var(--bg-hover);
+}
+.objects-import-mode.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
