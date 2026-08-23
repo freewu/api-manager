@@ -431,3 +431,15 @@
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
+
+/* 对象管理占位页 */
+.objects-blank {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+}
