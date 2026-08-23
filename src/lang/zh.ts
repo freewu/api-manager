@@ -564,6 +564,8 @@ export const ZH: Record<string, string> = {
   "stats.totalApis": "接口总数",
   "stats.httpApis": "HTTP 接口",
   "stats.wsApis": "WebSocket 接口",
+  "stats.socketioApis": "Socket.IO 接口",
+  "stats.graphqlApis": "GraphQL 接口",
   "stats.wsExcluded": "WebSocket 接口不计入 HTTP 方法分布",
   "stats.totalFolders": "分组数",
   "stats.deprecatedApis": "废弃接口",

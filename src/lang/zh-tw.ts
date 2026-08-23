@@ -545,6 +545,8 @@ export const TW: Record<string, string> = {
   "stats.totalApis": "接口總數",
   "stats.httpApis": "HTTP 接口",
   "stats.wsApis": "WebSocket 接口",
+  "stats.socketioApis": "Socket.IO 介面",
+  "stats.graphqlApis": "GraphQL 介面",
   "stats.wsExcluded": "WebSocket 接口不計入 HTTP 方法分佈",
   "stats.totalFolders": "分組數",
   "stats.deprecatedApis": "廢棄接口",

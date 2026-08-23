@@ -556,6 +556,8 @@ export const EN: Record<string, string> = {
   "stats.totalApis": "Total APIs",
   "stats.httpApis": "HTTP APIs",
   "stats.wsApis": "WebSocket APIs",
+  "stats.socketioApis": "Socket.IO APIs",
+  "stats.graphqlApis": "GraphQL APIs",
   "stats.wsExcluded": "WebSocket APIs are excluded from the HTTP method distribution",
   "stats.totalFolders": "Folders",
   "stats.deprecatedApis": "Deprecated APIs",

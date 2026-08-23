@@ -23,6 +23,8 @@ interface Stats {
   totalApis: number;
   httpApis: number;
   wsApis: number;
+  socketIoApis: number;
+  graphqlApis: number;
   totalFolders: number;
   deprecatedApis: number;
   deprecatedFolders: number;
@@ -38,14 +40,20 @@ function computeStats(node: TreeNode): Stats {
   let deprecatedFolders = 0;
   let httpApis = 0;
   let wsApis = 0;
+  let socketIoApis = 0;
+  let graphqlApis = 0;
 
-  // 单次遍历：累计方法分布（仅 HTTP 接口）、mock 与废弃接口数（有副作用，只调用一次）
+  // 单次遍历：累计方法分布（仅 HTTP/GraphQL 外的实时与 GraphQL 单独计数）、mock 与废弃接口数（有副作用，只调用一次）
   const countApis = (n: TreeNode): number => {
     if (n.kind === "api") {
       if (n.mockEnabled) mockEnabled++;
       if (n.deprecated) deprecatedApis++;
-      if (n.protocol === "websocket" || n.protocol === "socketio") {
+      if (n.protocol === "websocket") {
         wsApis++;
+      } else if (n.protocol === "socketio") {
+        socketIoApis++;
+      } else if (n.protocol === "graphql") {
+        graphqlApis++;
       } else {
         httpApis++;
         const m = (n.method || "GET").toUpperCase();
@@ -87,6 +95,8 @@ function computeStats(node: TreeNode): Stats {
     totalApis,
     httpApis,
     wsApis,
+    socketIoApis,
+    graphqlApis,
     totalFolders,
     deprecatedApis,
     deprecatedFolders,
@@ -166,6 +176,14 @@ export function StatsModal({ node, onClose }: Props) {
           <div className="stats-card-label">{t("stats.wsApis")}</div>
         </div>
         <div className="stats-card">
+          <div className="stats-card-num">{stats.socketIoApis}</div>
+          <div className="stats-card-label">{t("stats.socketioApis")}</div>
+        </div>
+        <div className="stats-card">
+          <div className="stats-card-num">{stats.graphqlApis}</div>
+          <div className="stats-card-label">{t("stats.graphqlApis")}</div>
+        </div>
+        <div className="stats-card">
           <div className="stats-card-num">{stats.totalFolders}</div>
           <div className="stats-card-label">{t("stats.totalFolders")}</div>
         </div>
@@ -186,7 +204,9 @@ export function StatsModal({ node, onClose }: Props) {
       <div className="stats-body">
         <div className="stats-panel">
           <div className="stats-panel-title">{t("stats.methods")}</div>
-          {stats.wsApis > 0 && <div className="stats-ws-note">{t("stats.wsExcluded")}</div>}
+          {(stats.wsApis + stats.socketIoApis + stats.graphqlApis) > 0 && (
+            <div className="stats-ws-note">{t("stats.wsExcluded")}</div>
+          )}
           {stats.methods.length === 0 ? (
             <div className="stats-empty">{t("stats.noApis")}</div>
           ) : (
