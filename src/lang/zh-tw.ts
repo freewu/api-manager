@@ -614,6 +614,8 @@ export const TW: Record<string, string> = {
   "objects.copyCode": "複製程式碼",
   "objects.copied": "已複製",
   "objects.noUsage": "尚未被介面參照",
+  "objects.createdAt": "建立時間",
+  "objects.updatedAt": "更新時間",
 "update.later": "稍後再說",
 };
 

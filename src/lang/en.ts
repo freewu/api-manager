@@ -625,6 +625,8 @@ export const EN: Record<string, string> = {
   "objects.copyCode": "Copy Code",
   "objects.copied": "Copied",
   "objects.noUsage": "Not referenced by any API yet",
+  "objects.createdAt": "Created",
+  "objects.updatedAt": "Updated",
 "update.later": "Later",
 };
 

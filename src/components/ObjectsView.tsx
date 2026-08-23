@@ -610,6 +610,15 @@ export default function ObjectsView({
                           : t("objects.noUsage")}
                       </span>
                     </div>
+                    {selected.updatedAt > 0 && (
+                      <div className="objects-usage-item">
+                        <span className="objects-usage-label">
+                          {t("objects.createdAt")}: {new Date(selected.createdAt * 1000).toLocaleString()}
+                          {"  ·  "}
+                          {t("objects.updatedAt")}: {new Date(selected.updatedAt * 1000).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })()}

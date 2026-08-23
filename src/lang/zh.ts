@@ -633,6 +633,8 @@ export const ZH: Record<string, string> = {
   "objects.copyCode": "复制代码",
   "objects.copied": "已复制",
   "objects.noUsage": "暂未被接口引用",
+  "objects.createdAt": "创建时间",
+  "objects.updatedAt": "更新时间",
 "update.later": "稍后再说",
 };
 
