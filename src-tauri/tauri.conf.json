@@ -19,7 +19,7 @@
         "minHeight": 700,
         "center": true,
         "dragDropEnabled": false,
-        "url": "loading.html",
+        "url": "src/loading.html",
         "backgroundColor": "#14161a"
       }
     ],

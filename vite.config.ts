@@ -20,7 +20,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: "index.html",
-        loading: "loading.html",
+        loading: "src/loading.html",
       },
       output: {
         // 分包策略：react 全家桶 / tauri 插件 / 其余第三方依赖独立成块，
