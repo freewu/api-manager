@@ -25,7 +25,7 @@ impl Default for ObjectGroup {
 }
 
 /// 对象属性类型
-pub const PROP_KINDS: [&str; 6] = ["string", "number", "boolean", "object", "list", "any"];
+
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -163,6 +163,7 @@ pub fn find_object<'a>(store: &'a ObjectStore, hash: &str) -> Option<&'a ObjectD
 }
 
 /// 按名字查找对象（文档引用通过名字关联）
+#[allow(dead_code)]
 pub fn find_object_by_name<'a>(store: &'a ObjectStore, name: &str) -> Option<&'a ObjectDef> {
     let n = name.trim();
     if n.is_empty() {
@@ -331,14 +332,14 @@ pub fn import_json_object(
 
         let hash = object_hash(&props);
         // hash 相同：直接复用已有对象
-        if let Some(existing) = find_object(store, &hash) {
+        if let Some(_existing) = find_object(store, &hash) {
             if !reused.contains(&hash) {
                 reused.push(hash.clone());
             }
             return Ok(hash);
         }
         // 已在本轮生成列表中（嵌套结构相同）
-        if let Some(gen) = generated.iter().find(|g| g.hash == hash) {
+        if let Some(_gen) = generated.iter().find(|g| g.hash == hash) {
             if !reused.contains(&hash) {
                 reused.push(hash.clone());
             }
