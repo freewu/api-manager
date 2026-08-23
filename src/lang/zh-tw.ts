@@ -146,6 +146,7 @@ export const TW: Record<string, string> = {
   "sidebar.advProtocolType": "接口類型",
   "sidebar.advMethodType": "Method 類型",
   "sidebar.newFolder": "新增分組",
+  "sidebar.api": "介面管理",
   "sidebar.newApi": "新增接口",
   "sidebar.rename": "重命名",
   "sidebar.editInfo": "編輯分組",

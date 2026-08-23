@@ -154,6 +154,7 @@ export const EN: Record<string, string> = {
   "sidebar.advProtocolType": "API type",
   "sidebar.advMethodType": "Method type",
   "sidebar.newFolder": "New Group",
+  "sidebar.api": "API Manager",
   "sidebar.newApi": "New API",
   "sidebar.rename": "Rename",
   "sidebar.editInfo": "Edit Group",

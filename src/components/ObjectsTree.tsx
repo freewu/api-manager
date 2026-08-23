@@ -30,6 +30,22 @@ export default function ObjectsTree({
   const [importGroup, setImportGroup] = useState("");
   const [importJson, setImportJson] = useState("");
   const [importDdlText, setImportDdlText] = useState("");
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+
+  // 右键菜单：点击任意处 / Esc 时关闭
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => setCtxMenu(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [ctxMenu]);
 
   // 导入弹窗按 ESC 关闭
   useEffect(() => {
@@ -308,7 +324,13 @@ export default function ObjectsTree({
           ⇪
         </button>
       </div>
-      <div className="tree objects-list">
+      <div
+        className="tree objects-list"
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setCtxMenu({ x: Math.min(e.clientX, window.innerWidth - 190), y: Math.min(e.clientY, window.innerHeight - 120) });
+        }}
+      >
         {store.objects.length === 0 && <div className="objects-empty">{t("objects.empty")}</div>}
         {groupTree.map((g) => renderGroup(g, 0))}
         {/* 未分组对象：直接顶层叶子，不显示根目录 */}
@@ -357,6 +379,28 @@ export default function ObjectsTree({
           </>
         )}
       </div>
+
+      {/* 空白处右键菜单：新增分组 / 新增对象 */}
+      {ctxMenu && (
+        <div className="node-ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
+          <button
+            onClick={() => {
+              setCtxMenu(null);
+              addGroup();
+            }}
+          >
+            📁 {t("objects.newGroup")}
+          </button>
+          <button
+            onClick={() => {
+              setCtxMenu(null);
+              addObject();
+            }}
+          >
+            ▦ {t("objects.newObject")}
+          </button>
+        </div>
+      )}
 
       {/* JSON / SQL DDL 导入弹窗 */}
       {importOpen && (

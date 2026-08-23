@@ -159,6 +159,7 @@ export const ZH: Record<string, string> = {
   "sidebar.advProtocolType": "接口类型",
   "sidebar.advMethodType": "Method 类型",
   "sidebar.newFolder": "新增分组",
+  "sidebar.api": "接口管理",
   "sidebar.newApi": "新增接口",
   "sidebar.rename": "重命名",
   "sidebar.editInfo": "编辑分组",
