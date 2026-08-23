@@ -237,65 +237,32 @@
 }
 
 .objects-props {
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 8px 10px;
+  background: var(--bg-panel);
 }
 
+/* 属性表格：复用接口文档响应表格样式（kv-table / doc-params-table） */
 .objects-props-table {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  margin-top: 4px;
 }
-
-.objects-props-row {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 1.6fr 52px 1.6fr 26px;
-  gap: 6px;
-  align-items: center;
-}
-
-.objects-props-head {
-  font-size: 11px;
+.objects-props-table th {
+  font-size: 11.5px;
   color: var(--text-faint);
   font-weight: 600;
 }
-
-.objects-props-row input[type="text"],
-.objects-props-row input:not([type]),
-.objects-props-row input[type="checkbox"] {
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  border-radius: 4px;
-  padding: 3px 6px;
-  font-size: 12px;
-  width: 100%;
+.objects-ref-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
-
-.objects-props-row select {
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  border-radius: 4px;
-  padding: 3px 4px;
-  font-size: 12px;
-  width: 100%;
+.objects-ref-cell .doc-object-select {
+  flex: 1;
+  min-width: 0;
 }
-
-.objects-props-row input[type="checkbox"] {
-  width: auto;
-  justify-self: center;
-}
-
-.objects-cell-empty {
-  min-height: 12px;
-}
-
-.objects-props-empty {
-  color: var(--text-faint);
-  font-size: 12px;
-  padding: 10px 0;
+.objects-ref-jump {
+  flex-shrink: 0;
 }
 
 .objects-usage {

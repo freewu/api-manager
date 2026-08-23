@@ -458,29 +458,22 @@ export default function ObjectsView({
         <div className="tree objects-list">
           {store.objects.length === 0 && <div className="objects-empty">{t("objects.empty")}</div>}
           {groupTree.roots.map((node) => renderGroup(node, 0))}
-          {/* 未分组对象 */}
-          {!kw && objectsByGroup[""] && objectsByGroup[""].length > 0 && (
-            <div>
-              <div className="node objects-group-row" style={{ paddingLeft: 6 }}>
-                <span className="caret">▸</span>
-                <span className="node-icon">📁</span>
-                <span className="node-name">{t("objects.ungrouped")}</span>
-              </div>
-              {objectsByGroup[""].map((o) => (
-                <ObjectRow
-                  key={o.hash}
-                  obj={o}
-                  depth={1}
-                  hash={hashes[o.hash] || o.hash}
-                  usageCount={usageOf[o.hash]?.apiCount ?? 0}
-                  selected={selectedHash === o.hash}
-                  onSelect={() => setSelectedHash(o.hash)}
-                  onRename={() => renameObject(o)}
-                  onDelete={() => deleteObject(o)}
-                />
-              ))}
-            </div>
-          )}
+          {/* 未分组对象：直接作为顶层叶子，不展示根目录 */}
+          {!kw &&
+            objectsByGroup[""] &&
+            objectsByGroup[""].map((o) => (
+              <ObjectRow
+                key={o.hash}
+                obj={o}
+                depth={0}
+                hash={hashes[o.hash] || o.hash}
+                usageCount={usageOf[o.hash]?.apiCount ?? 0}
+                selected={selectedHash === o.hash}
+                onSelect={() => setSelectedHash(o.hash)}
+                onRename={() => renameObject(o)}
+                onDelete={() => deleteObject(o)}
+              />
+            ))}
           {kw && (
             <>
               {store.objects.filter(filterMatch).map((o) => (
@@ -569,7 +562,7 @@ export default function ObjectsView({
               </label>
             </div>
 
-            {/* 属性配置 */}
+            {/* 属性配置：表格样式与接口文档 tab 响应一致 */}
             <div className="objects-props">
               <div className="objects-section-title">
                 {t("objects.properties")}
@@ -577,86 +570,131 @@ export default function ObjectsView({
                   ＋{t("objects.addProp")}
                 </button>
               </div>
-              <div className="objects-props-table">
-                <div className="objects-props-row objects-props-head">
-                  <span>{t("objects.propKey")}</span>
-                  <span>{t("objects.propKind")}</span>
-                  <span>{t("objects.itemKind")}</span>
-                  <span>{t("objects.refObject")}</span>
-                  <span>{t("objects.propRequired")}</span>
-                  <span>{t("objects.propDesc")}</span>
-                  <span />
-                </div>
-                {selected.properties.map((p, i) => (
-                  <div className="objects-props-row" key={i}>
-                    <input
-                      value={p.key}
-                      placeholder="name"
-                      onChange={(e) => updateProp(i, { key: e.target.value })}
-                      spellCheck={false}
-                    />
-                    <select value={p.kind} onChange={(e) => updateProp(i, { kind: e.target.value })}>
-                      {PROP_KINDS.map((k) => (
-                        <option key={k} value={k}>
-                          {k}
-                        </option>
-                      ))}
-                    </select>
-                    {p.kind === "list" ? (
-                      <select
-                        value={p.itemKind}
-                        onChange={(e) => updateProp(i, { itemKind: e.target.value })}
-                      >
-                        {["string", "number", "boolean", "object", "any"].map((k) => (
-                          <option key={k} value={k}>
-                            {k}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="objects-cell-empty" />
-                    )}
-                    {p.kind === "object" || (p.kind === "list" && p.itemKind === "object") ? (
-                      <select
-                        value={p.refHash}
-                        onChange={(e) => updateProp(i, { refHash: e.target.value })}
-                      >
-                        <option value="">—</option>
-                        {store.objects
-                          .filter((o) => o.hash !== selected.hash)
-                          .map((o) => (
-                            <option key={o.hash} value={hashes[o.hash] || o.hash}>
-                              {o.name} #{hashes[o.hash] || o.hash}
-                            </option>
-                          ))}
-                      </select>
-                    ) : (
-                      <span className="objects-cell-empty" />
-                    )}
-                    <input
-                      type="checkbox"
-                      checked={p.required}
-                      onChange={(e) => updateProp(i, { required: e.target.checked })}
-                    />
-                    <input
-                      value={p.description}
-                      placeholder={t("objects.propDesc")}
-                      onChange={(e) => updateProp(i, { description: e.target.value })}
-                      spellCheck={false}
-                    />
-                    <button
-                      className="icon-btn"
-                      title={t("common.delete")}
-                      onClick={() => removeProp(i)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-                {selected.properties.length === 0 && (
-                  <div className="objects-props-empty">{t("objects.addProp")}</div>
-                )}
-              </div>
+              <table className="kv-table doc-params-table objects-props-table">
+                <thead>
+                  <tr>
+                    <th>{t("objects.propKey")}</th>
+                    <th style={{ width: 110 }}>{t("kv.type")}</th>
+                    <th style={{ width: 130 }}>{t("objects.itemKind")}</th>
+                    <th style={{ width: 170 }}>{t("objects.refObject")}</th>
+                    <th style={{ width: 56 }}>{t("objects.propRequired")}</th>
+                    <th>{t("objects.propDesc")}</th>
+                    <th style={{ width: 30 }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {selected.properties.map((p, i) => {
+                    const isObjRef = p.kind === "object" || (p.kind === "list" && p.itemKind === "object");
+                    return (
+                      <tr key={i}>
+                        <td>
+                          <input
+                            className="doc-key-input"
+                            value={p.key}
+                            placeholder="name"
+                            onChange={(e) => updateProp(i, { key: e.target.value })}
+                            spellCheck={false}
+                          />
+                        </td>
+                        <td>
+                          <select
+                            className="doc-type-select"
+                            value={p.kind}
+                            onChange={(e) => updateProp(i, { kind: e.target.value })}
+                          >
+                            {PROP_KINDS.map((k) => (
+                              <option key={k} value={k}>
+                                {k}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
+                          {p.kind === "list" ? (
+                            <select
+                              className="doc-type-select"
+                              value={p.itemKind}
+                              onChange={(e) => updateProp(i, { itemKind: e.target.value })}
+                            >
+                              {["string", "number", "boolean", "object", "any"].map((k) => (
+                                <option key={k} value={k}>
+                                  {k}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="doc-value-manual">—</span>
+                          )}
+                        </td>
+                        <td>
+                          {isObjRef ? (
+                            <div className="objects-ref-cell">
+                              <select
+                                className="doc-object-select"
+                                value={p.refHash}
+                                onChange={(e) => updateProp(i, { refHash: e.target.value })}
+                              >
+                                <option value="">—</option>
+                                {store.objects
+                                  .filter((o) => o.hash !== selected.hash)
+                                  .map((o) => (
+                                    <option key={o.hash} value={hashes[o.hash] || o.hash}>
+                                      {o.name}
+                                    </option>
+                                  ))}
+                              </select>
+                              {p.refHash && (
+                                <button
+                                  className="icon-btn objects-ref-jump"
+                                  title={t("objects.jump")}
+                                  onClick={() => setSelectedHash(p.refHash)}
+                                >
+                                  →
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="doc-value-manual">—</span>
+                          )}
+                        </td>
+                        <td>
+                          <div className="kv-check">
+                            <input
+                              type="checkbox"
+                              checked={p.required}
+                              onChange={(e) => updateProp(i, { required: e.target.checked })}
+                            />
+                          </div>
+                        </td>
+                        <td>
+                          <input
+                            value={p.description}
+                            placeholder={t("objects.propDesc")}
+                            onChange={(e) => updateProp(i, { description: e.target.value })}
+                            spellCheck={false}
+                          />
+                        </td>
+                        <td>
+                          <button
+                            className="icon-btn"
+                            title={t("common.delete")}
+                            onClick={() => removeProp(i)}
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {selected.properties.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="doc-empty">
+                        {t("objects.addProp")}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
 
             {/* 引用统计 */}
