@@ -35,3 +35,4 @@ url = "2"
 percent-encoding = "2"
 encoding_rs = "0.8"
 uuid = { version = "1", features = ["v4"] }
+sha2 = "0.10"

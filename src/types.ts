@@ -419,6 +419,69 @@ export interface MockStatus {
   routeCount: number;
 }
 
+// ==================== 对象管理 ====================
+
+/** 对象分组（分组名支持 "父级/子级" 斜杠实现多级） */
+export interface ObjectGroup {
+  id: string;
+  name: string;
+}
+
+/** 对象属性类型 */
+export const PROP_KINDS = ["string", "number", "boolean", "object", "list", "any"] as const;
+
+export interface ObjectProp {
+  key: string;
+  /** string / number / boolean / object / list / any */
+  kind: string;
+  /** list 的元素类型（string / number / boolean / object / any） */
+  itemKind: string;
+  /** object / list(object) 引用的对象 hash */
+  refHash: string;
+  description: string;
+  required: boolean;
+}
+
+export interface ObjectDef {
+  /** 唯一标识：属性按 key 排序拼接后的 SHA-256 前 12 位 */
+  hash: string;
+  name: string;
+  /** 所属分组 id（空串为未分组） */
+  group: string;
+  description: string;
+  properties: ObjectProp[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ObjectStore {
+  groups: ObjectGroup[];
+  objects: ObjectDef[];
+}
+
+/** 对象被接口文档引用的统计（接口数量 + 引用接口列表） */
+export interface ObjectUsageApi {
+  name: string;
+  method: string;
+  path: string;
+  protocol: string;
+}
+
+export interface ObjectUsageItem {
+  hash: string;
+  apiCount: number;
+  apis: ObjectUsageApi[];
+}
+
+/** JSON 导入结果 */
+export interface ObjectImportResult {
+  objects: ObjectDef[];
+  created: string[];
+  reused: string[];
+  /** 顶层对象 hash（复用场景下指向已有对象） */
+  topHash: string;
+}
+
 export const METHODS = [
   "GET",
   "POST",

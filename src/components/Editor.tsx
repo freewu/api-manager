@@ -1,5 +1,5 @@
 import { Fragment, lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { ApiFile, BODY_MODES, BodyData, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../types";
+import { ApiFile, BODY_MODES, BodyData, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, ObjectDef, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { ExamplesTab } from "./ExamplesTab";
 import { useT } from "../i18n";
@@ -86,9 +86,11 @@ interface Props {
   exampleVersion?: number;
   /** 页签切换回调（App 据此隐藏/显示响应面板） */
   onTabChange?: (tab: string) => void;
+  /** 已定义对象列表（文档页签 Object 类型可引用） */
+  objectsList?: ObjectDef[];
 }
 
-export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, enableMock = true, codegenLang = "bash", onTabChange, currentVersion = 0, exampleVersion = 0 }: Props) {
+export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, enableMock = true, codegenLang = "bash", onTabChange, currentVersion = 0, exampleVersion = 0, objectsList }: Props) {
   const t = useT();
   /** 是否 WebSocket 接口 */
   const isWs = api.protocol === "websocket";
@@ -752,7 +754,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           </div>
         )}
 
-        {tab === "doc" && <DocParamsEditor api={api} set={set} />}
+        {tab === "doc" && <DocParamsEditor api={api} set={set} objectsList={objectsList} />}
 
         {tab === "code" && enableCodegen && (
           <Suspense fallback={<div className="tab-loading">{t("examples.loading")}</div>}>
@@ -771,7 +773,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
  *  响应分为「请求成功」（从 Mock 响应体 JSON 推导）与「请求失败」（手动添加）两种情况；
  *  字段类型可选 String / Integer / Float / Boolean / List / Object，
  *  List 可再选元素类型，Object 可设置对象名称，下级字段用树状表单表示 */
-function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>) => void }) {
+function DocParamsEditor({ api, set, objectsList }: { api: ApiFile; set: (p: Partial<ApiFile>) => void; objectsList?: ObjectDef[] }) {
   const T = useT();
   // ---- 树节点（由请求配置 / Mock 响应 JSON 推导） ----
   type RNode = {
@@ -1051,16 +1053,31 @@ function DocParamsEditor({ api, set }: { api: ApiFile; set: (p: Partial<ApiFile>
           </td>
           {showObjectName && (
             <td>
-              {isObject && (
-                <input
-                  className="doc-name-input"
-                  value={row.objectName}
-                  placeholder={row.key}
-                  title={T("editor.objectName")}
-                  spellCheck={false}
-                  onChange={(e) => updateName(source, row.keys, e.target.value)}
-                />
-              )}
+              {isObject &&
+                (objectsList && objectsList.length > 0 ? (
+                  <select
+                    className="doc-name-input doc-object-select"
+                    value={row.objectName}
+                    title={T("editor.objectName")}
+                    onChange={(e) => updateName(source, row.keys, e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {objectsList.map((o) => (
+                      <option key={o.hash} value={o.name}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    className="doc-name-input"
+                    value={row.objectName}
+                    placeholder={row.key}
+                    title={T("editor.objectName")}
+                    spellCheck={false}
+                    onChange={(e) => updateName(source, row.keys, e.target.value)}
+                  />
+                ))}
             </td>
           )}
           <td>

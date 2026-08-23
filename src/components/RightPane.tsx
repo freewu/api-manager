@@ -6,6 +6,8 @@ import { AppView } from "./Sidebar";
 import { ApiWorkspace } from "./ApiWorkspace";
 import { HistoryDetail } from "./HistoryDetail";
 import { HistoryDiff } from "./HistoryDiff";
+import ObjectsView from "./ObjectsView";
+import { ObjectDef, ObjectImportResult, ObjectStore, ObjectUsageItem } from "../types";
 
 /**
  * 右侧面板：左右分栏拖拽条 + 内容区（请求历史详情 / 接口编辑工作台 / 空状态）。
@@ -48,6 +50,13 @@ interface RightPaneProps {
   onResizeReset: () => void;
   resizeTip: string;
   onEmptyContextMenu: (e: React.MouseEvent) => void;
+  objectsStore: ObjectStore;
+  objectsUsage: ObjectUsageItem[];
+  onObjectsSave: (store: ObjectStore) => Promise<void>;
+  onObjectsImport: (name: string, group: string, json: string) => Promise<ObjectImportResult>;
+  onObjectsJumpApi: (path: string) => void;
+  onObjectsToast: (msg: string) => void;
+  objectsList?: ObjectDef[];
 }
 
 export function RightPane({
@@ -85,16 +94,25 @@ export function RightPane({
   onResizeReset,
   resizeTip,
   onEmptyContextMenu,
+  objectsStore,
+  objectsUsage,
+  onObjectsSave,
+  onObjectsImport,
+  onObjectsJumpApi,
+  onObjectsToast,
+  objectsList,
 }: RightPaneProps) {
   const t = useT();
   return (
     <>
-      <div
-        className="resizer"
-        onMouseDown={onResizeStart}
-        onDoubleClick={onResizeReset}
-        title={resizeTip}
-      />
+      {view !== "objects" && (
+        <div
+          className="resizer"
+          onMouseDown={onResizeStart}
+          onDoubleClick={onResizeReset}
+          title={resizeTip}
+        />
+      )}
       <div
         className="content"
         onContextMenu={(e) => {
@@ -104,7 +122,16 @@ export function RightPane({
           e.preventDefault();
         }}
       >
-        {view === "history" ? (
+        {view === "objects" ? (
+          <ObjectsView
+            store={objectsStore}
+            usage={objectsUsage}
+            onSave={onObjectsSave}
+            onImport={onObjectsImport}
+            onJumpApi={onObjectsJumpApi}
+            onToast={onObjectsToast}
+          />
+        ) : view === "history" ? (
           <div className="history-view-content">
             {historyDiff ? (
               <HistoryDiff
@@ -143,6 +170,7 @@ export function RightPane({
             wsConnecting={wsConnecting}
             wsEntries={wsEntries}
             onWsDisconnect={onWsDisconnect}
+            objectsList={objectsList}
           />
         ) : (
           <div className="empty-editor" onContextMenu={onEmptyContextMenu}>

@@ -9,7 +9,7 @@ import iconWs from "../assets/icon-websocket.png";
 import iconGql from "../assets/icon-graphql.png";
 import iconSocketIo from "../assets/icon-socketio.png";
 
-export type AppView = "api" | "history";
+export type AppView = "api" | "history" | "objects";
 
 interface Props {
   width?: number;
@@ -635,6 +635,20 @@ export function Sidebar(props: Props) {
             </div>
           )}
           </>
+        ) : view === "objects" ? (
+          <div className="history-side-header">
+            <span className="history-side-title">🗂️ {t("objects.title")}</span>
+            <button
+              className="icon-btn"
+              onClick={() => onSwitchView("api")}
+              title={t("history.back")}
+              aria-label={t("history.back")}
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0 4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z" />
+              </svg>
+            </button>
+          </div>
         ) : (
           <div className="history-side-header">
             <span className="history-side-title">{t("history.title")}</span>
@@ -653,7 +667,7 @@ export function Sidebar(props: Props) {
       </div>
       <div
         className={`tree ${dragOver === "__root__" ? "drag-over-root" : ""}`}
-        style={{ display: view === "history" ? "none" : undefined }}
+        style={{ display: view === "api" ? undefined : "none" }}
         onContextMenu={(e) => {
           // 空白处右键：新建接口 / 新建分组（节点行上的右键会 stopPropagation）
           e.preventDefault();
@@ -757,6 +771,16 @@ export function Sidebar(props: Props) {
         />
       )}
       <div className="sidebar-footer" onContextMenu={(e) => e.preventDefault()}>
+        <button
+          className={`icon-btn ${view === "objects" ? "active" : ""}`}
+          onClick={() => onSwitchView(view === "objects" ? "api" : "objects")}
+          title={t("objects.title")}
+          aria-label={t("objects.title")}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+            <path d="M21 7.6 12 3 3 7.6v8.8L12 21l9-4.6V7.6zM12 4.7l6.8 3.5-6.8 3.5-6.8-3.5L12 4.7zm-6.5 9.2v-4.7l5.7 2.9v4.7l-5.7-2.9zm7.3 2.9v-4.7l5.7-2.9v4.7l-5.7 2.9z" />
+          </svg>
+        </button>
         <button
           className={`icon-btn ${view === "history" ? "active" : ""}`}
           onClick={() => onSwitchView(view === "history" ? "api" : "history")}

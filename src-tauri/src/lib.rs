@@ -1,6 +1,7 @@
 mod mock;
 mod markdown;
 mod export;
+mod objects;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -9091,6 +9092,47 @@ fn delete_example(
     fs::remove_file(&p).map_err(|e| format!("删除示例失败: {e}"))
 }
 
+// ==================== 对象管理命令 ====================
+
+/// 列出对象存储（分组 + 对象定义）
+#[tauri::command]
+fn list_objects(state: State<'_, WorkspaceState>) -> Result<objects::ObjectStore, String> {
+    let root = workspace_root(&state)?;
+    objects::list_objects(&root)
+}
+
+/// 保存对象存储（整体覆盖写）
+#[tauri::command]
+fn save_objects(
+    state: State<'_, WorkspaceState>,
+    store: objects::ObjectStore,
+) -> Result<String, String> {
+    let root = workspace_root(&state)?;
+    objects::save_objects(&root, &store)
+}
+
+/// 从 JSON 文本生成对象（嵌套 object 提取为独立对象，hash 相同则复用已有对象）
+#[tauri::command]
+fn import_json_object(
+    state: State<'_, WorkspaceState>,
+    name: String,
+    group: String,
+    json: String,
+) -> Result<objects::ObjectImportResult, String> {
+    let root = workspace_root(&state)?;
+    objects::import_json_object(&root, &name, &group, &json)
+}
+
+/// 对象被接口文档引用的统计（接口数量 + 引用接口列表）
+#[tauri::command]
+fn object_usage(
+    state: State<'_, WorkspaceState>,
+    store: objects::ObjectStore,
+) -> Result<Vec<objects::ObjectUsageItem>, String> {
+    let root = workspace_root(&state)?;
+    objects::object_usage(&root, &store)
+}
+
 // ==================== Mock 服务 ====================
 
 #[tauri::command]
@@ -9661,6 +9703,10 @@ pub fn run() {
             mock_start,
             mock_stop,
             mock_status,
+            list_objects,
+            save_objects,
+            import_json_object,
+            object_usage,
             mock_reload
         ])
         .run(tauri::generate_context!())

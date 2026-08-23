@@ -1,0 +1,471 @@
+/* ==================== 对象管理 ==================== */
+.objects-view {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+}
+
+.objects-left {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-light);
+  background: var(--bg);
+}
+
+.objects-left-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.objects-left-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.objects-left-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.objects-list {
+  flex: 1;
+  overflow: auto;
+  padding: 6px 0;
+}
+
+.objects-empty {
+  padding: 24px 14px;
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.objects-group-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+  border-radius: 4px;
+}
+
+.objects-group-row:hover {
+  background: var(--bg-hover);
+}
+
+.objects-group-caret {
+  width: 14px;
+  color: var(--text-faint);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.objects-group-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.objects-group-ops {
+  display: none;
+  gap: 2px;
+}
+
+.objects-group-row:hover .objects-group-ops {
+  display: flex;
+}
+
+.objects-object-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 4px;
+}
+
+.objects-object-row:hover {
+  background: var(--bg-hover);
+}
+
+.objects-object-row.selected {
+  background: var(--bg-active);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.objects-object-icon {
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.objects-object-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.objects-object-hash {
+  color: var(--text-faint);
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+}
+
+.objects-object-count {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 10px;
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  padding: 0 4px;
+}
+
+.objects-object-ops {
+  display: none;
+  gap: 2px;
+}
+
+.objects-object-row:hover .objects-object-ops {
+  display: flex;
+}
+
+.objects-right {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  background: var(--bg-soft, var(--bg));
+}
+
+.objects-right-empty {
+  padding: 48px 24px;
+  color: var(--text-faint);
+  font-size: 13px;
+  text-align: center;
+}
+
+.objects-editor {
+  padding: 14px 18px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.objects-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.objects-editor-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.objects-name-input {
+  font-size: 16px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  padding: 2px 6px;
+  border-radius: 4px;
+  min-width: 120px;
+}
+
+.objects-name-input:hover,
+.objects-name-input:focus {
+  border-color: var(--border);
+  background: var(--bg);
+  outline: none;
+}
+
+.objects-hash {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.objects-dirty {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.objects-dirty.on {
+  color: var(--warn, #d97706);
+}
+
+.objects-meta {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.objects-meta label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.objects-meta select,
+.objects-meta input {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 13px;
+}
+
+.objects-desc-field {
+  flex: 1;
+  min-width: 200px;
+}
+
+.objects-desc-field input {
+  width: 100%;
+}
+
+.objects-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.objects-props {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.objects-props-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.objects-props-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1.6fr 52px 1.6fr 26px;
+  gap: 6px;
+  align-items: center;
+}
+
+.objects-props-head {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+.objects-props-row input[type="text"],
+.objects-props-row input:not([type]),
+.objects-props-row input[type="checkbox"] {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+  width: 100%;
+}
+
+.objects-props-row select {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 3px 4px;
+  font-size: 12px;
+  width: 100%;
+}
+
+.objects-props-row input[type="checkbox"] {
+  width: auto;
+  justify-self: center;
+}
+
+.objects-cell-empty {
+  min-height: 12px;
+}
+
+.objects-props-empty {
+  color: var(--text-faint);
+  font-size: 12px;
+  padding: 10px 0;
+}
+
+.objects-usage {
+  margin-top: 4px;
+}
+
+.objects-usage-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.objects-usage-label {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.objects-usage-apis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.objects-usage-api {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-light);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.objects-usage-api:hover {
+  border-color: var(--accent);
+}
+
+.objects-usage-jump {
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.objects-codegen {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 24px;
+}
+
+.objects-codegen-tip {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.objects-codegen-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.objects-codegen-bar select {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+.objects-codegen-pre {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow: auto;
+  max-height: 320px;
+  font-family: var(--font-mono, Consolas, monospace);
+  white-space: pre;
+}
+
+/* JSON 导入弹窗 */
+.objects-import-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.objects-import-modal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 18px;
+  width: 520px;
+  max-width: 92vw;
+  max-height: 86vh;
+  overflow: auto;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+.objects-import-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.objects-import-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.objects-import-body label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.objects-import-body input,
+.objects-import-body select,
+.objects-import-body textarea {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+  font-family: var(--font-mono, monospace);
+}
+
+.objects-import-tip {
+  font-size: 11px;
+  color: var(--text-faint);
+  line-height: 1.6;
+}
+
+.objects-import-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}

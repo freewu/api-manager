@@ -10,6 +10,9 @@ import type {
   HttpResult,
   InfoJson,
   MockStatus,
+  ObjectImportResult,
+  ObjectStore,
+  ObjectUsageItem,
   TreeNode,
   UpdateInfo,
   VersionInfo,
@@ -397,6 +400,28 @@ export function mockStatus(): Promise<MockStatus> {
 
 export function mockReload(): Promise<MockStatus> {
   return invoke<MockStatus>("mock_reload");
+}
+
+// ==================== 对象管理 ====================
+
+export function listObjects(): Promise<ObjectStore> {
+  return invoke<ObjectStore>("list_objects");
+}
+
+export function saveObjects(store: ObjectStore): Promise<string> {
+  return invoke<string>("save_objects", { store });
+}
+
+export function importJsonObject(
+  name: string,
+  group: string,
+  json: string
+): Promise<ObjectImportResult> {
+  return invoke<ObjectImportResult>("import_json_object", { name, group, json });
+}
+
+export function objectUsage(store: ObjectStore): Promise<ObjectUsageItem[]> {
+  return invoke<ObjectUsageItem[]>("object_usage", { store });
 }
 
 export function getAppVersion(): Promise<string> {

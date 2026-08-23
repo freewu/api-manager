@@ -30,6 +30,7 @@ import { useMock } from "./hooks/useMock";
 import { useModals } from "./hooks/useModals";
 import { useImports } from "./hooks/useImports";
 import { useVcs } from "./hooks/useVcs";
+import { useObjects } from "./hooks/useObjects";
 import { useT } from "./i18n";
 
 // 非首屏组件懒加载：仅在需要时下载对应 chunk
@@ -99,6 +100,10 @@ export default function App() {
     reloadTree,
     selectNode: wsSelectNode,
   } = ws;
+
+  // ---------- 对象管理 ----------
+  const objects = useObjects(workspace);
+  const { store: objectsStore, usage: objectsUsage, save: saveObjectsStore, doImport: importObjectsJson } = objects;
 
   // ---------- 弹窗操作 ----------
   const modals = useModals({
@@ -323,6 +328,29 @@ export default function App() {
       await wsSelectNode(node, api, dirty, handleAutoSave);
     },
     [wsSelectNode, api, selectedPath, dirty, handleAutoSave]
+  );
+
+  // 对象管理：跳转到引用该对象的接口
+  const jumpToApi = useCallback(
+    (path: string) => {
+      const findNode = (n: TreeNode | null, p: string): TreeNode | null => {
+        if (!n) return null;
+        if (n.path === p) return n;
+        for (const c of n.children || []) {
+          const r = findNode(c, p);
+          if (r) return r;
+        }
+        return null;
+      };
+      const node = findNode(tree, path);
+      if (node) {
+        setView("api");
+        void selectNode(node);
+      } else {
+        showToast(t("app.nodeNotFound"));
+      }
+    },
+    [tree, selectNode, t]
   );
 
   // 保存接口新版本 -> 工作区 .version/<uuid>/<名称>.<版本号>.json
@@ -552,6 +580,13 @@ export default function App() {
                   y: Math.min(e.clientY, window.innerHeight - 160),
                 });
               }}
+              objectsStore={objectsStore}
+              objectsUsage={objectsUsage}
+              onObjectsSave={saveObjectsStore}
+              onObjectsImport={importObjectsJson}
+              onObjectsJumpApi={jumpToApi}
+              onObjectsToast={showToast}
+              objectsList={objectsStore.objects}
             />
           </div>
 

@@ -1,0 +1,216 @@
+// ==================== 对象代码生成：根据对象属性生成各语言的对象/结构体定义 ====================
+// 不支持对象/结构体定义的语言（bash/curl、powershell、perl、r、javascript、lua 等）不列入 OBJECT_LANGS。
+import { ObjectDef, ObjectProp } from "../types";
+
+export interface ObjLang {
+  value: string;
+  label: string;
+  hljs: string;
+}
+
+/** 支持对象/结构体定义的语言列表 */
+export const OBJECT_LANGS: ObjLang[] = [
+  { value: "typescript", label: "TypeScript", hljs: "typescript" },
+  { value: "java", label: "Java", hljs: "java" },
+  { value: "csharp", label: "C#", hljs: "csharp" },
+  { value: "go", label: "Go", hljs: "go" },
+  { value: "rust", label: "Rust", hljs: "rust" },
+  { value: "python", label: "Python", hljs: "python" },
+  { value: "kotlin", label: "Kotlin", hljs: "kotlin" },
+  { value: "swift", label: "Swift", hljs: "swift" },
+  { value: "dart", label: "Dart", hljs: "dart" },
+  { value: "php", label: "PHP", hljs: "php" },
+  { value: "c", label: "C", hljs: "c" },
+  { value: "cpp", label: "C++", hljs: "cpp" },
+  { value: "ruby", label: "Ruby", hljs: "ruby" },
+  { value: "objectivec", label: "Objective-C", hljs: "objectivec" },
+  { value: "julia", label: "Julia", hljs: "julia" },
+  { value: "erlang", label: "Erlang", hljs: "erlang" },
+  { value: "delphi", label: "Delphi", hljs: "delphi" },
+];
+
+const findObj = (all: ObjectDef[], hash: string, name: string): ObjectDef | undefined =>
+  all.find((o) => o.hash === hash) || all.find((o) => o.name === name);
+
+/** 解析属性类型 → 目标语言类型字符串 */
+function typeOf(lang: string, p: ObjectProp, obj: ObjectDef, all: ObjectDef[]): string {
+  const base = (kind: string): string => {
+    switch (lang) {
+      case "typescript":
+      case "dart":
+        return kind === "number" ? "number" : kind;
+      case "java":
+      case "csharp":
+      case "kotlin":
+      case "delphi":
+      case "objectivec":
+        return kind === "number" ? "double" : kind;
+      case "go":
+      case "rust":
+        return kind === "number" ? "f64" : kind === "boolean" ? "bool" : kind;
+      case "python":
+        return kind === "boolean" ? "bool" : kind;
+      case "swift":
+        return kind === "number" ? "Double" : kind === "boolean" ? "Bool" : "String";
+      case "php":
+      case "ruby":
+      case "julia":
+        return kind;
+      case "c":
+      case "cpp":
+        return kind === "number" ? "double" : kind === "boolean" ? "bool" : kind;
+      case "erlang":
+        return kind;
+      default:
+        return kind;
+    }
+  };
+  if (p.kind === "object") {
+    const ref = findObj(all, p.refHash, obj.name);
+    if (ref) return ref.name;
+    return "any";
+  }
+  if (p.kind === "list") {
+    const inner = p.itemKind === "object" ? (findObj(all, p.refHash, obj.name)?.name ?? "any") : base(p.itemKind);
+    switch (lang) {
+      case "typescript":
+      case "dart":
+        return `${inner}[]`;
+      case "java":
+      case "csharp":
+      case "kotlin":
+      case "swift":
+        return `List<${inner}>`;
+      case "go":
+        return `[]${inner}`;
+      case "rust":
+        return `Vec<${inner}>`;
+      case "python":
+        return `List[${inner}]`;
+      case "php":
+        return `array<${inner}>`;
+      case "c":
+      case "cpp":
+        return `${inner}[]`;
+      case "ruby":
+        return `Array<${inner}>`;
+      case "objectivec":
+        return `NSArray<${inner} *> *`;
+      case "julia":
+        return `Vector{${inner}}`;
+      case "delphi":
+        return `TArray<${inner}>`;
+      case "erlang":
+        return `[${inner}]`;
+      default:
+        return `${inner}[]`;
+    }
+  }
+  if (p.kind === "any") return lang === "python" ? "Any" : lang === "go" || lang === "rust" ? "any" : "any";
+  return base(p.kind);
+}
+
+const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+
+/** 生成指定语言的对象定义代码 */
+export function generateObjectCode(lang: string, obj: ObjectDef, all: ObjectDef[]): string {
+  const props = obj.properties || [];
+  const desc = (p: ObjectProp) => (p.description ? `  // ${p.description}` : "");
+  switch (lang) {
+    case "typescript": {
+      const lines = props.map((p) => `  ${p.key}${p.required ? "" : "?"}: ${typeOf(lang, p, obj, all)};${desc(p)}`);
+      return `export interface ${obj.name} {\n${lines.join("\n")}\n}`;
+    }
+    case "dart": {
+      const lines = props.map((p) => `  ${p.key}${p.required ? "" : "?"};${desc(p)}`);
+      return `class ${obj.name} {\n${lines.join("\n")}\n}`;
+    }
+    case "java": {
+      const lines = props.map(
+        (p) => `  public ${typeOf(lang, p, obj, all)} ${p.key};${desc(p)}`
+      );
+      return `public class ${obj.name} {\n${lines.join("\n")}\n}`;
+    }
+    case "csharp": {
+      const lines = props.map(
+        (p) => `  public ${typeOf(lang, p, obj, all)} ${cap(p.key)} { get; set; }${desc(p)}`
+      );
+      return `public class ${obj.name}\n{\n${lines.join("\n")}\n}`;
+    }
+    case "kotlin": {
+      const lines = props.map(
+        (p) => `    val ${p.key}: ${typeOf(lang, p, obj, all)}${p.required ? "" : "?"}${desc(p)}`
+      );
+      return `data class ${obj.name}(\n${lines.join(",\n")}\n)`;
+    }
+    case "go": {
+      const lines = props.map(
+        (p) => `  ${cap(p.key)} ${typeOf(lang, p, obj, all)} \`json:"${p.key}"\`${desc(p)}`
+      );
+      return `type ${obj.name} struct {\n${lines.join("\n")}\n}`;
+    }
+    case "rust": {
+      const lines = props.map((p) => {
+        const t = typeOf(lang, p, obj, all);
+        const opt = p.required ? "" : "Option<";
+        const close = p.required ? "" : ">";
+        return `  pub ${p.key}: ${opt}${t}${close},${desc(p)}`;
+      });
+      return `#[derive(Debug, Clone, Serialize, Deserialize)]\npub struct ${obj.name} {\n${lines.join("\n")}\n}`;
+    }
+    case "python": {
+      const lines = props.map((p) => `    ${p.key}: ${typeOf(lang, p, obj, all)}${desc(p)}`);
+      return `@dataclass\nclass ${obj.name}:\n${lines.join("\n")}`;
+    }
+    case "swift": {
+      const lines = props.map((p) => `  let ${p.key}: ${typeOf(lang, p, obj, all)}${p.required ? "" : "?"}${desc(p)}`);
+      return `struct ${obj.name}: Codable {\n${lines.join("\n")}\n}`;
+    }
+    case "php": {
+      const lines = props.map(
+        (p) => `    public ${p.required ? "" : "?"}${typeOf(lang, p, obj, all)} $${p.key};${desc(p)}`
+      );
+      return `class ${obj.name}\n{\n${lines.join("\n")}\n}`;
+    }
+    case "c": {
+      const lines = props.map(
+        (p) => `    ${typeOf(lang, p, obj, all)} ${p.key};${desc(p)}`
+      );
+      return `typedef struct {\n${lines.join("\n")}\n} ${obj.name};`;
+    }
+    case "cpp": {
+      const lines = props.map(
+        (p) => `    ${typeOf(lang, p, obj, all)} ${p.key};${desc(p)}`
+      );
+      return `struct ${obj.name} {\n${lines.join("\n")}\n};`;
+    }
+    case "ruby": {
+      const lines = props.map((p) => `  attr_accessor :${p.key}${desc(p)}`);
+      return `class ${obj.name}\n${lines.join("\n")}\nend`;
+    }
+    case "objectivec": {
+      const lines = props.map(
+        (p) => `@property (nonatomic, strong) ${typeOf(lang, p, obj, all)} *${p.key};${desc(p)}`
+      );
+      return `@interface ${obj.name} : NSObject\n${lines.join("\n")}\n@end`;
+    }
+    case "julia": {
+      const lines = props.map(
+        (p) => `    ${p.key}::${typeOf(lang, p, obj, all)}${desc(p)}`
+      );
+      return `struct ${obj.name}\n${lines.join("\n")}\nend`;
+    }
+    case "erlang": {
+      const lines = props.map(
+        (p) => `    ${p.key} :: ${typeOf(lang, p, obj, all)}${desc(p)}`
+      );
+      return `-record(${obj.name.toLowerCase()}, {\n${lines.join(",\n")}\n}).`;
+    }
+    case "delphi": {
+      const lines = props.map((p) => `    ${p.key}: ${typeOf(lang, p, obj, all)};${desc(p)}`);
+      return `type\n  T${obj.name} = record\n${lines.join("\n")}\n  end;`;
+    }
+    default:
+      return "";
+  }
+}
