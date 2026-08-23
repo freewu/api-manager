@@ -1,0 +1,148 @@
+{
+  "v": 11,
+  "name": "复杂示例_后台服务API",
+  "description": "完整复杂集合示例，v11格式",
+  "auth": {
+    "authType": "bearer",
+    "authActive": true,
+    "bearer": {
+      "token": "<<jwt_token>>"
+    }
+  },
+  "headers": [
+    {
+      "key": "Accept",
+      "value": "application/json",
+      "active": true
+    }
+  ],
+  "folders": [
+    {
+      "name": "用户模块",
+      "description": "用户相关接口分组",
+      "folders": [
+        {
+          "name": "账号认证",
+          "description": "登录注册",
+          "folders": [],
+          "requests": [
+            {
+              "name": "登录-POST urlencoded",
+              "method": "POST",
+              "endpoint": "<<base_url>>/api/v1/auth/login",
+              "params": [],
+              "headers": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/x-www-form-urlencoded",
+                  "active": true
+                }
+              ],
+              "body": {
+                "mode": "urlencoded",
+                "urlencoded": [
+                  { "key": "username", "value": "<<username>>", "active": true },
+                  { "key": "password", "value": "<<pwd>>", "active": true }
+                ]
+              },
+              "preRequestScript": "// 请求前脚本\nconsole.log('开始调用登录接口');",
+              "testScript": "pw.test('状态码200', ()=>pw.expect(pw.response.status).toBe(200));\npw.test('拿到token', ()=>pw.expect(pw.response.body.data.token).toBeDefined());\npw.env.set('jwt_token', pw.response.body.data.token);",
+              "auth": { "authActive": false, "authType": "none" }
+            }
+          ]
+        }
+      ],
+      "requests": [
+        {
+          "name": "获取用户列表 GET",
+          "method": "GET",
+          "endpoint": "<<base_url>>/api/v1/users",
+          "params": [
+            { "key": "page", "value": "1", "active": true },
+            { "key": "size", "value": "20", "active": true }
+          ],
+          "headers": [],
+          "body": { "mode": "none" },
+          "preRequestScript": "",
+          "testScript": "pw.test('分页返回成功', ()=>pw.expect(pw.response.status).toBe(200));",
+          "auth": { "authActive": true, "authType": "inherit" }
+        },
+        {
+          "name": "创建用户 POST JSON",
+          "method": "POST",
+          "endpoint": "<<base_url>>/api/v1/users",
+          "params": [],
+          "headers": [],
+          "body": {
+            "mode": "json",
+            "json": "{\n  \"name\":\"test_user\",\n  \"phone\":\"13800138000\"\n}"
+          },
+          "preRequestScript": "",
+          "testScript": "pw.test('创建成功201', ()=>pw.expect(pw.response.status).toBe(201));",
+          "auth": { "authActive": true, "authType": "inherit" }
+        }
+      ]
+    },
+    {
+      "name": "文件上传模块",
+      "description": "multipart/form-data示例",
+      "folders": [],
+      "requests": [
+        {
+          "name": "上传图片 form‑data",
+          "method": "POST",
+          "endpoint": "<<base_url>>/api/v1/upload/image",
+          "params": [],
+          "headers": [],
+          "body": {
+            "mode": "formdata",
+            "formdata": [
+              { "key": "file", "value": "", "active": true, "type": "file" },
+              { "key": "biz_type", "value": "avatar", "active": true, "type": "text" }
+            ]
+          },
+          "preRequestScript": "",
+          "testScript": "pw.test('上传成功', ()=>pw.expect(pw.response.status).toBe(200));",
+          "auth": { "authActive": true, "authType": "inherit" }
+        }
+      ]
+    },
+    {
+      "name": "GraphQL示例",
+      "description": "GraphQL请求",
+      "folders": [],
+      "requests": [
+        {
+          "name": "查询用户GraphQL",
+          "method": "POST",
+          "endpoint": "<<base_url>>/graphql",
+          "params": [],
+          "headers": [],
+          "body": {
+            "mode": "graphql",
+            "graphql": {
+              "query": "query getUsers($limit:Int!){\n  users(limit:$limit){\n    id,name\n  }\n}",
+              "variables": "{\n  \"limit\":10\n}"
+            }
+          },
+          "preRequestScript": "",
+          "testScript": "pw.test('graphql返回ok', ()=>pw.expect(pw.response.status).toBe(200));",
+          "auth": { "authActive": true, "authType": "inherit" }
+        }
+      ]
+    }
+  ],
+  "requests": [
+    {
+      "name": "集合根层级请求：健康检查",
+      "method": "GET",
+      "endpoint": "<<base_url>>/health",
+      "params": [],
+      "headers": [],
+      "body": { "mode": "none" },
+      "preRequestScript": "",
+      "testScript": "pw.test('服务健康', ()=>pw.expect(pw.response.status).toBe(200));",
+      "auth": { "authActive": false, "authType": "none" }
+    }
+  ]
+}

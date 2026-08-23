@@ -1,0 +1,164 @@
+{
+  "version": "1",
+  "info": {
+    "name": "电商业务API集合",
+    "description": "用户、订单、商品全套接口测试集合（OpenCollection单文件导出）",
+    "schema": "https://spec.opencollection.com/schema/v1.json"
+  },
+  "settings": {
+    "encodeUrl": true,
+    "followRedirects": true,
+    "maxRedirects": 5,
+    "timeout": 15000
+  },
+  "scripts": {
+    "flow": "sequential",
+    "filesystemAccess": {
+      "allow": false
+    },
+    "preRequest": "// 集合全局预请求脚本\nconsole.log('集合级别pre-request执行');\nconst ts = Date.now();\nbru.setVar('global_ts', ts);",
+    "postResponse": "// 集合全局后置脚本\nconsole.log('集合级别post-response status:', res.status);"
+  },
+  "auth": {
+    "mode": "bearer",
+    "bearer": {
+      "token": "{{auth_token}}"
+    }
+  },
+  "environments": {
+    "local": {
+      "base_url": "http://127.0.0.1:8080/api/v1",
+      "app_id": "dev_001"
+    },
+    "staging": {
+      "base_url": "https://staging-api.example.com/api/v1",
+      "app_id": "stg_001"
+    },
+    "production": {
+      "base_url": "https://api.example.com/api/v1",
+      "app_id": "prod_001"
+    }
+  },
+  "folders": [
+    {
+      "info": {
+        "name": "认证模块",
+        "seq": 1
+      },
+      "scripts": {
+        "preRequest": "console.log('认证文件夹pre-request');"
+      },
+      "auth": {
+        "mode": "none"
+      },
+      "requests": [
+        {
+          "info": {
+            "name": "账号登录获取token",
+            "type": "http",
+            "seq": 1
+          },
+          "http": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "headers": {
+              "Content-Type": "application/json",
+              "X‑App‑Id": "{{app_id}}"
+            },
+            "body": {
+              "type": "json",
+              "data": "{\n  \"username\":\"test_admin\",\n  \"password\":\"{{pwd_secret}}\"\n}"
+            },
+            "auth": {
+              "mode": "none"
+            }
+          },
+          "runtime": {
+            "scripts": [
+              {
+                "type": "postResponse",
+                "code": "// 登录成功提取token存入环境变量\nif(res.status ===200 && res.body.data?.token){\n  bru.setEnvVar(\"auth_token\", res.body.data.token, {persist:false});\n  console.log(\"token已设置\");\n}"
+              },
+              {
+                "type": "tests",
+                "code": "test(\"登录返回200\",()=>{\n  expect(res.status).to.equal(200);\n});\ntest(\"响应包含token字段\",()=>{\n  expect(res.body.data).to.have.property(\"token\");\n});"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "info": {
+        "name": "订单管理",
+        "seq": 2
+      },
+      "folders": [
+        {
+          "info": {
+            "name": "订单CRUD",
+            "seq": 1
+          },
+          "requests": [
+            {
+              "info": {
+                "name": "查询订单列表",
+                "type": "http",
+                "seq": 1
+              },
+              "http": {
+                "method": "GET",
+                "url": "{{base_url}}/order/list",
+                "query": [
+                  {"key":"pageNum","value":"1"},
+                  {"key":"pageSize","value":"20"}
+                ],
+                "headers": {
+                  "Accept": "application/json"
+                }
+              },
+              "runtime": {
+                "scripts": [
+                  {
+                    "type": "tests",
+                    "code": "test(\"订单列表返回数组\",()=>{\n  expect(res.body.code).to.equal(0);\n  expect(res.body.data.records).to.be.an('array');\n});"
+                  }
+                ]
+              }
+            },
+            {
+              "info": {
+                "name": "创建订单（form‑urlencoded）",
+                "type": "http",
+                "seq": 2
+              },
+              "http": {
+                "method": "POST",
+                "url": "{{base_url}}/order/create",
+                "body": {
+                  "type": "form‑urlencoded",
+                  "data": [
+                    {"key":"goodsId","value":"10086"},
+                    {"key":"buyNum","value":"2"}
+                  ]
+                }
+              },
+              "runtime": {
+                "scripts": [
+                  {
+                    "type": "preRequest",
+                    "code": "console.log('创建订单前置脚本执行');"
+                  },
+                  {
+                    "type": "tests",
+                    "code": "test(\"创建订单成功\",()=>{\n  expect(res.status).to.equal(200);\n  expect(res.body.data.orderId).not.to.be.null;\n});"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

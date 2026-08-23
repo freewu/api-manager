@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<application xmlns="http://wadl.dev.java.net/2009/02">
+    <resources base="https://api.example.com/v1">
+        <resource path="/users">
+            <method name="GET">
+                <request>
+                    <param name="page" style="query" type="xsd:int" default="1"/>
+                </request>
+                <response status="200">
+                    <representation mediaType="application/json"/>
+                </response>
+            </method>
+            <method name="POST">
+                <request>
+                    <representation mediaType="application/json"/>
+                </request>
+                <response status="201">
+                    <representation mediaType="application/json"/>
+                </response>
+            </method>
+        </resource>
+    </resources>
+</application>

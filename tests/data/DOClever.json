@@ -1,0 +1,189 @@
+[
+    {
+        "id": "api_1001",
+        "name": "用户登录",
+        "desc": "账号密码登录接口，返回token令牌",
+        "path": "/api/v1/user/login",
+        "method": "POST",
+        "status": 1,
+        "sort": 1,
+        "folder": false,
+        "baseUrl": "",
+        "inject": "",
+        "headers": [
+            {
+                "name": "Content-Type",
+                "value": "application/json",
+                "required": true,
+                "desc": "请求数据格式"
+            }
+        ],
+        "params": [],
+        "queryParams": [],
+        "bodyInfo": {
+            "bodyType": "raw",
+            "raw": "{\n  \"username\":\"admin\",\n  \"password\":\"123456\"\n}",
+            "params": [
+                {
+                    "name": "username",
+                    "type": "String",
+                    "required": true,
+                    "desc": "登录账号",
+                    "example": "admin",
+                    "range": []
+                },
+                {
+                    "name": "password",
+                    "type": "String",
+                    "required": true,
+                    "desc": "登录密码",
+                    "example": "123456",
+                    "range": []
+                }
+            ]
+        },
+        "responseParams": [
+            {
+                "name": "code",
+                "type": "Number",
+                "required": true,
+                "desc": "业务码，200成功",
+                "example": 200,
+                "range": []
+            },
+            {
+                "name": "msg",
+                "type": "String",
+                "required": true,
+                "desc": "返回消息",
+                "example": "操作成功",
+                "range": []
+            },
+            {
+                "name": "data",
+                "type": "Object",
+                "required": true,
+                "desc": "返回数据体",
+                "example": {},
+                "children": [
+                    {
+                        "name": "token",
+                        "type": "String",
+                        "required": true,
+                        "desc": "访问令牌",
+                        "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+                        "range": []
+                    },
+                    {
+                        "name": "userId",
+                        "type": "Number",
+                        "required": true,
+                        "desc": "用户ID",
+                        "example": 10001,
+                        "range": []
+                    }
+                ]
+            }
+        ],
+        "mock": {
+            "enable": true,
+            "response": "{\n  \"code\":200,\n  \"msg\":\"操作成功\",\n  \"data\":{\n    \"token\":\"@mj(@token)\",\n    \"userId\":10001\n  }\n}"
+        },
+        "children": []
+    },
+    {
+        "id": "folder_2001",
+        "name": "用户管理模块",
+        "desc": "用户相关接口分组",
+        "folder": true,
+        "sort": 2,
+        "children": [
+            {
+                "id": "api_2002",
+                "name": "获取用户详情",
+                "desc": "根据用户ID查询用户信息，Restful路径参数",
+                "path": "/api/v1/user/{userId}",
+                "method": "GET",
+                "status": 1,
+                "sort": 1,
+                "folder": false,
+                "headers": [
+                    {
+                        "name": "Authorization",
+                        "value": "Bearer {{token}}",
+                        "required": true,
+                        "desc": "身份令牌"
+                    }
+                ],
+                "params": [
+                    {
+                        "name": "userId",
+                        "type": "Number",
+                        "required": true,
+                        "desc": "用户编号",
+                        "example": 10001,
+                        "range": []
+                    }
+                ],
+                "queryParams": [
+                    {
+                        "name": "includeRole",
+                        "type": "Boolean",
+                        "required": false,
+                        "desc": "是否携带角色信息",
+                        "example": true,
+                        "range": []
+                    }
+                ],
+                "bodyInfo": {
+                    "bodyType": "none",
+                    "raw": "",
+                    "params": []
+                },
+                "responseParams": [
+                    {
+                        "name": "code",
+                        "type": "Number",
+                        "required": true,
+                        "desc": "业务码",
+                        "example": 2000
+                    },
+                    {
+                        "name": "data",
+                        "type": "Object",
+                        "required": true,
+                        "desc": "用户详情",
+                        "children": [
+                            {
+                                "name": "userId",
+                                "type": "Number",
+                                "required": true,
+                                "desc": "用户ID",
+                                "example": 10001
+                            },
+                            {
+                                "name": "nickname",
+                                "type": "String",
+                                "required": true,
+                                "desc": "昵称",
+                                "example": "张三"
+                            },
+                            {
+                                "name": "phone",
+                                "type": "String",
+                                "required": false,
+                                "desc": "手机号",
+                                "example": "13800138000"
+                            }
+                        ]
+                    }
+                ],
+                "mock": {
+                    "enable": true,
+                    "response": "{\n  \"code\":2000,\n  \"data\":{\"userId\":10001,\"nickname\":\"张三\",\"phone\":\"13800138000\"}\n}"
+                },
+                "children": []
+            }
+        ]
+    }
+]

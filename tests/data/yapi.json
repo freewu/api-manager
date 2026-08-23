@@ -1,0 +1,138 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "后端服务API",
+    "description": "内部后端接口文档",
+    "version": "1.0.0"
+  },
+  "basePath": "/api",
+  "tags": [
+    {
+      "name": "用户模块",
+      "description": "用户登录、信息查询相关接口"
+    },
+    {
+      "name": "订单模块",
+      "description": "订单CRUD"
+    }
+  ],
+  "paths": {
+    "/user/{uid}": {
+      "get": {
+        "summary": "获取用户详情",
+        "description": "根据用户ID查询用户基础信息",
+        "tags": ["用户模块"],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "type": "number",
+            "description": "用户ID"
+          },
+          {
+            "name": "withExtra",
+            "in": "query",
+            "required": false,
+            "type": "boolean",
+            "description": "是否返回扩展信息"
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "Bearer token",
+            "default": "Bearer {{token}}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {"type": "integer"},
+                "msg": {"type": "string"},
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "uid": {"type": "integer"},
+                    "username": {"type": "string"},
+                    "phone": {"type": "string"},
+                    "createTime": {"type": "string"}
+                  }
+                }
+              }
+            },
+            "examples": {
+              "application/json": "{\"code\":0,\"msg\":\"success\",\"data\":{\"uid\":10001,\"username\":\"zhangsan\",\"phone\":\"13800138000\",\"createTime\":\"2026-01-01 10:00:00\"}}"
+            }
+          }
+        }
+      }
+    },
+    "/user/add": {
+      "post": {
+        "summary": "新增用户",
+        "description": "新增用户，提交JSON请求体",
+        "tags": ["用户模块"],
+        "parameters": [
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "default": "application/json"
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "description": "Bearer token"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "username": {"type": "string"},
+                "phone": {"type": "string"},
+                "age": {"type": "number"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "examples": {
+              "application/json": "{\"code\":0,\"msg\":\"新增成功\",\"data\":{\"uid\":10002}}"
+            }
+          }
+        }
+      }
+    },
+    "/order/list": {
+      "get": {
+        "summary": "订单列表分页查询",
+        "tags": ["订单模块"],
+        "parameters": [
+          {"name":"pageNum","in":"query","required":true,"type":"number","description":"页码"},
+          {"name":"pageSize","in":"query","required":true,"type":"number","description":"每页条数"}
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "examples": {
+              "application/json": "{\"code\":0,\"msg\":\"success\",\"data\":{\"total\":120,\"list\":[{\"orderId\":\"ORD20260801001\",\"amount\":99.00}]}}"
+            }
+          }
+        }
+      }
+    }
+  }
+}

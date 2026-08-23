@@ -1,0 +1,238 @@
+{
+  "id": 12345,
+  "name": "商城后端API项目",
+  "description": "商城业务接口文档，用户、订单、商品模块",
+  "properties": {
+    "baseUrl": "https://api.example.com/v1",
+    "createTime": 1680000000000
+  },
+  "groups": [
+    {
+      "id": 101,
+      "name": "用户模块",
+      "description": "用户登录、信息查询",
+      "parentId": 0
+    },
+    {
+      "id": 102,
+      "name": "订单模块",
+      "description": "订单增删改查",
+      "parentId": 0
+    }
+  ],
+  "datatypes": [
+    {
+      "id": 2001,
+      "name": "UserInfo",
+      "description": "用户信息实体",
+      "type": 0,
+      "format": "object",
+      "params": [
+        {
+          "name": "userId",
+          "type": "long",
+          "required": true,
+          "description": "用户ID",
+          "example": 10086
+        },
+        {
+          "name": "username",
+          "type": "string",
+          "required": true,
+          "description": "账号名",
+          "example": "zhangsan01"
+        },
+        {
+          "name": "userLevel",
+          "type": "int",
+          "required": false,
+          "description": "会员等级 0普通 1VIP 2SVIP",
+          "enum": [0,1,2],
+          "example": 1
+        },
+        {
+          "name": "addressList",
+          "type": "array",
+          "required": false,
+          "description": "收货地址数组",
+          "items": {
+            "type": "object",
+            "params": [
+              {"name":"addrId","type":"long","required":true,"example":5001},
+              {"name":"city","type":"string","required":true,"example":"南昌市"},
+              {"name":"detail","type":"string","required":true,"example":"某某街道123号"}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id":2002,
+      "name":"OrderItem",
+      "description":"订单商品明细",
+      "type":0,
+      "format":"object",
+      "params":[
+        {"name":"skuId","type":"string","required":true,"example":"SKU_99001"},
+        {"name":"goodsName","type":"string","required":true,"example":"无线蓝牙耳机"},
+        {"name":"price","type":"double","required":true,"example":199.50},
+        {"name":"count","type":"int","required":true,"example":2}
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "id": 3001,
+      "name": "获取用户详情",
+      "description": "根据用户id查询用户完整信息，包含收货地址列表",
+      "group": 101,
+      "url": "/user/{userId}/detail",
+      "method": "GET",
+      "status": 1,
+      "request": {
+        "headers": [
+          {
+            "name": "Authorization",
+            "type": "string",
+            "required": true,
+            "description": "Bearer token",
+            "example": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        ],
+        "pathParams": [
+          {
+            "name": "userId",
+            "type": "long",
+            "required": true,
+            "description": "要查询的用户ID",
+            "example": 10086
+          }
+        ],
+        "queryParams": [
+          {
+            "name": "includeAddress",
+            "type": "boolean",
+            "required": false,
+            "description": "是否带回地址列表",
+            "example": true
+          }
+        ],
+        "body": {
+          "type": "none",
+          "params": []
+        }
+      },
+      "responses": [
+        {
+          "status": 200,
+          "description": "成功返回",
+          "body": {
+            "type": "json",
+            "datatypeId": 2001,
+            "params": [
+              {
+                "name":"code",
+                "type":"int",
+                "required":true,
+                "description":"业务码 0成功",
+                "example":0
+              },
+              {
+                "name":"msg",
+                "type":"string",
+                "required":true,
+                "example":"ok"
+              },
+              {
+                "name":"data",
+                "type":"ref",
+                "refId":2001,
+                "required":true
+              }
+            ],
+            "example": {
+              "code":0,
+              "msg":"ok",
+              "data":{
+                "userId":10086,
+                "username":"zhangsan01",
+                "userLevel":1,
+                "addressList":[
+                  {"addrId":5001,"city":"南昌市","detail":"某某街道123号"}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "status":401,
+          "description":"token无效",
+          "body":{
+            "type":"json",
+            "params":[
+              {"name":"code","type":"int","example":40101},
+              {"name":"msg","type":"string","example":"未授权，请重新登录"}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id":3002,
+      "name":"创建订单",
+      "description":"提交订单接口，POST JSON请求体",
+      "group":102,
+      "url":"/order/create",
+      "method":"POST",
+      "status":1,
+      "request":{
+        "headers":[
+          {"name":"Authorization","type":"string","required":true,"example":"Bearer xxx"},
+          {"name":"Content-Type","type":"string","required":true,"example":"application/json"}
+        ],
+        "pathParams":[],
+        "queryParams":[],
+        "body":{
+          "type":"json",
+          "params":[
+            {"name":"userId","type":"long","required":true,"example":10086},
+            {
+              "name":"itemList",
+              "type":"array",
+              "required":true,
+              "description":"商品明细列表",
+              "items":{
+                "type":"ref",
+                "refId":2002
+              }
+            },
+            {"name":"remark","type":"string","required":false,"description":"订单备注","example":"尽快发货"}
+          ],
+          "example":{
+            "userId":10086,
+            "itemList":[
+              {"skuId":"SKU_99001","goodsName":"无线蓝牙耳机","price":199.50,"count":2}
+            ],
+            "remark":"尽快发货"
+          }
+        }
+      },
+      "responses":[
+        {
+          "status":200,
+          "description":"下单成功",
+          "body":{
+            "type":"json",
+            "params":[
+              {"name":"code","type":"int","example":0},
+              {"name":"msg","type":"string","example":"ok"},
+              {"name":"data","type":"object","params":[
+                {"name":"orderNo","type":"string","required":true,"example":"ORD202608220001"}
+              ]}
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

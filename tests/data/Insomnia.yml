@@ -1,0 +1,33 @@
+type: collection.insomnia.rest/5.0
+name: Project API
+meta:
+  id: coll_0001
+  created: 2026-08-22T08:00:00.000Z
+  modified: 2026-08-22T08:00:00.000Z
+children:
+  - name: 用户模块
+    meta:
+      id: fld_0001
+    children:
+      - name: 创建用户 POST
+        meta:
+          id: req_0002
+        url: "{{baseUrl}}/user"
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "name":"test"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+        parameters: []
+        authentication:
+          type: bearer
+          token: "{{token}}"
+# 集合级环境变量
+environment:
+  baseUrl: https://api.example.com
+  token: "xxx-demo-token"

@@ -1,0 +1,35 @@
+#%RAML 1.0
+title: 用户API
+version: v1
+baseUri: https://api.example.com/v1
+mediaType: application/json
+
+types:
+  User:
+    type: object
+    properties:
+      id: integer
+      name: string
+
+/users:
+  get:
+    description: 获取用户列表
+    queryParameters:
+      page:
+        type: integer
+        default: 1
+    responses:
+      200:
+        body:
+          application/json:
+            type: User[]
+  post:
+    description: 创建用户
+    body:
+      application/json:
+        type: User
+    responses:
+      201:
+        body:
+          application/json:
+            type: User

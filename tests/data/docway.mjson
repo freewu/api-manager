@@ -1,0 +1,338 @@
+{
+  "name": "电商后端API文档",
+  "description": "电商业务接口，用户、订单、商品模块；接口统一前缀：/api/v1",
+  "docs": [
+    {
+      "name": "👤 用户模块",
+      "children": [
+        {
+          "name": "用户登录",
+          "method": "POST",
+          "url": "/api/v1/user/login",
+          "description": "账号密码登录，返回access_token；token有效期2小时",
+          "requestHeaders": [
+            {
+              "name": "Content-Type",
+              "value": "application/json",
+              "required": true,
+              "description": "请求体类型"
+            }
+          ],
+          "requestParams": [
+            {
+              "name": "username",
+              "type": "string",
+              "required": true,
+              "description": "登录账号",
+              "example": "admin001"
+            },
+            {
+              "name": "password",
+              "type": "string",
+              "required": true,
+              "description": "密码md5摘要",
+              "example": "e10adc3949ba59abbe56e057f20f883e"
+            }
+          ],
+          "responseParams": [
+            {
+              "name": "code",
+              "type": "int",
+              "required": true,
+              "description": "业务码，0=成功",
+              "example": 0
+            },
+            {
+              "name": "msg",
+              "type": "string",
+              "required": true,
+              "description": "提示信息",
+              "example": "success"
+            },
+            {
+              "name": "data",
+              "type": "object",
+              "required": true,
+              "description": "返回数据",
+              "children": [
+                {
+                  "name": "access_token",
+                  "type": "string",
+                  "required": true,
+                  "description": "授权令牌",
+                  "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                },
+                {
+                  "name": "expire_time",
+                  "type": "long",
+                  "required": true,
+                  "description": "过期时间戳",
+                  "example": 1755021600000
+                },
+                {
+                  "name": "user_info",
+                  "type": "object",
+                  "required": true,
+                  "description": "用户信息",
+                  "children": [
+                    {
+                      "name": "uid",
+                      "type": "long",
+                      "required": true,
+                      "description": "用户ID",
+                      "example": 10086
+                    },
+                    {
+                      "name": "nickname",
+                      "type": "string",
+                      "required": false,
+                      "description": "昵称",
+                      "example": "张三"
+                    },
+                    {
+                      "name": "gender",
+                      "type": "int",
+                      "required": true,
+                      "description": "性别：0未知，1男，2女",
+                      "example": 1
+                    },
+                    {
+                      "name": "tags",
+                      "type": "array",
+                      "required": false,
+                      "description": "用户标签数组",
+                      "example": ["vip","new_user"],
+                      "children": [
+                        {
+                          "name": "",
+                          "type": "string",
+                          "description": "标签字符串"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "获取用户详情(Path参数)",
+          "method": "GET",
+          "url": "/api/v1/user/{uid}",
+          "description": "根据uid查询用户信息，需要携带token鉴权",
+          "requestHeaders": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{access_token}}",
+              "required": true,
+              "description": "身份令牌"
+            }
+          ],
+          "pathParams": [
+            {
+              "name": "uid",
+              "type": "long",
+              "required": true,
+              "description": "用户ID",
+              "example": 10086
+            }
+          ],
+          "requestParams": [],
+          "responseParams": [
+            {
+              "name": "code",
+              "type": "int",
+              "required": true,
+              "example": 0
+            },
+            {
+              "name": "msg",
+              "type": "string",
+              "required": true,
+              "example": "success"
+            },
+            {
+              "name": "data",
+              "type": "object",
+              "required": true,
+              "children": [
+                {
+                  "name": "uid",
+                  "type": "long",
+                  "required": true,
+                  "example": 10086
+                },
+                {
+                  "name": "phone",
+                  "type": "string",
+                  "required": false,
+                  "description": "手机号",
+                  "example": "13800138000"
+                },
+                {
+                  "name": "create_at",
+                  "type": "string",
+                  "required": true,
+                  "description": "注册时间",
+                  "example": "2026-01-10 14:20:00"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "📦 订单模块",
+      "children": [
+        {
+          "name": "订单列表(分页查询)",
+          "method": "GET",
+          "url": "/api/v1/order/list",
+          "description": "分页获取用户订单列表；query参数分页过滤",
+          "requestHeaders": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{access_token}}",
+              "required": true
+            }
+          ],
+          "requestParams": [
+            {
+              "name": "pageNum",
+              "type": "int",
+              "required": true,
+              "description": "页码，从1开始",
+              "example": 1
+            },
+            {
+              "name": "pageSize",
+              "type": "int",
+              "required": true,
+              "description": "每页条数",
+              "example": 20
+            },
+            {
+              "name": "order_status",
+              "type": "int",
+              "required": false,
+              "description": "订单状态：0全部，1待付款，2已支付，3已取消",
+              "example": 2
+            },
+            {
+              "name": "start_time",
+              "type": "string",
+              "required": false,
+              "description": "开始时间筛选",
+              "example": "2026-07-01"
+            }
+          ],
+          "responseParams": [
+            {
+              "name": "code",
+              "type": "int",
+              "required": true,
+              "example": 0
+            },
+            {
+              "name": "msg",
+              "type": "string",
+              "required": true,
+              "example": "success"
+            },
+            {
+              "name": "data",
+              "type": "object",
+              "required": true,
+              "children": [
+                {
+                  "name": "total",
+                  "type": "long",
+                  "required": true,
+                  "description": "总条数",
+                  "example": 128
+                },
+                {
+                  "name": "pages",
+                  "type": "int",
+                  "required": true,
+                  "description": "总页数",
+                  "example": 7
+                },
+                {
+                  "name": "records",
+                  "type": "array",
+                  "required": true,
+                  "description": "订单数组",
+                  "children": [
+                    {
+                      "name": "",
+                      "type": "object",
+                      "children": [
+                        {
+                          "name": "order_no",
+                          "type": "string",
+                          "required": true,
+                          "description": "订单号",
+                          "example": "ORD202608220001"
+                        },
+                        {
+                          "name": "total_amount",
+                          "type": "double",
+                          "required": true,
+                          "description": "订单总金额",
+                          "example": 299.50
+                        },
+                        {
+                          "name": "order_status",
+                          "type": "int",
+                          "required": true,
+                          "description": "订单状态",
+                          "example": 2
+                        },
+                        {
+                          "name": "goods_list",
+                          "type": "array",
+                          "required": true,
+                          "description": "订单商品列表",
+                          "children": [
+                            {
+                              "name": "",
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "goods_id",
+                                  "type": "long",
+                                  "required": true,
+                                  "example": 5001
+                                },
+                                {
+                                  "name": "goods_name",
+                                  "type": "string",
+                                  "required": true,
+                                  "example": "无线蓝牙耳机"
+                                },
+                                {
+                                  "name": "num",
+                                  "type": "int",
+                                  "required": true,
+                                  "description": "购买数量",
+                                  "example": 1
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

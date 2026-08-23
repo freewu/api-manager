@@ -1,0 +1,27 @@
+{
+  "name": "后端API接口文档",
+  "version": "1.0.0",
+  "description": "用户模块、订单模块接口文档示例",
+  "title": "API接口文档",
+  "url": "/api",
+  "sampleUrl": "http://127.0.0.1:8080/api",
+  "header": {
+    "title": "接口说明",
+    "content": "<h3>接口调用须知</h3><ul><li>接口统一返回格式：{code,msg,data}</li><li>大部分接口需要在Header携带 Authorization: Bearer {token}</li><li>金额单位：分；时间戳单位：毫秒</li><li>状态码200为业务成功，401未登录，400参数错误，500业务异常</li></ul>"
+  },
+  "footer": {
+    "title": "版权",
+    "content": "<p>Copyright © 2026 Demo项目</p>"
+  },
+  "template": {
+    "withCompare": true,
+    "withGenerator": true,
+    "withEditor": false
+  },
+  "order": [
+    "User",
+    "Order"
+  ],
+  "exclude": [],
+  "language": "zh‑cn"
+}

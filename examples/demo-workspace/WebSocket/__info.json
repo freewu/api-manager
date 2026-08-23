@@ -1,7 +1,0 @@
-{
-  "name": "WebSocket",
-  "description": "WebSocket 接口示例（与 tests/websocket-server.py 一一对应）",
-  "order": 3,
-  "collapsed": null,
-  "deprecated": null
-}

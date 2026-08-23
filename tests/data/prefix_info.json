@@ -1,0 +1,64 @@
+{
+  "item_type": "1",
+  "item_name": "商城后端API-V2",
+  "item_description": "商城业务接口文档V2版本，所有接口统一token鉴权",
+  "password": "",
+  "pages": [
+    {
+      "page_id": 5001,
+      "page_title": "【废弃】旧版用户登录接口",
+      "cat_id": "1001",
+      "snumber": 1,
+      "page_content": "# 【废弃】旧版用户登录接口\n> 已废弃，请迁移至 `/api/v2/auth/login`\n> 请求地址：POST /api/v1/user/login\n> 请求方式：POST\n> 鉴权：不需要\n\n### 请求头\n|参数|必选|类型|说明|\n|---|---|---|---|\n|Content‑Type|是|string|application/json|\n\n### 请求Body\n|参数|必选|类型|说明|\n|---|---|---|---|\n|username|是|string|账号|\n|password|是|string|密码md5|\n\n### 返回示例\n```json\n{\"code\":0,\"msg\":\"ok\",\"data\":{\"token\":\"old_token_xxx\"}}\n```\n> 备注：v1接口将于2026‑12‑31下线",
+      "page_comments": ""
+    },
+    {
+      "page_id": 5002,
+      "page_title": "V2用户登录接口",
+      "cat_id": "1001",
+      "snumber": 2,
+      "page_content": "# V2用户登录接口\n> 请求地址：POST /api/v2/auth/login\n> 请求方式：POST\n> 鉴权：不需要\n> 描述：账号密码登录，返回access_token与refresh_token\n\n### 请求头\n|参数|必选|类型|说明|\n|---|---|---|---|\n|Content‑Type|是|string|application/json|\n|Device‑Id|是|string|设备唯一标识|\n\n### 请求Body参数\n|参数|必选|类型|说明|\n|---|---|---|---|\n|username|是|string|登录账号，手机号/用户名|\n|password|是|string|密码sha256加密|\n|captcha_code|否|string|图形验证码，频繁失败时必填|\n\n### 请求Body示例\n```json\n{\n  \"username\":\"13800138000\",\n  \"password\":\"xxxxsha256\",\n  \"captcha_code\":\"8A7B\"\n}\n```\n\n### 返回成功示例\n```json\n{\n  \"code\":0,\n  \"msg\":\"success\",\n  \"data\":{\n    \"access_token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\",\n    \"refresh_token\":\"ref‑xxxxxx\",\n    \"expires_in\":7200,\n    \"user_info\":{\n      \"uid\":10086,\n      \"nickname\":\"测试用户\",\n      \"avatar\":\"https://xxx.com/avatar.jpg\",\n      \"roles\":[\"user\",\"member\"]\n    }\n  }\n}\n```\n\n### 返回失败示例\n```json\n{\n  \"code\":40001,\n  \"msg\":\"账号密码错误\",\n  \"data\":null\n}\n```\n\n### 返回字段说明\n|参数|类型|说明|\n|---|---|---|\n|code|int|业务码，0成功|\n|msg|string|提示文案|\n|data.access_token|string|访问凭证，2小时有效期|\n|data.refresh_token|string|刷新token|\n|data.expires_in|int|有效期，单位秒|\n|data.user_info|object|用户信息对象|\n|data.user_info.roles|array[string]|角色数组|\n\n### 业务错误码\n|错误码|说明|\n|---|---|\n|40001|账号密码错误|\n|40002|验证码错误|\n|40003|账号被冻结",
+      "page_comments": ""
+    },
+    {
+      "page_id": 5003,
+      "page_title": "获取用户订单列表（分页）",
+      "cat_id": "1002",
+      "snumber": 1,
+      "page_content": "# 获取用户订单列表\n> 请求地址：GET /api/v2/user/{uid}/order/list\n> 请求方式：GET\n> 鉴权：Bearer Token\n> 描述：分页查询用户订单，支持状态筛选\n\n### 请求头\n|参数|必选|类型|说明|\n|---|---|---|---|\n|Authorization|是|string|Bearer {access_token}|\n\n### Path参数\n|参数|必选|类型|说明|\n|---|---|---|---|\n|uid|是|int|用户ID|\n\n### Query参数\n|参数|必选|类型|默认|说明|\n|---|---|---|---|---|\n|page|否|int|1|页码|\n|size|否|int|20|每页条数，最大100|\n|order_status|否|int||订单状态：0全部，1待支付，2已完成，3已取消|\n\n### 请求示例\n```http\nGET /api/v2/user/10086/order/list?page=1&size=10&order_status=1\nAuthorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\n```\n\n### 返回成功示例\n```json\n{\n  \"code\":0,\n  \"msg\":\"ok\",\n  \"data\":{\n    \"total\":132,\n    \"current\":1,\n    \"size\":10,\n    \"pages\":14,\n    \"records\":[\n      {\n        \"order_id\":\"ORD202608220001\",\n        \"order_status\":1,\n        \"total_amount\":299.50,\n        \"create_time\":\"2026‑08‑22 10:20:30\",\n        \"goods_list\":[\n          {\n            \"goods_id\":6001,\n            \"goods_name\":\"无线蓝牙耳机\",\n            \"num\":1,\n            \"price\":299.50\n          }\n        ]\n      }\n    ]\n  }\n}\n```\n\n### 返回字段说明\n|参数|类型|说明|\n|---|---|---|\n|data.total|int|总条数|\n|data.current|int|当前页码|\n|data.size|int|页大小|\n|data.pages|int|总页数|\n|data.records|array[object]|订单列表数组|\n|data.records[].goods_list|array[object]|订单商品子数组|\n\n> 备注：\n> 1. 未传order_status默认查全部\n> 2. size超过100会被强制截断为100",
+      "page_comments": ""
+    },
+    {
+      "page_id": 5004,
+      "page_title": "全局错误码说明",
+      "cat_id": "0",
+      "snumber": 99,
+      "page_content": "# 全局错误码约定\n\n|错误码|HTTP状态码|说明|\n|---|---|---|\n|0|200|业务成功|\n|40100|401|token缺失或解析失败|\n|40101|401|token已过期，请refresh_token刷新|\n|40300|403|权限不足|\n|40400|404|资源不存在|\n|50000|500|服务器内部异常|\n\n> 所有接口HTTP状态码统一返回200，业务状态码看body内code字段。",
+      "page_comments": ""
+    }
+  ],
+  "catalogs": [
+    {
+      "cat_id": "1000",
+      "cat_name": "V2接口",
+      "parent_id": "0",
+      "snumber": 1,
+      "catalogs": [
+        {
+          "cat_id": "1001",
+          "cat_name": "认证模块",
+          "parent_id": "1000",
+          "snumber": 1,
+          "catalogs": []
+        },
+        {
+          "cat_id": "1002",
+          "cat_name": "用户&订单模块",
+          "parent_id": "1000",
+          "snumber": 2,
+          "catalogs": []
+        }
+      ]
+    }
+  ]
+}

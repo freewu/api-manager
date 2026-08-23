@@ -1,0 +1,357 @@
+{
+  "groups": [
+    {
+      "name": "User",
+      "title": "用户模块",
+      "description": "用户登录、信息管理、密码修改相关接口"
+    },
+    {
+      "name": "Order",
+      "title": "订单模块",
+      "description": "订单创建、查询、详情、取消业务接口"
+    }
+  ],
+  "defines": [
+    {
+      "name": "ResponseCommon",
+      "title": "通用返回结构",
+      "success": [
+        {"field":"code","type":"Number","description":"状态码 200成功，其他失败"},
+        {"field":"msg","type":"String","description":"提示信息"},
+        {"field":"data","type":"Object","description":"返回业务数据"}
+      ],
+      "error": [
+        {"field":"code","type":"Number","description":"错误码"},
+        {"field":"msg","type":"String","description":"错误描述"}
+      ]
+    },
+    {
+      "name": "AuthHeader",
+      "title": "鉴权请求头",
+      "header": [
+        {"field":"Authorization","type":"String","description":"Bearer token令牌"}
+      ]
+    }
+  ],
+  "apis": [
+    {
+      "group":"User",
+      "name":"UserLogin",
+      "title":"用户登录",
+      "description":"用户账号密码登录，获取访问token",
+      "method":"POST",
+      "url":"/api/user/login",
+      "parameter":{
+        "fields":{
+          "Parameter":[
+            {"field":"username","type":"String","required":true,"description":"账号，不能为空"},
+            {"field":"password","type":"String","required":true,"description":"密码，md5加密后字符串"},
+            {"field":"captcha","type":"String","required":false,"description":"验证码，登录失败3次后必填"}
+          ]
+        }
+      },
+      "success":{
+        "fields":{
+          "Success 200":[
+            {"field":"code","type":"Number","description":"状态码 200成功，其他失败"},
+            {"field":"msg","type":"String","description":"提示信息"},
+            {"field":"data","type":"Object","description":"返回登录数据"},
+            {"field":"data.token","type":"String","description":"鉴权token"},
+            {"field":"data.userId","type":"Number","description":"用户ID"},
+            {"field":"data.nickName","type":"String","description":"用户昵称"},
+            {"field":"data.expireTime","type":"Number","description":"token过期时间戳"}
+          ]
+        }
+      },
+      "error":{
+        "examples":[
+          {
+            "title":"登录失败",
+            "content":"{\n  \"code\":40001,\n  \"msg\":\"账号或密码错误\",\n  \"data\":null\n}"
+          }
+        ]
+      },
+      "successExamples":[
+        {
+          "title":"登录成功",
+          "content":"{\n  \"code\":200,\n  \"msg\":\"success\",\n  \"data\":{\n    \"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9xxx\",\n    \"userId\":10086,\n    \"nickName\":\"张三\",\n    \"expireTime\":1788888888\n  }\n}"
+        }
+      ]
+    },
+    {
+      "group":"User",
+      "name":"GetUserInfo",
+      "title":"获取当前登录用户信息",
+      "description":"根据token获取登录用户详情",
+      "method":"GET",
+      "url":"/api/user/info",
+      "header":{
+        "fields":{
+          "Header":[
+            {"field":"Authorization","type":"String","description":"Bearer token令牌"}
+          ]
+        }
+      },
+      "success":{
+        "fields":{
+          "Success 200":[
+            {"field":"code","type":"Number","description":"状态码"},
+            {"field":"msg","type":"String","description":"提示信息"},
+            {"field":"data","type":"Object","description":"用户信息"},
+            {"field":"data.userId","type":"Number","description":"用户id"},
+            {"field":"data.username","type":"String","description":"账号"},
+            {"field":"data.nickName","type":"String","description":"昵称"},
+            {"field":"data.avatar","type":"String","description":"头像地址"},
+            {"field":"data.gender","type":"Number","description":"性别 0未知 1男 2女"},
+            {"field":"data.roles","type":"String[]","description":"角色数组"},
+            {"field":"data.extra","type":"Object","description":"扩展信息"},
+            {"field":"data.extra.phone","type":"String","description":"手机号"},
+            {"field":"data.extra.email","type":"String","description":"邮箱"}
+          ]
+        }
+      },
+      "error":{
+        "examples":[
+          {
+            "title":"token失效",
+            "content":"{\n  \"code\":401,\n  \"msg\":\"token已过期，请重新登录\",\n  \"data\":null\n}"
+          }
+        ]
+      },
+      "successExamples":[
+        {
+          "title":"成功返回",
+          "content":"{\n  \"code\":200,\n  \"msg\":\"success\",\n  \"data\":{\n    \"userId\":10086,\n    \"username\":\"zhangsan\",\n    \"nickName\":\"张三\",\n    \"avatar\":\"https://demo.com/avatar/10086.png\",\n    \"gender\":1,\n    \"roles\":[\"user\",\"vip\"],\n    \"extra\":{\n      \"phone\":\"13800138000\",\n      \"email\":\"zhangsan@demo.com\"\n    }\n  }\n}"
+        }
+      ]
+    },
+    {
+      "group":"User",
+      "name":"UpdatePassword",
+      "title":"修改登录密码",
+      "description":"用户修改密码，需要旧密码校验",
+      "method":"PUT",
+      "url":"/api/user/password",
+      "header":{
+        "fields":{
+          "Header":[
+            {"field":"Authorization","type":"String","description":"Bearer token令牌"}
+          ]
+        }
+      },
+      "parameter":{
+        "fields":{
+          "Parameter":[
+            {"field":"oldPassword","type":"String","required":true,"description":"旧密码md5"},
+            {"field":"newPassword","type":"String","required":true,"description":"新密码md5"},
+            {"field":"confirmPassword","type":"String","required":true,"description":"确认新密码md5"}
+          ]
+        }
+      },
+      "successExamples":[
+        {
+          "title":"",
+          "content":"{\n  \"code\":200,\n  \"msg\":\"密码修改成功\",\n  \"data\":null\n}"
+        }
+      ],
+      "error":{
+        "examples":[
+          {
+            "title":"",
+            "content":"{\n  \"code\":40002,\n  \"msg\":\"旧密码不正确\",\n  \"data\":null\n}"
+          }
+        ]
+      }
+    },
+    {
+      "group":"Order",
+      "name":"OrderCreate",
+      "title":"创建订单",
+      "description":"用户提交商品生成订单，支持多商品",
+      "method":"POST",
+      "url":"/api/order/create",
+      "header":{
+        "fields":{
+          "Header":[
+            {"field":"Authorization","type":"String","description":"Bearer token令牌"}
+          ]
+        }
+      },
+      "parameter":{
+        "fields":{
+          "Parameter":[
+            {"field":"addressId","type":"Number","required":true,"description":"收货地址ID"},
+            {"field":"payType","type":"Number","required":true,"description":"支付方式 1微信 2支付宝"},
+            {"field":"remark","type":"String","required":false,"description":"用户备注，最多200字符"},
+            {"field":"goodsList","type":"Object[]","required":true,"description":"商品列表"},
+            {"field":"goodsList.goodsId","type":"Number","required":true,"description":"商品ID"},
+            {"field":"goodsList.num","type":"Number","required":true,"description":"购买数量，大于0"},
+            {"field":"goodsList.unitPrice","type":"Number","required":true,"description":"商品单价(分)"}
+          ]
+        }
+      },
+      "success":{
+        "fields":{
+          "Success 200":[
+            {"field":"code","type":"Number","description":"状态码"},
+            {"field":"msg","type":"String","description":"提示信息"},
+            {"field":"data","type":"Object","description":""},
+            {"field":"data.orderNo","type":"String","description":"订单号"},
+            {"field":"data.orderId","type":"Number","description":"订单主键id"},
+            {"field":"data.totalAmount","type":"Number","description":"订单总金额(分)"},
+            {"field":"data.payUrl","type":"String","description":"支付跳转链接"}
+          ]
+        }
+      },
+      "successExamples":[
+        {
+          "title":"",
+          "content":"{\n  \"code\":200,\n  \"msg\":\"订单创建成功\",\n  \"data\":{\n    \"orderNo\":\"ORD20260822000101\",\n    \"orderId\":5001,\n    \"totalAmount\":29900,\n    \"payUrl\":\"https://pay.demo.com/pay?orderNo=ORD20260822000101\"\n  }\n}"
+        }
+      ],
+      "error":{
+        "examples":[
+          {
+            "title":"库存不足",
+            "content":"{\n  \"code\":50001,\n  \"msg\":\"部分商品库存不足\",\n  \"data\":null\n}"
+          }
+        ]
+      }
+    },
+    {
+      "group":"Order",
+      "name":"OrderList",
+      "title":"获取订单列表",
+      "description":"分页查询用户订单，支持状态筛选",
+      "method":"GET",
+      "url":"/api/order/list",
+      "header":{
+        "fields":{
+          "Header":[
+            {"field":"Authorization","type":"String","description":"Bearer token令牌"}
+          ]
+        }
+      },
+      "parameter":{
+        "fields":{
+          "Parameter":[
+            {"field":"pageNum","type":"Number","required":false,"defaultValue":"1","description":"页码"},
+            {"field":"pageSize","type":"Number","required":false,"defaultValue":"10","description":"每页条数"},
+            {"field":"status","type":"Number","required":false,"description":"订单状态：0待支付 1已支付 2已发货 3已完成 4已取消"}
+          ]
+        }
+      },
+      "success":{
+        "fields":{
+          "Success 200":[
+            {"field":"code","type":"Number","description":""},
+            {"field":"msg","type":"String","description":""},
+            {"field":"data","type":"Object","description":"分页对象"},
+            {"field":"data.total","type":"Number","description":"总条数"},
+            {"field":"data.pages","type":"Number","description":"总页数"},
+            {"field":"data.records","type":"Array","description":"订单集合"},
+            {"field":"data.records.orderNo","type":"String","description":"订单号"},
+            {"field":"data.records.status","type":"Number","description":"订单状态"},
+            {"field":"data.records.totalAmount","type":"Number","description":"订单金额(分)"},
+            {"field":"data.records.createTime","type":"String","description":"创建时间"}
+          ]
+        }
+      },
+      "successExamples":[
+        {
+          "title":"",
+          "content":"{\n  \"code\":200,\n  \"msg\":\"success\",\n  \"data\":{\n    \"total\":23,\n    \"pages\":3,\n    \"records\":[\n      {\n        \"orderNo\":\"ORD20260822000101\",\n        \"status\":0,\n        \"totalAmount\":29900,\n        \"createTime\":\"2026-08-22 10:20:30\"\n      }\n    ]\n  }\n}"
+        }
+      ]
+    },
+    {
+      "group":"Order",
+      "name":"OrderDetail",
+      "title":"获取订单详情",
+      "description":"根据订单ID查询完整详情，包含商品、地址、物流信息",
+      "method":"GET",
+      "url":"/api/order/:orderId",
+      "header":{
+        "fields":{
+          "Header":[
+            {"field":"Authorization","type":"String","description":"Bearer token令牌"}
+          ]
+        }
+      },
+      "parameter":{
+        "fields":{
+          "Parameter":[
+            {"field":"orderId","type":"Number","required":true,"description":"订单ID【路径参数】"}
+          ]
+        }
+      },
+      "success":{
+        "fields":{
+          "Success 200":[
+            {"field":"code","type":"Number","description":""},
+            {"field":"msg","type":"String","description":""},
+            {"field":"data","type":"Object","description":"订单详情"},
+            {"field":"data.orderNo","type":"String","description":"订单编号"},
+            {"field":"data.status","type":"Number","description":"订单状态"},
+            {"field":"data.totalAmount","type":"Number","description":"总金额"},
+            {"field":"data.addressInfo","type":"Object","description":"收货地址信息"},
+            {"field":"data.addressInfo.receiverName","type":"String","description":"收件人"},
+            {"field":"data.addressInfo.phone","type":"String","description":"收件手机号"},
+            {"field":"data.addressInfo.fullAddress","type":"String","description":"完整地址"},
+            {"field":"data.goodsItems","type":"Object[]","description":"订单商品明细"},
+            {"field":"data.goodsItems.goodsName","type":"String","description":"商品名称"},
+            {"field":"data.goodsItems.goodsImage","type":"String","description":"商品图片"},
+            {"field":"data.goodsItems.num","type":"Number","description":"购买数量"},
+            {"field":"data.goodsItems.unitPrice","type":"Number","description":"单价(分)"},
+            {"field":"data.logistics","type":"Object","required":false,"description":"物流信息，未发货为null"},
+            {"field":"data.logistics.logisticsNo","type":"String","description":"物流单号"},
+            {"field":"data.logistics.company","type":"String","description":"物流公司"}
+          ]
+        }
+      },
+      "successExamples":[
+        {
+          "title":"",
+          "content":"{\n  \"code\":200,\n  \"msg\":\"success\",\n  \"data\":{\n    \"orderNo\":\"ORD20260822000101\",\n    \"status\":2,\n    \"totalAmount\":29900,\n    \"addressInfo\":{\n      \"receiverName\":\"李四\",\n      \"phone\":\"13900139000\",\n      \"fullAddress\":\"江西省赣州市南康区xxx街道xxx号\"\n    },\n    \"goodsItems\":[\n      {\n        \"goodsName\":\"机械键盘\",\n        \"goodsImage\":\"https://demo.com/img/keyboard.jpg\",\n        \"num\":1,\n        \"unitPrice\":29900\n      }\n    ],\n    \"logistics\":{\n      \"logisticsNo\":\"SF1234567890\",\n      \"company\":\"顺丰速运\"\n    }\n  }\n}"
+        }
+      ]
+    },
+    {
+      "group":"Order",
+      "name":"OrderCancel",
+      "title":"取消订单",
+      "description":"取消未支付订单，已支付订单不能直接取消",
+      "method":"PUT",
+      "url":"/api/order/:orderId/cancel",
+      "header":{
+        "fields":{
+          "Header":[
+            {"field":"Authorization","type":"String","description":"Bearer token令牌"}
+          ]
+        }
+      },
+      "parameter":{
+        "fields":{
+          "Parameter":[
+            {"field":"orderId","type":"Number","required":true,"description":"订单ID【路径参数】"},
+            {"field":"cancelReason","type":"String","required":false,"description":"取消原因"}
+          ]
+        }
+      },
+      "successExamples":[
+        {
+          "title":"",
+          "content":"{\n  \"code\":200,\n  \"msg\":\"订单已取消\",\n  \"data\":null\n}"
+        }
+      ],
+      "error":{
+        "examples":[
+          {
+            "title":"",
+            "content":"{\n  \"code\":50002,\n  \"msg\":\"当前订单状态不允许取消\",\n  \"data\":null\n}"
+          }
+        ]
+      }
+    }
+  ]
+}

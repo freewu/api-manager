@@ -1,0 +1,339 @@
+{
+  "exportVersion": "apikit_v4",
+  "projectInfo": {
+    "projectName": "订单管理服务",
+    "projectDesc": "订单、支付、用户相关接口文档",
+    "projectVersion": "2.1.0"
+  },
+  "apiGroupList": [
+    {
+      "groupID": 1001,
+      "groupName": "订单模块",
+      "parentGroupID": 0,
+      "sort": 1,
+      "apiList": [],
+      "childGroupList": [
+        {
+          "groupID": 1002,
+          "groupName": "订单操作",
+          "parentGroupID": 1001,
+          "sort": 1,
+          "apiList": [
+            {
+              "apiID": 2001,
+              "apiName": "创建订单",
+              "apiUri": "/order/{orderType}/create",
+              "apiMethod": "POST",
+              "apiProtocol": "HTTP",
+              "apiStatus": "已完成",
+              "apiDesc": "提交创建订单请求，支持商品列表批量下单",
+              "apiNote": "内部备注：需要鉴权token，限流50次/分钟",
+              "apiTagList": ["订单","下单","V2.1"],
+              "requestInfo": {
+                "requestHeaderList": [
+                  {
+                    "key": "Authorization",
+                    "type": "string",
+                    "isRequired": 1,
+                    "example": "Bearer xxx-token-123",
+                    "mock": "",
+                    "desc": "用户鉴权令牌"
+                  },
+                  {
+                    "key": "X-Request-ID",
+                    "type": "string",
+                    "isRequired": 0,
+                    "example": "req_882211",
+                    "mock": "@guid",
+                    "desc": "请求追踪ID"
+                  }
+                ],
+                "requestQueryList": [
+                  {
+                    "key": "channel",
+                    "type": "string",
+                    "isRequired": 1,
+                    "example": "app",
+                    "mock": "@pick(['app','mini','h5'])",
+                    "desc": "渠道来源 app/mini/h5"
+                  }
+                ],
+                "requestRestList": [
+                  {
+                    "key": "orderType",
+                    "type": "string",
+                    "isRequired": 1,
+                    "example": "normal",
+                    "mock": "@pick(['normal','gift'])",
+                    "desc": "订单类型 normal普通 gift礼品单"
+                  }
+                ],
+                "requestBodyType": "json",
+                "requestBodyJsonList": [
+                  {
+                    "key": "userId",
+                    "type": "number",
+                    "isRequired": 1,
+                    "example": 10086,
+                    "mock": "@integer(10000,999999)",
+                    "desc": "用户ID"
+                  },
+                  {
+                    "key": "addressInfo",
+                    "type": "object",
+                    "isRequired": 1,
+                    "example": {},
+                    "mock": "",
+                    "desc": "收货地址",
+                    "children": [
+                      {
+                        "key": "receiverName",
+                        "type": "string",
+                        "isRequired": 1,
+                        "example": "张三",
+                        "mock": "@cname",
+                        "desc": "收件人姓名"
+                      },
+                      {
+                        "key": "phone",
+                        "type": "string",
+                        "isRequired": 1,
+                        "example": "13800138000",
+                        "mock": "@phone",
+                        "desc": "手机号"
+                      },
+                      {
+                        "key": "detailAddr",
+                        "type": "string",
+                        "isRequired": 1,
+                        "example": "江西省赣州市xx街道xx小区",
+                        "mock": "@county(true)",
+                        "desc": "详细地址"
+                      }
+                    ]
+                  },
+                  {
+                    "key": "goodsList",
+                    "type": "array",
+                    "isRequired": 1,
+                    "example": [],
+                    "mock": "",
+                    "desc": "商品列表",
+                    "children": [
+                      {
+                        "key": "goodsId",
+                        "type": "number",
+                        "isRequired": 1,
+                        "example": 5001,
+                        "mock": "@integer(1000,9999)",
+                        "desc": "商品ID"
+                      },
+                      {
+                        "key": "num",
+                        "type": "number",
+                        "isRequired": 1,
+                        "example": 2,
+                        "mock": "@integer(1,10)",
+                        "desc": "购买数量"
+                      },
+                      {
+                        "key": "price",
+                        "type": "number",
+                        "isRequired": 1,
+                        "example": 99.5,
+                        "mock": "@float(1,999,2,2)",
+                        "desc": "商品单价"
+                      }
+                    ]
+                  },
+                  {
+                    "key": "remark",
+                    "type": "string",
+                    "isRequired": 0,
+                    "example": "请周末送货",
+                    "mock": "@csentence(5,20)",
+                    "desc": "订单备注"
+                  }
+                ]
+              },
+              "responseInfoList": [
+                {
+                  "responseName": "成功-200",
+                  "responseCode": 200,
+                  "responseContentType": "json",
+                  "responseBodyJsonList": [
+                    {
+                      "key": "code",
+                      "type": "number",
+                      "isRequired": 1,
+                      "example": 0,
+                      "mock": "0",
+                      "desc": "业务码 0成功"
+                    },
+                    {
+                      "key": "msg",
+                      "type": "string",
+                      "isRequired": 1,
+                      "example": "success",
+                      "mock": "\"success\"",
+                      "desc": "提示信息"
+                    },
+                    {
+                      "key": "data",
+                      "type": "object",
+                      "isRequired": 1,
+                      "example": {},
+                      "mock": "",
+                      "desc": "返回数据",
+                      "children": [
+                        {
+                          "key": "orderId",
+                          "type": "string",
+                          "isRequired": 1,
+                          "example": "OD202608220001",
+                          "mock": "@string(16)",
+                          "desc": "订单编号"
+                        },
+                        {
+                          "key": "totalAmount",
+                          "type": "number",
+                          "isRequired": 1,
+                          "example": 199.00,
+                          "mock": "@float(10,5000,2,2)",
+                          "desc": "订单总金额"
+                        },
+                        {
+                          "key": "createTime",
+                          "type": "string",
+                          "isRequired": 1,
+                          "example": "2026‑08‑22 10:20:30",
+                          "mock": "@datetime(\"yyyy‑MM‑dd HH:mm:ss\")",
+                          "desc": "创建时间"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "responseName": "参数错误‑400",
+                  "responseCode": 400,
+                  "responseContentType": "json",
+                  "responseBodyJsonList": [
+                    {
+                      "key": "code",
+                      "type": "number",
+                      "isRequired": 1,
+                      "example": 40001,
+                      "mock": "40001",
+                      "desc": "错误码"
+                    },
+                    {
+                      "key": "msg",
+                      "type": "string",
+                      "isRequired": 1,
+                      "example": "参数非法",
+                      "mock": "@csentence(4,12)",
+                      "desc": "错误描述"
+                    }
+                  ]
+                }
+              ],
+              "mockInfo": {
+                "mockType": "follow_doc",
+                "mockScript": ""
+              },
+              "testCaseList": [
+                {
+                  "caseName": "正常创建订单",
+                  "requestHeaderList": [
+                    {"key":"Authorization","value":"Bearer mock‑token‑001"}
+                  ],
+                  "requestQueryList": [{"key":"channel","value":"app"}],
+                  "requestRestList": [{"key":"orderType","value":"normal"}],
+                  "requestBodyJsonRaw": "{\"userId\":10086,\"addressInfo\":{\"receiverName\":\"张三\",\"phone\":\"13800138000\",\"detailAddr\":\"xx地址\"},\"goodsList\":[{\"goodsId\":5001,\"num\":2,\"price\":99.5}],\"remark\":\"\"}",
+                  "assertList": [
+                    {
+                      "assertType": "response_code",
+                      "expectValue": "200",
+                      "expression": "",
+                      "desc": "http状态码等于200"
+                    },
+                    {
+                      "assertType": "json_path",
+                      "expectValue": "0",
+                      "expression": "$.code",
+                      "desc": "校验业务code=0"
+                    }
+                  ]
+                },
+                {
+                  "caseName": "缺少userId参数‑异常",
+                  "requestHeaderList": [
+                    {"key":"Authorization","value":"Bearer mock‑token‑001"}
+                  ],
+                  "requestQueryList": [{"key":"channel","value":"app"}],
+                  "requestRestList": [{"key":"orderType","value":"normal"}],
+                  "requestBodyJsonRaw": "{\"addressInfo\":{\"receiverName\":\"张三\",\"phone\":\"13800138000\",\"detailAddr\":\"xx地址\"},\"goodsList\":[{\"goodsId\":5001,\"num\":2,\"price\":99.5}]}",
+                  "assertList": [
+                    {
+                      "assertType": "response_code",
+                      "expectValue": "400",
+                      "expression": "",
+                      "desc": "校验返回400"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "environmentList": [
+    {
+      "envID": 3001,
+      "envName": "开发环境",
+      "envHost": "http://dev‑order.api.local:8090",
+      "globalParamList": [
+        {"key":"token","value":"dev_default_token","paramType":"header"}
+      ]
+    },
+    {
+      "envID": 3002,
+      "envName": "测试环境",
+      "envHost": "https://test‑order.xxx.com",
+      "globalParamList": []
+    }
+  ],
+  "dataStructureList": [
+    {
+      "structureID": 4001,
+      "structureName": "AddressDTO",
+      "structureDesc": "收货地址模型",
+      "jsonList": [
+        {
+          "key": "receiverName",
+          "type": "string",
+          "isRequired": 1,
+          "example": "",
+          "mock": "@cname",
+          "desc": "收件人"
+        }
+      ]
+    }
+  ],
+  "statusCodeList": [
+    {
+      "code": 401,
+      "name": "未授权",
+      "desc": "token失效或未携带鉴权头"
+    },
+    {
+      "code": 500,
+      "name": "服务器内部错误",
+      "desc": "服务异常"
+    }
+  ],
+  "projectDocList": []
+}

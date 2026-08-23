@@ -1,0 +1,303 @@
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "project_id": 1001,
+    "name": "用户中心API文档",
+    "description": "用户登录、注册、信息管理接口",
+    "create_time": "2026-01-10 10:20:00",
+    "update_time": "2026-08-20 15:30:00",
+    "base_url": "https://api.demo.com/v1",
+    "catalog": [
+      {
+        "id": 501,
+        "parent_id": 0,
+        "title": "用户模块",
+        "sort": 1,
+        "children": [
+          {
+            "id": 502,
+            "parent_id": 501,
+            "title": "登录注册",
+            "sort": 1,
+            "children": []
+          },
+          {
+            "id": 503,
+            "parent_id": 501,
+            "title": "用户信息管理",
+            "sort": 2,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 601,
+        "parent_id": 0,
+        "title": "权限模块",
+        "sort": 2,
+        "children": []
+      }
+    ],
+    "api_list": [
+      {
+        "id": 2001,
+        "catalog_id": 502,
+        "title": "账号密码登录",
+        "desc": "账号密码登录，返回access_token；密码需要md5加密传输",
+        "method": "POST",
+        "url": "/user/login",
+        "request_type": "application/json",
+        "response_type": "application/json",
+        "mock_open": 1,
+        "mock_url": "",
+        "request_headers": [
+          {
+            "name": "Content-Type",
+            "value": "application/json",
+            "required": 1,
+            "desc": "请求数据格式"
+          }
+        ],
+        "request_params": [],
+        "request_body": "{\"username\":\"string\",\"password\":\"string\"}",
+        "request_body_type": "raw",
+        "request_form": [],
+        "response_params": [
+          {
+            "name": "code",
+            "type": "int",
+            "required": 1,
+            "desc": "业务码 0成功，非0失败"
+          },
+          {
+            "name": "msg",
+            "type": "string",
+            "required": 1,
+            "desc": "提示信息"
+          },
+          {
+            "name": "data",
+            "type": "object",
+            "required": 1,
+            "desc": "返回数据对象",
+            "children": [
+              {
+                "name": "access_token",
+                "type": "string",
+                "required": 1,
+                "desc": "访问令牌"
+              },
+              {
+                "name": "expires",
+                "type": "int",
+                "required": 1,
+                "desc": "过期时间戳"
+              },
+              {
+                "name": "user_info",
+                "type": "object",
+                "required": 1,
+                "desc": "用户基础信息",
+                "children": [
+                  {
+                    "name": "uid",
+                    "type": "long",
+                    "required": 1,
+                    "desc": "用户ID"
+                  },
+                  {
+                    "name": "nickname",
+                    "type": "string",
+                    "required": 1,
+                    "desc": "昵称"
+                  },
+                  {
+                    "name": "roles",
+                    "type": "array",
+                    "required": 1,
+                    "desc": "角色列表",
+                    "children": [
+                      {
+                        "name": "role_code",
+                        "type": "string",
+                        "required": 1,
+                        "desc": "角色编码"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "response_demo": "{\n  \"code\": 0,\n  \"msg\": \"ok\",\n  \"data\": {\n    \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\",\n    \"expires\": 1787800000,\n    \"user_info\": {\n      \"uid\": 10086,\n      \"nickname\": \"测试用户\",\n      \"roles\": [ {\"role_code\":\"admin\"} ]\n    }\n  }\n}",
+        "error_demo": "{\"code\":40001,\"msg\":\"账号密码错误\",\"data\":null}",
+        "create_time": "2026-02-01 09:10:00",
+        "update_time": "2026-08-10 11:22:00",
+        "sort": 1
+      },
+      {
+        "id": 2002,
+        "catalog_id": 503,
+        "title": "获取用户列表",
+        "desc": "分页查询用户列表，需要token鉴权",
+        "method": "GET",
+        "url": "/user/list",
+        "request_type": "",
+        "response_type": "application/json",
+        "mock_open": 0,
+        "mock_url": "",
+        "request_headers": [
+          {
+            "name": "Authorization",
+            "value": "Bearer {{access_token}}",
+            "required": 1,
+            "desc": "身份令牌"
+          }
+        ],
+        "request_params": [
+          {
+            "name": "page",
+            "type": "int",
+            "required": 1,
+            "desc": "页码，从1开始",
+            "default": "1"
+          },
+          {
+            "name": "page_size",
+            "type": "int",
+            "required": 1,
+            "desc": "每页条数",
+            "default": "20"
+          },
+          {
+            "name": "keyword",
+            "type": "string",
+            "required": 0,
+            "desc": "搜索昵称/账号"
+          }
+        ],
+        "request_body": "",
+        "request_body_type": "",
+        "request_form": [],
+        "response_params": [
+          {
+            "name": "code",
+            "type": "int",
+            "required": 1,
+            "desc": "业务码"
+          },
+          {
+            "name": "msg",
+            "type": "string",
+            "required": 1,
+            "desc": "提示信息"
+          },
+          {
+            "name": "data",
+            "type": "object",
+            "required": 1,
+            "desc": "分页数据",
+            "children": [
+              {
+                "name": "total",
+                "type": "long",
+                "required": 1,
+                "desc": "总条数"
+              },
+              {
+                "name": "list",
+                "type": "array",
+                "required": 1,
+                "desc": "用户数组",
+                "children": [
+                  {
+                    "name": "uid",
+                    "type": "long",
+                    "required": 1,
+                    "desc": "用户ID"
+                  },
+                  {
+                    "name": "nickname",
+                    "type": "string",
+                    "required": 1,
+                    "desc": "用户昵称"
+                  },
+                  {
+                    "name": "mobile",
+                    "type": "string",
+                    "required": 0,
+                    "desc": "手机号"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "response_demo": "{\n  \"code\":0,\n  \"msg\":\"ok\",\n  \"data\":{\n    \"total\":120,\n    \"list\":[\n      {\"uid\":1001,\"nickname\":\"张三\",\"mobile\":\"13800138000\"}\n    ]\n  }\n}",
+        "error_demo": "{\"code\":401,\"msg\":\"token失效\",\"data\":null}",
+        "create_time": "2026-02-02 14:20:00",
+        "update_time": "2026-08-12 16:10:00",
+        "sort": 1
+      },
+      {
+        "id": 2003,
+        "catalog_id": 503,
+        "title": "上传用户头像",
+        "desc": "multipart/form‑data 文件上传接口",
+        "method": "POST",
+        "url": "/user/avatar/upload",
+        "request_type": "multipart/form‑data",
+        "response_type": "application/json",
+        "mock_open": 0,
+        "mock_url": "",
+        "request_headers": [
+          {
+            "name": "Authorization",
+            "value": "Bearer {{access_token}}",
+            "required": 1,
+            "desc": "身份令牌"
+          }
+        ],
+        "request_params": [],
+        "request_body": "",
+        "request_body_type": "form‑data",
+        "request_form": [
+          {
+            "name": "avatar_file",
+            "type": "file",
+            "required": 1,
+            "desc": "头像图片文件，jpg/png"
+          }
+        ],
+        "response_params": [
+          {
+            "name": "code",
+            "type": "int",
+            "required": 1,
+            "desc": "业务码"
+          },
+          {
+            "name": "data",
+            "type": "object",
+            "required": 1,
+            "children": [
+              {
+                "name": "avatar_url",
+                "type": "string",
+                "required": 1,
+                "desc": "头像访问地址"
+              }
+            ]
+          }
+        ],
+        "response_demo": "{\"code\":0,\"msg\":\"ok\",\"data\":{\"avatar_url\":\"https://demo.com/avatar/xxx.jpg\"}}",
+        "error_demo": "",
+        "create_time": "2026‑03‑05 10:00:00",
+        "update_time": "2026‑03‑05 10:00:00",
+        "sort": 2
+      }
+    ]
+  }
+}

@@ -1,0 +1,647 @@
+{
+  "data": {
+    "id": 9001,
+    "name": "电商后端API仓库",
+    "description": "商品、用户、订单全套REST接口定义",
+    "logo": null,
+    "token": "repo-9001-abcdef123456",
+    "visibility": true,
+    "createdAt": "2026-07-01T02:00:00.000Z",
+    "updatedAt": "2026-08-22T06:10:00.000Z",
+    "modules": [
+      {
+        "id": 1101,
+        "name": "用户管理",
+        "description": "注册、登录、用户CRUD",
+        "priority": 10,
+        "repositoryId": 9001,
+        "interfaces": [
+          {
+            "id": 2101,
+            "name": "获取用户列表",
+            "url": "/api/user/list",
+            "method": "GET",
+            "status": 200,
+            "description": "分页查询用户列表",
+            "priority": 10,
+            "moduleId": 1101,
+            "repositoryId": 9001,
+            "properties": [
+              {
+                "id": 3101,
+                "scope": "request",
+                "pos": 1,
+                "name": "Authorization",
+                "type": "String",
+                "required": true,
+                "value": "Bearer @string(32)",
+                "description": "鉴权token",
+                "parentId": -1,
+                "priority": 1
+              },
+              {
+                "id": 3102,
+                "scope": "request",
+                "pos": 2,
+                "name": "page",
+                "type": "Number",
+                "required": true,
+                "value": 1,
+                "description": "页码",
+                "parentId": -1,
+                "priority": 2
+              },
+              {
+                "id": 3103,
+                "scope": "request",
+                "pos": 2,
+                "name": "size",
+                "type": "Number",
+                "required": true,
+                "value": 10,
+                "description": "每页条数",
+                "parentId": -1,
+                "priority": 3
+              },
+              {
+                "id": 3104,
+                "scope": "response",
+                "pos": 3,
+                "name": "code",
+                "type": "Number",
+                "required": true,
+                "value": 200,
+                "description": "业务码",
+                "parentId": -1,
+                "priority": 1
+              },
+              {
+                "id": 3105,
+                "scope": "response",
+                "pos": 3,
+                "name": "msg",
+                "type": "String",
+                "required": true,
+                "value": "@sentence",
+                "description": "提示消息",
+                "parentId": -1,
+                "priority": 2
+              },
+              {
+                "id": 3106,
+                "scope": "response",
+                "pos": 3,
+                "name": "data",
+                "type": "Object",
+                "required": true,
+                "value": "",
+                "description": "分页对象",
+                "parentId": -1,
+                "priority": 3
+              },
+              {
+                "id": 3107,
+                "scope": "response",
+                "pos": 3,
+                "name": "total",
+                "type": "Number",
+                "required": true,
+                "value": "@natural(0,9999)",
+                "description": "总条数",
+                "parentId": 3106,
+                "priority": 1
+              },
+              {
+                "id": 3108,
+                "scope": "response",
+                "pos": 3,
+                "name": "records",
+                "type": "Array",
+                "required": true,
+                "value": "2‑5",
+                "description": "用户记录数组",
+                "parentId": 3106,
+                "priority": 2
+              },
+              {
+                "id": 3109,
+                "scope": "response",
+                "pos": 3,
+                "name": "userId",
+                "type": "Number",
+                "required": true,
+                "value": "@natural(1000,99999)",
+                "description": "用户ID",
+                "parentId": 3108,
+                "priority": 1
+              },
+              {
+                "id": 3110,
+                "scope": "response",
+                "pos": 3,
+                "name": "username",
+                "type": "String",
+                "required": true,
+                "value": "@cname",
+                "description": "用户名",
+                "parentId": 3108,
+                "priority": 2
+              },
+              {
+                "id": 3111,
+                "scope": "response",
+                "pos": 3,
+                "name": "profile",
+                "type": "Object",
+                "required": false,
+                "value": "",
+                "description": "用户资料",
+                "parentId": 3108,
+                "priority": 3
+              },
+              {
+                "id": 3112,
+                "scope": "response",
+                "pos": 3,
+                "name": "phone",
+                "type": "String",
+                "required": false,
+                "value": "@phone",
+                "description": "手机号",
+                "parentId": 3111,
+                "priority": 1
+              }
+            ]
+          },
+          {
+            "id": 2102,
+            "name": "新建用户",
+            "url": "/api/user",
+            "method": "POST",
+            "status": 201,
+            "description": "创建新用户，JSON请求体",
+            "priority": 20,
+            "moduleId": 1101,
+            "repositoryId": 9001,
+            "properties": [
+              {
+                "id": 3201,
+                "scope": "request",
+                "pos": 1,
+                "name": "Authorization",
+                "type": "String",
+                "required": true,
+                "value": "Bearer @string(32)",
+                "description": "鉴权token",
+                "parentId": -1,
+                "priority": 1
+              },
+              {
+                "id": 3202,
+                "scope": "request",
+                "pos": 3,
+                "name": "username",
+                "type": "String",
+                "required": true,
+                "value": "@cname",
+                "description": "用户名",
+                "parentId": -1,
+                "priority": 2
+              },
+              {
+                "id": 3203,
+                "scope": "request",
+                "pos": 3,
+                "name": "password",
+                "type": "String",
+                "required": true,
+                "value": "@string(8,16)",
+                "description": "密码",
+                "parentId": -1,
+                "priority": 3
+              },
+              {
+                "id": 3204,
+                "scope": "response",
+                "pos": 3,
+                "name": "code",
+                "type": "Number",
+                "required": true,
+                "value": 201,
+                "description": "业务码",
+                "parentId": -1,
+                "priority": 1
+              },
+              {
+                "id": 3205,
+                "scope": "response",
+                "pos": 3,
+                "name": "data",
+                "type": "Object",
+                "required": true,
+                "value": "",
+                "description": "返回用户信息",
+                "parentId": -1,
+                "priority": 2
+              },
+              {
+                "id": 3206,
+                "scope": "response",
+                "pos": 3,
+                "name": "userId",
+                "type": "Number",
+                "required": true,
+                "value": "@natural(1000,99999)",
+                "description": "新建用户ID",
+                "parentId": 3205,
+                "priority": 1
+              }
+            ]
+          },
+          {
+            "id": 2103,
+            "name": "删除用户",
+            "url": "/api/user/{userId}",
+            "method": "DELETE",
+            "status": 200,
+            "description": "根据id删除用户",
+            "priority": 30,
+            "moduleId": 1101,
+            "repositoryId": 9001,
+            "properties": [
+              {
+                "id": 3301,
+                "scope": "request",
+                "pos": 1,
+                "name": "Authorization",
+                "type": "String",
+                "required": true,
+                "value": "Bearer @string(32)",
+                "description": "鉴权token",
+                "parentId": -1,
+                "priority": 1
+              },
+              {
+                "id": 3302,
+                "scope": "request",
+                "pos": 4,
+                "name": "userId",
+                "type": "Number",
+                "required": true,
+                "value": "@natural(1000,99999)",
+                "description": "待删除用户ID path参数",
+                "parentId": -1,
+                "priority": 2
+              },
+              {
+                "id": 3303,
+                "scope": "response",
+                "pos": 3,
+                "name": "code",
+                "type": "Number",
+                "required": true,
+                "value": 200,
+                "description": "业务码",
+                "parentId": -1,
+                "priority": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 1102,
+        "name": "商品管理",
+        "description": "商品增删改查",
+        "priority": 20,
+        "repositoryId": 9001,
+        "interfaces": [
+          {
+            "id": 2201,
+            "name": "获取商品详情",
+            "url": "/api/goods/{goodsId}",
+            "method": "GET",
+            "status": 200,
+            "description": "获取单个商品详情",
+            "priority": 10,
+            "moduleId": 1102,
+            "repositoryId": 9001,
+            "properties": [
+              {
+                "id": 4101,
+                "scope": "request",
+                "pos": 4,
+                "name": "goodsId",
+                "type": "Number",
+                "required": true,
+                "value": "@natural(10000,999999)",
+                "description": "商品ID path变量",
+                "parentId": -1,
+                "priority": 1
+              },
+              {
+                "id": 4102,
+                "scope": "response",
+                "pos": 3,
+                "name": "code",
+                "type": "Number",
+                "required": true,
+                "value": 200,
+                "description": "业务码",
+                "parentId": -1,
+                "priority": 1
+              },
+              {
+                "id": 4103,
+                "scope": "response",
+                "pos": 3,
+                "name": "data",
+                "type": "Object",
+                "required": true,
+                "value": "",
+                "description": "商品详情",
+                "parentId": -1,
+                "priority": 2
+              },
+              {
+                "id": 4104,
+                "scope": "response",
+                "pos": 3,
+                "name": "goodsId",
+                "type": "Number",
+                "required": true,
+                "value": "@natural(10000,999999)",
+                "description": "商品id",
+                "parentId": 4103,
+                "priority": 1
+              },
+              {
+                "id": 4105,
+                "scope": "response",
+                "pos": 3,
+                "name": "goodsName",
+                "type": "String",
+                "required": true,
+                "value": "@ctitle",
+                "description": "商品名称",
+                "parentId": 4103,
+                "priority": 2
+              },
+              {
+                "id": 4106,
+                "scope": "response",
+                "pos": 3,
+                "name": "price",
+                "type": "Number",
+                "required": true,
+                "value": "@float(10,9999,2)",
+                "description": "价格",
+                "parentId": 4103,
+                "priority": 3
+              },
+              {
+                "id": 4107,
+                "scope": "response",
+                "pos": 3,
+                "name": "images",
+                "type": "Array",
+                "required": false,
+                "value": "1‑3",
+                "description": "图片数组",
+                "parentId": 4103,
+                "priority": 4
+              },
+              {
+                "id": 4108,
+                "scope": "response",
+                "pos": 3,
+                "name": "url",
+                "type": "String",
+                "required": true,
+                "value": "@image('200x200')",
+                "description": "图片地址",
+                "parentId": 4107,
+                "priority": 1
+              }
+            ]
+          },
+          {
+            "id": 2202,
+            "name": "更新商品",
+            "url": "/api/goods/{goodsId}",
+            "method": "PUT",
+            "status": 200,
+            "description": "更新商品信息",
+            "priority": 20,
+            "moduleId": 1102,
+            "repositoryId": 9001,
+            "properties": [
+              {
+                "id": 4201,
+                "scope": "request",
+                "pos": 1,
+                "name": "Authorization",
+                "type": "String",
+                "required": true,
+                "value": "Bearer @string(32)",
+                "description": "鉴权token",
+                "parentId": -1,
+                "priority": 1
+              },
+              {
+                "id": 4202,
+                "scope": "request",
+                "pos": 4,
+                "name": "goodsId",
+                "type": "Number",
+                "required": true,
+                "value": "@natural(10000,999999)",
+                "description": "商品ID path变量",
+                "parentId": -1,
+                "priority": 2
+              },
+              {
+                "id": 4203,
+                "scope": "request",
+                "pos": 3,
+                "name": "goodsName",
+                "type": "String",
+                "required": true,
+                "value": "@ctitle",
+                "description": "商品名称",
+                "parentId": -1,
+                "priority": 3
+              },
+              {
+                "id": 4204,
+                "scope": "request",
+                "pos": 3,
+                "name": "price",
+                "type": "Number",
+                "required": true,
+                "value": "@float(10,9999,2)",
+                "description": "商品价格",
+                "parentId": -1,
+                "priority": 4
+              },
+              {
+                "id": 4205,
+                "scope": "response",
+                "pos": 3,
+                "name": "code",
+                "type": "Number",
+                "required": true,
+                "value": 200,
+                "description": "业务码",
+                "parentId": -1,
+                "priority": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 1103,
+        "name": "订单管理",
+        "description": "订单创建、查询、取消",
+        "priority": 30,
+        "repositoryId": 9001,
+        "interfaces": [
+          {
+            "id": 2301,
+            "name": "创建订单",
+            "url": "/api/order",
+            "method": "POST",
+            "status": 200,
+            "description": "提交订单，带商品数组",
+            "priority": 10,
+            "moduleId": 1103,
+            "repositoryId": 9001,
+            "properties": [
+              {
+                "id": 5101,
+                "scope": "request",
+                "pos": 1,
+                "name": "Authorization",
+                "type": "String",
+                "required": true,
+                "value": "Bearer @string(32)",
+                "description": "鉴权token",
+                "parentId": -1,
+                "priority": 1
+              },
+              {
+                "id": 5102,
+                "scope": "request",
+                "pos": 3,
+                "name": "receiverInfo",
+                "type": "Object",
+                "required": true,
+                "value": "",
+                "description": "收货地址对象",
+                "parentId": -1,
+                "priority": 2
+              },
+              {
+                "id": 5103,
+                "scope": "request",
+                "pos": 3,
+                "name": "receiverName",
+                "type": "String",
+                "required": true,
+                "value": "@cname",
+                "description": "收货人",
+                "parentId": 5102,
+                "priority": 1
+              },
+              {
+                "id": 5104,
+                "scope": "request",
+                "pos": 3,
+                "name": "receiverPhone",
+                "type": "String",
+                "required": true,
+                "value": "@phone",
+                "description": "收货人手机号",
+                "parentId": 5102,
+                "priority": 2
+              },
+              {
+                "id": 5105,
+                "scope": "request",
+                "pos": 3,
+                "name": "goodsItems",
+                "type": "Array",
+                "required": true,
+                "value": "1‑3",
+                "description": "订单商品数组",
+                "parentId": -1,
+                "priority": 3
+              },
+              {
+                "id": 5106,
+                "scope": "request",
+                "pos": 3,
+                "name": "goodsId",
+                "type": "Number",
+                "required": true,
+                "value": "@natural(10000,999999)",
+                "description": "商品ID",
+                "parentId": 5105,
+                "priority": 1
+              },
+              {
+                "id": 5107,
+                "scope": "request",
+                "pos": 3,
+                "name": "buyCount",
+                "type": "Number",
+                "required": true,
+                "value": "@natural(1,10)",
+                "description": "购买数量",
+                "parentId": 5105,
+                "priority": 2
+              },
+              {
+                "id": 5108,
+                "scope": "response",
+                "pos": 3,
+                "name": "code",
+                "type": "Number",
+                "required": true,
+                "value": 200,
+                "description": "业务码",
+                "parentId": -1,
+                "priority": 1
+              },
+              {
+                "id": 5109,
+                "scope": "response",
+                "pos": 3,
+                "name": "data",
+                "type": "Object",
+                "required": true,
+                "value": "",
+                "description": "订单返回",
+                "parentId": -1,
+                "priority": 2
+              },
+              {
+                "id": 5110,
+                "scope": "response",
+                "pos": 3,
+                "name": "orderNo",
+                "type": "String",
+                "required": true,
+                "value": "@uuid",
+                "description": "订单编号",
+                "parentId": 5109,
+                "priority": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

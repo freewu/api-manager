@@ -1,0 +1,178 @@
+{
+  "version": "apidog-export-v2",
+  "projectMeta": {
+    "name": "用户中心服务",
+    "description": "用户登录、注册、信息管理API",
+    "maintainer": "backend-team",
+    "createdAt": "2026-08-01T08:00:00Z"
+  },
+  "environments": [
+    {
+      "name": "开发环境(dev)",
+      "variables": [
+        {"key":"baseUrl","value":"http://127.0.0.1:8080","type":"string"},
+        {"key":"accessToken","value":"{{__temp_token}}","type":"string"}
+      ]
+    },
+    {
+      "name": "测试环境(test)",
+      "variables": [
+        {"key":"baseUrl","value":"https://test-api.example.com","type":"string"},
+        {"key":"accessToken","value":""}
+      ]
+    }
+  ],
+  "globalParams": [
+    {"key":"Accept","value":"application/json","position":"header"}
+  ],
+  "folders": [
+    {
+      "name": "用户模块",
+      "description": "账号相关接口",
+      "sort": 1,
+      "apis": [
+        {
+          "name": "用户登录",
+          "method": "POST",
+          "path": "/user/login",
+          "description": "账号密码登录，返回accessToken",
+          "status": "released",
+          "auth": {
+            "type":"none"
+          },
+          "request": {
+            "headers": [
+              {"key":"Content-Type","value":"application/json"}
+            ],
+            "body": {
+              "mode": "json",
+              "jsonSchema": {
+                "type":"object",
+                "required":["username","password"],
+                "properties":{
+                  "username":{"type":"string","description":"账号"},
+                  "password":{"type":"string","description":"密码"}
+                }
+              },
+              "example": {
+                "username":"test01",
+                "password":"123456"
+              }
+            }
+          },
+          "responses": [
+            {
+              "statusCode":200,
+              "description":"登录成功",
+              "jsonSchema":{
+                "type":"object",
+                "properties":{
+                  "code":{"type":"integer"},
+                  "msg":{"type":"string"},
+                  "data":{
+                    "type":"object",
+                    "properties":{
+                      "accessToken":{"type":"string"},
+                      "expires":{"type":"number"}
+                    }
+                  }
+                }
+              },
+              "example":{
+                "code":0,
+                "msg":"ok",
+                "data":{"accessToken":"xxx-xxx-token","expires":1780000000}
+              }
+            },
+            {
+              "statusCode":401,
+              "description":"账号密码错误",
+              "example":{"code":401,"msg":"用户名或密码错误"}
+            }
+          ],
+          "mockRules": [
+            {
+              "name":"成功mock",
+              "enabled":true,
+              "expect":{},
+              "response":{
+                "statusCode":200,
+                "body":"{\"code\":0,\"msg\":\"ok\",\"data\":{\"accessToken\":\"mock_token_{{$uuid}}\",\"expires\":{{$timestamp}}}}"
+              }
+            }
+          ],
+          "testCases": [
+            {
+              "caseName":"正常登录",
+              "requestOverride":{
+                "body":{"username":"admin","password":"Admin@123456"}
+              },
+              "preScript": "",
+              "postScript": "//提取token存入环境变量\nconst res = pm.response.json();\npm.environment.set(\"__temp_token\", res.data.accessToken);",
+              "asserts": [
+                {"type":"responseCode","expect":"200"},
+                {"type":"jsonBody","selector":"$.code","expect":"0"}
+              ]
+            },
+            {
+              "caseName":"密码错误",
+              "requestOverride":{
+                "body":{"username":"admin","password":"wrongpass"}
+              },
+              "asserts": [
+                {"type":"responseCode","expect":"401"}
+              ]
+            }
+          ]
+        },
+        {
+          "name": "获取用户信息",
+          "method": "GET",
+          "path": "/user/info",
+          "description": "需要token鉴权",
+          "status": "released",
+          "auth": {
+            "type":"bearerToken",
+            "value":"{{accessToken}}"
+          },
+          "request": {
+            "queryParams":[
+              {"key":"userId","value":"","required":true,"description":"用户ID"}
+            ]
+          },
+          "responses":[
+            {
+              "statusCode":200,
+              "jsonSchema":{
+                "type":"object",
+                "properties":{
+                  "code":{"type":"integer"},
+                  "data":{
+                    "type":"object",
+                    "properties":{
+                      "userId":{"type":"number"},
+                      "nickname":{"type":"string"},
+                      "phone":{"type":"string"},
+                      "roles":{"type":"array","items":{"type":"string"}}
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "testCases":[
+            {
+              "caseName":"获取已登录用户信息",
+              "requestOverride":{"queryParams":[{"key":"userId","value":"10001"}]},
+              "preScript":"",
+              "postScript":"",
+              "asserts":[
+                {"type":"jsonBody","selector":"$.data.userId","expect":"10001"}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

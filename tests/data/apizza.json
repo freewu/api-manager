@@ -1,0 +1,166 @@
+{
+  "version": "2.0",
+  "projectName": "商城后端API",
+  "projectDesc": "电商后台接口文档，用户、订单、商品模块",
+  "createTime": "2026-08-20T10:20:30",
+  "updateTime": "2026-08-22T09:15:10",
+  "envs": [
+    {
+      "envName": "开发环境",
+      "variables": [
+        {"key":"host","value":"http://dev-api.mall.local"},
+        {"key":"token","value":"{{dev_token}}"}
+      ]
+    },
+    {
+      "envName": "测试环境",
+      "variables": [
+        {"key":"host","value":"https://test-api.mall.com"},
+        {"key":"token","value":"{{test_token}}"}
+      ]
+    },
+    {
+      "envName": "生产环境",
+      "variables": [
+        {"key":"host","value":"https://api.mall.com"},
+        {"key":"token","value":"{{prod_token}}"}
+      ]
+    }
+  ],
+  "folders": [
+    {
+      "folderName": "用户模块",
+      "folderDesc": "登录、注册、个人信息",
+      "children": [
+        {
+          "folderName": "账号管理",
+          "folderDesc": "",
+          "apis": [
+            {
+              "apiName": "用户登录",
+              "apiDesc": "账号密码登录，返回access_token\n> 备注：密码需要md5加密",
+              "method": "POST",
+              "url": "{{host}}/api/v1/user/login",
+              "headers": [
+                {"key":"Content-Type","value":"application/json"},
+                {"key":"Accept","value":"application/json"}
+              ],
+              "cookies": [],
+              "queryParams": [],
+              "pathParams": [],
+              "bodyMode": "raw",
+              "bodyRaw": "{\n  \"username\":\"string\",\n  \"password\":\"string\"\n}",
+              "bodyForm": [],
+              "bodyFormData": [],
+              "responses": [
+                {
+                  "status": 200,
+                  "name": "登录成功",
+                  "contentType": "application/json",
+                  "body": "{\n  \"code\":0,\n  \"msg\":\"ok\",\n  \"data\":{\n    \"access_token\":\"eyJ0eXAi...\",\n    \"expires_in\":7200,\n    \"user_info\":{\n      \"uid\":10001,\n      \"nickname\":\"测试用户\",\n      \"avatar\":\"https://xxx.jpg\",\n      \"roles\":[\"user\"]\n    }\n  }\n}"
+                },
+                {
+                  "status": 400,
+                  "name": "账号密码错误",
+                  "contentType": "application/json",
+                  "body": "{\n  \"code\":40001,\n  \"msg\":\"用户名或密码错误\",\n  \"data\":null\n}"
+                }
+              ]
+            },
+            {
+              "apiName": "获取用户详情",
+              "apiDesc": "根据uid查询用户信息，需要token鉴权",
+              "method": "GET",
+              "url": "{{host}}/api/v1/user/{uid}/info",
+              "headers": [
+                {"key":"Authorization","value":"Bearer {{token}}"}
+              ],
+              "cookies": [],
+              "queryParams": [
+                {"key":"fields","value":"base,profile","desc":"需要返回的字段，多个逗号分隔"}
+              ],
+              "pathParams": [
+                {"key":"uid","value":"10001","desc":"用户ID"}
+              ],
+              "bodyMode": "none",
+              "bodyRaw": "",
+              "bodyForm": [],
+              "bodyFormData": [],
+              "responses": [
+                {
+                  "status":200,
+                  "name":"成功",
+                  "contentType":"application/json",
+                  "body":"{\n  \"code\":0,\n  \"msg\":\"ok\",\n  \"data\":{\n    \"uid\":10001,\n    \"nickname\":\"测试用户\",\n    \"phone\":\"138****0000\",\n    \"create_time\":\"2026-07-01 12:00:00\"\n  }\n}"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "apis": []
+    },
+    {
+      "folderName": "订单模块",
+      "folderDesc": "订单创建、查询、取消",
+      "children": [],
+      "apis": [
+        {
+          "apiName": "创建订单",
+          "apiDesc": "提交购物车生成订单，form‑data上传凭证",
+          "method": "POST",
+          "url": "{{host}}/api/v1/order/create",
+          "headers": [
+            {"key":"Authorization","value":"Bearer {{token}}"}
+          ],
+          "cookies": [],
+          "queryParams": [],
+          "pathParams": [],
+          "bodyMode": "formdata",
+          "bodyRaw": "",
+          "bodyForm": [],
+          "bodyFormData": [
+            {"key":"cart_id","value":"2001","type":"text","desc":"购物车ID"},
+            {"key":"pay_type","value":"1","type":"text","desc":"支付方式：1微信 2支付宝"},
+            {"key":"pay_voucher","value":"","type":"file","desc":"支付凭证图片（可选）"}
+          ],
+          "responses": [
+            {
+              "status":200,
+              "name":"下单成功",
+              "contentType":"application/json",
+              "body":"{\n  \"code\":0,\n  \"msg\":\"ok\",\n  \"data\":{\n    \"order_no\":\"ORD202608220001\",\n    \"pay_amount\":99.00,\n    \"expire_time\":\"2026‑08‑22 10:30:00\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "apiName": "更新订单备注",
+          "apiDesc": "PUT修改订单备注信息",
+          "method": "PUT",
+          "url":"{{host}}/api/v1/order/{order_no}/remark",
+          "headers":[
+            {"key":"Content‑Type","value":"application/json"},
+            {"key":"Authorization","value":"Bearer {{token}}"}
+          ],
+          "cookies":[],
+          "queryParams":[],
+          "pathParams":[
+            {"key":"order_no","value":"ORD202608220001","desc":"订单编号"}
+          ],
+          "bodyMode":"raw",
+          "bodyRaw":"{\n  \"remark\":\"请工作日配送\"\n}",
+          "bodyForm":[],
+          "bodyFormData":[],
+          "responses":[
+            {
+              "status":200,
+              "name":"修改成功",
+              "contentType":"application/json",
+              "body":"{\"code\":0,\"msg\":\"ok\",\"data\":{}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

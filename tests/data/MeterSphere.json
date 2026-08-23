@@ -1,0 +1,220 @@
+{
+  "projectName": "订单服务测试项目",
+  "projectId": "proj-00000000-1111-2222-3333-444444444444",
+  "protocol": "HTTP",
+  "version": "3.2.0",
+  "nodeTree": [
+    {
+      "id": "mod-1",
+      "name": "01-登录模块",
+      "sort": 1,
+      "children": [
+        {
+          "id": "mod-1-1",
+          "name": "账号密码登录",
+          "sort": 1,
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "mod-2",
+      "name": "02-订单模块",
+      "sort": 2,
+      "children": []
+    }
+  ],
+  "data": [
+    {
+      "id": "api-001",
+      "name": "账号密码登录",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "moduleId": "mod-1-1",
+      "description": "账号密码获取token接口",
+      "status": "UNDONE",
+      "request": {
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "enable": true
+          }
+        ],
+        "query": [],
+        "body": {
+          "bodyType": "JSON",
+          "raw": "{\n  \"username\":\"${username}\",\n  \"password\":\"${password}\"\n}"
+        }
+      },
+      "response": {
+        "bodyType": "JSON",
+        "raw": "{\n  \"code\":200,\n  \"msg\":\"success\",\n  \"data\":{\n    \"token\":\"xxx.jwt.token\",\n    \"userId\":10086\n  }\n}"
+      }
+    },
+    {
+      "id": "api-002",
+      "name": "创建订单",
+      "method": "POST",
+      "path": "/api/order/create",
+      "moduleId": "mod-2",
+      "description": "创建业务订单，需要token鉴权",
+      "status": "UNDONE",
+      "request": {
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "enable": true
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer ${token}",
+            "enable": true
+          }
+        ],
+        "query": [],
+        "body": {
+          "bodyType": "JSON",
+          "raw": "{\n  \"goodsId\": 1001,\n  \"num\": 2,\n  \"amount\": 99.80\n}"
+        }
+      },
+      "response": {
+        "bodyType": "JSON",
+        "raw": "{\n  \"code\":200,\n  \"msg\":\"ok\",\n  \"data\":{\"orderId\":\"ORD20260822001\"}\n}"
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "case‑001",
+      "apiId": "api‑001",
+      "name": "正常登录‑获取token",
+      "priority": "P0",
+      "moduleId": "mod‑1‑1",
+      "description": "正确账号密码登录场景",
+      "request": {
+        "headers": [
+          {
+            "key": "Content‑Type",
+            "value": "application/json",
+            "enable": true
+          }
+        ],
+        "query": [],
+        "body": {
+          "bodyType": "JSON",
+          "raw": "{\n  \"username\":\"test01\",\n  \"password\":\"123456\"\n}"
+        }
+      },
+      "assertions": [
+        {
+          "assertionType": "STATUS",
+          "enable": true,
+          "expectValue": "200",
+          "condition": "EQUALS"
+        },
+        {
+          "assertionType": "JSON_PATH",
+          "enable": true,
+          "expression": "$.code",
+          "expectValue": "200",
+          "condition": "EQUALS"
+        }
+      ],
+      "extractors": [
+        {
+          "variableName": "token",
+          "extractType": "JSON_PATH",
+          "expression": "$.data.token",
+          "matchNumber": "1",
+          "variableType": "ENVIRONMENT",
+          "enable": true
+        },
+        {
+          "variableName": "login_userId",
+          "extractType": "JSON_PATH",
+          "expression": "$.data.userId",
+          "matchNumber": "1",
+          "variableType": "TEMP",
+          "enable": true
+        }
+      ]
+    },
+    {
+      "id": "case‑002",
+      "apiId": "api‑002",
+      "name": "正常创建订单",
+      "priority": "P1",
+      "moduleId": "mod‑2",
+      "description": "携带token创建订单",
+      "request": {
+        "headers": [
+          {
+            "key": "Content‑Type",
+            "value": "application/json",
+            "enable": true
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer ${token}",
+            "enable": true
+          }
+        ],
+        "query": [],
+        "body": {
+          "bodyType": "JSON",
+          "raw": "{\n  \"goodsId\":1001,\n  \"num\":2,\n  \"amount\":99.80\n}"
+        }
+      },
+      "assertions": [
+        {
+          "assertionType": "STATUS",
+          "enable": true,
+          "expectValue": "200",
+          "condition": "EQUALS"
+        },
+        {
+          "assertionType": "JSON_PATH",
+          "enable": true,
+          "expression": "$.code",
+          "expectValue": "200",
+          "condition": "EQUALS"
+        },
+        {
+          "assertionType": "RESPONSE_TIME",
+          "enable": true,
+          "expectValue": "2000",
+          "condition": "LESS_THAN"
+        }
+      ],
+      "extractors": [
+        {
+          "variableName": "current_orderId",
+          "extractType": "JSON_PATH",
+          "expression": "$.data.orderId",
+          "matchNumber": "1",
+          "variableType": "TEMP",
+          "enable": true
+        }
+      ]
+    }
+  ],
+  "mocks": [
+    {
+      "id": "mock‑001",
+      "apiId": "api‑001",
+      "name": "登录Mock‑成功",
+      "status": 1,
+      "requestHeaders": [],
+      "responseHeaders": [
+        {
+          "key": "Content‑Type",
+          "value": "application/json"
+        }
+      ],
+      "responseCode": 200,
+      "responseBody": "{\n  \"code\":200,\n  \"msg\":\"mock‑ok\",\n  \"data\":{\"token\":\"mock‑jwt‑token\",\"userId\":9999}\n}"
+    }
+  ]
+}
