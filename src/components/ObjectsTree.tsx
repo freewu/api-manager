@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ObjectDef, ObjectImportResult, ObjectProp, ObjectStore, ObjectUsageItem } from "../types";
 import { useT } from "../i18n";
 import { ObjectVersionModal } from "./ObjectVersionModal";
@@ -40,6 +40,11 @@ export default function ObjectsTree({
   const [newName, setNewName] = useState("");
   const [newJson, setNewJson] = useState("");
   const [newGroup, setNewGroup] = useState("");
+  /** 新建分组弹窗 */
+  const [groupOpen, setGroupOpen] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  /** 文件导入（.json / .sql） */
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   /** 对象行右键菜单（uuid） */
   const [objMenu, setObjMenu] = useState<{ x: number; y: number; uuid: string } | null>(null);
@@ -47,6 +52,15 @@ export default function ObjectsTree({
   const [versionModal, setVersionModal] = useState<ObjectDef | null>(null);
   // 拖拽中的对象 uuid
   const [dragUuid, setDragUuid] = useState<string | null>(null);
+
+  // 首次加载默认展开第一层分组（父级展开状态便于发现层级；store 异步就绪后生效）
+  const inited = useRef(false);
+  useEffect(() => {
+    if (store.groups.length === 0 || inited.current) return;
+    inited.current = true;
+    setOpenGroups(new Set(groupTree.map((g) => g.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store.groups]);
 
   // 右键菜单：点击任意处 / Esc 时关闭
   useEffect(() => {
@@ -257,18 +271,68 @@ export default function ObjectsTree({
     });
   };
 
-  const addGroup = () => {
-    const name = window.prompt(t("objects.newGroup"), "");
-    if (!name || !name.trim()) return;
-    const id = name.trim();
+  const openNewGroup = () => {
+    setGroupName("");
+    setGroupOpen(true);
+  };
+
+  const doNewGroup = async () => {
+    const id = groupName.trim();
+    if (!id) {
+      onToast(t("objects.newGroupNameEmpty"));
+      return;
+    }
     if (store.groups.some((g) => g.id === id)) {
       onToast(t("objects.groupExists"));
       return;
     }
-    void saveStore({
+    setGroupOpen(false);
+    await saveStore({
       groups: [...store.groups, { id, name: id.split("/").pop() || id }],
       objects: store.objects,
     });
+    // 新建后自动展开该分组
+    setOpenGroups((prev) => new Set(prev).add(id));
+  };
+
+  // 展开全部 / 收起全部
+  const expandAll = () => {
+    const all = new Set<string>();
+    const walk = (nodes: GNode[]) => {
+      for (const n of nodes) {
+        all.add(n.id);
+        walk(n.children);
+      }
+    };
+    walk(groupTree);
+    setOpenGroups(all);
+  };
+  const collapseAll = () => setOpenGroups(new Set());
+  const allExpanded =
+    groupTree.length > 0 && groupTree.every((g) => openGroups.has(g.id));
+
+  /** 文件导入：.json → 按 JSON 导入（对象名=文件名）；.sql → 解析库名分组导入 */
+  const onPickFile = (f: File) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const text = String(reader.result || "");
+      try {
+        if (f.name.toLowerCase().endsWith(".sql")) {
+          const m = text.match(/(?:use|create\s+database)\s+[`"]?([\w-]+)[`"]?\s*;?/i);
+          const db = m ? m[1] : f.name.replace(/\.sql$/i, "");
+          const res = await onImportDdl(db, text);
+          finishImport(res);
+        } else {
+          JSON.parse(text);
+          const name = f.name.replace(/\.json$/i, "") || "Object";
+          const res = await onImport(name, "", text);
+          finishImport(res);
+        }
+      } catch {
+        onToast(t("objects.jsonInvalid"));
+      }
+    };
+    reader.readAsText(f);
   };
 
   const renameGroup = (id: string, oldName: string) => {
@@ -419,6 +483,13 @@ export default function ObjectsTree({
             spellCheck={false}
           />
         </div>
+        <button
+          className="icon-btn"
+          onClick={allExpanded ? collapseAll : expandAll}
+          title={allExpanded ? t("objects.collapseAll") : t("objects.expandAll")}
+        >
+          {allExpanded ? "⤴" : "⤵"}
+        </button>
         <button className="icon-btn" onClick={() => setImportOpen(true)} title={t("objects.importJson")}>
           ⇪
         </button>
@@ -485,12 +556,33 @@ export default function ObjectsTree({
             <div
               className="node"
               style={{ padding: "5px 6px 5px 6px", color: "var(--text-faint)", fontSize: 12 }}
-              onClick={addGroup}
+              onClick={openNewGroup}
             >
               ＋ {t("objects.newGroup")}
             </div>
           </>
         )}
+      </div>
+
+      {/* 底部工具栏：文件导入（.json / .sql），右下角 */}
+      <div className="objects-side-footer">
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".json,.sql"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onPickFile(f);
+            e.target.value = "";
+          }}
+        />
+        <button className="objects-import-file-btn" onClick={() => fileRef.current?.click()}>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+          </svg>
+          <span>{t("objects.importFile")}</span>
+        </button>
       </div>
 
       {/* 对象行右键菜单：版本查看 / 重命名 / 删除 */}
@@ -533,7 +625,7 @@ export default function ObjectsTree({
           <button
             onClick={() => {
               setCtxMenu(null);
-              addGroup();
+              openNewGroup();
             }}
           >
             📁 {t("objects.newGroup")}
@@ -546,6 +638,39 @@ export default function ObjectsTree({
           >
             ▦ {t("objects.newObject")}
           </button>
+        </div>
+      )}
+
+      {/* 新建分组弹窗 */}
+      {groupOpen && (
+        <div className="objects-import-mask" onClick={() => setGroupOpen(false)}>
+          <div className="objects-import-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="objects-import-title">{t("objects.newGroupTitle")}</div>
+            <div className="objects-import-body">
+              <label>
+                <span>{t("objects.newGroup")}</span>
+                <input
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  placeholder="用户管理"
+                  autoFocus
+                  spellCheck={false}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void doNewGroup();
+                  }}
+                />
+              </label>
+              <div className="objects-import-tip">{t("objects.newGroupTip")}</div>
+            </div>
+            <div className="objects-import-actions">
+              <button className="btn" onClick={() => setGroupOpen(false)}>
+                {t("common.cancel")}
+              </button>
+              <button className="btn primary" onClick={() => void doNewGroup()}>
+                {t("common.confirm")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

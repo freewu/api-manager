@@ -588,6 +588,12 @@ export const EN: Record<string, string> = {
   // ===== Objects =====
   "objects.title": "Objects",
   "objects.newGroup": "New Group",
+  "objects.newGroupTitle": "New Group",
+  "objects.newGroupNameEmpty": "Please enter a group name",
+  "objects.newGroupTip": "Nested groups supported (separate with /, e.g. \"Orders/Detail\")",
+  "objects.expandAll": "Expand all",
+  "objects.collapseAll": "Collapse all",
+  "objects.importFile": "Import file (.json/.sql)",
   "objects.renameGroup": "Rename Group",
   "objects.groupExists": "Group already exists",
   "objects.groupCount": "{count} objects in group",

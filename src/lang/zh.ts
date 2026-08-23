@@ -596,6 +596,12 @@ export const ZH: Record<string, string> = {
   // ===== 对象管理 =====
   "objects.title": "对象管理",
   "objects.newGroup": "新建分组",
+  "objects.newGroupTitle": "新建分组",
+  "objects.newGroupNameEmpty": "请输入分组名称",
+  "objects.newGroupTip": "支持多级分组（用 / 分隔，如「订单/明细」）",
+  "objects.expandAll": "展开全部",
+  "objects.collapseAll": "收起全部",
+  "objects.importFile": "导入文件 (.json/.sql)",
   "objects.renameGroup": "重命名分组",
   "objects.groupExists": "分组已存在",
   "objects.groupCount": "本组对象 {count} 个",

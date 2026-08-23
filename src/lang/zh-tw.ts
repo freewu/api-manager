@@ -577,6 +577,12 @@ export const TW: Record<string, string> = {
   // ===== 物件管理 =====
   "objects.title": "物件管理",
   "objects.newGroup": "新增群組",
+  "objects.newGroupTitle": "新增群組",
+  "objects.newGroupNameEmpty": "請輸入群組名稱",
+  "objects.newGroupTip": "支援多層群組（用 / 分隔，如「訂單/明細」）",
+  "objects.expandAll": "展開全部",
+  "objects.collapseAll": "收合全部",
+  "objects.importFile": "匯入檔案 (.json/.sql)",
   "objects.renameGroup": "重新命名群組",
   "objects.groupExists": "分組已存在",
   "objects.groupCount": "本組對象 {count} 個",
