@@ -548,3 +548,10 @@
   padding: 12px 14px;
   user-select: text;
 }
+
+/* 重命名/新增弹窗名称校验错误提示 */
+.objects-name-error {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--err);
+}

@@ -604,6 +604,7 @@ export const ZH: Record<string, string> = {
   "objects.importFile": "导入文件 (.json/.sql)",
   "objects.renameGroup": "重命名分组",
   "objects.groupExists": "分组已存在",
+  "objects.nameInvalid": "对象名称只能以字母开头，仅允许字母和数字，不能包含空格",
   "objects.confirmTitle": "删除确认",
   "objects.groupCount": "本组对象 {count} 个",
   "objects.deleteGroup": "删除分组",

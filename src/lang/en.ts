@@ -596,6 +596,7 @@ export const EN: Record<string, string> = {
   "objects.importFile": "Import file (.json/.sql)",
   "objects.renameGroup": "Rename Group",
   "objects.groupExists": "Group already exists",
+  "objects.nameInvalid": "Object name must start with a letter and contain only letters and digits (no spaces)",
   "objects.confirmTitle": "Confirm Delete",
   "objects.groupCount": "{count} objects in group",
   "objects.deleteGroup": "Delete Group",

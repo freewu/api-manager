@@ -585,6 +585,7 @@ export const TW: Record<string, string> = {
   "objects.importFile": "匯入檔案 (.json/.sql)",
   "objects.renameGroup": "重新命名群組",
   "objects.groupExists": "分組已存在",
+  "objects.nameInvalid": "物件名稱只能以英文字母開頭，僅允許英文字母和數字，不能包含空格",
   "objects.confirmTitle": "刪除確認",
   "objects.groupCount": "本組對象 {count} 個",
   "objects.deleteGroup": "刪除群組",

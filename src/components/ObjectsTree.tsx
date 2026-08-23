@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ObjectDef, ObjectImportResult, ObjectProp, ObjectStore, ObjectUsageItem } from "../types";
+
+/** 对象名称校验：字母开头，仅允许字母和数字（不允许空格） */
+const VALID_OBJECT_NAME = /^[A-Za-z][A-Za-z0-9]*$/;
+/** 清洗为合法对象名：移除非法字符；结果不以字母开头或为空则返回 "" */
+const sanitizeObjectName = (raw: string) => {
+  const cleaned = raw.replace(/[^A-Za-z0-9]/g, "");
+  return cleaned && /^[A-Za-z]/.test(cleaned) ? cleaned : "";
+};
 import { useT } from "../i18n";
 import { ObjectVersionModal } from "./ObjectVersionModal";
 
@@ -31,6 +39,10 @@ export default function ObjectsTree({
   const [search, setSearch] = useState("");
   /** 删除确认弹窗（对象 / 分组） */
   const [confirmDel, setConfirmDel] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+  /** 重命名对象弹窗（名称强制英文：字母开头，仅字母数字） */
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameName, setRenameName] = useState("");
+  const [renameTarget, setRenameTarget] = useState<ObjectDef | null>(null);
   /** 新增对象弹窗（名称 + JSON，JSON 可为空） */
   const [newOpen, setNewOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -226,7 +238,7 @@ export default function ObjectsTree({
                 usageCount={usageOf[o.hash]?.apiCount ?? 0}
                 selected={selectedUuid === o.uuid}
                 onSelect={() => onSelectObject(o.uuid)}
-                onRename={() => renameObject(o)}
+                onRename={() => openRename(o)}
                 onDelete={() => deleteObject(o)}
                 onContextMenu={(e, uuid) => {
                   e.preventDefault();
@@ -307,7 +319,11 @@ export default function ObjectsTree({
           finishImport(res);
         } else {
           JSON.parse(text);
-          const name = f.name.replace(/\.json$/i, "") || "Object";
+          const name = sanitizeObjectName(f.name.replace(/\.json$/i, ""));
+          if (!name) {
+            onToast(t("objects.nameInvalid"));
+            return;
+          }
           const res = await onImport(name, "", text);
           finishImport(res);
         }
@@ -361,11 +377,15 @@ export default function ObjectsTree({
     setNewOpen(true);
   };
 
-  /** 弹窗确认：名称必填，JSON 可选（空 = 创建空对象） */
+  /** 弹窗确认：名称必填（字母开头，仅字母数字），JSON 可选（空 = 创建空对象） */
   const doNewObject = async () => {
     const name = newName.trim();
     if (!name) {
       onToast(t("objects.importName"));
+      return;
+    }
+    if (!VALID_OBJECT_NAME.test(name)) {
+      onToast(t("objects.nameInvalid"));
       return;
     }
     let props: ObjectProp[] = [];
@@ -395,12 +415,24 @@ export default function ObjectsTree({
     if (created) onSelectObject(created.uuid);
   };
 
-  const renameObject = (o: ObjectDef) => {
-    const name = window.prompt(t("objects.renameObject"), o.name);
-    if (!name || !name.trim() || name.trim() === o.name) return;
+  const openRename = (o: ObjectDef) => {
+    setRenameTarget(o);
+    setRenameName(o.name);
+    setRenameOpen(true);
+  };
+
+  const doRename = () => {
+    if (!renameTarget) return;
+    const name = renameName.trim();
+    if (!VALID_OBJECT_NAME.test(name)) {
+      onToast(t("objects.nameInvalid"));
+      return;
+    }
+    setRenameOpen(false);
+    if (name === renameTarget.name) return;
     void saveStore({
       groups: store.groups,
-      objects: store.objects.map((x) => (x.uuid === o.uuid ? { ...x, name: name.trim() } : x)),
+      objects: store.objects.map((x) => (x.uuid === renameTarget.uuid ? { ...x, name } : x)),
     });
   };
 
@@ -469,7 +501,7 @@ export default function ObjectsTree({
               usageCount={usageOf[o.hash]?.apiCount ?? 0}
               selected={selectedUuid === o.uuid}
               onSelect={() => onSelectObject(o.uuid)}
-              onRename={() => renameObject(o)}
+              onRename={() => openRename(o)}
               onDelete={() => deleteObject(o)}
               onContextMenu={(e, uuid) => {
                 e.preventDefault();
@@ -489,7 +521,7 @@ export default function ObjectsTree({
               usageCount={usageOf[o.hash]?.apiCount ?? 0}
               selected={selectedUuid === o.uuid}
               onSelect={() => onSelectObject(o.uuid)}
-              onRename={() => renameObject(o)}
+              onRename={() => openRename(o)}
               onDelete={() => deleteObject(o)}
               onContextMenu={(e, uuid) => {
                 e.preventDefault();
@@ -564,7 +596,7 @@ export default function ObjectsTree({
             onClick={() => {
               const o = store.objects.find((x) => x.uuid === objMenu.uuid);
               setObjMenu(null);
-              if (o) renameObject(o);
+              if (o) openRename(o);
             }}
           >
             ✎ {t("objects.renameObject")}
@@ -628,6 +660,38 @@ export default function ObjectsTree({
         </div>
       )}
 
+      {/* 重命名对象弹窗（名称强制英文） */}
+      {renameOpen && renameTarget && (
+        <div className="objects-import-mask" onClick={() => setRenameOpen(false)}>
+          <div className="objects-import-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="objects-import-title">{t("objects.renameObject")}</div>
+            <div className="objects-import-field">
+              <label>{t("objects.importName")}</label>
+              <input
+                value={renameName}
+                onChange={(e) => setRenameName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") doRename();
+                }}
+                placeholder="user / orderInfo / petProfile"
+                autoFocus
+              />
+              {renameName.trim() && !VALID_OBJECT_NAME.test(renameName.trim()) && (
+                <div className="objects-name-error">{t("objects.nameInvalid")}</div>
+              )}
+            </div>
+            <div className="objects-import-actions">
+              <button className="btn" onClick={() => setRenameOpen(false)}>
+                {t("common.cancel")}
+              </button>
+              <button className="btn primary" onClick={doRename}>
+                {t("common.confirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 新建分组弹窗 */}
       {groupOpen && (
         <div className="objects-import-mask" onClick={() => setGroupOpen(false)}>
@@ -679,6 +743,9 @@ export default function ObjectsTree({
                     if (e.key === "Enter") void doNewObject();
                   }}
                 />
+                {newName.trim() && !VALID_OBJECT_NAME.test(newName.trim()) && (
+                  <div className="objects-name-error">{t("objects.nameInvalid")}</div>
+                )}
               </label>
               <label>
                 <span>{t("objects.importGroup")}</span>
