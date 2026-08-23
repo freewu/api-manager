@@ -80,7 +80,9 @@ interface Props {
   // 对象管理树
   objectsStore: ObjectStore;
   objectsUsage: ObjectUsageItem[];
-  onObjectsSave: (store: ObjectStore) => Promise<void>;
+  onObjectsSave: (store: ObjectStore) => Promise<ObjectStore>;
+  objectsSelectedHash: string | null;
+  onObjectsSelect: (hash: string | null) => void;
   onObjectsImport: (name: string, group: string, json: string) => Promise<ObjectImportResult>;
   onObjectsImportDdl: (group: string, ddl: string) => Promise<ObjectImportResult>;
   onObjectsToast: (msg: string) => void;
@@ -780,6 +782,8 @@ export function Sidebar(props: Props) {
           onImport={props.onObjectsImport}
           onImportDdl={props.onObjectsImportDdl}
           onToast={props.onObjectsToast}
+          selectedHash={props.objectsSelectedHash}
+          onSelectObject={props.onObjectsSelect}
         />
       )}
       {view === "history" && (

@@ -5,10 +5,13 @@ import { useT } from "../i18n";
 interface Props {
   store: ObjectStore;
   usage: ObjectUsageItem[];
-  onSave: (store: ObjectStore) => Promise<void>;
+  onSave: (store: ObjectStore) => Promise<ObjectStore>;
   onImport: (name: string, group: string, json: string) => Promise<ObjectImportResult>;
   onImportDdl: (group: string, ddl: string) => Promise<ObjectImportResult>;
   onToast: (msg: string) => void;
+  /** 当前选中对象 hash（受控，右侧展开配置） */
+  selectedHash: string | null;
+  onSelectObject: (hash: string | null) => void;
 }
 
 /** 对象管理：左侧树形目录（分组 = 目录，多级；不显示根目录） */
@@ -19,11 +22,12 @@ export default function ObjectsTree({
   onImport,
   onImportDdl,
   onToast,
+  selectedHash,
+  onSelectObject,
 }: Props) {
   const t = useT();
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
-  const [selectedHash, setSelectedHash] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [importMode, setImportMode] = useState<"json" | "ddl">("json");
   const [importName, setImportName] = useState("");
@@ -31,6 +35,8 @@ export default function ObjectsTree({
   const [importJson, setImportJson] = useState("");
   const [importDdlText, setImportDdlText] = useState("");
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  // 拖拽中的对象 hash
+  const [dragHash, setDragHash] = useState<string | null>(null);
 
   // 右键菜单：点击任意处 / Esc 时关闭
   useEffect(() => {
@@ -117,6 +123,19 @@ export default function ObjectsTree({
     return g.children.some(groupHasMatch);
   };
 
+  // ===== 保存：回读后端权威 store（hash 重算），按名称维持选中 =====
+  const saveStore = async (next: ObjectStore) => {
+    const fresh = await onSave(next);
+    if (selectedHash) {
+      const prev = store.objects.find((o) => o.hash === selectedHash);
+      if (prev) {
+        const updated = fresh.objects.find((o) => o.name === prev.name);
+        if (updated && updated.hash !== prev.hash) onSelectObject(updated.hash);
+      }
+    }
+    return fresh;
+  };
+
   const renderGroup = (g: GNode, depth: number) => {
     const items = (objectsByGroup[g.id] || []).filter(filterMatch);
     const isOpen = openGroups.has(g.id) || !!kw;
@@ -136,11 +155,29 @@ export default function ObjectsTree({
               return next;
             })
           }
+          onDragOver={(e) => {
+            if (dragHash) e.preventDefault();
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (dragHash) moveObject(dragHash, g.id);
+          }}
         >
           <span className={`caret${isOpen ? " open" : ""}`}>▸</span>
           <span className="node-icon">📁</span>
           <span className="node-name">{g.name}</span>
           <span className="objects-group-ops">
+            <button
+              className="icon-btn"
+              title={t("objects.newObjectInGroup")}
+              onClick={(e) => {
+                e.stopPropagation();
+                void addObject(g.id);
+              }}
+            >
+              ＋
+            </button>
             <button
               className="icon-btn"
               title={t("objects.renameGroup")}
@@ -172,9 +209,11 @@ export default function ObjectsTree({
                 depth={depth + 1}
                 usageCount={usageOf[o.hash]?.apiCount ?? 0}
                 selected={selectedHash === o.hash}
-                onSelect={() => setSelectedHash(o.hash)}
+                onSelect={() => onSelectObject(o.hash)}
                 onRename={() => renameObject(o)}
                 onDelete={() => deleteObject(o)}
+                onDragStart={() => setDragHash(o.hash)}
+                onDragEnd={() => setDragHash(null)}
               />
             ))}
             {g.children.map((c) => renderGroup(c, depth + 1))}
@@ -184,9 +223,14 @@ export default function ObjectsTree({
     );
   };
 
-  // ===== 增删改（直接构造新 store 并保存，目录结构即分组） =====
-  const saveStore = async (next: ObjectStore) => {
-    await onSave(next);
+  // ===== 增删改（构造新 store 保存，目录结构即分组） =====
+  const moveObject = (hash: string, groupId: string) => {
+    const o = store.objects.find((x) => x.hash === hash);
+    if (!o || o.group === groupId) return;
+    void saveStore({
+      groups: store.groups,
+      objects: store.objects.map((x) => (x.hash === hash ? { ...x, group: groupId } : x)),
+    });
   };
 
   const addGroup = () => {
@@ -194,7 +238,7 @@ export default function ObjectsTree({
     if (!name || !name.trim()) return;
     const id = name.trim();
     if (store.groups.some((g) => g.id === id)) {
-      onToast(`${t("objects.renameGroup")}: ${t("objects.groupExists")}`);
+      onToast(t("objects.groupExists"));
       return;
     }
     void saveStore({
@@ -232,20 +276,23 @@ export default function ObjectsTree({
     void saveStore({ groups, objects });
   };
 
-  const addObject = () => {
+  const addObject = async (groupId: string) => {
     const name = window.prompt(t("objects.newObject"), "Object");
     if (!name || !name.trim()) return;
     const now = Math.floor(Date.now() / 1000);
     const o: ObjectDef = {
       hash: `tmp${Date.now().toString(36)}`,
       name: name.trim(),
-      group: "",
+      group: groupId,
       description: "",
       properties: [],
       createdAt: now,
       updatedAt: now,
     };
-    void saveStore({ groups: store.groups, objects: [o, ...store.objects] });
+    const fresh = await saveStore({ groups: store.groups, objects: [o, ...store.objects] });
+    // 新建后直接在右侧展开配置
+    const created = fresh.objects.find((x) => x.name === name.trim());
+    if (created) onSelectObject(created.hash);
   };
 
   const renameObject = (o: ObjectDef) => {
@@ -268,7 +315,7 @@ export default function ObjectsTree({
           properties: x.properties.map((p) => (p.refHash === o.hash ? { ...p, refHash: "" } : p)),
         })),
     });
-    if (selectedHash === o.hash) setSelectedHash(null);
+    if (selectedHash === o.hash) onSelectObject(null);
   };
 
   // ===== JSON / SQL DDL 导入 =====
@@ -282,7 +329,7 @@ export default function ObjectsTree({
     if (res.created.length) msgs.push(t("objects.importCreated", { n: res.created.length }));
     if (res.reused.length) msgs.push(t("objects.importReused", { n: res.reused.length }));
     onToast(msgs.join("，"));
-    setSelectedHash(res.topHash || (res.objects[0] && res.objects[0].hash) || null);
+    onSelectObject(res.topHash || (res.objects[0] && res.objects[0].hash) || null);
   };
 
   const doImport = async () => {
@@ -342,9 +389,11 @@ export default function ObjectsTree({
               depth={0}
               usageCount={usageOf[o.hash]?.apiCount ?? 0}
               selected={selectedHash === o.hash}
-              onSelect={() => setSelectedHash(o.hash)}
+              onSelect={() => onSelectObject(o.hash)}
               onRename={() => renameObject(o)}
               onDelete={() => deleteObject(o)}
+              onDragStart={() => setDragHash(o.hash)}
+              onDragEnd={() => setDragHash(null)}
             />
           ))}
         {kw &&
@@ -355,9 +404,11 @@ export default function ObjectsTree({
               depth={0}
               usageCount={usageOf[o.hash]?.apiCount ?? 0}
               selected={selectedHash === o.hash}
-              onSelect={() => setSelectedHash(o.hash)}
+              onSelect={() => onSelectObject(o.hash)}
               onRename={() => renameObject(o)}
               onDelete={() => deleteObject(o)}
+              onDragStart={() => setDragHash(o.hash)}
+              onDragEnd={() => setDragHash(null)}
             />
           ))}
         {!kw && (
@@ -365,7 +416,7 @@ export default function ObjectsTree({
             <div
               className="node"
               style={{ paddingLeft: 10, color: "var(--text-faint)", fontSize: 12 }}
-              onClick={addObject}
+              onClick={() => void addObject("")}
             >
               ＋ {t("objects.newObject")}
             </div>
@@ -394,7 +445,7 @@ export default function ObjectsTree({
           <button
             onClick={() => {
               setCtxMenu(null);
-              addObject();
+              void addObject("");
             }}
           >
             ▦ {t("objects.newObject")}
@@ -502,6 +553,8 @@ function ObjectRow({
   onSelect,
   onRename,
   onDelete,
+  onDragStart,
+  onDragEnd,
 }: {
   obj: ObjectDef;
   depth: number;
@@ -510,6 +563,8 @@ function ObjectRow({
   onSelect: () => void;
   onRename: () => void;
   onDelete: () => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
 }) {
   const t = useT();
   return (
@@ -517,6 +572,13 @@ function ObjectRow({
       className={`node objects-object-row${selected ? " selected" : ""}`}
       style={{ paddingLeft: 10 + depth * 14 }}
       onClick={onSelect}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", obj.hash);
+        e.dataTransfer.effectAllowed = "move";
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
     >
       <span className="node-icon objects-object-icon">▦</span>
       <span className="node-name objects-object-name">{obj.name}</span>

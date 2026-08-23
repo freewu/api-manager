@@ -1,8 +1,8 @@
 // ==================== 对象管理（数据结构 / JSON 导入 / 唯一标识 / 引用统计） ====================
-// 对象存储在 <工作区>/data/.object/ 目录，目录即分组：
-//   data/.object/__info_obj.json               : 分组信息（ObjectGroup 列表，目录代表分组）
-//   data/.object/<对象名称>.obj.json            : 未分组对象
-//   data/.object/<分组路径>/<对象名称>.obj.json  : 分组对象（多级分组 = 嵌套目录）
+// 对象存储在 <工作区>/.object/ 目录，目录即分组：
+//   .object/__info_obj.json               : 分组信息（ObjectGroup 列表，目录代表分组）
+//   .object/<对象名称>.obj.json            : 未分组对象
+//   .object/<分组路径>/<对象名称>.obj.json  : 分组对象（多级分组 = 嵌套目录）
 //
 // 唯一标识（hash）：对象所有属性按 key 字母排序，拼接 "key:kind[:itemKind][:refHash]" 后
 // 做 SHA-256 取前 12 位。相同结构（含引用）的对象 hash 相同，创建时直接复用已有对象。
@@ -175,7 +175,7 @@ pub fn find_object_by_name<'a>(store: &'a ObjectStore, name: &str) -> Option<&'a
 
 /// 列出对象存储（无文件时返回空）
 pub fn list_objects(root: &Path) -> Result<ObjectStore, String> {
-    let dir = root.join("data").join(".object");
+    let dir = root.join(".object");
     if !dir.exists() {
         return Ok(ObjectStore::default());
     }
@@ -224,7 +224,7 @@ pub fn list_objects(root: &Path) -> Result<ObjectStore, String> {
 /// 保存时重新计算每个对象的 hash（属性变化后保持一致），
 /// 并修复失效引用（refHash 指向不存在的对象时尝试按名称匹配，否则清空）。
 pub fn save_objects(root: &Path, store: &ObjectStore) -> Result<String, String> {
-    let dir = root.join("data").join(".object");
+    let dir = root.join(".object");
     if dir.exists() {
         std::fs::remove_dir_all(&dir).map_err(|e| format!("清理对象目录失败: {e}"))?;
     }
@@ -880,8 +880,8 @@ pub fn object_usage(root: &Path, store: &ObjectStore) -> Result<Vec<ObjectUsageI
             let path = entry.path();
             if path.is_dir() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if (name.starts_with(".") && name != ".git") || name == "data" {
-                    continue; // 跳过 .history/.examples/.object/.versions 等隐藏目录及 data（对象存储目录）
+                if name.starts_with(".") && name != ".git" {
+                    continue; // 跳过 .history/.examples/.object/.versions 等隐藏目录
                 }
                 walk_dir(&path, by);
                 continue;
@@ -1135,7 +1135,7 @@ CREATE TABLE `my_users` (
         });
         save_objects(&root, &store).unwrap();
 
-        let base = root.join("data").join(".object");
+        let base = root.join(".object");
         assert!(base.join("__info_obj.json").exists(), "应有分组信息文件");
         assert!(base.join("用户管理").join("User.obj.json").exists(), "分组目录下的对象文件");
         assert!(base.join("订单").join("明细").join("OrderItem.obj.json").exists(), "多级分组 = 嵌套目录");

@@ -24,14 +24,17 @@ export function useObjects(workspace: string | null) {
   }, [workspace, refresh]);
 
   const save = useCallback(
-    async (s: ObjectStore) => {
+    async (s: ObjectStore): Promise<ObjectStore> => {
       await saveObjects(s);
-      setStore(s);
+      // 回读后端权威数据（目录扫描 + hash 重算），保证前端与磁盘一致
+      const fresh = await listObjects();
+      setStore(fresh);
       try {
-        setUsage(await objectUsage(s));
+        setUsage(await objectUsage(fresh));
       } catch {
         setUsage([]);
       }
+      return fresh;
     },
     []
   );

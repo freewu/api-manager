@@ -52,12 +52,15 @@ interface RightPaneProps {
   onEmptyContextMenu: (e: React.MouseEvent) => void;
   objectsStore: ObjectStore;
   objectsUsage: ObjectUsageItem[];
-  onObjectsSave: (store: ObjectStore) => Promise<void>;
+  onObjectsSave: (store: ObjectStore) => Promise<ObjectStore>;
   onObjectsImport: (name: string, group: string, json: string) => Promise<ObjectImportResult>;
   onObjectsImportDdl: (group: string, ddl: string) => Promise<ObjectImportResult>;
   onObjectsJumpApi: (path: string) => void;
   onObjectsToast: (msg: string) => void;
   objectsList?: ObjectDef[];
+  /** 对象管理中当前选中对象 hash（右侧展开对象配置） */
+  objectsSelectedHash: string | null;
+  onObjectsSelect: (hash: string | null) => void;
 }
 
 export function RightPane({
@@ -103,6 +106,8 @@ export function RightPane({
   onObjectsJumpApi,
   onObjectsToast,
   objectsList,
+  objectsSelectedHash,
+  onObjectsSelect,
 }: RightPaneProps) {
   const t = useT();
   return (
@@ -133,6 +138,8 @@ export function RightPane({
             onImportDdl={onObjectsImportDdl}
             onJumpApi={onObjectsJumpApi}
             onToast={onObjectsToast}
+            selectedHash={objectsSelectedHash}
+            onSelectObject={onObjectsSelect}
           />
         ) : view === "history" ? (
           <div className="history-view-content">
