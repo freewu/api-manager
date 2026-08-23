@@ -1,6 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
+import hljs from "highlight.js/lib/core";
+import c from "highlight.js/lib/languages/c";
+import cpp from "highlight.js/lib/languages/cpp";
+import csharp from "highlight.js/lib/languages/csharp";
+import dart from "highlight.js/lib/languages/dart";
+import delphi from "highlight.js/lib/languages/delphi";
+import erlang from "highlight.js/lib/languages/erlang";
+import go from "highlight.js/lib/languages/go";
+import java from "highlight.js/lib/languages/java";
+import julia from "highlight.js/lib/languages/julia";
+import kotlin from "highlight.js/lib/languages/kotlin";
+import objectivec from "highlight.js/lib/languages/objectivec";
+import php from "highlight.js/lib/languages/php";
+import python from "highlight.js/lib/languages/python";
+import ruby from "highlight.js/lib/languages/ruby";
+import rust from "highlight.js/lib/languages/rust";
+import swift from "highlight.js/lib/languages/swift";
+import typescript from "highlight.js/lib/languages/typescript";
+import "highlight.js/styles/github-dark.css";
 import { useT } from "../i18n";
 import { saveObjectVersion } from "../commands";
+import { OBJECT_LANGS, generateObjectCode } from "../utils/objectCodegen";
 import {
   ObjectDef,
   ObjectImportResult,
@@ -9,6 +29,28 @@ import {
   ObjectUsageItem,
   PROP_KINDS,
 } from "../types";
+
+for (const [name, lang] of [
+  ["c", c],
+  ["cpp", cpp],
+  ["csharp", csharp],
+  ["dart", dart],
+  ["delphi", delphi],
+  ["erlang", erlang],
+  ["go", go],
+  ["java", java],
+  ["julia", julia],
+  ["kotlin", kotlin],
+  ["objectivec", objectivec],
+  ["php", php],
+  ["python", python],
+  ["ruby", ruby],
+  ["rust", rust],
+  ["swift", swift],
+  ["typescript", typescript],
+] as const) {
+  hljs.registerLanguage(name, lang);
+}
 
 interface Props {
   store: ObjectStore;
@@ -63,6 +105,21 @@ export default function ObjectsView({
     for (const u of usage) m[u.hash] = u;
     return m;
   }, [usage]);
+
+  // 右侧 tab：属性 / 对象描述 / 代码生成
+  const [tab, setTab] = useState<"props" | "desc" | "code">("props");
+  const [codeLang, setCodeLang] = useState(OBJECT_LANGS[0].value);
+  const codeHtml = useMemo(() => {
+    if (!draft) return "";
+    // 引用对象解析：以最新草稿替换同 uuid 的 store 对象
+    const all = store.objects.map((o) => (o.uuid === draft.uuid ? draft : o));
+    const code = generateObjectCode(codeLang, draft, all);
+    try {
+      return hljs.highlight(code, { language: codeLang }).value;
+    } catch {
+      return code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  }, [draft, store.objects, codeLang]);
 
   if (!selected || !draft) {
     return (
@@ -162,24 +219,49 @@ export default function ObjectsView({
           </button>
         </div>
 
-        {/* 描述 */}
-        <div className="objects-desc-field">
-          <input
-            value={draft.description}
-            onChange={(e) => patch((d) => void (d.description = e.target.value))}
-            placeholder={t("objects.description")}
-            spellCheck={false}
-          />
-        </div>
-
-        {/* 属性表（kv 表格风格） */}
-        <div className="objects-section-title">
-          {t("objects.props")}
-          <button className="btn-sm" onClick={addProp}>
-            ＋ {t("objects.addProp")}
+        {/* Tab 栏：属性 / 对象描述 / 代码生成 */}
+        <div className="objects-tabs">
+          <button
+            className={`objects-tab${tab === "props" ? " active" : ""}`}
+            onClick={() => setTab("props")}
+          >
+            {t("objects.tabProps")}
+          </button>
+          <button
+            className={`objects-tab${tab === "desc" ? " active" : ""}`}
+            onClick={() => setTab("desc")}
+          >
+            {t("objects.tabDesc")}
+          </button>
+          <button
+            className={`objects-tab${tab === "code" ? " active" : ""}`}
+            onClick={() => setTab("code")}
+          >
+            {t("objects.tabCode")}
           </button>
         </div>
-        <div className="objects-props-wrap">
+
+        {tab === "desc" && (
+          <div className="objects-desc-field">
+            <textarea
+              value={draft.description}
+              onChange={(e) => patch((d) => void (d.description = e.target.value))}
+              placeholder={t("objects.description")}
+              rows={14}
+              spellCheck={false}
+            />
+          </div>
+        )}
+
+        {tab === "props" && (
+          <>
+            <div className="objects-section-title">
+              {t("objects.props")}
+              <button className="btn-sm" onClick={addProp}>
+                ＋ {t("objects.addProp")}
+              </button>
+            </div>
+            <div className="objects-props-wrap">
           <table className="doc-params-table">
             <thead>
               <tr>
@@ -310,7 +392,27 @@ export default function ObjectsView({
               </button>
             </div>
           )}
-        </div>
+            </div>
+          </>
+        )}
+
+        {tab === "code" && (
+          <div className="objects-codegen">
+            <div className="objects-codegen-head">
+              <select value={codeLang} onChange={(e) => setCodeLang(e.target.value)}>
+                {OBJECT_LANGS.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+              <span className="objects-codegen-tip">{t("objects.codegenTip")}</span>
+            </div>
+            <pre className="objects-codegen-pre">
+              <code dangerouslySetInnerHTML={{ __html: codeHtml }} />
+            </pre>
+          </div>
+        )}
       </div>
     </div>
   );

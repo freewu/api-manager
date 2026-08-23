@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ObjectDef, ObjectImportResult, ObjectStore, ObjectUsageItem } from "../types";
+import { ObjectDef, ObjectImportResult, ObjectProp, ObjectStore, ObjectUsageItem } from "../types";
 import { useT } from "../i18n";
 import { ObjectVersionModal } from "./ObjectVersionModal";
 
@@ -35,6 +35,11 @@ export default function ObjectsTree({
   const [importGroup, setImportGroup] = useState("");
   const [importJson, setImportJson] = useState("");
   const [importDdlText, setImportDdlText] = useState("");
+  /** 新增对象弹窗（名称 + JSON，JSON 可为空） */
+  const [newOpen, setNewOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newJson, setNewJson] = useState("");
+  const [newGroup, setNewGroup] = useState("");
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   /** 对象行右键菜单（uuid） */
   const [objMenu, setObjMenu] = useState<{ x: number; y: number; uuid: string } | null>(null);
@@ -154,7 +159,7 @@ export default function ObjectsTree({
       <div key={g.id}>
         <div
           className="node objects-group-row"
-          style={{ paddingLeft: 6 + depth * 14 }}
+          style={{ padding: "5px 6px 5px " + (6 + depth * 14) + "px" }}
           onClick={() =>
             setOpenGroups((prev) => {
               const next = new Set(prev);
@@ -187,7 +192,7 @@ export default function ObjectsTree({
               title={t("objects.newObjectInGroup")}
               onClick={(e) => {
                 e.stopPropagation();
-                void addObject(g.id);
+                openNewObject(g.id);
               }}
             >
               ＋
@@ -295,23 +300,45 @@ export default function ObjectsTree({
     void saveStore({ groups, objects });
   };
 
-  const addObject = async (groupId: string) => {
-    const name = window.prompt(t("objects.newObject"), "Object");
-    if (!name || !name.trim()) return;
+  /** 打开「新增对象」弹窗（groupId 为该对象所属分组，可为空串 = 未分组） */
+  const openNewObject = (groupId: string) => {
+    setNewGroup(groupId);
+    setNewName("");
+    setNewJson("");
+    setNewOpen(true);
+  };
+
+  /** 弹窗确认：名称必填，JSON 可选（空 = 创建空对象） */
+  const doNewObject = async () => {
+    const name = newName.trim();
+    if (!name) {
+      onToast(t("objects.importName"));
+      return;
+    }
+    let props: ObjectProp[] = [];
+    if (newJson.trim()) {
+      try {
+        props = jsonToObjectProps(JSON.parse(newJson));
+      } catch {
+        onToast(t("objects.jsonInvalid"));
+        return;
+      }
+    }
+    setNewOpen(false);
     const now = Math.floor(Date.now() / 1000);
     const o: ObjectDef = {
       uuid: crypto.randomUUID(),
       hash: `tmp${Date.now().toString(36)}`,
-      name: name.trim(),
-      group: groupId,
+      name,
+      group: newGroup,
       description: "",
-      properties: [],
+      properties: props,
       createdAt: now,
       updatedAt: now,
     };
     const fresh = await saveStore({ groups: store.groups, objects: [o, ...store.objects] });
     // 新建后直接在右侧展开配置
-    const created = fresh.objects.find((x) => x.name === name.trim());
+    const created = fresh.objects.find((x) => x.name === name);
     if (created) onSelectObject(created.uuid);
   };
 
@@ -450,14 +477,14 @@ export default function ObjectsTree({
           <>
             <div
               className="node"
-              style={{ paddingLeft: 10, color: "var(--text-faint)", fontSize: 12 }}
-              onClick={() => void addObject("")}
+              style={{ padding: "5px 6px 5px 6px", color: "var(--text-faint)", fontSize: 12 }}
+              onClick={() => openNewObject("")}
             >
               ＋ {t("objects.newObject")}
             </div>
             <div
               className="node"
-              style={{ paddingLeft: 10, color: "var(--text-faint)", fontSize: 12 }}
+              style={{ padding: "5px 6px 5px 6px", color: "var(--text-faint)", fontSize: 12 }}
               onClick={addGroup}
             >
               ＋ {t("objects.newGroup")}
@@ -514,11 +541,65 @@ export default function ObjectsTree({
           <button
             onClick={() => {
               setCtxMenu(null);
-              void addObject("");
+              openNewObject("");
             }}
           >
             ▦ {t("objects.newObject")}
           </button>
+        </div>
+      )}
+
+      {/* 新增对象弹窗：名称 + JSON（可为空） */}
+      {newOpen && (
+        <div className="objects-import-mask" onClick={() => setNewOpen(false)}>
+          <div className="objects-import-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="objects-import-title">{t("objects.newObjectTitle")}</div>
+            <div className="objects-import-body">
+              <label>
+                <span>{t("objects.newObjectName")}</span>
+                <input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="User"
+                  autoFocus
+                  spellCheck={false}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void doNewObject();
+                  }}
+                />
+              </label>
+              <label>
+                <span>{t("objects.importGroup")}</span>
+                <select value={newGroup} onChange={(e) => setNewGroup(e.target.value)}>
+                  <option value="">{t("objects.ungrouped")}</option>
+                  {store.groups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{t("objects.newObjectJson")}</span>
+                <textarea
+                  value={newJson}
+                  onChange={(e) => setNewJson(e.target.value)}
+                  rows={7}
+                  spellCheck={false}
+                  placeholder={'{\n  "id": 1,\n  "name": "alice"\n}'}
+                />
+              </label>
+              <div className="objects-import-tip">{t("objects.newObjectJsonTip")}</div>
+            </div>
+            <div className="objects-import-actions">
+              <button className="btn" onClick={() => setNewOpen(false)}>
+                {t("common.cancel")}
+              </button>
+              <button className="btn primary" onClick={() => void doNewObject()}>
+                {t("common.confirm")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -646,7 +727,7 @@ function ObjectRow({
   return (
     <div
       className={`node objects-object-row${selected ? " selected" : ""}`}
-      style={{ paddingLeft: 10 + depth * 14 }}
+      style={{ padding: "5px 6px 5px " + (6 + depth * 14) + "px" }}
       onClick={onSelect}
       onContextMenu={(e) => onContextMenu(e, obj.uuid)}
       draggable
@@ -674,4 +755,42 @@ function ObjectRow({
       </span>
     </div>
   );
+}
+
+/** JSON 值 → 对象属性列表（嵌套 object 提取为引用对象占位，由用户手动指定；数组取首元素推断元素类型） */
+function jsonToObjectProps(value: unknown): ObjectProp[] {
+  const out: ObjectProp[] = [];
+  if (!value || typeof value !== "object" || Array.isArray(value)) return out;
+  for (const [key, v] of Object.entries(value)) {
+    const p: ObjectProp = {
+      key,
+      kind: "string",
+      itemKind: "",
+      refHash: "",
+      description: "",
+      required: false,
+    };
+    if (v === null) {
+      p.kind = "any";
+    } else if (Array.isArray(v)) {
+      p.kind = "list";
+      if (v.length > 0) {
+        const first = v[0];
+        if (first && typeof first === "object") p.itemKind = "object";
+        else if (typeof first === "number") p.itemKind = "number";
+        else if (typeof first === "boolean") p.itemKind = "boolean";
+        else p.itemKind = "string";
+      }
+    } else if (typeof v === "number") {
+      p.kind = "number";
+    } else if (typeof v === "boolean") {
+      p.kind = "boolean";
+    } else if (typeof v === "object") {
+      p.kind = "object";
+    } else {
+      p.kind = "string";
+    }
+    out.push(p);
+  }
+  return out;
 }
