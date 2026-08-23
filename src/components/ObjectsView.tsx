@@ -200,8 +200,16 @@ export default function ObjectsView({
         <div className="objects-detail-head">
           <input
             className="objects-name-input"
+            value={draft.displayName || ""}
+            onChange={(e) => patch((d) => void (d.displayName = e.target.value.trim() || undefined))}
+            placeholder={draft.displayName ? undefined : t("objects.displayName")}
+            spellCheck={false}
+          />
+          <input
+            className="objects-name-input objects-name-input-en"
             value={draft.name}
             onChange={(e) => patch((d) => void (d.name = e.target.value))}
+            placeholder={t("objects.importName")}
             spellCheck={false}
           />
           <select
@@ -350,7 +358,7 @@ export default function ObjectsView({
                             .filter((o) => o.uuid !== selected.uuid)
                             .map((o) => (
                               <option key={o.hash} value={o.hash}>
-                                {o.name}
+                                {o.displayName || o.name}
                               </option>
                             ))}
                         </select>

@@ -447,7 +447,10 @@ export interface ObjectDef {
   uuid: string;
   /** 唯一标识：属性按 key 排序拼接后的 SHA-256 前 12 位 */
   hash: string;
+  /** 英文标识名（字母开头，仅字母数字） */
   name: string;
+  /** 显示名称（展示用，可为中文等任意文本；为空时回退显示 name） */
+  displayName?: string;
   /** 所属分组 id（空串为未分组） */
   group: string;
   description: string;
