@@ -596,6 +596,7 @@ export const ZH: Record<string, string> = {
   "objects.renameObject": "重命名对象",
   "objects.deleteObject": "删除对象",
   "objects.importJson": "从 JSON 导入",
+  "objects.searchPlaceholder": "搜索对象 / 分组…",
   "objects.importJsonTip": "粘贴 JSON 自动生成对象；嵌套 object 提取为独立对象；结构相同（hash 相同）自动复用已有对象",
   "objects.importDdlLabel": "建表语句 (CREATE TABLE)",
   "objects.importDdlTip": "粘贴 SQL CREATE TABLE 语句（可多条），每个表生成一个对象；列名 → 字段，类型自动映射，NOT NULL/主键 → 必填，COMMENT → 描述；表级约束自动忽略。相同结构自动复用已有对象。",

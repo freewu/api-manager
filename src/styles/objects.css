@@ -6,20 +6,34 @@
 }
 
 .objects-left {
-  width: 280px;
+  width: 310px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--border-light);
-  background: var(--bg);
+  border-right: 1px solid var(--border);
+  background: var(--bg-sidebar, var(--bg));
 }
 
 .objects-left-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border-light);
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.objects-search-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 10px 2px;
+}
+.objects-search-row .search-box {
+  flex: 1;
+  min-width: 0;
+}
+.objects-search-icon {
+  font-size: 12px;
 }
 
 .objects-left-title {
@@ -47,32 +61,8 @@
 }
 
 .objects-group-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  cursor: pointer;
   font-size: 13px;
   color: var(--text);
-  border-radius: 4px;
-}
-
-.objects-group-row:hover {
-  background: var(--bg-hover);
-}
-
-.objects-group-caret {
-  width: 14px;
-  color: var(--text-faint);
-  font-size: 10px;
-  flex-shrink: 0;
-}
-
-.objects-group-name {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .objects-group-ops {
@@ -88,18 +78,10 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 8px;
-  cursor: pointer;
   font-size: 13px;
-  border-radius: 4px;
-}
-
-.objects-object-row:hover {
-  background: var(--bg-hover);
 }
 
 .objects-object-row.selected {
-  background: var(--bg-active);
   box-shadow: inset 2px 0 0 var(--accent);
 }
 

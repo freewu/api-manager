@@ -588,6 +588,7 @@ export const EN: Record<string, string> = {
   "objects.renameObject": "Rename Object",
   "objects.deleteObject": "Delete Object",
   "objects.importJson": "Import from JSON",
+  "objects.searchPlaceholder": "Search objects / groups…",
   "objects.importJsonTip": "Paste JSON to auto-generate objects; nested objects are extracted; identical structure (same hash) reuses existing object",
   "objects.importDdlLabel": "DDL (CREATE TABLE)",
   "objects.importDdlTip": "Paste SQL CREATE TABLE statements (multiple allowed). Each table becomes an object; column → field, type auto-mapped, NOT NULL/PRIMARY KEY → required, COMMENT → description; table-level constraints ignored. Identical structures reuse existing objects automatically.",

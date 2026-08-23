@@ -1,5 +1,5 @@
 // ==================== 对象管理（数据结构 / JSON 导入 / 唯一标识 / 引用统计） ====================
-// 对象存储在 <工作区>/.objects/objects.json：
+// 对象存储在 <工作区>/.object/objects.json：
 //   groups  : 对象分组（可多级？目前为平铺分组，name 支持 "父级/子级" 命名实现多级）
 //   objects : 对象定义（属性、引用、统计）
 //
@@ -174,7 +174,7 @@ pub fn find_object_by_name<'a>(store: &'a ObjectStore, name: &str) -> Option<&'a
 
 /// 列出对象存储（无文件时返回空）
 pub fn list_objects(root: &Path) -> Result<ObjectStore, String> {
-    let file = root.join(".objects").join("objects.json");
+    let file = root.join(".object").join("objects.json");
     if !file.exists() {
         return Ok(ObjectStore::default());
     }
@@ -187,7 +187,7 @@ pub fn list_objects(root: &Path) -> Result<ObjectStore, String> {
 /// 保存时重新计算每个对象的 hash（属性变化后保持一致），
 /// 并修复失效引用（refHash 指向不存在的对象时尝试按名称匹配，否则清空）。
 pub fn save_objects(root: &Path, store: &ObjectStore) -> Result<String, String> {
-    let dir = root.join(".objects");
+    let dir = root.join(".object");
     std::fs::create_dir_all(&dir).map_err(|e| format!("创建对象目录失败: {e}"))?;
     let file = dir.join("objects.json");
 
@@ -797,7 +797,7 @@ fn capitalize(s: &str) -> String {
 }
 
 /// 统计每个对象被接口文档引用的数量与接口列表。
-/// 遍历工作区接口 json（排除 .history/.examples/.objects/.versions/__info.json），
+/// 遍历工作区接口 json（排除 .history/.examples/.object/.versions/__info.json），
 /// 通过 docParams 的 objectName（Object 类型）匹配对象名。
 pub fn object_usage(root: &Path, store: &ObjectStore) -> Result<Vec<ObjectUsageItem>, String> {
     let mut by_name: HashMap<String, Vec<ObjectUsageApi>> = HashMap::new();
@@ -819,7 +819,7 @@ pub fn object_usage(root: &Path, store: &ObjectStore) -> Result<Vec<ObjectUsageI
             if path.is_dir() {
                 let name = entry.file_name().to_string_lossy().to_string();
                 if name.starts_with(".") && name != ".git" {
-                    continue; // 跳过 .history / .examples / .objects / .versions 等隐藏目录
+                    continue; // 跳过 .history / .examples / .object / .versions 等隐藏目录
                 }
                 walk_dir(&path, by);
                 continue;

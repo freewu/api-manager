@@ -49,6 +49,7 @@ export default function ObjectsView({
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hashes, setHashes] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState("");
 
   // 导入弹窗按 ESC 关闭
   useEffect(() => {
@@ -337,98 +338,133 @@ export default function ObjectsView({
   const refCountOf = (hash: string) =>
     store.objects.reduce((n, o) => n + o.properties.filter((p) => p.refHash === hash).length, 0);
 
+  // 左侧搜索：按对象名 / 分组名过滤（与接口管理 Sidebar 搜索一致）
+  const kw = search.trim().toLowerCase();
+  const filterMatch = (o: ObjectDef) => {
+    if (!kw) return true;
+    if (o.name.toLowerCase().includes(kw)) return true;
+    const grp = store.groups.find((g) => g.id === o.group);
+    if (grp && grp.name.toLowerCase().includes(kw)) return true;
+    return false;
+  };
+  // 该分组（含后代分组）是否包含匹配对象
+  const groupHasMatch = (g: (typeof groupTree.roots)[number]): boolean => {
+    const grp = g.id ? store.groups.find((x) => x.id === g.id) : undefined;
+    const items = grp ? objectsByGroup[grp.id] || [] : [];
+    if (items.some(filterMatch)) return true;
+    return g.children.some(groupHasMatch);
+  };
+  // 递归渲染分组树（多级分组：分组 → 子分组 → 对象），样式与 Sidebar 树一致
+  const renderGroup = (g: (typeof groupTree.roots)[number], depth: number) => {
+    const grp = g.id ? store.groups.find((x) => x.id === g.id) : undefined;
+    const items = (grp ? objectsByGroup[grp.id] || [] : []).filter(filterMatch);
+    const isOpen = openGroups.has(g.path) || !!kw;
+    const nameMatch = !kw || g.name.toLowerCase().includes(kw);
+    const childMatch = g.children.some(groupHasMatch);
+    if (kw && !nameMatch && items.length === 0 && !childMatch) return null;
+    return (
+      <div key={g.path}>
+        <div
+          className="node objects-group-row"
+          style={{ paddingLeft: 6 + depth * 14 }}
+          onClick={() =>
+            setOpenGroups((prev) => {
+              const next = new Set(prev);
+              if (next.has(g.path)) next.delete(g.path);
+              else next.add(g.path);
+              return next;
+            })
+          }
+        >
+          <span className={`caret${isOpen ? " open" : ""}`}>▸</span>
+          <span className="node-icon">📁</span>
+          <span className="node-name">{g.name}</span>
+          {grp && (
+            <span className="objects-group-ops">
+              <button
+                className="icon-btn"
+                title={t("objects.renameGroup")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  renameGroup(grp);
+                }}
+              >
+                ✎
+              </button>
+              <button
+                className="icon-btn"
+                title={t("objects.deleteGroup")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteGroup(grp);
+                }}
+              >
+                🗑
+              </button>
+            </span>
+          )}
+        </div>
+        {isOpen && (
+          <>
+            {items.map((o) => (
+              <ObjectRow
+                key={o.hash}
+                obj={o}
+                depth={depth + 1}
+                hash={hashes[o.hash] || o.hash}
+                usageCount={usageOf[o.hash]?.apiCount ?? 0}
+                selected={selectedHash === o.hash}
+                onSelect={() => setSelectedHash(o.hash)}
+                onRename={() => renameObject(o)}
+                onDelete={() => deleteObject(o)}
+              />
+            ))}
+            {g.children.map((c) => renderGroup(c, depth + 1))}
+          </>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="objects-view">
-      {/* ===== 左侧：分组 + 对象列表 ===== */}
+      {/* ===== 左侧：分组 + 对象列表（与接口管理 Sidebar 布局一致） ===== */}
       <div className="objects-left">
         <div className="objects-left-header">
           <span className="objects-left-title">🗂️ {t("objects.title")}</span>
           <div className="objects-left-actions">
             <button className="btn-link" onClick={addObject} title={t("objects.newObject")}>
-              ＋{t("objects.newObject")}
+              ＋
             </button>
             <button className="btn-link" onClick={addGroup} title={t("objects.newGroup")}>
-              ＋{t("objects.newGroup")}
+              ＋📁
             </button>
-            <button className="btn-link" onClick={() => setImportOpen(true)}>
-              {t("objects.importJson")}
+            <button className="btn-link" onClick={() => setImportOpen(true)} title={t("objects.importJson")}>
+              ⇪
             </button>
           </div>
         </div>
-        <div className="objects-list">
-          {store.objects.length === 0 && (
-            <div className="objects-empty">{t("objects.empty")}</div>
-          )}
-          {groupTree.roots.map((node) => {
-            const grp = store.groups.find((g) => g.id === node.id);
-            const items = grp ? objectsByGroup[grp.id] || [] : [];
-            const isOpen = openGroups.has(node.path);
-            return (
-              <div key={node.path}>
-                <div
-                  className={`objects-group-row${node.children.length ? "" : ""}`}
-                  onClick={() =>
-                    setOpenGroups((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(node.path)) next.delete(node.path);
-                      else next.add(node.path);
-                      return next;
-                    })
-                  }
-                >
-                  <span className="objects-group-caret">{isOpen ? "▾" : "▸"}</span>
-                  <span className="objects-group-name">📁 {node.name}</span>
-                  {grp && (
-                    <span className="objects-group-ops">
-                      <button
-                        className="icon-btn"
-                        title={t("objects.renameGroup")}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          renameGroup(grp);
-                        }}
-                      >
-                        ✎
-                      </button>
-                      <button
-                        className="icon-btn"
-                        title={t("objects.deleteGroup")}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteGroup(grp);
-                        }}
-                      >
-                        🗑
-                      </button>
-                    </span>
-                  )}
-                </div>
-                {isOpen && (
-                  <div>
-                    {items.map((o) => (
-                      <ObjectRow
-                        key={o.hash}
-                        obj={o}
-                        depth={1}
-                        hash={hashes[o.hash] || o.hash}
-                        usageCount={usageOf[o.hash]?.apiCount ?? 0}
-                        selected={selectedHash === o.hash}
-                        onSelect={() => setSelectedHash(o.hash)}
-                        onRename={() => renameObject(o)}
-                        onDelete={() => deleteObject(o)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="objects-search-row">
+          <div className="search-box">
+            <span className="objects-search-icon">🔍</span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("objects.searchPlaceholder")}
+              spellCheck={false}
+            />
+          </div>
+        </div>
+        <div className="tree objects-list">
+          {store.objects.length === 0 && <div className="objects-empty">{t("objects.empty")}</div>}
+          {groupTree.roots.map((node) => renderGroup(node, 0))}
           {/* 未分组对象 */}
-          {objectsByGroup[""] && objectsByGroup[""].length > 0 && (
+          {!kw && objectsByGroup[""] && objectsByGroup[""].length > 0 && (
             <div>
-              <div className="objects-group-row">
-                <span className="objects-group-caret">▸</span>
-                <span className="objects-group-name">{t("objects.ungrouped")}</span>
+              <div className="node objects-group-row" style={{ paddingLeft: 6 }}>
+                <span className="caret">▸</span>
+                <span className="node-icon">📁</span>
+                <span className="node-name">{t("objects.ungrouped")}</span>
               </div>
               {objectsByGroup[""].map((o) => (
                 <ObjectRow
@@ -444,6 +480,23 @@ export default function ObjectsView({
                 />
               ))}
             </div>
+          )}
+          {kw && (
+            <>
+              {store.objects.filter(filterMatch).map((o) => (
+                <ObjectRow
+                  key={o.hash}
+                  obj={o}
+                  depth={0}
+                  hash={hashes[o.hash] || o.hash}
+                  usageCount={usageOf[o.hash]?.apiCount ?? 0}
+                  selected={selectedHash === o.hash}
+                  onSelect={() => setSelectedHash(o.hash)}
+                  onRename={() => renameObject(o)}
+                  onDelete={() => deleteObject(o)}
+                />
+              ))}
+            </>
           )}
         </div>
       </div>
@@ -792,12 +845,12 @@ function ObjectRow({
   const t = useT();
   return (
     <div
-      className={`objects-object-row${selected ? " selected" : ""}`}
+      className={`node objects-object-row${selected ? " selected" : ""}`}
       style={{ paddingLeft: 10 + depth * 14 }}
       onClick={onSelect}
     >
-      <span className="objects-object-icon">▦</span>
-      <span className="objects-object-name">{obj.name}</span>
+      <span className="node-icon objects-object-icon">▦</span>
+      <span className="node-name objects-object-name">{obj.name}</span>
       <span className="objects-object-hash">#{hash}</span>
       {usageCount > 0 && (
         <span className="objects-object-count" title={t("objects.apiCount", { count: usageCount })}>
