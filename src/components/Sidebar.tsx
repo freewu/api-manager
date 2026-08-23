@@ -463,6 +463,19 @@ export function Sidebar(props: Props) {
   const t = useT();
   const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onImportApiDoc, onImportExtra, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
   const [importMenu, setImportMenu] = useState(false);
+
+  // 导入菜单打开时按 ESC 关闭
+  useEffect(() => {
+    if (!importMenu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setImportMenu(false);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [importMenu]);
   /** 文件夹展开状态（path → open），跨 loadAll/导入刷新保留 */
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
   const toggleOpen = useCallback((path: string, open: boolean) => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * 带语言 logo 图片的自定义下拉（div 实现，替代原生 select）。
@@ -68,6 +68,19 @@ export function LangSelect<T extends string>({
   title?: string;
 }) {
   const [open, setOpen] = useState(false);
+
+  // 菜单打开时按 ESC 关闭
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [open]);
   const cur = options.find((o) => o.value === value) ?? options[0];
   return (
     <div className="codegen-lang-select-wrap">

@@ -49,6 +49,19 @@ export default function ObjectsView({
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hashes, setHashes] = useState<Record<string, string>>({});
+
+  // 导入弹窗按 ESC 关闭
+  useEffect(() => {
+    if (!importOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setImportOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [importOpen]);
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const firstLoad = useRef(true);
 

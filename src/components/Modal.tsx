@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 
 interface ModalProps {
   title: string;
@@ -10,6 +10,18 @@ interface ModalProps {
 }
 
 export function Modal({ title, onClose, children, footer, className, maskClassName }: ModalProps) {
+  // 按 ESC 关闭弹窗
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [onClose]);
+
   return (
     <div
       className={`modal-mask${maskClassName ? " " + maskClassName : ""}`}
