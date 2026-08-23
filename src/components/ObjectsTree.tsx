@@ -422,7 +422,7 @@ export default function ObjectsTree({
             />
           ))}
         {kw &&
-          store.objects.filter(filterMatch).map((o) => (
+          (objectsByGroup[""] || []).filter(filterMatch).map((o) => (
             <ObjectRow
               key={o.hash}
               obj={o}
