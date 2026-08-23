@@ -19,7 +19,8 @@ import swift from "highlight.js/lib/languages/swift";
 import typescript from "highlight.js/lib/languages/typescript";
 import "highlight.js/styles/github-dark.css";
 import { useT } from "../i18n";
-import { saveObjectVersion } from "../commands";
+import { renderMarkdown, saveObjectVersion } from "../commands";
+import { LangSelect } from "./LangSelect";
 import { OBJECT_LANGS, generateObjectCode } from "../utils/objectCodegen";
 import {
   ObjectDef,
@@ -109,17 +110,31 @@ export default function ObjectsView({
   // 右侧 tab：属性 / 对象描述 / 代码生成
   const [tab, setTab] = useState<"props" | "desc" | "code">("props");
   const [codeLang, setCodeLang] = useState(OBJECT_LANGS[0].value);
-  const codeHtml = useMemo(() => {
+  /** 生成代码原文（复制用）与高亮 HTML */
+  const codeText = useMemo(() => {
     if (!draft) return "";
     // 引用对象解析：以最新草稿替换同 uuid 的 store 对象
     const all = store.objects.map((o) => (o.uuid === draft.uuid ? draft : o));
-    const code = generateObjectCode(codeLang, draft, all);
-    try {
-      return hljs.highlight(code, { language: codeLang }).value;
-    } catch {
-      return code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
+    return generateObjectCode(codeLang, draft, all);
   }, [draft, store.objects, codeLang]);
+  const codeHtml = useMemo(() => {
+    if (!codeText) return "";
+    try {
+      return hljs.highlight(codeText, { language: codeLang }).value;
+    } catch {
+      return codeText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  }, [codeText, codeLang]);
+  const [copied, setCopied] = useState(false);
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(codeText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* 剪贴板不可用时忽略 */
+    }
+  };
 
   if (!selected || !draft) {
     return (
@@ -242,15 +257,10 @@ export default function ObjectsView({
         </div>
 
         {tab === "desc" && (
-          <div className="objects-desc-field">
-            <textarea
-              value={draft.description}
-              onChange={(e) => patch((d) => void (d.description = e.target.value))}
-              placeholder={t("objects.description")}
-              rows={14}
-              spellCheck={false}
-            />
-          </div>
+          <ObjectsDescEditor
+            value={draft.description}
+            onChange={(v) => patch((d) => void (d.description = v))}
+          />
         )}
 
         {tab === "props" && (
@@ -399,13 +409,15 @@ export default function ObjectsView({
         {tab === "code" && (
           <div className="objects-codegen">
             <div className="objects-codegen-head">
-              <select value={codeLang} onChange={(e) => setCodeLang(e.target.value)}>
-                {OBJECT_LANGS.map((l) => (
-                  <option key={l.value} value={l.value}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
+              <LangSelect
+                value={codeLang}
+                options={OBJECT_LANGS.map((l) => ({ value: l.value, label: l.label }))}
+                title={t("codegen.switchLang")}
+                onChange={setCodeLang}
+              />
+              <button className="btn small" onClick={() => void copyCode()}>
+                {copied ? t("resp.copied") : "📋 " + t("common.copy")}
+              </button>
               <span className="objects-codegen-tip">{t("objects.codegenTip")}</span>
             </div>
             <pre className="objects-codegen-pre">
@@ -422,4 +434,54 @@ function fmt(ts: number): string {
   if (!ts) return "-";
   const d = new Date(ts * 1000);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** 对象描述：Markdown 编辑 / 预览切换（预览由后端 md_to_html 渲染） */
+function ObjectsDescEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const t = useT();
+  const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [html, setHtml] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const toPreview = async () => {
+    setBusy(true);
+    try {
+      setHtml(await renderMarkdown(value || ""));
+      setMode("preview");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="objects-desc-root">
+      <div className="objects-desc-toolbar">
+        <button
+          className={`objects-desc-mode${mode === "edit" ? " active" : ""}`}
+          onClick={() => setMode("edit")}
+        >
+          ✏️ {t("editor.descEdit")}
+        </button>
+        <button
+          className={`objects-desc-mode${mode === "preview" ? " active" : ""}`}
+          disabled={busy}
+          onClick={() => void toPreview()}
+        >
+          👁 {t("editor.descPreview")}
+        </button>
+      </div>
+      {mode === "edit" ? (
+        <textarea
+          className="objects-desc-textarea"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={14}
+          placeholder={t("objects.description")}
+          spellCheck={false}
+        />
+      ) : (
+        <div className="objects-desc-preview md-preview" dangerouslySetInnerHTML={{ __html: html }} />
+      )}
+    </div>
+  );
 }

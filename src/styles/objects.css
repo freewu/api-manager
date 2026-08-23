@@ -488,3 +488,68 @@
   line-height: 1.7;
   word-break: break-all;
 }
+
+/* 对象描述 tab：Markdown 编辑/预览 */
+.objects-desc-root {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+.objects-desc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.objects-desc-mode {
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.objects-desc-mode.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.objects-desc-mode:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.objects-desc-textarea {
+  width: 100%;
+  flex: 1;
+  min-height: 120px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text);
+  resize: vertical;
+}
+.objects-desc-textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+.objects-desc-preview {
+  flex: 1;
+  min-height: 120px;
+  overflow: auto;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  user-select: text;
+}
+
+/* 代码生成头部：语言选择 + 复制（去掉原生 select 样式） */
+.objects-codegen-head select {
+  display: none;
+}
