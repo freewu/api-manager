@@ -128,11 +128,14 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
     onTabChange?.(t);
   };
 
-  // 切换接口时回到 Query 页签
+  // 切换接口时回到默认页签：GraphQL 默认 Body（GraphQL 请求体），
+  // WebSocket / Socket.IO 默认消息（Body 页签即消息编辑），其余回 Query
   useEffect(() => {
-    setTab("params");
+    const def: Tab = isGraphql || isRealtime ? "body" : "params";
+    setTab(def);
     setFormatError(null);
-    onTabChange?.("params");
+    onTabChange?.(def);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api.uuid]);
 
   // 设置中全局关闭 Mock 时，若当前停留在 Mock 页签则切回 Query；
