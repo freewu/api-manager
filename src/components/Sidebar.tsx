@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppSettings, TreeNode } from "../types";
 import { HistoryDay, HistorySummary } from "../commands";
 import { HistoryList } from "./HistoryList";
+import ObjectsTree from "./ObjectsTree";
+import { ObjectImportResult, ObjectStore, ObjectUsageItem } from "../types";
 import { FormatIcon } from "./FormatSelect";
 import { useT } from "../i18n";
 import iconHttp from "../assets/icon-http.png";
@@ -75,6 +77,13 @@ interface Props {
   onHistoryToggleDiffMode: (on: boolean) => void;
   onHistoryToggleDiffSelect: (r: HistorySummary) => void;
   onHistoryStartDiff: () => void;
+  // 对象管理树
+  objectsStore: ObjectStore;
+  objectsUsage: ObjectUsageItem[];
+  onObjectsSave: (store: ObjectStore) => Promise<void>;
+  onObjectsImport: (name: string, group: string, json: string) => Promise<ObjectImportResult>;
+  onObjectsImportDdl: (group: string, ddl: string) => Promise<ObjectImportResult>;
+  onObjectsToast: (msg: string) => void;
 }
 
 interface CtxMenu {
@@ -763,6 +772,16 @@ export function Sidebar(props: Props) {
         )}
         {!loading && !tree && <div className="tree-root">{t("sidebar.emptyTree")}</div>}
       </div>
+      {view === "objects" && (
+        <ObjectsTree
+          store={props.objectsStore}
+          usage={props.objectsUsage}
+          onSave={props.onObjectsSave}
+          onImport={props.onObjectsImport}
+          onImportDdl={props.onObjectsImportDdl}
+          onToast={props.onObjectsToast}
+        />
+      )}
       {view === "history" && (
         <HistoryList
           records={props.historyRecords}

@@ -539,6 +539,12 @@ export default function App() {
               onHistoryToggleDiffMode={history.toggleDiffMode}
               onHistoryToggleDiffSelect={history.toggleDiffSelect}
               onHistoryStartDiff={() => void history.startDiff()}
+              objectsStore={objectsStore}
+              objectsUsage={objectsUsage}
+              onObjectsSave={saveObjectsStore}
+              onObjectsImport={importObjectsJson}
+              onObjectsImportDdl={importObjectsDdl}
+              onObjectsToast={showToast}
             />
             <RightPane
               view={view}

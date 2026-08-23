@@ -1,7 +1,8 @@
 // ==================== 对象管理（数据结构 / JSON 导入 / 唯一标识 / 引用统计） ====================
-// 对象存储在 <工作区>/.object/objects.json：
-//   groups  : 对象分组（可多级？目前为平铺分组，name 支持 "父级/子级" 命名实现多级）
-//   objects : 对象定义（属性、引用、统计）
+// 对象存储在 <工作区>/data/.object/ 目录，目录即分组：
+//   data/.object/__info_obj.json               : 分组信息（ObjectGroup 列表，目录代表分组）
+//   data/.object/<对象名称>.obj.json            : 未分组对象
+//   data/.object/<分组路径>/<对象名称>.obj.json  : 分组对象（多级分组 = 嵌套目录）
 //
 // 唯一标识（hash）：对象所有属性按 key 字母排序，拼接 "key:kind[:itemKind][:refHash]" 后
 // 做 SHA-256 取前 12 位。相同结构（含引用）的对象 hash 相同，创建时直接复用已有对象。
@@ -174,23 +175,73 @@ pub fn find_object_by_name<'a>(store: &'a ObjectStore, name: &str) -> Option<&'a
 
 /// 列出对象存储（无文件时返回空）
 pub fn list_objects(root: &Path) -> Result<ObjectStore, String> {
-    let file = root.join(".object").join("objects.json");
-    if !file.exists() {
+    let dir = root.join("data").join(".object");
+    if !dir.exists() {
         return Ok(ObjectStore::default());
     }
-    let text = std::fs::read_to_string(&file).map_err(|e| format!("读取对象文件失败: {e}"))?;
-    let store: ObjectStore = serde_json::from_str(&text).map_err(|e| format!("解析对象文件失败: {e}"))?;
-    Ok(store)
+    let mut groups: Vec<ObjectGroup> = Vec::new();
+    let mut objects: Vec<ObjectDef> = Vec::new();
+
+    // 递归扫描：目录 = 分组（多级嵌套），*.obj.json = 对象
+    fn scan(dir: &Path, group_id: &str, groups: &mut Vec<ObjectGroup>, objects: &mut Vec<ObjectDef>) {
+        let Ok(entries) = std::fs::read_dir(dir) else { return };
+        let mut entries: Vec<_> = entries.flatten().collect();
+        entries.sort_by_key(|e| e.file_name());
+        for entry in entries {
+            let path = entry.path();
+            let fname = entry.file_name().to_string_lossy().to_string();
+            if path.is_dir() {
+                let id = if group_id.is_empty() {
+                    fname.clone()
+                } else {
+                    format!("{group_id}/{fname}")
+                };
+                groups.push(ObjectGroup { id: id.clone(), name: fname });
+                scan(&path, &id, groups, objects);
+            } else if fname == "__info_obj.json" {
+                continue;
+            } else if let Some(stem) = fname.strip_suffix(".obj.json") {
+                if let Ok(text) = std::fs::read_to_string(&path) {
+                    if let Ok(mut o) = serde_json::from_str::<ObjectDef>(&text) {
+                        if o.name.trim().is_empty() {
+                            o.name = stem.to_string();
+                        }
+                        if !group_id.is_empty() && o.group.is_empty() {
+                            o.group = group_id.to_string();
+                        }
+                        objects.push(o);
+                    }
+                }
+            }
+        }
+    }
+    scan(&dir, "", &mut groups, &mut objects);
+    Ok(ObjectStore { groups, objects })
 }
 
-/// 保存对象存储（整体覆盖写）。
+/// 保存对象存储（全量重建 data/.object 目录）。
+/// 目录即分组：分组信息写入 __info_obj.json，每个对象一个 <名称>.obj.json 文件。
 /// 保存时重新计算每个对象的 hash（属性变化后保持一致），
 /// 并修复失效引用（refHash 指向不存在的对象时尝试按名称匹配，否则清空）。
 pub fn save_objects(root: &Path, store: &ObjectStore) -> Result<String, String> {
-    let dir = root.join(".object");
+    let dir = root.join("data").join(".object");
+    if dir.exists() {
+        std::fs::remove_dir_all(&dir).map_err(|e| format!("清理对象目录失败: {e}"))?;
+    }
     std::fs::create_dir_all(&dir).map_err(|e| format!("创建对象目录失败: {e}"))?;
-    let file = dir.join("objects.json");
 
+    // 分组信息（目录代表分组，空分组也建目录）
+    let mut groups: Vec<ObjectGroup> = store.groups.clone();
+    groups.sort_by(|a, b| a.id.cmp(&b.id));
+    groups.dedup_by(|a, b| a.id == b.id);
+    let info_text = serde_json::to_string_pretty(&groups).map_err(|e| format!("序列化分组失败: {e}"))?;
+    std::fs::write(dir.join("__info_obj.json"), info_text)
+        .map_err(|e| format!("写入分组信息失败: {e}"))?;
+    for g in &groups {
+        std::fs::create_dir_all(dir.join(&g.id)).map_err(|e| format!("创建分组目录失败: {e}"))?;
+    }
+
+    // 重算 hash + 修复失效引用
     let mut objects: Vec<ObjectDef> = Vec::new();
     for mut o in store.objects.clone() {
         o.hash = object_hash(&o.properties);
@@ -213,13 +264,24 @@ pub fn save_objects(root: &Path, store: &ObjectStore) -> Result<String, String> 
             }
         }
     }
-    let store = ObjectStore {
-        groups: store.groups.clone(),
-        objects,
-    };
-    let text = serde_json::to_string_pretty(&store).map_err(|e| format!("序列化对象失败: {e}"))?;
-    std::fs::write(&file, text).map_err(|e| format!("写入对象文件失败: {e}"))?;
-    Ok(file.to_string_lossy().to_string())
+
+    // 对象文件：<分组目录>/<对象名称>.obj.json（同名冲突加 -2/-3 后缀，内容 name 不变）
+    let mut written: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for o in &objects {
+        let safe = o.name.replace(['/', '\\'], "_");
+        let mut fname = format!("{safe}.obj.json");
+        let mut n = 2;
+        while written.contains(&fname) {
+            fname = format!("{safe}-{n}.obj.json");
+            n += 1;
+        }
+        written.insert(fname.clone());
+        let obj_dir = if o.group.is_empty() { dir.clone() } else { dir.join(&o.group) };
+        std::fs::create_dir_all(&obj_dir).map_err(|e| format!("创建分组目录失败: {e}"))?;
+        let text = serde_json::to_string_pretty(o).map_err(|e| format!("序列化对象失败: {e}"))?;
+        std::fs::write(obj_dir.join(&fname), text).map_err(|e| format!("写入对象文件失败: {e}"))?;
+    }
+    Ok(dir.to_string_lossy().to_string())
 }
 
 /// 从 JSON 文本生成对象定义（嵌套 object 提取为独立对象，hash 相同则复用）。
@@ -797,7 +859,7 @@ fn capitalize(s: &str) -> String {
 }
 
 /// 统计每个对象被接口文档引用的数量与接口列表。
-/// 遍历工作区接口 json（排除 .history/.examples/.object/.versions/__info.json），
+/// 遍历工作区接口 json（排除 .history/.examples/.object/.versions/__info.json 等隐藏目录），
 /// 通过 docParams 的 objectName（Object 类型）匹配对象名。
 pub fn object_usage(root: &Path, store: &ObjectStore) -> Result<Vec<ObjectUsageItem>, String> {
     let mut by_name: HashMap<String, Vec<ObjectUsageApi>> = HashMap::new();
@@ -959,7 +1021,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
         assert_eq!(tables[1].0, "orders", "IF NOT EXISTS 与 schema 前缀应处理");
         let cols = split_columns(&tables[0].1);
         assert_eq!(cols.len(), 4);
-        let (name, kind, required, desc) = parse_column(&cols[0]).unwrap();
+        let (name, kind, required, _desc) = parse_column(&cols[0]).unwrap();
         assert_eq!(name, "id");
         assert_eq!(kind, "number");
         assert!(required, "PRIMARY KEY 应必填");
@@ -1025,7 +1087,7 @@ CREATE TABLE `my_users` (
     fn test_save_recomputes_hash() {
         let root = tmpdir("save");
         let mut store = ObjectStore::default();
-        let mut o = ObjectDef {
+        let o = ObjectDef {
             hash: "stale".into(),
             name: "A".into(),
             properties: vec![ObjectProp { key: "x".into(), kind: "string".into(), ..Default::default() }],
@@ -1036,5 +1098,63 @@ CREATE TABLE `my_users` (
         let loaded = list_objects(&root).unwrap();
         assert_eq!(loaded.objects[0].hash, object_hash(&o.properties));
         assert_ne!(loaded.objects[0].hash, "stale");
+    }
+
+    #[test]
+    fn test_dir_storage_layout() {
+        let root = tmpdir("layout");
+        let mut store = ObjectStore::default();
+        store.groups.push(ObjectGroup { id: "用户管理".into(), name: "用户管理".into() });
+        store.groups.push(ObjectGroup { id: "订单/明细".into(), name: "明细".into() });
+        store.objects.push(ObjectDef {
+            hash: String::new(),
+            name: "User".into(),
+            group: "用户管理".into(),
+            description: "用户".into(),
+            properties: vec![ObjectProp { key: "id".into(), kind: "number".into(), required: true, ..Default::default() }],
+            created_at: 1,
+            updated_at: 2,
+        });
+        store.objects.push(ObjectDef {
+            hash: String::new(),
+            name: "OrderItem".into(),
+            group: "订单/明细".into(),
+            description: String::new(),
+            properties: vec![],
+            created_at: 1,
+            updated_at: 2,
+        });
+        store.objects.push(ObjectDef {
+            hash: String::new(),
+            name: "Plain".into(),
+            group: String::new(),
+            description: String::new(),
+            properties: vec![],
+            created_at: 1,
+            updated_at: 2,
+        });
+        save_objects(&root, &store).unwrap();
+
+        let base = root.join("data").join(".object");
+        assert!(base.join("__info_obj.json").exists(), "应有分组信息文件");
+        assert!(base.join("用户管理").join("User.obj.json").exists(), "分组目录下的对象文件");
+        assert!(base.join("订单").join("明细").join("OrderItem.obj.json").exists(), "多级分组 = 嵌套目录");
+        assert!(base.join("Plain.obj.json").exists(), "未分组对象在根目录");
+
+        let loaded = list_objects(&root).unwrap();
+        // 目录即分组：用户管理 + 订单（父级）+ 订单/明细（子级）
+        assert_eq!(loaded.groups.len(), 3);
+        assert_eq!(loaded.objects.len(), 3);
+        let user = loaded.objects.iter().find(|o| o.name == "User").unwrap();
+        assert_eq!(user.group, "用户管理");
+        assert_eq!(user.hash.len(), 12, "保存时应重算 hash");
+        assert_eq!(user.description, "用户");
+        let item = loaded.objects.iter().find(|o| o.name == "OrderItem").unwrap();
+        assert_eq!(item.group, "订单/明细");
+
+        // 全量重建：删除一个对象后再保存，旧文件不残留
+        store.objects.retain(|o| o.name != "User");
+        save_objects(&root, &store).unwrap();
+        assert!(!base.join("用户管理").join("User.obj.json").exists(), "删除对象后旧文件应清除");
     }
 }

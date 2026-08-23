@@ -574,6 +574,7 @@ export const TW: Record<string, string> = {
   "objects.title": "物件管理",
   "objects.newGroup": "新增群組",
   "objects.renameGroup": "重新命名群組",
+  "objects.groupExists": "分組已存在",
   "objects.deleteGroup": "刪除群組",
   "objects.newObject": "新增物件",
   "objects.renameObject": "重新命名物件",

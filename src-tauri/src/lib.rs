@@ -10246,7 +10246,7 @@ mod tests {
         let _ = fs::remove_dir_all(&base);
         let g = base.join("用户管理");
         fs::create_dir_all(&g).unwrap();
-        let mut a = ApiFile {
+        let a = ApiFile {
             uuid: "u".into(),
             name: "接口A".into(),
             method: "GET".into(),
@@ -10323,7 +10323,7 @@ mod tests {
             .unwrap();
         // 保存两个版本：v1（描述 v1 描述）与 v2（描述 v2 描述）
         save_api_version_at(&base, make("接口A", "v1 描述")).unwrap();
-        let v2 = save_api_version_at(&base, make("接口A", "v2 描述")).unwrap();
+        let _v2 = save_api_version_at(&base, make("接口A", "v2 描述")).unwrap();
         // 主文件当前是 v2 描述
         let mut current = read_api(main.to_string_lossy().to_string()).unwrap();
         current.description = "v2 描述".into();
