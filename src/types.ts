@@ -443,6 +443,8 @@ export interface ObjectProp {
 }
 
 export interface ObjectDef {
+  /** 稳定标识（不随属性变化，用于版本管理 .object_version/<uuid>/） */
+  uuid: string;
   /** 唯一标识：属性按 key 排序拼接后的 SHA-256 前 12 位 */
   hash: string;
   name: string;
@@ -457,6 +459,16 @@ export interface ObjectDef {
 export interface ObjectStore {
   groups: ObjectGroup[];
   objects: ObjectDef[];
+}
+
+/** 对象版本信息（.object_version/<uuid>/<n>.json） */
+export interface ObjectVersionInfo {
+  version: number;
+  savedAt: number;
+  name: string;
+  description: string;
+  propCount: number;
+  hash: string;
 }
 
 /** 对象被接口文档引用的统计（接口数量 + 引用接口列表） */

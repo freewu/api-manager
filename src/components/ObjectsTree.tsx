@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ObjectDef, ObjectImportResult, ObjectStore, ObjectUsageItem } from "../types";
 import { useT } from "../i18n";
+import { ObjectVersionModal } from "./ObjectVersionModal";
 
 interface Props {
   store: ObjectStore;
@@ -35,13 +36,20 @@ export default function ObjectsTree({
   const [importJson, setImportJson] = useState("");
   const [importDdlText, setImportDdlText] = useState("");
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  /** 对象行右键菜单 */
+  const [objMenu, setObjMenu] = useState<{ x: number; y: number; hash: string } | null>(null);
+  /** 版本查看弹窗（对象 uuid） */
+  const [versionModal, setVersionModal] = useState<ObjectDef | null>(null);
   // 拖拽中的对象 hash
   const [dragHash, setDragHash] = useState<string | null>(null);
 
   // 右键菜单：点击任意处 / Esc 时关闭
   useEffect(() => {
-    if (!ctxMenu) return;
-    const close = () => setCtxMenu(null);
+    if (!ctxMenu && !objMenu) return;
+    const close = () => {
+      setCtxMenu(null);
+      setObjMenu(null);
+    };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("click", close);
     window.addEventListener("scroll", close, true);
@@ -51,7 +59,7 @@ export default function ObjectsTree({
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("keydown", onKey);
     };
-  }, [ctxMenu]);
+  }, [ctxMenu, objMenu]);
 
   // 导入弹窗按 ESC 关闭
   useEffect(() => {
@@ -167,6 +175,12 @@ export default function ObjectsTree({
           <span className={`caret${isOpen ? " open" : ""}`}>▸</span>
           <span className="node-icon">📁</span>
           <span className="node-name">{g.name}</span>
+          <span
+            className="objects-group-count"
+            title={t("objects.groupCount", { count: items.length })}
+          >
+            {items.length}
+          </span>
           <span className="objects-group-ops">
             <button
               className="icon-btn"
@@ -212,6 +226,11 @@ export default function ObjectsTree({
                 onSelect={() => onSelectObject(o.hash)}
                 onRename={() => renameObject(o)}
                 onDelete={() => deleteObject(o)}
+                onContextMenu={(e, hash) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setObjMenu({ x: e.clientX, y: e.clientY, hash });
+                }}
                 onDragStart={() => setDragHash(o.hash)}
                 onDragEnd={() => setDragHash(null)}
               />
@@ -281,6 +300,7 @@ export default function ObjectsTree({
     if (!name || !name.trim()) return;
     const now = Math.floor(Date.now() / 1000);
     const o: ObjectDef = {
+      uuid: crypto.randomUUID(),
       hash: `tmp${Date.now().toString(36)}`,
       name: name.trim(),
       group: groupId,
@@ -392,6 +412,11 @@ export default function ObjectsTree({
               onSelect={() => onSelectObject(o.hash)}
               onRename={() => renameObject(o)}
               onDelete={() => deleteObject(o)}
+              onContextMenu={(e, hash) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setObjMenu({ x: e.clientX, y: e.clientY, hash });
+              }}
               onDragStart={() => setDragHash(o.hash)}
               onDragEnd={() => setDragHash(null)}
             />
@@ -407,6 +432,11 @@ export default function ObjectsTree({
               onSelect={() => onSelectObject(o.hash)}
               onRename={() => renameObject(o)}
               onDelete={() => deleteObject(o)}
+              onContextMenu={(e, hash) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setObjMenu({ x: e.clientX, y: e.clientY, hash });
+              }}
               onDragStart={() => setDragHash(o.hash)}
               onDragEnd={() => setDragHash(null)}
             />
@@ -430,6 +460,40 @@ export default function ObjectsTree({
           </>
         )}
       </div>
+
+      {/* 对象行右键菜单：版本查看 / 重命名 / 删除 */}
+      {objMenu && (
+        <div className="node-ctx-menu" style={{ left: objMenu.x, top: objMenu.y }}>
+          <button
+            onClick={() => {
+              const o = store.objects.find((x) => x.hash === objMenu.hash);
+              setObjMenu(null);
+              if (o) setVersionModal(o);
+            }}
+          >
+            📑 {t("version.title")}
+          </button>
+          <button
+            onClick={() => {
+              const o = store.objects.find((x) => x.hash === objMenu.hash);
+              setObjMenu(null);
+              if (o) renameObject(o);
+            }}
+          >
+            ✎ {t("objects.renameObject")}
+          </button>
+          <button
+            className="danger"
+            onClick={() => {
+              const o = store.objects.find((x) => x.hash === objMenu.hash);
+              setObjMenu(null);
+              if (o) deleteObject(o);
+            }}
+          >
+            🗑 {t("objects.deleteObject")}
+          </button>
+        </div>
+      )}
 
       {/* 空白处右键菜单：新增分组 / 新增对象 */}
       {ctxMenu && (
@@ -541,6 +605,11 @@ export default function ObjectsTree({
           </div>
         </div>
       )}
+
+      {/* 对象版本查看弹窗 */}
+      {versionModal && (
+        <ObjectVersionModal current={versionModal} onClose={() => setVersionModal(null)} />
+      )}
     </div>
   );
 }
@@ -553,6 +622,7 @@ function ObjectRow({
   onSelect,
   onRename,
   onDelete,
+  onContextMenu,
   onDragStart,
   onDragEnd,
 }: {
@@ -563,6 +633,7 @@ function ObjectRow({
   onSelect: () => void;
   onRename: () => void;
   onDelete: () => void;
+  onContextMenu: (e: React.MouseEvent, hash: string) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
 }) {
@@ -572,6 +643,7 @@ function ObjectRow({
       className={`node objects-object-row${selected ? " selected" : ""}`}
       style={{ paddingLeft: 10 + depth * 14 }}
       onClick={onSelect}
+      onContextMenu={(e) => onContextMenu(e, obj.hash)}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", obj.hash);

@@ -7855,6 +7855,38 @@ fn read_api_version(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|e| format!("读取版本失败: {e}"))
 }
 
+/// 保存对象版本快照（.object_version/<uuid>/<版本号>.json）
+#[tauri::command]
+fn save_object_version(
+    state: State<'_, WorkspaceState>,
+    uuid: String,
+    snapshot: crate::objects::ObjectDef,
+) -> Result<String, String> {
+    let root = workspace_root(&state)?;
+    crate::objects::save_object_version(&root, &uuid, &snapshot)
+}
+
+/// 对象版本列表
+#[tauri::command]
+fn list_object_versions(
+    state: State<'_, WorkspaceState>,
+    uuid: String,
+) -> Result<Vec<crate::objects::ObjectVersionInfo>, String> {
+    let root = workspace_root(&state)?;
+    crate::objects::list_object_versions(&root, &uuid)
+}
+
+/// 读取指定版本的对象快照
+#[tauri::command]
+fn read_object_version(
+    state: State<'_, WorkspaceState>,
+    uuid: String,
+    version: u32,
+) -> Result<crate::objects::ObjectDef, String> {
+    let root = workspace_root(&state)?;
+    crate::objects::read_object_version(&root, &uuid, version)
+}
+
 /// 遍历工作区内的接口 json 文件（跳过 .version / .examples 等点开头目录），返回首个满足条件的路径
 fn walk_api_files<F: FnMut(&Path, &Value) -> bool>(root: &Path, mut pred: F) -> Option<PathBuf> {
     let mut stack: Vec<PathBuf> = vec![root.to_path_buf()];
@@ -9686,6 +9718,9 @@ pub fn run() {
             get_current_version,
             read_api_version,
             restore_api_version,
+            save_object_version,
+            list_object_versions,
+            read_object_version,
             create_api,
             create_folder,
             rename_entry,

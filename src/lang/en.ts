@@ -587,6 +587,7 @@ export const EN: Record<string, string> = {
   "objects.newGroup": "New Group",
   "objects.renameGroup": "Rename Group",
   "objects.groupExists": "Group already exists",
+  "objects.groupCount": "{count} objects in group",
   "objects.deleteGroup": "Delete Group",
   "objects.newObject": "New Object",
   "objects.renameObject": "Rename Object",

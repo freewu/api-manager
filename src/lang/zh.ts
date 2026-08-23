@@ -595,6 +595,7 @@ export const ZH: Record<string, string> = {
   "objects.newGroup": "新建分组",
   "objects.renameGroup": "重命名分组",
   "objects.groupExists": "分组已存在",
+  "objects.groupCount": "本组对象 {count} 个",
   "objects.deleteGroup": "删除分组",
   "objects.newObject": "新建对象",
   "objects.renameObject": "重命名对象",

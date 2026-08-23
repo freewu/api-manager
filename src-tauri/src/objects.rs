@@ -58,6 +58,9 @@ impl Default for ObjectProp {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ObjectDef {
+    /// 稳定标识（不随属性变化，用于版本管理目录 .object_version/<uuid>/）
+    #[serde(default)]
+    pub uuid: String,
     /// 唯一标识：属性按 key 排序拼接后的 SHA-256 前 12 位
     pub hash: String,
     pub name: String,
@@ -72,6 +75,7 @@ pub struct ObjectDef {
 impl Default for ObjectDef {
     fn default() -> Self {
         Self {
+            uuid: String::new(),
             hash: String::new(),
             name: String::new(),
             group: String::new(),
@@ -241,10 +245,13 @@ pub fn save_objects(root: &Path, store: &ObjectStore) -> Result<String, String> 
         std::fs::create_dir_all(dir.join(&g.id)).map_err(|e| format!("创建分组目录失败: {e}"))?;
     }
 
-    // 重算 hash + 修复失效引用
+    // 重算 hash + 修复失效引用（uuid 为空时生成稳定标识，兼容旧数据）
     let mut objects: Vec<ObjectDef> = Vec::new();
     for mut o in store.objects.clone() {
         o.hash = object_hash(&o.properties);
+        if o.uuid.trim().is_empty() {
+            o.uuid = uuid::Uuid::new_v4().to_string();
+        }
         objects.push(o);
     }
     let name_map: HashMap<String, String> = objects
@@ -409,6 +416,7 @@ pub fn import_json_object(
         }
         let now = now_ts();
         let def = ObjectDef {
+            uuid: uuid::Uuid::new_v4().to_string(),
             hash: hash.clone(),
             name: suggested_name.to_string(),
             group: group.to_string(),
@@ -486,6 +494,7 @@ pub fn import_ddl(root: &Path, group: &str, ddl: &str) -> Result<ObjectImportRes
         }
         let now = now_ts();
         let def = ObjectDef {
+            uuid: uuid::Uuid::new_v4().to_string(),
             hash: hash.clone(),
             name: table_name.clone(),
             group: group.clone(),
@@ -919,6 +928,97 @@ pub fn object_usage(root: &Path, store: &ObjectStore) -> Result<Vec<ObjectUsageI
     Ok(items)
 }
 
+// ==================== 对象版本管理（.object_version/<uuid>/<版本号>.json） ====================
+
+/// 对象版本信息（.object_version/<uuid>/<n>.json）
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ObjectVersionInfo {
+    pub version: u32,
+    /// 保存时间（Unix 秒）
+    pub saved_at: u64,
+    pub name: String,
+    pub description: String,
+    pub prop_count: usize,
+    pub hash: String,
+}
+
+/// 保存对象版本快照：写入 <工作区>/.object_version/<uuid>/<版本号>.json（版本号递增）
+pub fn save_object_version(root: &Path, uuid: &str, snapshot: &ObjectDef) -> Result<String, String> {
+    let uuid = uuid.trim().to_string();
+    if !crate::valid_uuid(&uuid) {
+        return Err("无效的对象 uuid".into());
+    }
+    let dir = root.join(".object_version").join(&uuid);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("创建对象版本目录失败: {e}"))?;
+    let mut max: u32 = 0;
+    if let Ok(rd) = std::fs::read_dir(&dir) {
+        for entry in rd.flatten() {
+            let fname = entry.file_name().to_string_lossy().to_string();
+            if let Some(n) = fname.strip_suffix(".json") {
+                if let Ok(n) = n.parse::<u32>() {
+                    max = max.max(n);
+                }
+            }
+        }
+    }
+    let version = max + 1;
+    let target = dir.join(format!("{version}.json"));
+    let text = serde_json::to_string_pretty(snapshot).map_err(|e| format!("序列化对象版本失败: {e}"))?;
+    std::fs::write(&target, text).map_err(|e| format!("写入对象版本失败: {e}"))?;
+    Ok(format!(".object_version/{uuid}/{version}.json"))
+}
+
+/// 对象版本列表（按版本号升序）
+pub fn list_object_versions(root: &Path, uuid: &str) -> Result<Vec<ObjectVersionInfo>, String> {
+    let uuid = uuid.trim().to_string();
+    if !crate::valid_uuid(&uuid) {
+        return Ok(vec![]);
+    }
+    let dir = root.join(".object_version").join(&uuid);
+    if !dir.exists() {
+        return Ok(vec![]);
+    }
+    let mut list: Vec<ObjectVersionInfo> = Vec::new();
+    for entry in std::fs::read_dir(&dir).map_err(|e| format!("读取对象版本目录失败: {e}"))? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        let fname = entry.file_name().to_string_lossy().to_string();
+        let Some(n) = fname.strip_suffix(".json") else { continue };
+        let Ok(version) = n.parse::<u32>() else { continue };
+        let saved_at = entry
+            .metadata()
+            .and_then(|m| m.modified())
+            .map(|t| t.duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0))
+            .unwrap_or(0);
+        if let Ok(text) = std::fs::read_to_string(&path) {
+            if let Ok(o) = serde_json::from_str::<ObjectDef>(&text) {
+                list.push(ObjectVersionInfo {
+                    version,
+                    saved_at,
+                    name: o.name,
+                    description: o.description,
+                    prop_count: o.properties.len(),
+                    hash: o.hash,
+                });
+            }
+        }
+    }
+    list.sort_by_key(|v| v.version);
+    Ok(list)
+}
+
+/// 读取指定版本的对象快照
+pub fn read_object_version(root: &Path, uuid: &str, version: u32) -> Result<ObjectDef, String> {
+    let uuid = uuid.trim().to_string();
+    if !crate::valid_uuid(&uuid) {
+        return Err("无效的对象 uuid".into());
+    }
+    let path = root.join(".object_version").join(&uuid).join(format!("{version}.json"));
+    let text = std::fs::read_to_string(&path).map_err(|e| format!("读取对象版本失败: {e}"))?;
+    serde_json::from_str(&text).map_err(|e| format!("解析对象版本失败: {e}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1107,6 +1207,7 @@ CREATE TABLE `my_users` (
         store.groups.push(ObjectGroup { id: "用户管理".into(), name: "用户管理".into() });
         store.groups.push(ObjectGroup { id: "订单/明细".into(), name: "明细".into() });
         store.objects.push(ObjectDef {
+            uuid: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
             hash: String::new(),
             name: "User".into(),
             group: "用户管理".into(),
@@ -1116,6 +1217,7 @@ CREATE TABLE `my_users` (
             updated_at: 2,
         });
         store.objects.push(ObjectDef {
+            uuid: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".into(),
             hash: String::new(),
             name: "OrderItem".into(),
             group: "订单/明细".into(),
@@ -1125,6 +1227,7 @@ CREATE TABLE `my_users` (
             updated_at: 2,
         });
         store.objects.push(ObjectDef {
+            uuid: "cccccccccccccccccccccccccccccccc".into(),
             hash: String::new(),
             name: "Plain".into(),
             group: String::new(),
@@ -1156,5 +1259,44 @@ CREATE TABLE `my_users` (
         store.objects.retain(|o| o.name != "User");
         save_objects(&root, &store).unwrap();
         assert!(!base.join("用户管理").join("User.obj.json").exists(), "删除对象后旧文件应清除");
+    }
+
+    #[test]
+    fn test_object_versions() {
+        let root = tmpdir("versions");
+        let uuid = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let mut obj = ObjectDef {
+            uuid: uuid.into(),
+            hash: "h1".into(),
+            name: "User".into(),
+            group: "用户管理".into(),
+            description: "v1".into(),
+            properties: vec![ObjectProp { key: "id".into(), kind: "number".into(), ..Default::default() }],
+            created_at: 1,
+            updated_at: 2,
+        };
+        save_object_version(&root, uuid, &obj).unwrap();
+        obj.description = "v2".into();
+        obj.hash = "h2".into();
+        save_object_version(&root, uuid, &obj).unwrap();
+
+        let list = list_object_versions(&root, uuid).unwrap();
+        assert_eq!(list.len(), 2, "应有 2 个版本");
+        assert_eq!(list[0].version, 1);
+        assert_eq!(list[1].version, 2, "版本号应递增");
+        assert_eq!(list[0].description, "v1");
+        assert_eq!(list[1].prop_count, 1);
+        assert!(list[1].saved_at > 0);
+
+        let v1 = read_object_version(&root, uuid, 1).unwrap();
+        assert_eq!(v1.description, "v1");
+        assert_eq!(v1.hash, "h1", "历史版本内容应保持原样");
+        let v2 = read_object_version(&root, uuid, 2).unwrap();
+        assert_eq!(v2.hash, "h2");
+
+        // 非法 uuid 返回空列表
+        assert!(list_object_versions(&root, "../").unwrap().is_empty());
+        // 无效 uuid 保存报错
+        assert!(save_object_version(&root, "bad/../uuid", &obj).is_err());
     }
 }

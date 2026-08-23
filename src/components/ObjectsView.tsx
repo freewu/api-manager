@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useT } from "../i18n";
+import { saveObjectVersion } from "../commands";
 import {
   ObjectDef,
   ObjectImportResult,
@@ -79,9 +80,17 @@ export default function ObjectsView({
 
   const save = async () => {
     if (!dirty || !draft) return;
+    // 保存前自动记录对象版本快照（.object_version/<uuid>/<n>.json）
+    const snapshot = JSON.parse(JSON.stringify(draft)) as ObjectDef;
+    if (!snapshot.uuid) snapshot.uuid = crypto.randomUUID();
+    try {
+      await saveObjectVersion(snapshot.uuid, snapshot);
+    } catch {
+      // 版本保存失败不阻断主保存
+    }
     const next = {
       groups: store.groups,
-      objects: store.objects.map((o) => (o.hash === selectedHash ? draft : o)),
+      objects: store.objects.map((o) => (o.hash === selectedHash ? snapshot : o)),
     };
     try {
       const fresh = await onSave(next);

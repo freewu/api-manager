@@ -10,9 +10,11 @@ import type {
   HttpResult,
   InfoJson,
   MockStatus,
+  ObjectDef,
   ObjectImportResult,
   ObjectStore,
   ObjectUsageItem,
+  ObjectVersionInfo,
   TreeNode,
   UpdateInfo,
   VersionInfo,
@@ -426,6 +428,18 @@ export function importDdl(group: string, ddl: string): Promise<ObjectImportResul
 
 export function objectUsage(store: ObjectStore): Promise<ObjectUsageItem[]> {
   return invoke<ObjectUsageItem[]>("object_usage", { store });
+}
+
+export function saveObjectVersion(uuid: string, snapshot: ObjectDef): Promise<string> {
+  return invoke<string>("save_object_version", { uuid, snapshot });
+}
+
+export function listObjectVersions(uuid: string): Promise<ObjectVersionInfo[]> {
+  return invoke<ObjectVersionInfo[]>("list_object_versions", { uuid });
+}
+
+export function readObjectVersion(uuid: string, version: number): Promise<ObjectDef> {
+  return invoke<ObjectDef>("read_object_version", { uuid, version });
 }
 
 export function getAppVersion(): Promise<string> {
