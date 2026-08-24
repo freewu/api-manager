@@ -6,12 +6,14 @@ import ObjectsTree from "./ObjectsTree";
 import { ObjectImportResult, ObjectStore, ObjectUsageItem } from "../types";
 import { FormatIcon } from "./FormatSelect";
 import { useT } from "../i18n";
+import { GenLogsList } from "./GenLogsList";
+import { GenLogItem } from "../commands";
 import iconHttp from "../assets/icon-http.png";
 import iconWs from "../assets/icon-websocket.png";
 import iconGql from "../assets/icon-graphql.png";
 import iconSocketIo from "../assets/icon-socketio.png";
 
-export type AppView = "api" | "history" | "objects";
+export type AppView = "api" | "history" | "objects" | "genlogs";
 
 interface Props {
   width?: number;
@@ -75,6 +77,12 @@ interface Props {
   onHistoryClear: () => void;
   // Diff 比对
   historyDiffMode: boolean;
+  /** 数据生成记录（视图模式，与请求历史一致） */
+  genLogsRecords: GenLogItem[];
+  genLogsLoading: boolean;
+  genLogsSelected: string | null;
+  onGenLogsSelect: (id: string) => void;
+  onGenLogsReload: () => void;
   historyDiffIds: string[];
   historyDiffError: string;
   onHistoryToggleDiffMode: (on: boolean) => void;
@@ -478,7 +486,7 @@ function NodeRow({
 
 export function Sidebar(props: Props) {
   const t = useT();
-  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, onOpenGenLogs, view, onSwitchView, onImportPostman, onImportCurl, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onImportApiDoc, onImportExtra, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
+  const { tree, loading, genLogsRecords, genLogsLoading, genLogsSelected, onGenLogsSelect, onGenLogsReload, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, onOpenGenLogs, view, onSwitchView, onImportPostman, onImportCurl, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onImportApiDoc, onImportExtra, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
   const [importMenu, setImportMenu] = useState(false);
   /** 对象管理：底部导入（建表语句 / 建表文件） */
   const [objImportMenu, setObjImportMenu] = useState(false);
@@ -845,6 +853,15 @@ export function Sidebar(props: Props) {
           importReq={props.objectsImportReq}
         />
       )}
+      {view === "genlogs" && (
+        <GenLogsList
+          records={genLogsRecords}
+          loading={genLogsLoading}
+          selectedId={genLogsSelected}
+          onSelect={onGenLogsSelect}
+          onReload={onGenLogsReload}
+        />
+      )}
       {view === "history" && (
         <HistoryList
           records={props.historyRecords}
@@ -921,7 +938,7 @@ export function Sidebar(props: Props) {
           </>
         )}
         <button
-          className="icon-btn"
+          className={`icon-btn ${view === "genlogs" ? "active" : ""}`}
           onClick={onOpenGenLogs}
           title={t("sidebar.genLogs")}
           aria-label={t("sidebar.genLogs")}

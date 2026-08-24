@@ -163,6 +163,13 @@ export default function ObjectsView({
     }
     return codeOther;
   }, [codeLang, codeJava, codeOther]);
+  const highlight = (text: string, lang: string): string => {
+    try {
+      return hljs.highlight(text, { language: lang }).value;
+    } catch {
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  };
   /** 建表语句（SQL） */
   const ddlText = useMemo(() => {
     if (!draft) return "";
@@ -180,13 +187,6 @@ export default function ObjectsView({
       setTimeout(() => setDdlCopied(false), 1500);
     } catch {
       /* noop */
-    }
-  };
-  const highlight = (text: string, lang: string): string => {
-    try {
-      return hljs.highlight(text, { language: lang }).value;
-    } catch {
-      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
   };
   const [copied, setCopied] = useState(false);

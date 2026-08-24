@@ -6,6 +6,7 @@ import { AppView } from "./Sidebar";
 import { ApiWorkspace } from "./ApiWorkspace";
 import { HistoryDetail } from "./HistoryDetail";
 import { HistoryDiff } from "./HistoryDiff";
+import { GenLogsDetail } from "./GenLogsDetail";
 import ObjectsView from "./ObjectsView";
 import { ObjectDef, ObjectImportResult, ObjectStore } from "../types";
 
@@ -22,6 +23,8 @@ interface RightPaneProps {
   historyDiff: HistoryDiffPair | null;
   historyDiffLoading: boolean;
   onHistoryDiffExit: () => void;
+  /** 数据生成记录详情（视图模式） */
+  genLogsDetail: import("../commands").GenLogItem | null;
   baseUrl: string;
   currentVersion: number;
   enableVersion: boolean;
@@ -73,6 +76,7 @@ export function RightPane({
   historyDiff,
   historyDiffLoading,
   onHistoryDiffExit,
+  genLogsDetail,
   baseUrl,
   currentVersion,
   exampleVersion,
@@ -156,6 +160,10 @@ export function RightPane({
             ) : (
               <HistoryDetail detail={historyDetail} loading={historyDetailLoading} />
             )}
+          </div>
+        ) : view === "genlogs" ? (
+          <div className="history-view-content">
+            <GenLogsDetail detail={genLogsDetail} />
           </div>
         ) : api ? (
           <ApiWorkspace

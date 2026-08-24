@@ -1,0 +1,75 @@
+import { GenLogItem } from "../commands";
+import { useT } from "../i18n";
+
+function fmtMs(ms: number): string {
+  if (ms < 1000) return `${ms} ms`;
+  return `${(ms / 1000).toFixed(2)} s`;
+}
+
+interface Props {
+  detail: GenLogItem | null;
+}
+
+/** 数据生成记录详情（右侧，布局与请求历史类似） */
+export function GenLogsDetail({ detail }: Props) {
+  const t = useT();
+  if (!detail) {
+    return <div className="genlogs-empty genlogs-detail-empty">{t("objects.genLogsEmpty")}</div>;
+  }
+  return (
+    <div className="genlogs-detail">
+      <div className="genlogs-detail-head">
+        <span className="genlogs-badge">{detail.format.toUpperCase()}</span>
+        <span className="genlogs-detail-name">{detail.object_name}</span>
+        <span className="genlogs-detail-file">{detail.file}</span>
+      </div>
+      <div className="genlogs-info">
+        <div className="genlogs-info-row">
+          <label>{t("objects.genLogsTime")}</label>
+          <span>{detail.time_str}</span>
+        </div>
+        <div className="genlogs-info-row">
+          <label>{t("objects.genLogsTable")}</label>
+          <span>{detail.table}</span>
+        </div>
+        <div className="genlogs-info-row">
+          <label>{t("objects.genDataCount")}</label>
+          <span>{detail.count}</span>
+        </div>
+        <div className="genlogs-info-row">
+          <label>{t("objects.genLogsElapsed")}</label>
+          <span>{fmtMs(detail.elapsed_ms)}</span>
+        </div>
+        <div className="genlogs-info-row">
+          <label>{t("objects.genLogsFile")}</label>
+          <span className="genlogs-path">{detail.file}</span>
+        </div>
+        <div className="genlogs-info-row">
+          <label>{t("objects.genDataDir")}</label>
+          <span className="genlogs-path">{detail.dir}</span>
+        </div>
+      </div>
+      <div className="genlogs-props-title">{t("objects.genLogsSubmit")}</div>
+      <table className="genlogs-props">
+        <thead>
+          <tr>
+            <th>{t("objects.genDataKey")}</th>
+            <th>{t("objects.genDataKind")}</th>
+            <th>{t("objects.genDataMock")}</th>
+            <th>{t("objects.genDataEnabled")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {detail.props.map((p, i) => (
+            <tr key={i} className={p.enabled ? "" : "gen-row-off"}>
+              <td>{p.key}</td>
+              <td>{p.kind}</td>
+              <td>{p.mock || "—"}</td>
+              <td>{p.enabled ? "✓" : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

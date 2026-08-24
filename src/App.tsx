@@ -20,7 +20,7 @@ import { CurlImportModal } from "./components/CurlImportModal";
 import { AppToolbar } from "./components/AppToolbar";
 import { RightPane } from "./components/RightPane";
 import { AppView, Sidebar } from "./components/Sidebar";
-import GenLogsModal from "./components/GenLogsModal";
+import { useGenLogs } from "./hooks/useGenLogs";
 import { useHistory } from "./hooks/useHistory";
 import { useUi } from "./hooks/useUi";
 import { useSettings } from "./hooks/useSettings";
@@ -48,8 +48,8 @@ export default function App() {
   const ui = useUi();
   const { toast, showToast, sidebarWidth, startResize, resetSidebarWidth, editorRatio, startVResize, resetEditorRatio, emptyMenu, setEmptyMenu } = ui;
 
-  // ---------- 数据生成记录管理 ----------
-  const [genLogsOpen, setGenLogsOpen] = useState(false);
+  // ---------- 数据生成记录（视图模式，与请求历史一致） ----------
+  const genLogs = useGenLogs();
 
   // ---------- 设置 ----------
   const settingsHook = useSettings((e) => showToast(t("toast.saveSettingsFailed", { err: e })));
@@ -508,7 +508,12 @@ export default function App() {
               onVersions={openVersions}
               onStats={setStatsNode}
               onOpenSettings={() => setSettingsOpen(true)}
-              onOpenGenLogs={() => setGenLogsOpen(true)}
+              onOpenGenLogs={() => setView(view === "genlogs" ? "api" : "genlogs")}
+              genLogsRecords={genLogs.records}
+              genLogsLoading={genLogs.loading}
+              genLogsSelected={genLogs.selectedId}
+              onGenLogsSelect={genLogs.select}
+              onGenLogsReload={genLogs.reload}
               onImportPostman={() => void imports.handleImportPostman()}
               onImportCurl={modals.openCurlImport}
               onImportOpenApi={() => void imports.handleImportOpenApi()}
@@ -569,6 +574,7 @@ export default function App() {
               historyDiff={history.diffPair}
               historyDiffLoading={history.diffLoading}
               onHistoryDiffExit={history.exitDiff}
+              genLogsDetail={genLogs.records.find((r) => r.file === genLogs.selectedId) ?? null}
               baseUrl={baseUrl}
               currentVersion={currentVersion}
               exampleVersion={exampleVersion}
@@ -706,8 +712,6 @@ export default function App() {
               onClose={() => setApiDocView(null)}
             />
           )}
-
-          {genLogsOpen && <GenLogsModal onClose={() => setGenLogsOpen(false)} t={t} />}
         </div>
       )}
     </Suspense>
