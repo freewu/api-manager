@@ -255,7 +255,8 @@ export type ImportFormat =
   | "docway"
   | "hoppscotch"
   | "metersphere"
-  | "rap2";
+  | "rap2"
+  | "curl";
 
 /** 导入格式中必选（不可关闭）的类型 */
 export const REQUIRED_IMPORT_FORMATS: ImportFormat[] = ["postman", "openapi"];
@@ -338,6 +339,7 @@ export const defaultSettings = (): AppSettings => ({
     hoppscotch: false,
     metersphere: false,
     rap2: false,
+    curl: false,
   },
   exportTypes: {
     postman: true,

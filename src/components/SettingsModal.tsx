@@ -57,6 +57,7 @@ const IMPORT_FORMATS: { value: ImportFormat; labelKey: string }[] = [
   { value: "hoppscotch", labelKey: "export.hoppscotch" },
   { value: "metersphere", labelKey: "export.metersphere" },
   { value: "rap2", labelKey: "export.rap2" },
+  { value: "curl", labelKey: "export.curl" },
 ];
 
 /** 导出格式列表（含可开关的） */

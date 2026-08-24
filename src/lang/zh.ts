@@ -478,6 +478,7 @@ export const ZH: Record<string, string> = {
   "export.hoppscotch": "Hoppscotch",
   "export.metersphere": "MeterSphere",
   "export.rap2": "RAP2（自动识别单接口/项目）",
+  "export.curl": "Curl 命令",
   "export.rap2-project": "RAP2 项目（modules）",
   "export.rap2-single": "RAP2 单接口",
   "export.export": "导出",

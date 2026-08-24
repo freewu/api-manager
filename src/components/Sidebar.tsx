@@ -906,7 +906,7 @@ export function Sidebar(props: Props) {
                       Postman Collection
                     </button>
                   )}
-                  {onImportCurl && (
+                  {settings?.importTypes?.curl !== false && onImportCurl && (
                     <button
                       onClick={() => {
                         setImportMenu(false);
