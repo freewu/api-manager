@@ -958,3 +958,159 @@
   background: color-mix(in srgb, var(--accent, #4f9cf9) 14%, transparent);
   color: var(--accent, #4f9cf9);
 }
+
+/* ---------- 数据生成弹窗 ---------- */
+.gen-modal {
+  width: 620px;
+  max-width: 92vw;
+}
+.gen-body {
+  padding: 12px 16px;
+  max-height: 60vh;
+  overflow: auto;
+}
+.gen-prop-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.gen-prop-table th,
+.gen-prop-table td {
+  border-bottom: 1px solid var(--border, rgba(128, 128, 128, 0.25));
+  padding: 5px 6px;
+  text-align: left;
+}
+.gen-col-check {
+  width: 30px;
+  text-align: center !important;
+}
+.gen-kind {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent, #4f9cf9) 14%, transparent);
+  color: var(--accent, #4f9cf9);
+  font-size: 11px;
+}
+.gen-row-off td {
+  opacity: 0.45;
+}
+.gen-mock-cell {
+  display: flex;
+  gap: 6px;
+}
+.gen-mock-cell input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.35));
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+}
+.gen-mock-pick {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  opacity: 0.7;
+}
+.gen-mock-pick:hover {
+  opacity: 1;
+}
+.gen-options {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+.gen-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.gen-opt > label {
+  width: 96px;
+  flex: none;
+  font-size: 12px;
+  opacity: 0.85;
+}
+.gen-input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.35));
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+}
+.gen-count {
+  width: 140px;
+  flex: none;
+}
+.gen-dir {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.gen-format-pills {
+  display: flex;
+  gap: 6px;
+}
+.gen-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.35));
+  cursor: pointer;
+  font-size: 12px;
+}
+.gen-pill.active {
+  background: color-mix(in srgb, var(--accent, #4f9cf9) 18%, transparent);
+  border-color: var(--accent, #4f9cf9);
+  color: var(--accent, #4f9cf9);
+}
+.gen-pill input {
+  display: none;
+}
+.gen-err {
+  margin-top: 10px;
+  color: #e5534b;
+  font-size: 12px;
+}
+
+/* ---------- 生成完成右下角提示 ---------- */
+.gen-done-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1000;
+  width: 300px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg, #1e2430) 92%, var(--accent, #4f9cf9));
+  border: 1px solid var(--accent, #4f9cf9);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  font-size: 12px;
+}
+.gen-done-toast:hover {
+  border-color: var(--accent, #4f9cf9);
+  filter: brightness(1.08);
+}
+.gen-done-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.gen-done-file {
+  opacity: 0.8;
+  word-break: break-all;
+}
+.gen-done-open {
+  margin-top: 6px;
+  color: var(--accent, #4f9cf9);
+}

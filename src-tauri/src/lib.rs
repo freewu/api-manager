@@ -9149,6 +9149,65 @@ fn save_objects(
     objects::save_objects(&root, &store)
 }
 
+/// 数据生成结果
+#[derive(serde::Serialize)]
+struct GenDataResult {
+    file: String,
+    dir: String,
+    count: usize,
+    elapsed_ms: u64,
+}
+
+/// 写入生成的数据文件，并在工作区 .gen_log/records.json 追加一条生成记录（含耗时）。
+#[tauri::command]
+fn gen_data(
+    state: State<'_, WorkspaceState>,
+    dir: String,
+    file_name: String,
+    content: String,
+    format: String,
+    table: String,
+    count: usize,
+    elapsed_ms: u64,
+) -> Result<GenDataResult, String> {
+    let dir_path = std::path::Path::new(&dir);
+    if !dir_path.is_dir() {
+        return Err(format!("导出目录不存在: {dir}"));
+    }
+    let path = dir_path.join(&file_name);
+    std::fs::write(&path, content).map_err(|e| format!("写入文件失败: {e}"))?;
+
+    // 生成记录：工作区根 .gen_log/records.json（追加）
+    let root = workspace_root(&state)?;
+    let log_dir = root.join(".gen_log");
+    std::fs::create_dir_all(&log_dir).map_err(|e| format!("创建 .gen_log 失败: {e}"))?;
+    let log_path = log_dir.join("records.json");
+    let mut records: Vec<serde_json::Value> = if log_path.exists() {
+        std::fs::read_to_string(&log_path)
+            .ok()
+            .and_then(|t| serde_json::from_str(&t).ok())
+            .unwrap_or_default()
+    } else {
+        vec![]
+    };
+    records.push(serde_json::json!({
+        "time": std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0),
+        "file": file_name,
+        "dir": dir,
+        "format": format,
+        "table": table,
+        "count": count,
+        "elapsedMs": elapsed_ms,
+    }));
+    let text = serde_json::to_string_pretty(&records).map_err(|e| format!("序列化生成记录失败: {e}"))?;
+    std::fs::write(&log_path, text).map_err(|e| format!("写入生成记录失败: {e}"))?;
+
+    Ok(GenDataResult { file: file_name, dir, count, elapsed_ms })
+}
+
 /// 从 JSON 文本生成对象（嵌套 object 提取为独立对象，hash 相同则复用已有对象）
 #[tauri::command]
 fn import_json_object(
@@ -9758,6 +9817,7 @@ pub fn run() {
             mock_status,
             list_objects,
             save_objects,
+            gen_data,
             import_json_object,
             import_ddl,
             object_usage,

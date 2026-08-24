@@ -5,6 +5,8 @@ import { ObjectDef, ObjectImportResult, ObjectProp, ObjectStore, ObjectUsageItem
 import { useT } from "../i18n";
 import { ObjectVersionModal } from "./ObjectVersionModal";
 import GroupStatsModal from "./GroupStatsModal";
+import GenDataModal from "./GenDataModal";
+import { openPath, GenDataResult } from "../commands";
 
 interface Props {
   store: ObjectStore;
@@ -72,6 +74,10 @@ export default function ObjectsTree({
   /** 父分组 id（空 = 顶层） */
   const [groupParent, setGroupParent] = useState("");
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  /** 数据生成弹窗对象（null = 未打开） */
+  const [genDataObj, setGenDataObj] = useState<ObjectDef | null>(null);
+  /** 数据生成完成提示（右下角，点击打开目录） */
+  const [genDone, setGenDone] = useState<GenDataResult | null>(null);
   /** 对象行右键菜单（uuid） */
   const [objMenu, setObjMenu] = useState<{ x: number; y: number; uuid: string } | null>(null);
   const [groupMenu, setGroupMenu] = useState<{ x: number; y: number; id: string } | null>(null);
@@ -820,6 +826,33 @@ export default function ObjectsTree({
           isDeprecated={isObjDeprecated}
           onClose={() => setGroupStats(null)}
         />
+      )}
+
+      {/* 数据生成弹窗 */}
+      {genDataObj && (
+        <GenDataModal
+          obj={genDataObj}
+          onClose={() => setGenDataObj(null)}
+          onDone={(r) => setGenDone(r)}
+          t={t}
+        />
+      )}
+
+      {/* 生成完成右下角提示：点击打开文件所在目录 */}
+      {genDone && (
+        <div
+          className="gen-done-toast"
+          onClick={() => {
+            void openPath(genDone.dir);
+            setGenDone(null);
+          }}
+        >
+          <div className="gen-done-title">✅ {t("objects.genDataDone")}</div>
+          <div className="gen-done-file">
+            {genDone.file}（{genDone.count} 条，{t("objects.genDataElapsed", { s: (genDone.elapsed_ms / 1000).toFixed(1) })}）
+          </div>
+          <div className="gen-done-open">📂 {t("objects.genDataOpenDir")}</div>
+        </div>
       )}
 
       {/* 删除确认弹窗（对象 / 分组） */}

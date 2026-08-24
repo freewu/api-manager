@@ -460,3 +460,37 @@ export function checkUpdate(): Promise<UpdateInfo> {
 export function openExternal(url: string): Promise<void> {
   return invoke("plugin:opener|open_url", { url });
 }
+
+/** 在系统文件管理器中打开路径（目录/文件） */
+export function openPath(path: string): Promise<void> {
+  return invoke("plugin:opener|open_path", { path });
+}
+
+/** 数据生成结果 */
+export interface GenDataResult {
+  file: string;
+  dir: string;
+  count: number;
+  elapsed_ms: number;
+}
+
+/** 写入生成的数据文件并记录 .gen_log */
+export function genData(p: {
+  dir: string;
+  fileName: string;
+  content: string;
+  format: string;
+  table: string;
+  count: number;
+  elapsedMs: number;
+}): Promise<GenDataResult> {
+  return invoke<GenDataResult>("gen_data", {
+    dir: p.dir,
+    fileName: p.fileName,
+    content: p.content,
+    format: p.format,
+    table: p.table,
+    count: p.count,
+    elapsedMs: p.elapsedMs,
+  });
+}
