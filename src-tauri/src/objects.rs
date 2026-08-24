@@ -64,6 +64,12 @@ pub struct ObjectDef {
     /// 唯一标识：属性按 key 排序拼接后的 SHA-256 前 12 位
     pub hash: String,
     pub name: String,
+    /// 代码生成类名（可空；不设置则不生成代码）
+    #[serde(rename = "object_name", default)]
+    pub object_name: String,
+    /// Java 包名（可空；生成 Java 代码时输出 package 语句）
+    #[serde(rename = "package_name", default)]
+    pub package_name: String,
     /// 所属分组 id（空串为未分组）
     pub group: String,
     pub description: String,
@@ -78,6 +84,8 @@ impl Default for ObjectDef {
             uuid: String::new(),
             hash: String::new(),
             name: String::new(),
+            object_name: String::new(),
+            package_name: String::new(),
             group: String::new(),
             description: String::new(),
             properties: vec![],
@@ -430,6 +438,8 @@ pub fn import_json_object(
             uuid: uuid::Uuid::new_v4().to_string(),
             hash: hash.clone(),
             name: suggested_name.to_string(),
+            object_name: suggested_name.to_string(),
+            package_name: String::new(),
             group: group.to_string(),
             description: String::new(),
             properties: props,
@@ -508,6 +518,8 @@ pub fn import_ddl(root: &Path, group: &str, ddl: &str) -> Result<ObjectImportRes
             uuid: uuid::Uuid::new_v4().to_string(),
             hash: hash.clone(),
             name: table_name.clone(),
+            object_name: table_name.clone(),
+            package_name: String::new(),
             group: group.clone(),
             description: String::new(),
             properties: props,

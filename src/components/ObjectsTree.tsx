@@ -40,13 +40,10 @@ export default function ObjectsTree({
   const [search, setSearch] = useState("");
   /** 删除确认弹窗（对象 / 分组） */
   const [confirmDel, setConfirmDel] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
-  /** 重命名对象弹窗（名称强制英文：字母开头，仅字母数字） */
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [renameName, setRenameName] = useState("");
-  const [renameTarget, setRenameTarget] = useState<ObjectDef | null>(null);
-  /** 树内联编辑显示名称（双击行触发；对象改 displayName，分组改分组名） */
+  /** 树内联编辑（双击行触发：对象改显示名；右键重命名：对象改文件名；分组改分组名） */
   const [inlineEdit, setInlineEdit] = useState<
     | { kind: "object"; uuid: string; value: string }
+    | { kind: "objname"; uuid: string; value: string }
     | { kind: "group"; id: string; value: string }
     | null
   >(null);
@@ -384,7 +381,7 @@ export default function ObjectsTree({
     void saveStore({ groups, objects });
   };
 
-  /** 树内联编辑提交：对象 → displayName；分组 → 分组名 */
+  /** 树内联编辑提交：对象 → displayName；对象重命名 → name（文件名）；分组 → 分组名 */
   const commitInlineEdit = () => {
     const e = inlineEdit;
     if (!e) return;
@@ -396,6 +393,17 @@ export default function ObjectsTree({
         objects: store.objects.map((o) =>
           o.uuid === e.uuid ? (v ? { ...o, displayName: v } : { ...o, displayName: undefined }) : o
         ),
+      });
+    } else if (e.kind === "objname") {
+      const v = e.value.trim();
+      if (!VALID_OBJECT_NAME.test(v)) {
+        onToast(t("objects.nameInvalid"));
+        return;
+      }
+      if (v === store.objects.find((o) => o.uuid === e.uuid)?.name) return;
+      void saveStore({
+        groups: store.groups,
+        objects: store.objects.map((o) => (o.uuid === e.uuid ? { ...o, name: v } : o)),
       });
     } else {
       renameGroupImpl(e.id, e.value);
@@ -469,27 +477,7 @@ export default function ObjectsTree({
     void saveStore({ groups: store.groups, objects: [copy, ...store.objects] });
   };
 
-  const openRename = (o: ObjectDef) => {
-    setRenameTarget(o);
-    setRenameName(o.name);
-    setRenameOpen(true);
-  };
-
-  const doRename = () => {
-    if (!renameTarget) return;
-    const name = renameName.trim();
-    if (!VALID_OBJECT_NAME.test(name)) {
-      onToast(t("objects.nameInvalid"));
-      return;
-    }
-    setRenameOpen(false);
-    if (name === renameTarget.name) return;
-    void saveStore({
-      groups: store.groups,
-      objects: store.objects.map((x) => (x.uuid === renameTarget.uuid ? { ...x, name } : x)),
-    });
-  };
-
+  /** 删除对象 */
   const deleteObject = (o: ObjectDef) => {
     setConfirmDel({
       title: t("objects.confirmTitle"),
@@ -543,9 +531,19 @@ export default function ObjectsTree({
               selected={selectedUuid === o.uuid}
               onSelect={() => onSelectObject(o.uuid)}
               onStartEdit={() => setInlineEdit({ kind: "object", uuid: o.uuid, value: o.displayName || "" })}
-              editActive={inlineEdit?.kind === "object" && inlineEdit.uuid === o.uuid}
-              editValue={inlineEdit?.kind === "object" && inlineEdit.uuid === o.uuid ? inlineEdit.value : ""}
-              onEditChange={(v) => setInlineEdit({ kind: "object", uuid: o.uuid, value: v })}
+              editActive={(inlineEdit?.kind === "object" || inlineEdit?.kind === "objname") && inlineEdit.uuid === o.uuid}
+              editValue={
+                (inlineEdit?.kind === "object" || inlineEdit?.kind === "objname") && inlineEdit.uuid === o.uuid
+                  ? inlineEdit.value
+                  : ""
+              }
+              onEditChange={(v) =>
+                setInlineEdit({
+                  kind: inlineEdit?.kind === "objname" ? "objname" : "object",
+                  uuid: o.uuid,
+                  value: v,
+                })
+              }
               onCommitEdit={commitInlineEdit}
               onCancelEdit={() => setInlineEdit(null)}
               onContextMenu={(e, uuid) => {
@@ -567,9 +565,19 @@ export default function ObjectsTree({
               selected={selectedUuid === o.uuid}
               onSelect={() => onSelectObject(o.uuid)}
               onStartEdit={() => setInlineEdit({ kind: "object", uuid: o.uuid, value: o.displayName || "" })}
-              editActive={inlineEdit?.kind === "object" && inlineEdit.uuid === o.uuid}
-              editValue={inlineEdit?.kind === "object" && inlineEdit.uuid === o.uuid ? inlineEdit.value : ""}
-              onEditChange={(v) => setInlineEdit({ kind: "object", uuid: o.uuid, value: v })}
+              editActive={(inlineEdit?.kind === "object" || inlineEdit?.kind === "objname") && inlineEdit.uuid === o.uuid}
+              editValue={
+                (inlineEdit?.kind === "object" || inlineEdit?.kind === "objname") && inlineEdit.uuid === o.uuid
+                  ? inlineEdit.value
+                  : ""
+              }
+              onEditChange={(v) =>
+                setInlineEdit({
+                  kind: inlineEdit?.kind === "objname" ? "objname" : "object",
+                  uuid: o.uuid,
+                  value: v,
+                })
+              }
               onCommitEdit={commitInlineEdit}
               onCancelEdit={() => setInlineEdit(null)}
               onContextMenu={(e, uuid) => {
@@ -610,7 +618,7 @@ export default function ObjectsTree({
             onClick={() => {
               const o = store.objects.find((x) => x.uuid === objMenu.uuid);
               setObjMenu(null);
-              if (o) openRename(o);
+              if (o) setInlineEdit({ kind: "objname", uuid: o.uuid, value: o.name });
             }}
           >
             ✎ {t("objects.renameObject")}
@@ -677,38 +685,6 @@ export default function ObjectsTree({
                 }}
               >
                 {t("common.delete")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 重命名对象弹窗（名称强制英文） */}
-      {renameOpen && renameTarget && (
-        <div className="objects-import-mask" onClick={() => setRenameOpen(false)}>
-          <div className="objects-import-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="objects-import-title">{t("objects.renameObject")}</div>
-            <div className="objects-import-field">
-              <label>{t("objects.importName")}</label>
-              <input
-                value={renameName}
-                onChange={(e) => setRenameName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") doRename();
-                }}
-                placeholder="user / orderInfo / petProfile"
-                autoFocus
-              />
-              {renameName.trim() && !VALID_OBJECT_NAME.test(renameName.trim()) && (
-                <div className="objects-name-error">{t("objects.nameInvalid")}</div>
-              )}
-            </div>
-            <div className="objects-import-actions">
-              <button className="btn" onClick={() => setRenameOpen(false)}>
-                {t("common.cancel")}
-              </button>
-              <button className="btn primary" onClick={doRename}>
-                {t("common.confirm")}
               </button>
             </div>
           </div>

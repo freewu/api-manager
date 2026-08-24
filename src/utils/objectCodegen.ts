@@ -67,11 +67,11 @@ function typeOf(lang: string, p: ObjectProp, obj: ObjectDef, all: ObjectDef[]): 
   };
   if (p.kind === "object") {
     const ref = findObj(all, p.refHash, obj.name);
-    if (ref) return ref.name;
+    if (ref) return ref.object_name?.trim() || ref.name;
     return "any";
   }
   if (p.kind === "list") {
-    const inner = p.itemKind === "object" ? (findObj(all, p.refHash, obj.name)?.name ?? "any") : base(p.itemKind);
+    const inner = p.itemKind === "object" ? ((findObj(all, p.refHash, obj.name)?.object_name?.trim() || findObj(all, p.refHash, obj.name)?.name) ?? "any") : base(p.itemKind);
     switch (lang) {
       case "typescript":
       case "dart":
@@ -115,39 +115,44 @@ const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 /** 生成指定语言的对象定义代码 */
 export function generateObjectCode(lang: string, obj: ObjectDef, all: ObjectDef[]): string {
   const props = obj.properties || [];
+  // 类名取 object_name；未设置 object_name 则不生成代码
+  const name = (obj.object_name || "").trim();
+  if (!name) return "";
   const desc = (p: ObjectProp) => (p.description ? `  // ${p.description}` : "");
   switch (lang) {
     case "typescript": {
       const lines = props.map((p) => `  ${p.key}${p.required ? "" : "?"}: ${typeOf(lang, p, obj, all)};${desc(p)}`);
-      return `export interface ${obj.name} {\n${lines.join("\n")}\n}`;
+      return `export interface ${name} {\n${lines.join("\n")}\n}`;
     }
     case "dart": {
       const lines = props.map((p) => `  ${p.key}${p.required ? "" : "?"};${desc(p)}`);
-      return `class ${obj.name} {\n${lines.join("\n")}\n}`;
+      return `class ${name} {\n${lines.join("\n")}\n}`;
     }
     case "java": {
       const lines = props.map(
         (p) => `  public ${typeOf(lang, p, obj, all)} ${p.key};${desc(p)}`
       );
-      return `public class ${obj.name} {\n${lines.join("\n")}\n}`;
+      const pkg = (obj.package_name || "").trim();
+      const head = pkg ? `package ${pkg};\n\n` : "";
+      return `${head}public class ${name} {\n${lines.join("\n")}\n}`;
     }
     case "csharp": {
       const lines = props.map(
         (p) => `  public ${typeOf(lang, p, obj, all)} ${cap(p.key)} { get; set; }${desc(p)}`
       );
-      return `public class ${obj.name}\n{\n${lines.join("\n")}\n}`;
+      return `public class ${name}\n{\n${lines.join("\n")}\n}`;
     }
     case "kotlin": {
       const lines = props.map(
         (p) => `    val ${p.key}: ${typeOf(lang, p, obj, all)}${p.required ? "" : "?"}${desc(p)}`
       );
-      return `data class ${obj.name}(\n${lines.join(",\n")}\n)`;
+      return `data class ${name}(\n${lines.join(",\n")}\n)`;
     }
     case "go": {
       const lines = props.map(
         (p) => `  ${cap(p.key)} ${typeOf(lang, p, obj, all)} \`json:"${p.key}"\`${desc(p)}`
       );
-      return `type ${obj.name} struct {\n${lines.join("\n")}\n}`;
+      return `type ${name} struct {\n${lines.join("\n")}\n}`;
     }
     case "rust": {
       const lines = props.map((p) => {
@@ -156,59 +161,59 @@ export function generateObjectCode(lang: string, obj: ObjectDef, all: ObjectDef[
         const close = p.required ? "" : ">";
         return `  pub ${p.key}: ${opt}${t}${close},${desc(p)}`;
       });
-      return `#[derive(Debug, Clone, Serialize, Deserialize)]\npub struct ${obj.name} {\n${lines.join("\n")}\n}`;
+      return `#[derive(Debug, Clone, Serialize, Deserialize)]\npub struct ${name} {\n${lines.join("\n")}\n}`;
     }
     case "python": {
       const lines = props.map((p) => `    ${p.key}: ${typeOf(lang, p, obj, all)}${desc(p)}`);
-      return `@dataclass\nclass ${obj.name}:\n${lines.join("\n")}`;
+      return `@dataclass\nclass ${name}:\n${lines.join("\n")}`;
     }
     case "swift": {
       const lines = props.map((p) => `  let ${p.key}: ${typeOf(lang, p, obj, all)}${p.required ? "" : "?"}${desc(p)}`);
-      return `struct ${obj.name}: Codable {\n${lines.join("\n")}\n}`;
+      return `struct ${name}: Codable {\n${lines.join("\n")}\n}`;
     }
     case "php": {
       const lines = props.map(
         (p) => `    public ${p.required ? "" : "?"}${typeOf(lang, p, obj, all)} $${p.key};${desc(p)}`
       );
-      return `class ${obj.name}\n{\n${lines.join("\n")}\n}`;
+      return `class ${name}\n{\n${lines.join("\n")}\n}`;
     }
     case "c": {
       const lines = props.map(
         (p) => `    ${typeOf(lang, p, obj, all)} ${p.key};${desc(p)}`
       );
-      return `typedef struct {\n${lines.join("\n")}\n} ${obj.name};`;
+      return `typedef struct {\n${lines.join("\n")}\n} ${name};`;
     }
     case "cpp": {
       const lines = props.map(
         (p) => `    ${typeOf(lang, p, obj, all)} ${p.key};${desc(p)}`
       );
-      return `struct ${obj.name} {\n${lines.join("\n")}\n};`;
+      return `struct ${name} {\n${lines.join("\n")}\n};`;
     }
     case "ruby": {
       const lines = props.map((p) => `  attr_accessor :${p.key}${desc(p)}`);
-      return `class ${obj.name}\n${lines.join("\n")}\nend`;
+      return `class ${name}\n${lines.join("\n")}\nend`;
     }
     case "objectivec": {
       const lines = props.map(
         (p) => `@property (nonatomic, strong) ${typeOf(lang, p, obj, all)} *${p.key};${desc(p)}`
       );
-      return `@interface ${obj.name} : NSObject\n${lines.join("\n")}\n@end`;
+      return `@interface ${name} : NSObject\n${lines.join("\n")}\n@end`;
     }
     case "julia": {
       const lines = props.map(
         (p) => `    ${p.key}::${typeOf(lang, p, obj, all)}${desc(p)}`
       );
-      return `struct ${obj.name}\n${lines.join("\n")}\nend`;
+      return `struct ${name}\n${lines.join("\n")}\nend`;
     }
     case "erlang": {
       const lines = props.map(
         (p) => `    ${p.key} :: ${typeOf(lang, p, obj, all)}${desc(p)}`
       );
-      return `-record(${obj.name.toLowerCase()}, {\n${lines.join(",\n")}\n}).`;
+      return `-record(${name.toLowerCase()}, {\n${lines.join(",\n")}\n}).`;
     }
     case "delphi": {
       const lines = props.map((p) => `    ${p.key}: ${typeOf(lang, p, obj, all)};${desc(p)}`);
-      return `type\n  T${obj.name} = record\n${lines.join("\n")}\n  end;`;
+      return `type\n  T${name} = record\n${lines.join("\n")}\n  end;`;
     }
     default:
       return "";

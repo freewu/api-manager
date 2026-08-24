@@ -7,7 +7,7 @@ import { ApiWorkspace } from "./ApiWorkspace";
 import { HistoryDetail } from "./HistoryDetail";
 import { HistoryDiff } from "./HistoryDiff";
 import ObjectsView from "./ObjectsView";
-import { ObjectDef, ObjectImportResult, ObjectStore, ObjectUsageItem } from "../types";
+import { ObjectDef, ObjectImportResult, ObjectStore } from "../types";
 
 /**
  * 右侧面板：左右分栏拖拽条 + 内容区（请求历史详情 / 接口编辑工作台 / 空状态）。
@@ -51,7 +51,6 @@ interface RightPaneProps {
   resizeTip: string;
   onEmptyContextMenu: (e: React.MouseEvent) => void;
   objectsStore: ObjectStore;
-  objectsUsage: ObjectUsageItem[];
   onObjectsSave: (store: ObjectStore) => Promise<ObjectStore>;
   onObjectsImport: (name: string, group: string, json: string) => Promise<ObjectImportResult>;
   onObjectsImportDdl: (group: string, ddl: string) => Promise<ObjectImportResult>;
@@ -102,7 +101,6 @@ export function RightPane({
   resizeTip,
   onEmptyContextMenu,
   objectsStore,
-  objectsUsage,
   onObjectsSave,
   onObjectsImport,
   onObjectsImportDdl,
@@ -135,7 +133,6 @@ export function RightPane({
         {view === "objects" ? (
           <ObjectsView
             store={objectsStore}
-            usage={objectsUsage}
             onSave={onObjectsSave}
             onImport={onObjectsImport}
             onImportDdl={onObjectsImportDdl}

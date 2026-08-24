@@ -603,7 +603,6 @@ export default function App() {
                 });
               }}
               objectsStore={objectsStore}
-              objectsUsage={objectsUsage}
               onObjectsSave={saveObjectsStore}
               onObjectsImport={importObjectsJson}
               onObjectsImportDdl={importObjectsDdl}

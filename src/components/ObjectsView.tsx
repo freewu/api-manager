@@ -22,12 +22,16 @@ import { useT } from "../i18n";
 import { renderMarkdown, saveObjectVersion } from "../commands";
 import { LangSelect } from "./LangSelect";
 import { OBJECT_LANGS, generateObjectCode } from "../utils/objectCodegen";
+
+/** 对象名称（object_name）：字母开头，仅字母/数字/下划线 */
+const OBJECT_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
+/** Java 包名（package_name）：小写字母开头，点分隔，每段字母/数字/下划线 */
+const PACKAGE_NAME_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
 import {
   ObjectDef,
   ObjectImportResult,
   ObjectProp,
   ObjectStore,
-  ObjectUsageItem,
   PROP_KINDS,
 } from "../types";
 
@@ -55,7 +59,6 @@ for (const [name, lang] of [
 
 interface Props {
   store: ObjectStore;
-  usage: ObjectUsageItem[];
   onSave: (store: ObjectStore) => Promise<ObjectStore>;
   onImport: (name: string, group: string, json: string) => Promise<ObjectImportResult>;
   onImportDdl: (group: string, ddl: string) => Promise<ObjectImportResult>;
@@ -79,7 +82,6 @@ function emptyProp(): ObjectProp {
 /** 对象管理：右侧对象配置（类似接口文档管理的响应编辑，kv 表格风格） */
 export default function ObjectsView({
   store,
-  usage,
   onSave,
   onImport: _onImport,
   onImportDdl: _onImportDdl,
@@ -106,12 +108,6 @@ export default function ObjectsView({
     if (!selected || !draft) return false;
     return JSON.stringify(selected) !== JSON.stringify(draft);
   }, [selected, draft]);
-
-  const usageOf = useMemo(() => {
-    const m: Record<string, ObjectUsageItem> = {};
-    for (const u of usage) m[u.hash] = u;
-    return m;
-  }, [usage]);
 
   // 右侧 tab：属性 / 对象描述 / 代码生成
   const [tab, setTab] = useState<"props" | "desc" | "code">("props");
@@ -176,6 +172,15 @@ export default function ObjectsView({
 
   const save = async () => {
     if (!dirty || !draft) return;
+    // 校验：对象名称 / 包名格式
+    if (draft.object_name && !OBJECT_NAME_RE.test(draft.object_name)) {
+      onToast(t("objects.objectNameInvalid"));
+      return;
+    }
+    if (draft.package_name && !PACKAGE_NAME_RE.test(draft.package_name)) {
+      onToast(t("objects.packageNameInvalid"));
+      return;
+    }
     // 保存前自动记录对象版本快照（.object_version/<uuid>/<n>.json）
     const snapshot = JSON.parse(JSON.stringify(draft)) as ObjectDef;
     if (!snapshot.uuid) snapshot.uuid = crypto.randomUUID();
@@ -215,52 +220,38 @@ export default function ObjectsView({
     setDraft(next);
   };
 
-  const usageItem = usageOf[selected.hash];
 
   return (
     <div className="history-view-content">
       <div className="history-detail objects-detail">
-        {/* 头部：名称 / 分组 / hash / 时间 / 保存 */}
+        {/* 头部：对象包名 / 对象名称 / 保存 */}
         <div className="objects-detail-head">
-          <input
-            className="objects-name-input"
-            value={draft.displayName || ""}
-            onChange={(e) => patch((d) => void (d.displayName = e.target.value.trim() || undefined))}
-            placeholder={draft.displayName ? undefined : t("objects.displayName")}
-            spellCheck={false}
-          />
-          <input
-            className="objects-name-input objects-name-input-en"
-            value={draft.name}
-            onChange={(e) => patch((d) => void (d.name = e.target.value))}
-            placeholder={t("objects.importName")}
-            spellCheck={false}
-          />
-          <select
-            className="objects-group-select"
-            value={draft.group}
-            onChange={(e) => patch((d) => void (d.group = e.target.value))}
-          >
-            <option value="">{t("objects.ungrouped")}</option>
-            {store.groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
-          <span className="objects-hash" title={selected.hash}>
-            {selected.hash.slice(0, 12)}
-          </span>
-          <span className="objects-meta">
-            {t("objects.createdAt")} {fmt(selected.createdAt)}
-            {"  "}
-            {t("objects.updatedAt")} {fmt(selected.updatedAt)}
-          </span>
-          {usageItem && usageItem.apiCount > 0 && (
-            <span className="objects-usage" title={usageItem.apis.map((a) => `${a.method} ${a.path}`).join("\n")}>
-              {t("objects.apiCount", { count: usageItem.apiCount })}
-            </span>
-          )}
+          <div className="objects-head-field">
+            <span className="objects-head-label">{t("objects.packageName")}</span>
+            <input
+              className="objects-name-input"
+              value={draft.package_name || ""}
+              onChange={(e) => patch((d) => void (d.package_name = e.target.value.trim() || undefined))}
+              placeholder={t("objects.packageNamePh")}
+              spellCheck={false}
+            />
+            {!!draft.package_name && !PACKAGE_NAME_RE.test(draft.package_name) && (
+              <span className="objects-name-error">{t("objects.packageNameInvalid")}</span>
+            )}
+          </div>
+          <div className="objects-head-field">
+            <span className="objects-head-label">{t("objects.objectName")}</span>
+            <input
+              className="objects-name-input"
+              value={draft.object_name || ""}
+              onChange={(e) => patch((d) => void (d.object_name = e.target.value.trim() || undefined))}
+              placeholder={t("objects.objectNamePh")}
+              spellCheck={false}
+            />
+            {!!draft.object_name && !OBJECT_NAME_RE.test(draft.object_name) && (
+              <span className="objects-name-error">{t("objects.objectNameInvalid")}</span>
+            )}
+          </div>
           <button className="btn primary objects-save-btn" disabled={!dirty} onClick={() => void save()}>
             {t("objects.save")}
           </button>
@@ -452,20 +443,18 @@ export default function ObjectsView({
               </button>
               <span className="objects-codegen-tip">{t("objects.codegenTip")}</span>
             </div>
-            <pre className="objects-codegen-pre">
-              <code dangerouslySetInnerHTML={{ __html: codeHtml }} />
-            </pre>
+            {codeText ? (
+              <pre className="objects-codegen-pre">
+                <code dangerouslySetInnerHTML={{ __html: codeHtml }} />
+              </pre>
+            ) : (
+              <div className="objects-codegen-empty">{t("objects.codegenNoName")}</div>
+            )}
           </div>
         )}
       </div>
     </div>
   );
-}
-
-function fmt(ts: number): string {
-  if (!ts) return "-";
-  const d = new Date(ts * 1000);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 /** 对象描述：Markdown 编辑 / 预览切换（预览由后端 md_to_html 渲染） */

@@ -523,14 +523,6 @@
   width: 100%;
 }
 
-/* 底部工具栏：左展开/收起，右文件导入 */
-.objects-side-footer {
-  justify-content: space-between;
-}
-.objects-expand-btn {
-  font-size: 13px;
-}
-
 /* 删除确认弹窗 */
 .objects-confirm-modal {
   width: min(420px, 90vw);
@@ -645,4 +637,33 @@
   font-size: 11.5px;
   font-weight: 400;
   color: var(--text-dim);
+}
+
+/* 右侧头部：包名 / 对象名称 字段 */
+.objects-head-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 200px;
+}
+.objects-head-field .objects-name-input {
+  flex: 1;
+}
+.objects-head-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.objects-name-error {
+  font-size: 11px;
+  color: var(--danger, #e5484d);
+  white-space: nowrap;
+}
+.objects-codegen-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13px;
 }
