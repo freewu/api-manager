@@ -483,33 +483,33 @@ export default function ObjectsView({
                 title={t("codegen.switchLang")}
                 onChange={setCodeLang}
               />
-              {codeLang === "java" && (
-                <div className="objects-java-style">
-                  <label className={`objects-style-pill${javaStyle === "lombok" ? " active" : ""}`}>
-                    <input
-                      type="radio"
-                      name="javaStyle"
-                      checked={javaStyle === "lombok"}
-                      onChange={() => setJavaStyle("lombok")}
-                    />
-                    {t("objects.javaStyleLombok")}
-                  </label>
-                  <label className={`objects-style-pill${javaStyle === "native" ? " active" : ""}`}>
-                    <input
-                      type="radio"
-                      name="javaStyle"
-                      checked={javaStyle === "native"}
-                      onChange={() => setJavaStyle("native")}
-                    />
-                    {t("objects.javaStyleNative")}
-                  </label>
-                </div>
-              )}
               <button className="btn small" onClick={() => void copyCode()}>
                 {copied ? t("resp.copied") : "📋 " + t("common.copy")}
               </button>
               <span className="objects-codegen-tip">{t("objects.codegenTip")}</span>
             </div>
+            {codeLang === "java" && (
+              <div className="objects-java-style">
+                <label className={`objects-style-pill${javaStyle === "lombok" ? " active" : ""}`}>
+                  <input
+                    type="radio"
+                    name="javaStyle"
+                    checked={javaStyle === "lombok"}
+                    onChange={() => setJavaStyle("lombok")}
+                  />
+                  {t("objects.javaStyleLombok")}
+                </label>
+                <label className={`objects-style-pill${javaStyle === "native" ? " active" : ""}`}>
+                  <input
+                    type="radio"
+                    name="javaStyle"
+                    checked={javaStyle === "native"}
+                    onChange={() => setJavaStyle("native")}
+                  />
+                  {t("objects.javaStyleNative")}
+                </label>
+              </div>
+            )}
             {codeLang === "java" && codeJava ? (
               codeJava[javaStyle] ? (
                 <pre className="objects-codegen-pre">
