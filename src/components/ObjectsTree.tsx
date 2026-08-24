@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ObjectDef, ObjectImportResult, ObjectProp, ObjectStore, ObjectUsageItem } from "../types";
 
 /** 对象名称校验：字母开头，仅允许字母和数字（不允许空格） */
-const VALID_OBJECT_NAME = /^[A-Za-z][A-Za-z0-9]*$/;
 import { useT } from "../i18n";
 import { ObjectVersionModal } from "./ObjectVersionModal";
 
@@ -395,9 +394,10 @@ export default function ObjectsTree({
         ),
       });
     } else if (e.kind === "objname") {
+      // 对象文件名不做约束（DDL 导入可能用中文表注释），仅要求非空
       const v = e.value.trim();
-      if (!VALID_OBJECT_NAME.test(v)) {
-        onToast(t("objects.nameInvalid"));
+      if (!v) {
+        onToast(t("objects.nameEmpty"));
         return;
       }
       if (v === store.objects.find((o) => o.uuid === e.uuid)?.name) return;
@@ -516,6 +516,13 @@ export default function ObjectsTree({
         onContextMenu={(e) => {
           e.preventDefault();
           setCtxMenu({ x: Math.min(e.clientX, window.innerWidth - 190), y: Math.min(e.clientY, window.innerHeight - 120) });
+        }}
+        onDragOver={(e) => {
+          if (dragUuid) e.preventDefault();
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (dragUuid) moveObject(dragUuid, "");
         }}
       >
         {store.objects.length === 0 && <div className="objects-empty">{t("objects.empty")}</div>}
@@ -823,6 +830,8 @@ function ObjectRow({
         onDragStart();
       }}
       onDragEnd={onDragEnd}
+      onDragOver={(e) => e.stopPropagation()}
+      onDrop={(e) => e.stopPropagation()}
     >
       <span className="node-icon objects-object-icon">▦</span>
       {editActive ? (

@@ -617,6 +617,7 @@ export const EN: Record<string, string> = {
   "objects.copy": "Copy",
   "objects.copySuffix": "Copy",
   "objects.nameInvalid": "Object name must start with a letter and contain only letters and digits (no spaces)",
+  "objects.nameEmpty": "Object name cannot be empty",
   "objects.confirmTitle": "Confirm Delete",
   "objects.groupCount": "{count} objects in group",
   "objects.deleteGroup": "Delete Group",

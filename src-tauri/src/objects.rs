@@ -489,7 +489,13 @@ pub fn import_ddl(root: &Path, group: &str, ddl: &str) -> Result<ObjectImportRes
         return Err("未识别到 CREATE TABLE 语句".into());
     }
     let mut top_hash = String::new();
-    for (table_name, body) in tables {
+    for (table_name, table_comment, body) in tables {
+        // 对象文件名优先使用表 COMMENT；为空才用表名
+        let file_name = if table_comment.trim().is_empty() {
+            table_name.clone()
+        } else {
+            table_comment.trim().to_string()
+        };
         let mut props: Vec<ObjectProp> = Vec::new();
         for col in split_columns(&body) {
             if let Some((key, kind, required, desc)) = parse_column(&col) {
@@ -517,7 +523,7 @@ pub fn import_ddl(root: &Path, group: &str, ddl: &str) -> Result<ObjectImportRes
         let def = ObjectDef {
             uuid: uuid::Uuid::new_v4().to_string(),
             hash: hash.clone(),
-            name: table_name.clone(),
+            name: file_name.clone(),
             object_name: table_name.clone(),
             package_name: String::new(),
             group: group.clone(),
@@ -545,7 +551,7 @@ pub fn import_ddl(root: &Path, group: &str, ddl: &str) -> Result<ObjectImportRes
 }
 
 /// 提取 DDL 中所有 CREATE TABLE 语句 → (表名, 表体内容)
-fn parse_create_tables(ddl: &str) -> Vec<(String, String)> {
+fn parse_create_tables(ddl: &str) -> Vec<(String, String, String)> {
     let bytes = ddl.as_bytes();
     let lower = ddl.to_ascii_lowercase();
     let n = bytes.len();
@@ -657,7 +663,17 @@ fn parse_create_tables(ddl: &str) -> Vec<(String, String)> {
                 _ => body.push(c),
             }
         }
-        out.push((clean_table_name(raw_name), body));
+        // 表级 COMMENT：右括号后到分号前的表选项文本中提取（如 ENGINE=... COMMENT='用户表'）
+        let mut tail = String::new();
+        let tail_start = body_start + end_rel;
+        for c in ddl[tail_start..].chars() {
+            if c == ';' || c == '(' {
+                break;
+            }
+            tail.push(c);
+        }
+        let table_comment = extract_comment(&tail);
+        out.push((clean_table_name(raw_name), table_comment, body));
         i = body_start + end_rel;
     }
     out
@@ -829,7 +845,11 @@ fn extract_comment(attrs: &str) -> String {
     while let Some(rel) = lower[idx..].find("comment") {
         let pos = idx + rel;
         let rest = &attrs[pos + "comment".len()..];
-        let rest_trim = rest.trim_start();
+        let mut rest_trim = rest.trim_start();
+        // 兼容表选项写法 COMMENT='xxx'（无空格）与列级写法 COMMENT 'xxx'
+        if let Some(after_eq) = rest_trim.strip_prefix('=') {
+            rest_trim = after_eq.trim_start();
+        }
         if let Some(inner) = rest_trim.strip_prefix('\'') {
             let mut out = String::new();
             let mut chars = inner.chars().peekable();
@@ -1130,7 +1150,7 @@ CREATE TABLE users (
   name VARCHAR(50) NOT NULL COMMENT '用户名称',
   age INT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) COMMENT='用户信息表';
 CREATE TABLE IF NOT EXISTS public.orders (
   order_id INT NOT NULL,
   amount DECIMAL(10,2),
@@ -1141,8 +1161,10 @@ CREATE TABLE IF NOT EXISTS public.orders (
         let tables = parse_create_tables(ddl);
         assert_eq!(tables.len(), 2);
         assert_eq!(tables[0].0, "users");
+        assert_eq!(tables[0].1, "用户信息表", "表级 COMMENT 应提取");
         assert_eq!(tables[1].0, "orders", "IF NOT EXISTS 与 schema 前缀应处理");
-        let cols = split_columns(&tables[0].1);
+        assert_eq!(tables[1].1, "", "无表级 COMMENT 时为空");
+        let cols = split_columns(&tables[0].2);
         assert_eq!(cols.len(), 4);
         let (name, kind, required, _desc) = parse_column(&cols[0]).unwrap();
         assert_eq!(name, "id");
@@ -1157,7 +1179,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
         assert_eq!(kind, "number");
         assert!(!required);
         // 表级约束应被忽略
-        let constraint_cols: Vec<_> = split_columns(&tables[1].1);
+        let constraint_cols: Vec<_> = split_columns(&tables[1].2);
         let parsed: Vec<_> = constraint_cols.iter().filter_map(|c| parse_column(c)).collect();
         assert_eq!(parsed.len(), 3, "PRIMARY KEY(...) 约束行应被跳过");
     }
@@ -1234,6 +1256,8 @@ CREATE TABLE `my_users` (
             hash: String::new(),
             name: "User".into(),
             group: "用户管理".into(),
+            object_name: String::new(),
+            package_name: String::new(),
             description: "用户".into(),
             properties: vec![ObjectProp { key: "id".into(), kind: "number".into(), required: true, ..Default::default() }],
             created_at: 1,
@@ -1244,6 +1268,8 @@ CREATE TABLE `my_users` (
             hash: String::new(),
             name: "OrderItem".into(),
             group: "订单/明细".into(),
+            object_name: String::new(),
+            package_name: String::new(),
             description: String::new(),
             properties: vec![],
             created_at: 1,
@@ -1254,6 +1280,8 @@ CREATE TABLE `my_users` (
             hash: String::new(),
             name: "Plain".into(),
             group: String::new(),
+            object_name: String::new(),
+            package_name: String::new(),
             description: String::new(),
             properties: vec![],
             created_at: 1,
@@ -1293,6 +1321,8 @@ CREATE TABLE `my_users` (
             hash: "h1".into(),
             name: "User".into(),
             group: "用户管理".into(),
+            object_name: String::new(),
+            package_name: String::new(),
             description: "v1".into(),
             properties: vec![ObjectProp { key: "id".into(), kind: "number".into(), ..Default::default() }],
             created_at: 1,
@@ -1334,6 +1364,8 @@ CREATE TABLE `my_users` (
                 hash: "tmp".into(),
                 name: format!("对象{u}").into(),
                 group: String::new(),
+                object_name: String::new(),
+                package_name: String::new(),
                 description: String::new(),
                 properties: vec![],
                 created_at: 1,

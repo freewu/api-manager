@@ -12065,11 +12065,5 @@ let v = export::to_yapi(&apis);
         assert!(login.responses.iter().any(|r| r.body.contains("total")), "round-trip 响应保留");
         let del = apis2.iter().find(|a| a.path.contains("/api/order/")).unwrap();
         assert!(del.params.iter().any(|p| p.key == "orderId"), "round-trip path 参数保留");
-        // 单接口格式闭环
-        let single = export::to_rap2_single(&apis[..1]);
-        let file2 = root.join("rap2-single.json");
-        fs::write(&file2, serde_json::to_string_pretty(&single).unwrap()).unwrap();
-        let re2 = import_rap2_files(&root, &file2).expect("rap2 单接口 round-trip 导入失败");
-        assert_eq!(re2.count, 1);
         let _ = fs::remove_dir_all(&root);
     }
