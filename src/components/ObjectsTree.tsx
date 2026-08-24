@@ -875,7 +875,6 @@ function jsonToObjectProps(value: unknown): ObjectProp[] {
       refHash: "",
       description: "",
       mock: "",
-      required: false,
     };
     if (v === null) {
       p.kind = "any";

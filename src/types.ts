@@ -439,7 +439,6 @@ export interface ObjectProp {
   /** object / list(object) 引用的对象 hash */
   refHash: string;
   description: string;
-  required: boolean;
   /** mock 值（示例数据，不参与结构 hash） */
   mock: string;
 }

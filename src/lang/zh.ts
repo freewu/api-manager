@@ -667,6 +667,8 @@ export const ZH: Record<string, string> = {
   "objects.propDesc": "说明",
   "objects.propMock": "Mock 值",
   "objects.propMockPh": "如 张三 / 18 / 2024-01-01",
+  "objects.mockPick": "选择 mock.js 占位符",
+  "objects.mockPickTitle": "Mock 占位符",
   "objects.noProps": "暂无属性，",
   "objects.addProp": "添加属性",
   "objects.save": "保存对象",

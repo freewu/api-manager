@@ -39,7 +39,6 @@ pub struct ObjectProp {
     /// object / list(object) 引用的对象 hash（空表示未引用）
     pub ref_hash: String,
     pub description: String,
-    pub required: bool,
     /// mock 值（示例数据，不参与结构 hash）
     pub mock: String,
 }
@@ -52,7 +51,6 @@ impl Default for ObjectProp {
             item_kind: "string".into(),
             ref_hash: String::new(),
             description: String::new(),
-            required: false,
             mock: String::new(),
         }
     }
@@ -353,7 +351,6 @@ pub fn import_json_object(
             for (k, val) in entries {
                 let mut p = ObjectProp {
                     key: k.clone(),
-                    required: true,
                     ..ObjectProp::default()
                 };
                 match val {
@@ -501,12 +498,12 @@ pub fn import_ddl(root: &Path, group: &str, ddl: &str) -> Result<ObjectImportRes
         };
         let mut props: Vec<ObjectProp> = Vec::new();
         for col in split_columns(&body) {
-            if let Some((key, kind, required, desc)) = parse_column(&col) {
+            if let Some((key, kind, desc)) = parse_column(&col) {
                 props.push(ObjectProp {
                     key,
                     kind,
-                    required,
                     description: desc,
+                    mock: String::new(),
                     ..ObjectProp::default()
                 });
             }
@@ -743,7 +740,7 @@ fn split_columns(body: &str) -> Vec<String> {
 }
 
 /// 解析单列定义 → (列名, 类型映射, 必填, 描述)；表级约束返回 None
-fn parse_column(col: &str) -> Option<(String, String, bool, String)> {
+fn parse_column(col: &str) -> Option<(String, String, String)> {
     let t = col.trim();
     if t.is_empty() {
         return None;
@@ -804,10 +801,8 @@ fn parse_column(col: &str) -> Option<(String, String, bool, String)> {
         }
     }
     let attrs = rest[q..].to_string();
-    let upper_attrs = attrs.to_ascii_uppercase();
-    let required = upper_attrs.contains("NOT NULL") || upper_attrs.contains("PRIMARY KEY");
     let desc = extract_comment(&attrs);
-    Some((name, map_sql_type(&type_tok).to_string(), required, desc))
+    Some((name, map_sql_type(&type_tok).to_string(), desc))
 }
 
 /// 拆分列名与其余部分（支持 "quoted name" / `name` / [name]）
@@ -1184,18 +1179,15 @@ CREATE TABLE IF NOT EXISTS public.orders (
         assert_eq!(tables[1].1, "", "无表级 COMMENT 时为空");
         let cols = split_columns(&tables[0].2);
         assert_eq!(cols.len(), 4);
-        let (name, kind, required, _desc) = parse_column(&cols[0]).unwrap();
+        let (name, kind, _desc) = parse_column(&cols[0]).unwrap();
         assert_eq!(name, "id");
         assert_eq!(kind, "number");
-        assert!(required, "PRIMARY KEY 应必填");
-        let (name, kind, required, desc) = parse_column(&cols[1]).unwrap();
+        let (name, kind, desc) = parse_column(&cols[1]).unwrap();
         assert_eq!(name, "name");
         assert_eq!(kind, "string");
-        assert!(required);
         assert_eq!(desc, "用户名称", "COMMENT 应提取为描述");
-        let (_, kind, required, _) = parse_column(&cols[2]).unwrap();
+        let (_, kind, _) = parse_column(&cols[2]).unwrap();
         assert_eq!(kind, "number");
-        assert!(!required);
         // 表级约束应被忽略
         let constraint_cols: Vec<_> = split_columns(&tables[1].2);
         let parsed: Vec<_> = constraint_cols.iter().filter_map(|c| parse_column(c)).collect();
@@ -1239,11 +1231,9 @@ CREATE TABLE `my_users` (
         assert_eq!(o.name, "my_users", "反引号表名应清洗");
         assert_eq!(o.properties.len(), 2, "CONSTRAINT 行与 -- 注释应忽略");
         let first = o.properties.iter().find(|p| p.key == "first name").unwrap();
-        assert!(first.required);
         assert_eq!(first.description, "名字");
         let bio = o.properties.iter().find(|p| p.key == "bio").unwrap();
         assert_eq!(bio.kind, "string");
-        assert!(!bio.required);
     }
 
     #[test]
@@ -1277,7 +1267,7 @@ CREATE TABLE `my_users` (
             object_name: String::new(),
             package_name: String::new(),
             description: "用户".into(),
-            properties: vec![ObjectProp { key: "id".into(), kind: "number".into(), required: true, ..Default::default() }],
+            properties: vec![ObjectProp { key: "id".into(), kind: "number".into(), ..Default::default() }],
             created_at: 1,
             updated_at: 2,
         });

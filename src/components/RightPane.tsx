@@ -142,6 +142,7 @@ export function RightPane({
             onSelectObject={onObjectsSelect}
             onRequestNew={onObjectsRequestNew}
             onRequestImport={onObjectsRequestImport}
+            defaultCodeLang={codegenLang}
           />
         ) : view === "history" ? (
           <div className="history-view-content">

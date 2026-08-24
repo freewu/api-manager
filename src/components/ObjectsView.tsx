@@ -22,6 +22,7 @@ import { useT } from "../i18n";
 import { renderMarkdown, saveObjectVersion } from "../commands";
 import { LangSelect } from "./LangSelect";
 import { OBJECT_LANGS, generateObjectCode } from "../utils/objectCodegen";
+import MockPicker from "./MockPicker";
 
 /** 对象名称（object_name）：字母开头，仅字母/数字/下划线 */
 const OBJECT_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
@@ -71,12 +72,14 @@ interface Props {
   /** 当前选中对象 uuid（null = 未选中） */
   selectedUuid: string | null;
   onSelectObject: (uuid: string | null) => void;
+  /** 代码生成默认语言（来自设置页 codegenLang） */
+  defaultCodeLang: string;
 }
 
 const ITEM_KINDS = ["string", "number", "boolean", "datetime", "date", "time", "object", "any"];
 
 function emptyProp(): ObjectProp {
-  return { key: "", kind: "string", itemKind: "", refHash: "", description: "", required: false, mock: "" };
+  return { key: "", kind: "string", itemKind: "", refHash: "", description: "", mock: "" };
 }
 
 /** 对象管理：右侧对象配置（类似接口文档管理的响应编辑，kv 表格风格） */
@@ -91,6 +94,7 @@ export default function ObjectsView({
   onRequestImport,
   selectedUuid,
   onSelectObject,
+  defaultCodeLang,
 }: Props) {
   const t = useT();
   const selected = useMemo(
@@ -111,9 +115,21 @@ export default function ObjectsView({
 
   // 右侧 tab：属性 / 对象描述 / 代码生成
   const [tab, setTab] = useState<"props" | "desc" | "code">("props");
-  const [codeLang, setCodeLang] = useState(OBJECT_LANGS[0].value);
+  // 默认语言取设置页 codegenLang（不在对象语言列表时回退第一个）
+  const [codeLang, setCodeLang] = useState(() =>
+    OBJECT_LANGS.some((l) => l.value === defaultCodeLang) ? defaultCodeLang : OBJECT_LANGS[0].value
+  );
+  // 设置页修改默认语言后同步（用户手动切换不被覆盖）
+  useEffect(() => {
+    if (OBJECT_LANGS.some((l) => l.value === defaultCodeLang) && defaultCodeLang !== codeLang) {
+      setCodeLang(defaultCodeLang);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultCodeLang]);
   /** Java 生成风格：Lombok（默认） / 原生（含 getter/setter） */
   const [javaStyle, setJavaStyle] = useState<"lombok" | "native">("lombok");
+  /** 正在选择 mock 占位符的属性下标（null = 未打开） */
+  const [mockPickIndex, setMockPickIndex] = useState<number | null>(null);
   /** 生成代码原文（复制用）与高亮 HTML */
   const codeText = useMemo(() => {
     if (!draft) return "";
@@ -304,8 +320,7 @@ export default function ObjectsView({
                 <th style={{ width: "11%" }}>{t("objects.propType")}</th>
                 <th style={{ width: "12%" }}>{t("objects.propItemType")}</th>
                 <th style={{ width: "15%" }}>{t("objects.propRef")}</th>
-                <th style={{ width: "6%" }}>{t("objects.propRequired")}</th>
-                <th style={{ width: "19%" }}>{t("objects.propDesc")}</th>
+                <th style={{ width: "20%" }}>{t("objects.propDesc")}</th>
                 <th style={{ width: "15%" }}>{t("objects.propMock")}</th>
                 <th style={{ width: "10%" }}>{t("objects.propOps")}</th>
               </tr>
@@ -395,15 +410,6 @@ export default function ObjectsView({
                     )}
                   </td>
                   <td>
-                    <label className="kv-check">
-                      <input
-                        type="checkbox"
-                        checked={p.required}
-                        onChange={(e) => setProp(i, { ...p, required: e.target.checked })}
-                      />
-                    </label>
-                  </td>
-                  <td>
                     <input
                       className="doc-name-input objects-prop-input"
                       value={p.description}
@@ -412,13 +418,22 @@ export default function ObjectsView({
                     />
                   </td>
                   <td>
-                    <input
-                      className="doc-name-input objects-prop-input objects-prop-mock"
-                      value={p.mock}
-                      onChange={(e) => setProp(i, { ...p, mock: e.target.value })}
-                      placeholder={t("objects.propMockPh")}
-                      spellCheck={false}
-                    />
+                    <div className="objects-mock-cell">
+                      <input
+                        className="doc-name-input objects-prop-input objects-prop-mock"
+                        value={p.mock}
+                        onChange={(e) => setProp(i, { ...p, mock: e.target.value })}
+                        placeholder={t("objects.propMockPh")}
+                        spellCheck={false}
+                      />
+                      <button
+                        className="objects-mock-pick"
+                        title={t("objects.mockPick")}
+                        onClick={() => setMockPickIndex(i)}
+                      >
+                        ⚡
+                      </button>
+                    </div>
                   </td>
                   <td>
                     <button className="doc-op doc-op-del" onClick={() => removeProp(i)} title={t("common.delete")}>
@@ -487,6 +502,15 @@ export default function ObjectsView({
           </div>
         )}
       </div>
+      {mockPickIndex !== null && draft && draft.properties[mockPickIndex] && (
+        <MockPicker
+          onPick={(v) => {
+            setProp(mockPickIndex, { ...draft.properties[mockPickIndex], mock: v });
+            setMockPickIndex(null);
+          }}
+          onClose={() => setMockPickIndex(null)}
+        />
+      )}
     </div>
   );
 }

@@ -148,11 +148,11 @@ export function generateObjectCode(lang: string, obj: ObjectDef, all: ObjectDef[
   const desc = (p: ObjectProp) => (p.description ? `  // ${p.description}` : "");
   switch (lang) {
     case "typescript": {
-      const lines = props.map((p) => `  ${p.key}${p.required ? "" : "?"}: ${typeOf(lang, p, obj, all)};${desc(p)}`);
+      const lines = props.map((p) => `  ${p.key}: ${typeOf(lang, p, obj, all)};${desc(p)}`);
       return `export interface ${name} {\n${lines.join("\n")}\n}`;
     }
     case "dart": {
-      const lines = props.map((p) => `  ${p.key}${p.required ? "" : "?"};${desc(p)}`);
+      const lines = props.map((p) => `  ${p.key};${desc(p)}`);
       return `class ${name} {\n${lines.join("\n")}\n}`;
     }
     case "java": {
@@ -188,7 +188,7 @@ export function generateObjectCode(lang: string, obj: ObjectDef, all: ObjectDef[
     }
     case "kotlin": {
       const lines = props.map(
-        (p) => `    val ${p.key}: ${typeOf(lang, p, obj, all)}${p.required ? "" : "?"}${desc(p)}`
+        (p) => `    val ${p.key}: ${typeOf(lang, p, obj, all)}${desc(p)}`
       );
       return `data class ${name}(\n${lines.join(",\n")}\n)`;
     }
@@ -201,9 +201,7 @@ export function generateObjectCode(lang: string, obj: ObjectDef, all: ObjectDef[
     case "rust": {
       const lines = props.map((p) => {
         const t = typeOf(lang, p, obj, all);
-        const opt = p.required ? "" : "Option<";
-        const close = p.required ? "" : ">";
-        return `  pub ${p.key}: ${opt}${t}${close},${desc(p)}`;
+        return `  pub ${p.key}: ${t},${desc(p)}`;
       });
       return `#[derive(Debug, Clone, Serialize, Deserialize)]\npub struct ${name} {\n${lines.join("\n")}\n}`;
     }
@@ -212,12 +210,12 @@ export function generateObjectCode(lang: string, obj: ObjectDef, all: ObjectDef[
       return `@dataclass\nclass ${name}:\n${lines.join("\n")}`;
     }
     case "swift": {
-      const lines = props.map((p) => `  let ${p.key}: ${typeOf(lang, p, obj, all)}${p.required ? "" : "?"}${desc(p)}`);
+      const lines = props.map((p) => `  let ${p.key}: ${typeOf(lang, p, obj, all)}${desc(p)}`);
       return `struct ${name}: Codable {\n${lines.join("\n")}\n}`;
     }
     case "php": {
       const lines = props.map(
-        (p) => `    public ${p.required ? "" : "?"}${typeOf(lang, p, obj, all)} $${p.key};${desc(p)}`
+        (p) => `    public ${typeOf(lang, p, obj, all)} $${p.key};${desc(p)}`
       );
       return `class ${name}\n{\n${lines.join("\n")}\n}`;
     }

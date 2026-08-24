@@ -659,6 +659,8 @@ export const EN: Record<string, string> = {
   "objects.propDesc": "Description",
   "objects.propMock": "Mock",
   "objects.propMockPh": "e.g. Alice / 18 / 2024-01-01",
+  "objects.mockPick": "Pick a mock.js placeholder",
+  "objects.mockPickTitle": "Mock placeholders",
   "objects.noProps": "No properties. ",
   "objects.save": "Save Objects",
   "objects.tabProps": "Properties",
