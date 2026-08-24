@@ -1244,6 +1244,65 @@ fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String> {
     sio_broadcast["responses"] = serde_json::json!([]);
     write("Socket.IO", "广播通知.json", &sio_broadcast)?;
 
+    // 对象示例：工作区 .object/ 下生成「用户管理 / 订单管理」分组与几个对象，
+    // 与上面的接口演示呼应（属性含 mock 示例值，可配合数据生成体验）
+    let now = chrono::Local::now().timestamp();
+    let prop = |key: &str, kind: &str, item_kind: &str, description: &str, mock: &str| {
+        crate::objects::ObjectProp {
+            key: key.into(),
+            kind: kind.into(),
+            item_kind: item_kind.into(),
+            ref_hash: String::new(),
+            description: description.into(),
+            mock: mock.into(),
+        }
+    };
+    let obj_def = |name: &str, object_name: &str, group: &str, description: &str, properties: Vec<crate::objects::ObjectProp>| {
+        crate::objects::ObjectDef {
+            uuid: uuid::Uuid::new_v4().to_string(),
+            hash: String::new(), // save_objects 会重算
+            name: name.into(),
+            object_name: object_name.into(),
+            package_name: String::new(),
+            group: group.into(),
+            deprecated: false,
+            description: description.into(),
+            properties,
+            created_at: now,
+            updated_at: now,
+        }
+    };
+    let demo_store = crate::objects::ObjectStore {
+        groups: vec![
+            crate::objects::ObjectGroup { id: "用户管理".into(), name: "用户管理".into(), deprecated: false },
+            crate::objects::ObjectGroup { id: "订单管理".into(), name: "订单管理".into(), deprecated: false },
+        ],
+        objects: vec![
+            obj_def("用户", "User", "用户管理", "系统用户信息", vec![
+                prop("id", "number", "number", "主键", ""),
+                prop("name", "string", "string", "用户名", "@cname"),
+                prop("email", "string", "string", "邮箱地址", "@email"),
+                prop("role", "string", "string", "用户角色（user / admin / vip）", "user"),
+                prop("createdAt", "datetime", "string", "创建时间", "@datetime"),
+            ]),
+            obj_def("订单", "Order", "订单管理", "用户订单", vec![
+                prop("id", "number", "number", "订单ID", ""),
+                prop("no", "string", "string", "订单编号", "SO2024"),
+                prop("amount", "number", "number", "订单金额（元）", "99.5"),
+                prop("status", "string", "string", "订单状态（pending/paid/shipped/done）", "paid"),
+                prop("userId", "number", "number", "下单用户ID", "1001"),
+                prop("createdAt", "datetime", "string", "下单时间", "@datetime"),
+            ]),
+            obj_def("订单明细", "OrderItem", "订单管理", "订单包含的商品明细", vec![
+                prop("id", "number", "number", "明细ID", ""),
+                prop("productName", "string", "string", "商品名称", "@ctitle(6)"),
+                prop("price", "number", "number", "单价（元）", "19.9"),
+                prop("quantity", "number", "number", "数量", "2"),
+            ]),
+        ],
+    };
+    crate::objects::save_objects(&root, &demo_store)?;
+
     Ok(())
 }
 
