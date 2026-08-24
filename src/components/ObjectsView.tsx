@@ -23,6 +23,7 @@ import { renderMarkdown, saveObjectVersion } from "../commands";
 import { LangSelect } from "./LangSelect";
 import { OBJECT_LANGS, generateObjectCode } from "../utils/objectCodegen";
 import MockPicker from "./MockPicker";
+import ObjectRefPicker from "./ObjectRefPicker";
 
 /** 对象名称（object_name）：字母开头，仅字母/数字/下划线 */
 const OBJECT_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
@@ -130,6 +131,8 @@ export default function ObjectsView({
   const [javaStyle, setJavaStyle] = useState<"lombok" | "native">("lombok");
   /** 正在选择 mock 占位符的属性下标（null = 未打开） */
   const [mockPickIndex, setMockPickIndex] = useState<number | null>(null);
+  /** 正在选择引用对象的属性下标（null = 未打开） */
+  const [refPickIndex, setRefPickIndex] = useState<number | null>(null);
   /** 生成代码原文（复制用）与高亮 HTML */
   const codeText = useMemo(() => {
     if (!draft) return "";
@@ -381,20 +384,16 @@ export default function ObjectsView({
                   <td className="objects-ref-cell">
                     {(p.kind === "object" || (p.kind === "list" && p.itemKind === "object")) &&
                       store.objects.length > 0 && (
-                        <select
-                          className="doc-object-select"
-                          value={p.refHash}
-                          onChange={(e) => setProp(i, { ...p, refHash: e.target.value })}
+                        <button
+                          className="objects-ref-pick"
+                          title={t("objects.refPick")}
+                          onClick={() => setRefPickIndex(i)}
                         >
-                          <option value="">—</option>
-                          {store.objects
-                            .filter((o) => o.uuid !== selected.uuid)
-                            .map((o) => (
-                              <option key={o.hash} value={o.hash}>
-                                {o.displayName || o.name}
-                              </option>
-                            ))}
-                        </select>
+                          {(() => {
+                            const ref = p.refHash ? store.objects.find((x) => x.hash === p.refHash) : undefined;
+                            return ref ? (ref.displayName || ref.name) : t("objects.refPick");
+                          })()}
+                        </button>
                       )}
                     {p.refHash && (
                       <button
@@ -509,6 +508,18 @@ export default function ObjectsView({
             setMockPickIndex(null);
           }}
           onClose={() => setMockPickIndex(null)}
+        />
+      )}
+      {refPickIndex !== null && draft && draft.properties[refPickIndex] && (
+        <ObjectRefPicker
+          store={store}
+          excludeUuid={selected.uuid}
+          currentHash={draft.properties[refPickIndex].refHash}
+          onPick={(hash) => {
+            setProp(refPickIndex, { ...draft.properties[refPickIndex], refHash: hash });
+            setRefPickIndex(null);
+          }}
+          onClose={() => setRefPickIndex(null)}
         />
       )}
     </div>
