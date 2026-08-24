@@ -465,6 +465,17 @@
   line-height: 1.65;
 }
 
+/* 分组末尾「+ 新建分组」 */
+.objects-new-subgroup {
+  cursor: pointer;
+  user-select: none;
+  opacity: 0.75;
+}
+.objects-new-subgroup:hover {
+  opacity: 1;
+  color: var(--accent);
+}
+
 /* 底部工具栏：文件导入按钮（右下角） */
 .objects-side-footer {
   flex-shrink: 0;

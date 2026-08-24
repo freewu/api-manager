@@ -73,6 +73,8 @@ export default function ObjectsTree({
   /** 新建分组弹窗 */
   const [groupOpen, setGroupOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
+  /** 父分组 id（空 = 顶层） */
+  const [groupParent, setGroupParent] = useState("");
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   /** 对象行右键菜单（uuid） */
   const [objMenu, setObjMenu] = useState<{ x: number; y: number; uuid: string } | null>(null);
@@ -296,6 +298,17 @@ export default function ObjectsTree({
               />
             ))}
             {g.children.map((c) => renderGroup(c, depth + 1))}
+            {/* 分组末尾：新建子分组 */}
+            <div
+              className="node objects-new-subgroup"
+              style={{ paddingLeft: 6 + (depth + 1) * 14, color: "var(--text-faint)", fontSize: 12 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                openNewGroup(g.id);
+              }}
+            >
+              ＋ {t("objects.newGroup")}
+            </div>
           </>
         )}
       </div>
@@ -312,17 +325,20 @@ export default function ObjectsTree({
     });
   };
 
-  const openNewGroup = () => {
+  const openNewGroup = (parentId = "") => {
+    setGroupParent(parentId);
     setGroupName("");
     setGroupOpen(true);
   };
 
   const doNewGroup = async () => {
-    const id = groupName.trim();
-    if (!id) {
+    const name = groupName.trim();
+    if (!name) {
       onToast(t("objects.newGroupNameEmpty"));
       return;
     }
+    // 父分组下新建：id = 父id/子名（name 取最后一段）
+    const id = groupParent ? `${groupParent}/${name}` : name;
     if (store.groups.some((g) => g.id === id)) {
       onToast(t("objects.groupExists"));
       return;
@@ -332,8 +348,17 @@ export default function ObjectsTree({
       groups: [...store.groups, { id, name: id.split("/").pop() || id }],
       objects: store.objects,
     });
-    // 新建后自动展开该分组
-    setOpenGroups((prev) => new Set(prev).add(id));
+    // 新建后自动展开该分组及其父级
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      const parts = id.split("/");
+      let acc = "";
+      for (const p of parts) {
+        acc = acc ? `${acc}/${p}` : p;
+        next.add(acc);
+      }
+      return next;
+    });
   };
 
   // 展开全部 / 收起全部（按钮已移除，保留默认展开第一层逻辑）
@@ -570,15 +595,8 @@ export default function ObjectsTree({
           <>
             <div
               className="node"
-              style={{ paddingLeft: 6, color: "var(--text-faint)", fontSize: 12 }}
-              onClick={() => openNewObject("")}
-            >
-              ＋ {t("objects.newObject")}
-            </div>
-            <div
-              className="node"
               style={{ padding: "5px 6px 5px 6px", color: "var(--text-faint)", fontSize: 12 }}
-              onClick={openNewGroup}
+              onClick={() => openNewGroup()}
             >
               ＋ {t("objects.newGroup")}
             </div>

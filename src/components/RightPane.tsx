@@ -117,14 +117,12 @@ export function RightPane({
   const t = useT();
   return (
     <>
-      {view !== "objects" && (
-        <div
-          className="resizer"
-          onMouseDown={onResizeStart}
-          onDoubleClick={onResizeReset}
-          title={resizeTip}
-        />
-      )}
+      <div
+        className="resizer"
+        onMouseDown={onResizeStart}
+        onDoubleClick={onResizeReset}
+        title={resizeTip}
+      />
       <div
         className="content"
         onContextMenu={(e) => {
