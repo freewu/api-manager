@@ -54,7 +54,7 @@ export function GenLogsDetail({ detail, onRegen }: Props) {
         </div>
         <div className="genlogs-info-row">
           <label>{t("objects.genDataCount")}</label>
-          <span>{detail.count}</span>
+          <span>{detail.count.toLocaleString()}</span>
         </div>
         <div className="genlogs-info-row">
           <label>{t("objects.genLogsElapsed")}</label>

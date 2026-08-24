@@ -45,7 +45,7 @@ export function GenLogsList({ records, loading, selectedId, onSelect, onReload }
                 {l.object_name}
               </div>
               <div className="genlogs-item-sub">
-                {l.time_str} · {l.count} 条 · {fmtMs(l.elapsed_ms)}
+                {l.time_str} · {l.count.toLocaleString()} 条 · {fmtMs(l.elapsed_ms)}
               </div>
             </div>
           ))
