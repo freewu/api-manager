@@ -941,3 +941,20 @@
   color: var(--accent, #4f9cf9);
   font-weight: 600;
 }
+
+/* Java 双风格代码块（Lombok / 原生 上下展示） */
+.objects-style-block {
+  margin-bottom: 12px;
+}
+.objects-style-block:last-child {
+  margin-bottom: 0;
+}
+.objects-style-label {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  background: color-mix(in srgb, var(--accent, #4f9cf9) 14%, transparent);
+  color: var(--accent, #4f9cf9);
+}

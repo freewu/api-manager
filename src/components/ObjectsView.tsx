@@ -127,31 +127,48 @@ export default function ObjectsView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultCodeLang]);
-  /** Java 生成风格：Lombok（默认） / 原生（含 getter/setter） */
-  const [javaStyle, setJavaStyle] = useState<"lombok" | "native">("lombok");
   /** 正在选择 mock 占位符的属性下标（null = 未打开） */
   const [mockPickIndex, setMockPickIndex] = useState<number | null>(null);
   /** 正在选择引用对象的属性下标（null = 未打开） */
   const [refPickIndex, setRefPickIndex] = useState<number | null>(null);
-  /** 生成代码原文（复制用）与高亮 HTML */
-  const codeText = useMemo(() => {
-    if (!draft) return "";
+  /** Java 双风格代码（lombok / native 同时生成） */
+  const codeJava = useMemo(() => {
+    if (!draft || codeLang !== "java") return null;
     // 引用对象解析：以最新草稿替换同 uuid 的 store 对象
     const all = store.objects.map((o) => (o.uuid === draft.uuid ? draft : o));
-    return generateObjectCode(codeLang, draft, all, { javaStyle });
-  }, [draft, store.objects, codeLang, javaStyle]);
-  const codeHtml = useMemo(() => {
-    if (!codeText) return "";
-    try {
-      return hljs.highlight(codeText, { language: codeLang }).value;
-    } catch {
-      return codeText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return {
+      lombok: generateObjectCode("java", draft, all, { javaStyle: "lombok" }),
+      native: generateObjectCode("java", draft, all, { javaStyle: "native" }),
+    };
+  }, [draft, store.objects, codeLang]);
+  /** 其他语言单段代码 */
+  const codeOther = useMemo(() => {
+    if (!draft || codeLang === "java") return "";
+    const all = store.objects.map((o) => (o.uuid === draft.uuid ? draft : o));
+    return generateObjectCode(codeLang, draft, all);
+  }, [draft, store.objects, codeLang]);
+  /** 复制用全文（java 时拼接两种风格，注释分隔） */
+  const codeAll = useMemo(() => {
+    if (codeLang === "java") {
+      if (!codeJava) return "";
+      const parts: string[] = [];
+      if (codeJava.lombok) parts.push(`// ===== Lombok =====\n${codeJava.lombok}`);
+      if (codeJava.native) parts.push(`// ===== 原生（getter/setter） =====\n${codeJava.native}`);
+      return parts.join("\n\n");
     }
-  }, [codeText, codeLang]);
+    return codeOther;
+  }, [codeLang, codeJava, codeOther]);
+  const highlight = (text: string, lang: string): string => {
+    try {
+      return hljs.highlight(text, { language: lang }).value;
+    } catch {
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  };
   const [copied, setCopied] = useState(false);
   const copyCode = async () => {
     try {
-      await navigator.clipboard.writeText(codeText);
+      await navigator.clipboard.writeText(codeAll);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -464,36 +481,37 @@ export default function ObjectsView({
                 title={t("codegen.switchLang")}
                 onChange={setCodeLang}
               />
-              {codeLang === "java" && (
-                <div className="objects-java-style">
-                  <label className={`objects-style-pill${javaStyle === "lombok" ? " active" : ""}`}>
-                    <input
-                      type="radio"
-                      name="javaStyle"
-                      checked={javaStyle === "lombok"}
-                      onChange={() => setJavaStyle("lombok")}
-                    />
-                    {t("objects.javaStyleLombok")}
-                  </label>
-                  <label className={`objects-style-pill${javaStyle === "native" ? " active" : ""}`}>
-                    <input
-                      type="radio"
-                      name="javaStyle"
-                      checked={javaStyle === "native"}
-                      onChange={() => setJavaStyle("native")}
-                    />
-                    {t("objects.javaStyleNative")}
-                  </label>
-                </div>
-              )}
               <button className="btn small" onClick={() => void copyCode()}>
                 {copied ? t("resp.copied") : "📋 " + t("common.copy")}
               </button>
               <span className="objects-codegen-tip">{t("objects.codegenTip")}</span>
             </div>
-            {codeText ? (
+            {codeLang === "java" && codeJava ? (
+              <>
+                <div className="objects-style-block">
+                  <div className="objects-style-label">{t("objects.javaStyleLombok")}</div>
+                  {codeJava.lombok ? (
+                    <pre className="objects-codegen-pre">
+                      <code dangerouslySetInnerHTML={{ __html: highlight(codeJava.lombok, "java") }} />
+                    </pre>
+                  ) : (
+                    <div className="objects-codegen-empty">{t("objects.codegenNoName")}</div>
+                  )}
+                </div>
+                <div className="objects-style-block">
+                  <div className="objects-style-label">{t("objects.javaStyleNative")}</div>
+                  {codeJava.native ? (
+                    <pre className="objects-codegen-pre">
+                      <code dangerouslySetInnerHTML={{ __html: highlight(codeJava.native, "java") }} />
+                    </pre>
+                  ) : (
+                    <div className="objects-codegen-empty">{t("objects.codegenNoName")}</div>
+                  )}
+                </div>
+              </>
+            ) : codeOther ? (
               <pre className="objects-codegen-pre">
-                <code dangerouslySetInnerHTML={{ __html: codeHtml }} />
+                <code dangerouslySetInnerHTML={{ __html: highlight(codeOther, codeLang) }} />
               </pre>
             ) : (
               <div className="objects-codegen-empty">{t("objects.codegenNoName")}</div>
