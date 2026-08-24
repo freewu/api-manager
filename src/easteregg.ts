@@ -107,12 +107,29 @@
     (e) => {
       const target = e.target as HTMLElement;
       if (!target.closest(".send-btn")) return;
-      // 发送按钮点击后读取 URL 输入框当前值
-      window.setTimeout(() => {
-        const input = document.querySelector(".url-input") as HTMLInputElement | null;
-        const v = (input?.value || "").toLowerCase();
-        if (v.includes("bluefrog")) showRain();
-      }, 30);
+      const input = document.querySelector(".url-input") as HTMLInputElement | null;
+      const v = (input?.value || "").toLowerCase();
+      if (!v.includes("bluefrog")) return;
+      // 彩蛋：不真正发送请求，仅触发矩阵雨效果（capture 阶段阻止事件到达 React）
+      e.preventDefault();
+      e.stopPropagation();
+      showRain();
+    },
+    true,
+  );
+
+  // URL 输入框内按 Enter 同样触发发送：命中彩蛋时也只播放效果
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key !== "Enter") return;
+      const active = document.activeElement as HTMLElement | null;
+      if (!active || !active.classList.contains("url-input")) return;
+      const v = (active as HTMLInputElement).value.toLowerCase();
+      if (!v.includes("bluefrog")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      showRain();
     },
     true,
   );
