@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HistoryDay, HistorySummary } from "../commands";
 import { useT } from "../i18n";
 
@@ -74,6 +74,19 @@ export function HistoryList({
 }: Props) {
   const t = useT();
   const [confirmClear, setConfirmClear] = useState(false);
+
+  // 比对模式下按 ESC 退出比对
+  useEffect(() => {
+    if (!diffMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onToggleDiffMode(false);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [diffMode, onToggleDiffMode]);
 
   // 已加载的记录按天分组（记录本身已按时间倒序）
   // 比对模式下勾选第 1 条后（含选满 2 条）：非同一接口（apiUuid 不同）的记录全部隐藏，只保留参与比对接口的记录
