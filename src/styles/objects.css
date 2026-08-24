@@ -891,12 +891,13 @@
 }
 .grpstats-head {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   padding: 4px 2px 14px;
   border-bottom: 1px solid var(--border, rgba(128,128,128,.25));
   margin-bottom: 10px;
 }
 .grpstats-num {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;

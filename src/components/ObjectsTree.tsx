@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ObjectDef, ObjectImportResult, ObjectProp, ObjectStore, ObjectUsageItem } from "../types";
 
 /** 对象名称校验：字母开头，仅允许字母和数字（不允许空格） */
@@ -87,15 +87,6 @@ export default function ObjectsTree({
   const [versionModal, setVersionModal] = useState<ObjectDef | null>(null);
   // 拖拽中的对象 uuid
   const [dragUuid, setDragUuid] = useState<string | null>(null);
-
-  // 首次加载默认展开第一层分组（父级展开状态便于发现层级；store 异步就绪后生效）
-  const inited = useRef(false);
-  useEffect(() => {
-    if (store.groups.length === 0 || inited.current) return;
-    inited.current = true;
-    setOpenGroups(new Set(groupTree.map((g) => g.id)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.groups]);
 
   // 右键菜单：点击任意处 / Esc 时关闭
   useEffect(() => {
@@ -825,6 +816,11 @@ export default function ObjectsTree({
       {groupStats && (
         <GroupStatsModal
           groupName={groupStats.name}
+          groups={
+            groupStats.id
+              ? store.groups.filter((g) => g.id === groupStats.id || g.id.startsWith(groupStats.id + "/"))
+              : store.groups
+          }
           objects={
             groupStats.id
               ? store.objects.filter(
