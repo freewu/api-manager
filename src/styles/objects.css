@@ -1121,3 +1121,132 @@
   margin-top: 6px;
   color: var(--accent, #4f9cf9);
 }
+
+/* ---------- 数据生成记录管理 ---------- */
+.genlogs-modal {
+  width: 1080px;
+  max-width: 94vw;
+}
+.genlogs-modal .modal-body {
+  padding: 0;
+  gap: 0;
+}
+.genlogs-wrap {
+  display: flex;
+  height: 62vh;
+  min-height: 360px;
+}
+.genlogs-list {
+  width: 300px;
+  flex: none;
+  border-right: 1px solid var(--border, rgba(128, 128, 128, 0.25));
+  overflow-y: auto;
+  padding: 8px;
+}
+.genlogs-item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+.genlogs-item:hover {
+  background: color-mix(in srgb, var(--accent, #4f9cf9) 8%, transparent);
+}
+.genlogs-item.active {
+  background: color-mix(in srgb, var(--accent, #4f9cf9) 16%, transparent);
+}
+.genlogs-item-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+.genlogs-badge {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent, #4f9cf9) 16%, transparent);
+  color: var(--accent, #4f9cf9);
+  font-size: 10px;
+  font-weight: 700;
+}
+.genlogs-item-sub {
+  font-size: 11px;
+  opacity: 0.65;
+}
+.genlogs-detail {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 14px 18px;
+}
+.genlogs-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.genlogs-detail-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+.genlogs-detail-file {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: 0.55;
+  word-break: break-all;
+}
+.genlogs-info {
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.25));
+  border-radius: 8px;
+  padding: 4px 12px;
+  margin-bottom: 14px;
+}
+.genlogs-info-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border, rgba(128, 128, 128, 0.12));
+  font-size: 12px;
+}
+.genlogs-info-row:last-child {
+  border-bottom: none;
+}
+.genlogs-info-row label {
+  width: 84px;
+  flex: none;
+  opacity: 0.65;
+}
+.genlogs-path {
+  word-break: break-all;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+}
+.genlogs-props-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.genlogs-props {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.genlogs-props th,
+.genlogs-props td {
+  border-bottom: 1px solid var(--border, rgba(128, 128, 128, 0.2));
+  padding: 5px 8px;
+  text-align: left;
+}
+.genlogs-props td:first-child {
+  font-family: ui-monospace, monospace;
+}
+.genlogs-empty {
+  padding: 32px;
+  text-align: center;
+  opacity: 0.6;
+  font-size: 13px;
+}

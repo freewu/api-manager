@@ -77,6 +77,9 @@ export default function GenDataModal({ obj, onClose, onDone, t }: Props) {
         table: table.trim(),
         count: n,
         elapsedMs: Date.now() - start,
+        objectUuid: obj.uuid,
+        objectName: obj.object_name || obj.name,
+        props: rows.map((r) => ({ key: r.prop.key, kind: r.prop.kind, mock: r.mock, enabled: r.enabled })),
       });
       onDone(res);
       onClose();

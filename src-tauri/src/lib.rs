@@ -9158,7 +9158,33 @@ struct GenDataResult {
     elapsed_ms: u64,
 }
 
-/// 写入生成的数据文件，并在工作区 .gen_log/records.json 追加一条生成记录（含耗时）。
+/// 数据生成提交的属性配置（写入日志）
+#[derive(serde::Serialize, serde::Deserialize)]
+struct GenPropItem {
+    key: String,
+    kind: String,
+    mock: String,
+    enabled: bool,
+}
+
+/// 单条生成记录（.gen_log/<时间戳>_<object-uuid>.json）
+#[derive(serde::Serialize, serde::Deserialize)]
+struct GenLogItem {
+    file: String,
+    time: i64,
+    time_str: String,
+    object_uuid: String,
+    object_name: String,
+    dir: String,
+    format: String,
+    table: String,
+    count: usize,
+    elapsed_ms: u64,
+    props: Vec<GenPropItem>,
+}
+
+/// 写入生成的数据文件，并在工作区 .gen_log/<时间戳>_<object-uuid>.json 保存一条生成记录
+/// （含提交的数据与耗时）。
 #[tauri::command]
 fn gen_data(
     state: State<'_, WorkspaceState>,
@@ -9169,6 +9195,9 @@ fn gen_data(
     table: String,
     count: usize,
     elapsed_ms: u64,
+    object_uuid: String,
+    object_name: String,
+    props: Vec<GenPropItem>,
 ) -> Result<GenDataResult, String> {
     let dir_path = std::path::Path::new(&dir);
     if !dir_path.is_dir() {
@@ -9177,35 +9206,56 @@ fn gen_data(
     let path = dir_path.join(&file_name);
     std::fs::write(&path, content).map_err(|e| format!("写入文件失败: {e}"))?;
 
-    // 生成记录：工作区根 .gen_log/records.json（追加）
+    // 生成记录：工作区根 .gen_log/<时间戳>_<object-uuid>.json（每条记录一个文件）
     let root = workspace_root(&state)?;
     let log_dir = root.join(".gen_log");
     std::fs::create_dir_all(&log_dir).map_err(|e| format!("创建 .gen_log 失败: {e}"))?;
-    let log_path = log_dir.join("records.json");
-    let mut records: Vec<serde_json::Value> = if log_path.exists() {
-        std::fs::read_to_string(&log_path)
-            .ok()
-            .and_then(|t| serde_json::from_str(&t).ok())
-            .unwrap_or_default()
-    } else {
-        vec![]
-    };
-    records.push(serde_json::json!({
-        "time": std::time::SystemTime::now()
+    let ts = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
+    let log_path = log_dir.join(format!("{ts}_{object_uuid}.json"));
+    let record = GenLogItem {
+        file: file_name.clone(),
+        time: std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
+            .map(|d| d.as_secs() as i64)
             .unwrap_or(0),
-        "file": file_name,
-        "dir": dir,
-        "format": format,
-        "table": table,
-        "count": count,
-        "elapsedMs": elapsed_ms,
-    }));
-    let text = serde_json::to_string_pretty(&records).map_err(|e| format!("序列化生成记录失败: {e}"))?;
+        time_str: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+        object_uuid,
+        object_name,
+        dir: dir.clone(),
+        format,
+        table,
+        count,
+        elapsed_ms,
+        props,
+    };
+    let text = serde_json::to_string_pretty(&record).map_err(|e| format!("序列化生成记录失败: {e}"))?;
     std::fs::write(&log_path, text).map_err(|e| format!("写入生成记录失败: {e}"))?;
 
     Ok(GenDataResult { file: file_name, dir, count, elapsed_ms })
+}
+
+/// 读取 .gen_log 下全部生成记录（按时间倒序）。
+#[tauri::command]
+fn list_gen_logs(state: State<'_, WorkspaceState>) -> Result<Vec<GenLogItem>, String> {
+    let root = workspace_root(&state)?;
+    let log_dir = root.join(".gen_log");
+    if !log_dir.is_dir() {
+        return Ok(vec![]);
+    }
+    let mut items: Vec<GenLogItem> = vec![];
+    let read = std::fs::read_dir(&log_dir).map_err(|e| format!("读取 .gen_log 失败: {e}"))?;
+    for entry in read.flatten() {
+        let p = entry.path();
+        if p.extension().and_then(|e| e.to_str()) == Some("json") {
+            if let Ok(t) = std::fs::read_to_string(&p) {
+                if let Ok(v) = serde_json::from_str::<GenLogItem>(&t) {
+                    items.push(v);
+                }
+            }
+        }
+    }
+    items.sort_by(|a, b| b.time.cmp(&a.time));
+    Ok(items)
 }
 
 /// 从 JSON 文本生成对象（嵌套 object 提取为独立对象，hash 相同则复用已有对象）
@@ -9818,6 +9868,7 @@ pub fn run() {
             list_objects,
             save_objects,
             gen_data,
+            list_gen_logs,
             import_json_object,
             import_ddl,
             object_usage,

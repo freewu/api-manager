@@ -474,6 +474,29 @@ export interface GenDataResult {
   elapsed_ms: number;
 }
 
+/** 数据生成提交的属性配置（写入 .gen_log 记录） */
+export interface GenPropItem {
+  key: string;
+  kind: string;
+  mock: string;
+  enabled: boolean;
+}
+
+/** .gen_log 单条生成记录 */
+export interface GenLogItem {
+  file: string;
+  time: number;
+  time_str: string;
+  object_uuid: string;
+  object_name: string;
+  dir: string;
+  format: string;
+  table: string;
+  count: number;
+  elapsed_ms: number;
+  props: GenPropItem[];
+}
+
 /** 写入生成的数据文件并记录 .gen_log */
 export function genData(p: {
   dir: string;
@@ -483,6 +506,9 @@ export function genData(p: {
   table: string;
   count: number;
   elapsedMs: number;
+  objectUuid: string;
+  objectName: string;
+  props: GenPropItem[];
 }): Promise<GenDataResult> {
   return invoke<GenDataResult>("gen_data", {
     dir: p.dir,
@@ -492,5 +518,13 @@ export function genData(p: {
     table: p.table,
     count: p.count,
     elapsedMs: p.elapsedMs,
+    objectUuid: p.objectUuid,
+    objectName: p.objectName,
+    props: p.props,
   });
+}
+
+/** 读取 .gen_log 全部生成记录（按时间倒序） */
+export function listGenLogs(): Promise<GenLogItem[]> {
+  return invoke<GenLogItem[]>("list_gen_logs");
 }
