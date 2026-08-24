@@ -130,9 +130,13 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   };
 
   // 切换接口时回到默认页签：GraphQL 默认 Body（GraphQL 请求体），
-  // WebSocket / Socket.IO 默认消息（Body 页签即消息编辑），其余回 Query
+  // WebSocket / Socket.IO 默认消息（Body 页签即消息编辑），
+  // HTTP 的 POST / PUT / PATCH 也默认 Body（这类方法通常带请求体），其余回 Query
   useEffect(() => {
-    const def: Tab = isGraphql || isRealtime ? "body" : "params";
+    const def: Tab =
+      isGraphql || isRealtime || api.method === "POST" || api.method === "PUT" || api.method === "PATCH"
+        ? "body"
+        : "params";
     setTab(def);
     setFormatError(null);
     onTabChange?.(def);

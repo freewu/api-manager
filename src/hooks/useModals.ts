@@ -20,6 +20,7 @@ import {
 import { buildApiDocComment } from "../utils/apidoc";
 import { ApiFile, AppSettings, TreeNode, VersionInfo } from "../types";
 import { InfoForm, ModalState, emptyInfoForm } from "../components/AppModals";
+import { parseCurl } from "../utils/curl";
 
 /**
  * 弹窗操作：新建接口/分组/重命名/删除/分组信息、版本管理、
@@ -60,6 +61,10 @@ export function useModals(opts: {
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportPreselect, setExportPreselect] = useState<string[] | undefined>(undefined);
+  const [curlOpen, setCurlOpen] = useState(false);
+  const [curlName, setCurlName] = useState("");
+  const [curlText, setCurlText] = useState("");
+  const [curlError, setCurlError] = useState("");
   const [notify, setNotify] = useState<{ title: string; body: string } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -102,6 +107,49 @@ export function useModals(opts: {
       onApiReplaced(data, path);
       void reloadMockIfRunning(true);
       onToast(t("toast.createdApi", { name }));
+    } catch (e) {
+      onToast(t("toast.failed", { err: String(e) }));
+    }
+  };
+
+  /** 打开「从 Curl 导入」弹窗 */
+  const openCurlImport = () => {
+    setCurlName("");
+    setCurlText("");
+    setCurlError("");
+    setCurlOpen(true);
+  };
+
+  /** 解析 curl 并创建 http 接口 */
+  const doImportCurl = async () => {
+    const name = curlName.trim() || t("app.unnamedApi");
+    let parsed;
+    try {
+      parsed = parseCurl(curlText);
+    } catch (e) {
+      setCurlError(t("modal.curlParseError", { err: String(e) }));
+      return;
+    }
+    try {
+      const path = await createApi(workspace!, name);
+      const data = await readApi(path);
+      data.method = parsed.method;
+      data.url = parsed.url;
+      data.query = parsed.query;
+      data.headers = parsed.headers;
+      if (parsed.bodyMode !== "none") {
+        data.body = {
+          ...data.body,
+          mode: parsed.bodyMode === "json" ? "json" : parsed.bodyMode === "form" ? "form" : "raw",
+          raw: parsed.bodyRaw,
+        };
+      }
+      await saveApi(path, data);
+      setCurlOpen(false);
+      await reloadTree();
+      onApiReplaced(data, path);
+      void reloadMockIfRunning(true);
+      onToast(t("toast.importedCurl", { name }));
     } catch (e) {
       onToast(t("toast.failed", { err: String(e) }));
     }
@@ -306,5 +354,15 @@ export function useModals(opts: {
     handleExportMarkdown,
     handleExport,
     openExport,
+    curlOpen,
+    setCurlOpen,
+    curlName,
+    setCurlName,
+    curlText,
+    setCurlText,
+    curlError,
+    setCurlError,
+    openCurlImport,
+    doImportCurl,
   };
 }

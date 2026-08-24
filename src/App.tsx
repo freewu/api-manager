@@ -16,6 +16,7 @@ import {
 } from "./commands";
 import { TreeNode } from "./types";
 import { AppModals } from "./components/AppModals";
+import { CurlImportModal } from "./components/CurlImportModal";
 import { AppToolbar } from "./components/AppToolbar";
 import { RightPane } from "./components/RightPane";
 import { AppView, Sidebar } from "./components/Sidebar";
@@ -502,6 +503,7 @@ export default function App() {
               onStats={setStatsNode}
               onOpenSettings={() => setSettingsOpen(true)}
               onImportPostman={() => void imports.handleImportPostman()}
+              onImportCurl={modals.openCurlImport}
               onImportOpenApi={() => void imports.handleImportOpenApi()}
               onImportMarkdown={() => void imports.handleImportMarkdown()}
               onImportApifox={() => void imports.handleImportApifox()}
@@ -674,6 +676,17 @@ export default function App() {
             onDoDelete={() => void doDelete()}
             onDoSaveInfo={() => void doSaveInfo()}
             onCloseDemoModal={(create) => void closeDemoModal(create)}
+          />
+
+          <CurlImportModal
+            open={modals.curlOpen}
+            name={modals.curlName}
+            onNameChange={modals.setCurlName}
+            text={modals.curlText}
+            onTextChange={modals.setCurlText}
+            error={modals.curlError}
+            onSave={() => void modals.doImportCurl()}
+            onClose={() => modals.setCurlOpen(false)}
           />
 
           {apiDocView && (

@@ -742,3 +742,38 @@
   text-align: center;
   line-height: 1.2;
 }
+
+/* 从 Curl 导入弹窗 */
+.modal-curl label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.modal-curl .curl-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-mono, Consolas, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text);
+  resize: vertical;
+}
+.modal-curl .curl-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.curl-error {
+  margin-bottom: 8px;
+}
+.modal-hint {
+  font-size: 12px;
+  color: var(--text-faint);
+  line-height: 1.6;
+}

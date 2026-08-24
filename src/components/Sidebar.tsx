@@ -35,6 +35,7 @@ interface Props {
   onViewApiDoc?: (node: TreeNode) => void;
   onOpenSettings?: () => void;
   onImportPostman?: () => void;
+  onImportCurl?: () => void;
   onImportOpenApi?: () => void;
   onImportMarkdown?: () => void;
   onImportApifox?: () => void;
@@ -472,7 +473,7 @@ function NodeRow({
 
 export function Sidebar(props: Props) {
   const t = useT();
-  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onImportApiDoc, onImportExtra, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
+  const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportCurl, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onImportApiDoc, onImportExtra, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
   const [importMenu, setImportMenu] = useState(false);
 
   // 导入菜单打开时按 ESC 关闭
@@ -898,6 +899,17 @@ export function Sidebar(props: Props) {
                     >
                       <FormatIcon value="postman" className="import-menu-icon" />
                       Postman Collection
+                    </button>
+                  )}
+                  {onImportCurl && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportCurl();
+                      }}
+                    >
+                      <FormatIcon value="curl" className="import-menu-icon" />
+                      {t("sidebar.importCurl")}
                     </button>
                   )}
                   {settings?.importTypes?.openapi !== false && onImportOpenApi && (

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { HistoryDetail as HistoryDetailType } from "../commands";
+import { useEffect } from "react";
 import { useT } from "../i18n";
 
 /**
@@ -221,6 +222,17 @@ export function HistoryDiff({
   onExit: () => void;
 }) {
   const t = useT();
+  // 比对模式下按 ESC 退出比对
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onBack();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [onBack]);
   if (loading) return <div className="history-empty">{t("history.loading")}</div>;
   if (!pair) {
     return (
