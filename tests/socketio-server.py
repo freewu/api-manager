@@ -12,8 +12,8 @@
 支持任意路径与 query 参数；浏览器端不可自定义请求头，回传的 query 为连接时的标准 query
 （token、EIO、transport 等为 Socket.IO 协议参数，其余为用户自定义参数）。
 
-依赖第三方库（pip install python-socketio simple-websocket werkzeug）：
-    pip install python-socketio simple-websocket werkzeug
+依赖第三方库（见 tests/requirements.txt）：
+    pip install -r tests/requirements.txt
 
 用法：
     python tests/socketio-server.py           # 默认监听 http://127.0.0.1:8090

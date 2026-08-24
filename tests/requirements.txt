@@ -1,0 +1,18 @@
+# 测试辅助服务器依赖（tests/*.py 演示/测试服务器）
+#
+# 安装：pip install -r tests/requirements.txt
+#
+# 各脚本用到的第三方包：
+#   tests/websocket-server.py   -> websockets
+#   tests/socketio-server.py    -> python-socketio, simple-websocket, werkzeug
+#   tests/graphql-server.py     -> 仅标准库
+#   tests/http.py               -> 仅标准库
+#
+# 说明：
+#   - python-socketio 的 server 模式需要 simple-websocket（WebSocket 升级）
+#   - werkzeug 提供 WSGI 运行环境（socketio.WSGIApp + run_simple）
+
+websockets>=12.0
+python-socketio>=5.10
+simple-websocket>=1.0
+werkzeug>=3.0

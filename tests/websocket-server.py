@@ -18,7 +18,7 @@
 （host、user-agent 等），自定义 header 不会发送。
 
 依赖第三方库 `websockets`：
-    pip install websockets
+    pip install -r tests/requirements.txt
 
 用法：
     python tests/websocket-server.py           # 默认监听 127.0.0.1:8765
