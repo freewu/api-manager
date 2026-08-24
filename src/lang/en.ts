@@ -689,6 +689,8 @@ export const EN: Record<string, string> = {
   "objects.deprecate": "Mark as deprecated",
   "objects.undeprecate": "Undeprecate",
   "objects.groupStats": "Statistics",
+  "objects.copyGroup": "Copy group",
+  "objects.copyGroupDone": "Group \"{name}\" copied",
   "objects.statObjects": "Objects",
   "objects.statApiRefs": "API refs",
   "objects.statRefCount": "{count} refs",

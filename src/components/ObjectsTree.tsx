@@ -438,6 +438,40 @@ export default function ObjectsTree({
     }
   };
 
+  /** 复制分组（含全部子分组与对象）：对象 uuid 重新生成，其余字段保持一致 */
+  const duplicateGroup = (gid: string) => {
+    const g = store.groups.find((x) => x.id === gid);
+    if (!g) return;
+    const copyId = `${gid}Copy`;
+    if (store.groups.some((x) => x.id === copyId)) {
+      onToast(t("objects.groupExists"));
+      return;
+    }
+    const inSub = (id: string) => id === gid || id.startsWith(`${gid}/`);
+    const now = Math.floor(Date.now() / 1000);
+    // 分组：根分组 id 加 Copy 后缀，子分组父路径同步替换；name 沿用原名（根分组取新 id 最后一段）
+    const newGroups = store.groups
+      .filter((x) => inSub(x.id))
+      .map((x) => {
+        const newId = copyId + x.id.slice(gid.length);
+        return { ...x, id: newId, name: newId.split("/").pop() || newId };
+      });
+    const newObjects = store.objects
+      .filter((o) => inSub(o.group))
+      .map((o) => ({
+        ...o,
+        uuid: crypto.randomUUID(),
+        group: copyId + o.group.slice(gid.length),
+        createdAt: now,
+        updatedAt: now,
+      }));
+    void saveStore({
+      groups: [...store.groups, ...newGroups],
+      objects: [...store.objects, ...newObjects],
+    });
+    onToast(t("objects.copyGroupDone", { name: g.name }));
+  };
+
   const deleteGroup = (id: string) => {
     const name = id.split("/").pop() || id;
     setConfirmDel({
@@ -694,6 +728,14 @@ export default function ObjectsTree({
       {/* 分组行右键菜单：废弃切换 / 删除 */}
       {groupMenu && (
         <div className="node-ctx-menu" style={{ left: groupMenu.x, top: groupMenu.y }}>
+          <button
+            onClick={() => {
+              setGroupMenu(null);
+              duplicateGroup(groupMenu.id);
+            }}
+          >
+            📋 {t("objects.copyGroup")}
+          </button>
           <button
             onClick={() => {
               const g = store.groups.find((x) => x.id === groupMenu.id);

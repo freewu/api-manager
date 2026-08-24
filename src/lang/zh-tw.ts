@@ -679,6 +679,8 @@ export const TW: Record<string, string> = {
   "objects.deprecate": "標記已廢棄",
   "objects.undeprecate": "取消廢棄",
   "objects.groupStats": "統計",
+  "objects.copyGroup": "複製分組",
+  "objects.copyGroupDone": "已複製分組「{name}」",
   "objects.statObjects": "對象數",
   "objects.statApiRefs": "接口引用",
   "objects.statRefCount": "{count} 處引用",

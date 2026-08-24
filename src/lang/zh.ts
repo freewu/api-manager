@@ -698,6 +698,8 @@ export const ZH: Record<string, string> = {
   "objects.deprecate": "标记已废弃",
   "objects.undeprecate": "取消废弃",
   "objects.groupStats": "统计",
+  "objects.copyGroup": "复制分组",
+  "objects.copyGroupDone": "已复制分组「{name}」",
   "objects.statObjects": "对象数",
   "objects.statApiRefs": "接口引用",
   "objects.statRefCount": "{count} 处引用",
