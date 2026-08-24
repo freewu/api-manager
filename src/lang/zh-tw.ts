@@ -195,6 +195,8 @@ export const TW: Record<string, string> = {
     "editor.socketIoUrlPlaceholder": "Socket.IO 位址（http/https）",
   "editor.graphqlType": "GraphQL 接口",
   "editor.message": "訊息",
+  "editor.handshakeOnly": "僅在握手階段生效",
+  "editor.handshakeBadge": "握手",
   "editor.graphqlMethodTip": "GraphQL 接口固定使用 POST 方法",
   "editor.graphqlBodyTip": "GraphQL 接口仅支持 JSON 格式",
   "editor.wsText": "純文字",

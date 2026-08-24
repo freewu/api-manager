@@ -204,6 +204,8 @@ export const EN: Record<string, string> = {
     "editor.socketIoUrlPlaceholder": "Socket.IO address (http/https)",
   "editor.graphqlType": "GraphQL API",
   "editor.message": "Message",
+  "editor.handshakeOnly": "Only applies during the handshake phase",
+  "editor.handshakeBadge": "Handshake",
   "editor.graphqlMethodTip": "GraphQL APIs always use POST method",
   "editor.graphqlBodyTip": "GraphQL APIs only support JSON body",
   "editor.wsText": "Text",

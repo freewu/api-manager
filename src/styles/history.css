@@ -409,3 +409,13 @@
   overflow-y: auto;
   user-select: text;
 }
+
+/* 历史列表：实时协议名称（WebSocket / Socket.IO） */
+.history-item .node-method.proto-ws {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+.history-item .node-method.proto-sio {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}

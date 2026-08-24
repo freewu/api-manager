@@ -222,11 +222,21 @@ export function HistoryList({
                     </span>
                   )}
                   <span className="history-time">{fmtTime(r.time)}</span>
-                  <span className={`node-method ${methodClass(r.method)}`}>{r.method}</span>
-                  {r.status > 0 ? (
-                    <span className={`history-status ${statusClass(r.status)}`}>{r.status}</span>
+                  {r.method === "WS" || r.method === "SIO" ? (
+                    // 实时请求（WebSocket / Socket.IO）：只显示协议名称
+                    <span className={`node-method proto-${r.method.toLowerCase()}`}>
+                      {r.method === "WS" ? "WebSocket" : "Socket.IO"}
+                    </span>
                   ) : (
-                    <span className="history-status status-5xx">ERR</span>
+                    // HTTP 请求：显示 method + 状态码
+                    <>
+                      <span className={`node-method ${methodClass(r.method)}`}>{r.method}</span>
+                      {r.status > 0 ? (
+                        <span className={`history-status ${statusClass(r.status)}`}>{r.status}</span>
+                      ) : (
+                        <span className="history-status status-5xx">ERR</span>
+                      )}
+                    </>
                   )}
                   <span className="history-url">{r.url}</span>
                 </div>

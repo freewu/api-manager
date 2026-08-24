@@ -264,7 +264,15 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           <select
             className="method-select"
             value={api.method}
-            onChange={(e) => set({ method: e.target.value })}
+            onChange={(e) => {
+              const v = e.target.value;
+              set({ method: v });
+              // POST / PUT / PATCH 有请求体，切换时默认选 Body 页签
+              if (v === "POST" || v === "PUT" || v === "PATCH") {
+                setTab("body");
+                onTabChange?.("body");
+              }
+            }}
           >
             {METHODS.map((m) => (
               <option key={m} value={m}>
@@ -315,6 +323,11 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
       <div className="tabs">
         <div className={`tab ${tab === "params" ? "active" : ""}`} onClick={() => switchTab("params")}>
           Query{enabledCount(api.query) > 0 && <span className="count">{enabledCount(api.query)}</span>}
+          {isRealtime && (
+            <span className="tab-hint" title={t("editor.handshakeOnly")}>
+              {t("editor.handshakeBadge")}
+            </span>
+          )}
         </div>
         {!isRealtime && !isGraphql && (
           <div className={`tab ${tab === "path" ? "active" : ""}`} onClick={() => switchTab("path")}>
@@ -323,6 +336,11 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         )}
         <div className={`tab ${tab === "headers" ? "active" : ""}`} onClick={() => switchTab("headers")}>
           Headers{enabledCount(api.headers) > 0 && <span className="count">{enabledCount(api.headers)}</span>}
+          {isRealtime && (
+            <span className="tab-hint" title={t("editor.handshakeOnly")}>
+              {t("editor.handshakeBadge")}
+            </span>
+          )}
         </div>
         <div
           className={`tab ${tab === "body" ? "active" : ""}`}
@@ -369,6 +387,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
       <div className="editor-body">
         {tab === "params" && (
           <div>
+            {isRealtime && <div className="tab-hint-bar">{t("editor.handshakeOnly")}</div>}
             <KeyValueEditor
               rows={api.query}
               onChange={(rows) => set({ query: rows })}
@@ -409,11 +428,14 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
         )}
 
         {tab === "headers" && (
-          <KeyValueEditor
-            rows={api.headers}
-            onChange={(rows) => set({ headers: rows })}
-            keyPlaceholder={t("editor.headerName")}
-          />
+          <div>
+            {isRealtime && <div className="tab-hint-bar">{t("editor.handshakeOnly")}</div>}
+            <KeyValueEditor
+              rows={api.headers}
+              onChange={(rows) => set({ headers: rows })}
+              keyPlaceholder={t("editor.headerName")}
+            />
+          </div>
         )}
 
         {tab === "body" && isRealtime && (

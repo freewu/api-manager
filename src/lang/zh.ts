@@ -210,6 +210,8 @@ export const ZH: Record<string, string> = {
     "editor.socketIoUrlPlaceholder": "Socket.IO 地址（http/https）",
   "editor.graphqlType": "GraphQL 接口",
   "editor.message": "消息",
+  "editor.handshakeOnly": "只有握手阶段支持",
+  "editor.handshakeBadge": "握手",
   "editor.graphqlMethodTip": "GraphQL 接口固定使用 POST 方法",
   "editor.graphqlBodyTip": "GraphQL 接口仅支持 JSON 格式",
   "editor.wsText": "文本",
