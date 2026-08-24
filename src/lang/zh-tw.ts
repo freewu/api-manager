@@ -113,6 +113,9 @@ export const TW: Record<string, string> = {
   "modal.curlText": "Curl 請求字串",
   "modal.curlTextPlaceholder": "例如：curl -X POST https://api.example.com/users -H 'Content-Type: application/json' -d '{\"name\":\"test\"}'",
   "modal.curlHint": "支援 -X/-H/-d/-F/-u/-G 等常見參數；匯入後自動解析出 URL、請求頭與請求體。",
+  "modal.curlPaste": "從剪貼簿貼上",
+  "modal.curlPasteEmpty": "剪貼簿為空",
+  "modal.curlPasteErr": "無法讀取剪貼簿，請手動貼上",
   "modal.curlParseError": "Curl 解析失敗：{err}",
 
   "modal.newFolder": "新建分組",

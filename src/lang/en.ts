@@ -119,6 +119,9 @@ export const EN: Record<string, string> = {
   "modal.curlText": "Curl command",
   "modal.curlTextPlaceholder": "e.g. curl -X POST https://api.example.com/users -H 'Content-Type: application/json' -d '{\"name\":\"test\"}'",
   "modal.curlHint": "Supports -X/-H/-d/-F/-u/-G etc. URL, headers and body are parsed automatically.",
+  "modal.curlPaste": "Paste from clipboard",
+  "modal.curlPasteEmpty": "Clipboard is empty",
+  "modal.curlPasteErr": "Failed to read clipboard, please paste manually",
   "modal.curlParseError": "Curl parse failed: {err}",
 
   "modal.newFolder": "New Group",

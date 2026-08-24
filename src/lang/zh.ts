@@ -122,6 +122,9 @@ export const ZH: Record<string, string> = {
   "modal.curlText": "Curl 请求串",
   "modal.curlTextPlaceholder": "例如：curl -X POST https://api.example.com/users -H 'Content-Type: application/json' -d '{\"name\":\"test\"}'",
   "modal.curlHint": "支持 -X/-H/-d/-F/-u/-G 等常见参数；导入后自动解析出 URL、请求头与请求体。",
+  "modal.curlPaste": "从剪贴板粘贴",
+  "modal.curlPasteEmpty": "剪贴板为空",
+  "modal.curlPasteErr": "无法读取剪贴板，请手动粘贴",
   "modal.curlParseError": "Curl 解析失败：{err}",
 
   "modal.newFolder": "新建分组",

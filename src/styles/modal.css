@@ -744,6 +744,9 @@
 }
 
 /* 从 Curl 导入弹窗 */
+.modal-curl {
+  width: 640px;
+}
 .modal-curl label {
   display: flex;
   flex-direction: column;
@@ -751,6 +754,15 @@
   margin-bottom: 12px;
   font-size: 13px;
   color: var(--text-secondary);
+}
+.curl-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.curl-paste-btn {
+  padding: 2px 10px;
+  font-size: 12px;
 }
 .modal-curl .curl-input {
   width: 100%;

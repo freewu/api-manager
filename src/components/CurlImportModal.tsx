@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useT } from "../i18n";
 import { Modal } from "./Modal";
 
@@ -25,7 +26,20 @@ export function CurlImportModal({
   onClose: () => void;
 }) {
   const t = useT();
+  const [pasteErr, setPasteErr] = useState("");
   if (!open) return null;
+
+  const pasteFromClipboard = async () => {
+    setPasteErr("");
+    try {
+      const txt = await navigator.clipboard.readText();
+      if (txt) onTextChange(txt);
+      else setPasteErr(t("modal.curlPasteEmpty"));
+    } catch {
+      setPasteErr(t("modal.curlPasteErr"));
+    }
+  };
+
   return (
     <Modal
       title={t("modal.curlTitle")}
@@ -53,17 +67,22 @@ export function CurlImportModal({
         />
       </label>
       <label>
-        {t("modal.curlText")}
+        <span className="curl-label-row">
+          <span>{t("modal.curlText")}</span>
+          <button type="button" className="btn btn-mini curl-paste-btn" onClick={() => void pasteFromClipboard()}>
+            📋 {t("modal.curlPaste")}
+          </button>
+        </span>
         <textarea
           className="curl-input"
-          rows={7}
+          rows={8}
           value={text}
           onChange={(e) => onTextChange(e.target.value)}
           placeholder={t("modal.curlTextPlaceholder")}
           spellCheck={false}
         />
       </label>
-      {error && <div className="objects-name-error curl-error">{error}</div>}
+      {(error || pasteErr) && <div className="objects-name-error curl-error">{error || pasteErr}</div>}
       <div className="modal-hint">{t("modal.curlHint")}</div>
     </Modal>
   );
