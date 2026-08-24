@@ -17,11 +17,13 @@ use std::path::Path;
 pub struct ObjectGroup {
     pub id: String,
     pub name: String,
+    /// 已废弃标记（展示用，不影响功能）
+    pub deprecated: bool,
 }
 
 impl Default for ObjectGroup {
     fn default() -> Self {
-        Self { id: String::new(), name: String::new() }
+        Self { id: String::new(), name: String::new(), deprecated: false }
     }
 }
 
@@ -73,6 +75,8 @@ pub struct ObjectDef {
     pub package_name: String,
     /// 所属分组 id（空串为未分组）
     pub group: String,
+    /// 已废弃标记（展示用，不影响功能）
+    pub deprecated: bool,
     pub description: String,
     pub properties: Vec<ObjectProp>,
     pub created_at: i64,
@@ -88,6 +92,7 @@ impl Default for ObjectDef {
             object_name: String::new(),
             package_name: String::new(),
             group: String::new(),
+            deprecated: false,
             description: String::new(),
             properties: vec![],
             created_at: 0,
@@ -209,7 +214,7 @@ pub fn list_objects(root: &Path) -> Result<ObjectStore, String> {
                 } else {
                     format!("{group_id}/{fname}")
                 };
-                groups.push(ObjectGroup { id: id.clone(), name: fname });
+                groups.push(ObjectGroup { id: id.clone(), name: fname, deprecated: false });
                 scan(&path, &id, groups, objects);
             } else if fname == "__info_obj.json" {
                 continue;
@@ -441,6 +446,7 @@ pub fn import_json_object(
             object_name: suggested_name.to_string(),
             package_name: String::new(),
             group: group.to_string(),
+            deprecated: false,
             description: String::new(),
             properties: props,
             created_at: now,
@@ -527,6 +533,7 @@ pub fn import_ddl(root: &Path, group: &str, ddl: &str) -> Result<ObjectImportRes
             object_name: table_name.clone(),
             package_name: String::new(),
             group: group.clone(),
+            deprecated: false,
             description: String::new(),
             properties: props,
             created_at: now,
@@ -1257,13 +1264,14 @@ CREATE TABLE `my_users` (
     fn test_dir_storage_layout() {
         let root = tmpdir("layout");
         let mut store = ObjectStore::default();
-        store.groups.push(ObjectGroup { id: "用户管理".into(), name: "用户管理".into() });
-        store.groups.push(ObjectGroup { id: "订单/明细".into(), name: "明细".into() });
+        store.groups.push(ObjectGroup { id: "用户管理".into(), name: "用户管理".into(), deprecated: false });
+        store.groups.push(ObjectGroup { id: "订单/明细".into(), name: "明细".into(), deprecated: false });
         store.objects.push(ObjectDef {
             uuid: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
             hash: String::new(),
             name: "User".into(),
             group: "用户管理".into(),
+            deprecated: false,
             object_name: String::new(),
             package_name: String::new(),
             description: "用户".into(),
@@ -1276,6 +1284,7 @@ CREATE TABLE `my_users` (
             hash: String::new(),
             name: "OrderItem".into(),
             group: "订单/明细".into(),
+            deprecated: false,
             object_name: String::new(),
             package_name: String::new(),
             description: String::new(),
@@ -1288,6 +1297,7 @@ CREATE TABLE `my_users` (
             hash: String::new(),
             name: "Plain".into(),
             group: String::new(),
+            deprecated: false,
             object_name: String::new(),
             package_name: String::new(),
             description: String::new(),
@@ -1329,6 +1339,7 @@ CREATE TABLE `my_users` (
             hash: "h1".into(),
             name: "User".into(),
             group: "用户管理".into(),
+            deprecated: false,
             object_name: String::new(),
             package_name: String::new(),
             description: "v1".into(),
@@ -1372,6 +1383,7 @@ CREATE TABLE `my_users` (
                 hash: "tmp".into(),
                 name: format!("对象{u}").into(),
                 group: String::new(),
+                deprecated: false,
                 object_name: String::new(),
                 package_name: String::new(),
                 description: String::new(),

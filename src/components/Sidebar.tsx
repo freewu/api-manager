@@ -515,7 +515,7 @@ export function Sidebar(props: Props) {
         groupId = existing.id;
       } else {
         await props.onObjectsSave({
-          groups: [...props.objectsStore.groups, { id: groupName, name: groupName }],
+          groups: [...props.objectsStore.groups, { id: groupName, name: groupName, deprecated: false }],
           objects: props.objectsStore.objects,
         });
         groupId = groupName;

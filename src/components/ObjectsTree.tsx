@@ -73,6 +73,7 @@ export default function ObjectsTree({
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   /** 对象行右键菜单（uuid） */
   const [objMenu, setObjMenu] = useState<{ x: number; y: number; uuid: string } | null>(null);
+  const [groupMenu, setGroupMenu] = useState<{ x: number; y: number; id: string } | null>(null);
   /** 版本查看弹窗（对象 uuid） */
   const [versionModal, setVersionModal] = useState<ObjectDef | null>(null);
   // 拖拽中的对象 uuid
@@ -89,10 +90,11 @@ export default function ObjectsTree({
 
   // 右键菜单：点击任意处 / Esc 时关闭
   useEffect(() => {
-    if (!ctxMenu && !objMenu) return;
+    if (!ctxMenu && !objMenu && !groupMenu) return;
     const close = () => {
       setCtxMenu(null);
       setObjMenu(null);
+      setGroupMenu(null);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("click", close);
@@ -103,7 +105,7 @@ export default function ObjectsTree({
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("keydown", onKey);
     };
-  }, [ctxMenu, objMenu]);
+  }, [ctxMenu, objMenu, groupMenu]);
 
   const usageOf = useMemo(() => {
     const m: Record<string, ObjectUsageItem> = {};
@@ -125,6 +127,7 @@ export default function ObjectsTree({
   interface GNode {
     id: string;
     name: string;
+    deprecated: boolean;
     children: GNode[];
   }
   const groupTree = useMemo(() => {
@@ -135,6 +138,7 @@ export default function ObjectsTree({
       const node: GNode = {
         id,
         name: id.split("/").pop() || id,
+        deprecated: store.groups.find((g) => g.id === id)?.deprecated ?? false,
         children: [],
       };
       byId[id] = node;
@@ -185,7 +189,7 @@ export default function ObjectsTree({
     return (
       <div key={g.id}>
         <div
-          className="node objects-group-row"
+          className={`node objects-group-row${g.deprecated ? " deprecated" : ""}`}
           style={{ paddingLeft: 6 + depth * 14 }}
           onClick={() =>
             setOpenGroups((prev) => {
@@ -195,6 +199,11 @@ export default function ObjectsTree({
               return next;
             })
           }
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setGroupMenu({ x: e.clientX, y: e.clientY, id: g.id });
+          }}
           onDoubleClick={(e) => {
             e.stopPropagation();
             setInlineEdit({ kind: "group", id: g.id, value: g.name });
@@ -228,6 +237,7 @@ export default function ObjectsTree({
           ) : (
             <span className="node-name">{g.name}</span>
           )}
+          {g.deprecated && <span className="objects-deprecated-badge">已废弃</span>}
           <span
             className="objects-group-count"
             title={t("objects.groupCount", { count: items.length })}
@@ -340,7 +350,7 @@ export default function ObjectsTree({
     }
     setGroupOpen(false);
     await saveStore({
-      groups: [...store.groups, { id, name: id.split("/").pop() || id }],
+      groups: [...store.groups, { id, name: id.split("/").pop() || id, deprecated: false }],
       objects: store.objects,
     });
     // 新建后自动展开该分组及其父级
@@ -410,6 +420,21 @@ export default function ObjectsTree({
     }
   };
 
+  /** 切换分组/对象的已废弃标记 */
+  const toggleDeprecated = (target: "group" | "object", id: string) => {
+    if (target === "group") {
+      void saveStore({
+        groups: store.groups.map((g) => (g.id === id ? { ...g, deprecated: !g.deprecated } : g)),
+        objects: store.objects,
+      });
+    } else {
+      void saveStore({
+        groups: store.groups,
+        objects: store.objects.map((o) => (o.uuid === id ? { ...o, deprecated: !o.deprecated } : o)),
+      });
+    }
+  };
+
   const deleteGroup = (id: string) => {
     const name = id.split("/").pop() || id;
     setConfirmDel({
@@ -453,6 +478,7 @@ export default function ObjectsTree({
       name,
       displayName: newDisplayName.trim() || undefined,
       group: newGroup,
+      deprecated: false,
       description: "",
       properties: props,
       createdAt: now,
@@ -640,6 +666,16 @@ export default function ObjectsTree({
             📋 {t("objects.copy")}
           </button>
           <button
+            onClick={() => {
+              setObjMenu(null);
+              toggleDeprecated("object", objMenu.uuid);
+            }}
+          >
+            🚫 {store.objects.find((x) => x.uuid === objMenu.uuid)?.deprecated
+              ? t("objects.undeprecate")
+              : t("objects.deprecate")}
+          </button>
+          <button
             className="danger"
             onClick={() => {
               const o = store.objects.find((x) => x.uuid === objMenu.uuid);
@@ -648,6 +684,32 @@ export default function ObjectsTree({
             }}
           >
             🗑 {t("objects.deleteObject")}
+          </button>
+        </div>
+      )}
+
+      {/* 分组行右键菜单：废弃切换 / 删除 */}
+      {groupMenu && (
+        <div className="node-ctx-menu" style={{ left: groupMenu.x, top: groupMenu.y }}>
+          <button
+            onClick={() => {
+              setGroupMenu(null);
+              toggleDeprecated("group", groupMenu.id);
+            }}
+          >
+            🚫 {store.groups.find((g) => g.id === groupMenu.id)?.deprecated
+              ? t("objects.undeprecate")
+              : t("objects.deprecate")}
+          </button>
+          <button
+            className="danger"
+            onClick={() => {
+              const g = store.groups.find((x) => x.id === groupMenu.id);
+              setGroupMenu(null);
+              if (g) deleteGroup(g.id);
+            }}
+          >
+            🗑 {t("objects.deleteGroup")}
           </button>
         </div>
       )}
@@ -814,7 +876,7 @@ function ObjectRow({
   const t = useT();
   return (
     <div
-      className={`node objects-object-row${selected ? " selected" : ""}`}
+      className={`node objects-object-row${selected ? " selected" : ""}${obj.deprecated ? " deprecated" : ""}`}
       style={{ paddingLeft: 6 + depth * 14 }}
       onClick={onSelect}
       onDoubleClick={(e) => {
@@ -852,6 +914,7 @@ function ObjectRow({
         <span className="node-name objects-object-name">
           {obj.displayName || obj.name}
           {obj.displayName && <span className="objects-object-ename">{obj.name}</span>}
+          {obj.deprecated && <span className="objects-deprecated-badge">已废弃</span>}
         </span>
       )}
       {usageCount > 0 && (

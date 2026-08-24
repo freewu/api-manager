@@ -686,6 +686,8 @@ export const EN: Record<string, string> = {
   "objects.refPick": "Select referenced object",
   "objects.refPickTitle": "Select referenced object (by group)",
   "objects.refPickEmpty": "No objects available to reference",
+  "objects.deprecate": "Mark as deprecated",
+  "objects.undeprecate": "Undeprecate",
   "objects.confirmDelete": "Delete object \"{name}\"?",
   "objects.confirmDeleteGroup": "Delete group \"{name}\"? Objects in it will be moved to Ungrouped",
   "objects.jsonInvalid": "Invalid JSON",

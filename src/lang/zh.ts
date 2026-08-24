@@ -695,6 +695,8 @@ export const ZH: Record<string, string> = {
   "objects.refPick": "选择引用对象",
   "objects.refPickTitle": "选择引用对象（按分组）",
   "objects.refPickEmpty": "暂无可引用的对象",
+  "objects.deprecate": "标记已废弃",
+  "objects.undeprecate": "取消废弃",
   "objects.confirmDelete": "确定删除对象「{name}」吗？",
   "objects.confirmDeleteGroup": "确定删除分组「{name}」吗？组内对象将移到未分组",
   "objects.jsonInvalid": "JSON 格式错误",

@@ -676,6 +676,8 @@ export const TW: Record<string, string> = {
   "objects.refPick": "選擇引用對象",
   "objects.refPickTitle": "選擇引用對象（依分組）",
   "objects.refPickEmpty": "暫無可引用的對象",
+  "objects.deprecate": "標記已廢棄",
+  "objects.undeprecate": "取消廢棄",
   "objects.confirmDelete": "確定刪除物件「{name}」嗎？",
   "objects.confirmDeleteGroup": "確定刪除群組「{name}」嗎？群組內物件將移到未分組",
   "objects.jsonInvalid": "JSON 格式錯誤",

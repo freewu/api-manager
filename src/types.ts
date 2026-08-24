@@ -425,6 +425,8 @@ export interface MockStatus {
 export interface ObjectGroup {
   id: string;
   name: string;
+  /** 已废弃标记（展示用，不影响功能） */
+  deprecated: boolean;
 }
 
 /** 对象属性类型 */
@@ -458,6 +460,8 @@ export interface ObjectDef {
   displayName?: string;
   /** 所属分组 id（空串为未分组） */
   group: string;
+  /** 已废弃标记（展示用，不影响功能） */
+  deprecated: boolean;
   description: string;
   properties: ObjectProp[];
   createdAt: number;

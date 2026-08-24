@@ -842,3 +842,45 @@
   border-color: var(--accent, #4f9cf9);
   color: var(--accent, #4f9cf9);
 }
+
+/* 已废弃标记 */
+.node.deprecated .node-name,
+.node.deprecated .objects-object-ename {
+  text-decoration: line-through;
+  color: var(--text-faint);
+}
+.objects-deprecated-badge {
+  margin-left: 4px;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, #f59e0b 60%, transparent);
+  border-radius: 3px;
+  font-size: 10px;
+  color: #f59e0b;
+  vertical-align: middle;
+}
+.objref-group-name.deprecated {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+.objref-row.deprecated .objref-file,
+.objref-row.deprecated .objref-objname {
+  text-decoration: line-through;
+  color: var(--text-faint);
+}
+.objref-file {
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+}
+.objref-objname {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.objref-caret {
+  font-size: 10px;
+  transition: transform .15s;
+}
+.objref-caret.open {
+  transform: rotate(90deg);
+}
+.objref-folder-icon {
+  font-size: 12px;
+}
