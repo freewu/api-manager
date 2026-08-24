@@ -480,6 +480,7 @@ export interface GenPropItem {
   kind: string;
   mock: string;
   enabled: boolean;
+  desc?: string;
 }
 
 /** .gen_log 单条生成记录 */

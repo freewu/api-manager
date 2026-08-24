@@ -1291,3 +1291,46 @@
   opacity: 0.65;
   font-weight: 400;
 }
+
+/* ---------- 数据生成弹窗：拖拽排序 + 描述列 ---------- */
+.gen-col-drag {
+  width: 26px;
+  padding: 0 2px !important;
+  text-align: center;
+}
+.gen-drag-handle {
+  cursor: grab;
+  opacity: 0.45;
+  user-select: none;
+  font-size: 12px;
+}
+.gen-drag-handle:active {
+  cursor: grabbing;
+}
+.gen-prop-table tr[draggable="true"] .gen-drag-handle:hover {
+  opacity: 0.9;
+}
+.gen-prop-table tr.gen-drag-over {
+  outline: 2px dashed var(--accent, #4f9cf9);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--accent, #4f9cf9) 8%, transparent);
+}
+.gen-desc-cell {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg, #ccc);
+  opacity: 0.7;
+}
+.genlogs-desc {
+  opacity: 0.7;
+}
+.genlogs-direrr {
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #f28b82;
+  background: color-mix(in srgb, #f28b82 12%, transparent);
+}

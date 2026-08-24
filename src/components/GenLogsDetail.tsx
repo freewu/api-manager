@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { GenLogItem, openPath } from "../commands";
 import { useT } from "../i18n";
 
@@ -15,6 +16,15 @@ interface Props {
 /** 数据生成记录详情（右侧，布局与请求历史类似） */
 export function GenLogsDetail({ detail, onRegen }: Props) {
   const t = useT();
+  const [dirErr, setDirErr] = useState("");
+  const openDir = async () => {
+    setDirErr("");
+    try {
+      await openPath(detail!.dir);
+    } catch (e) {
+      setDirErr(String(e));
+    }
+  };
   if (!detail) {
     return <div className="genlogs-empty genlogs-detail-empty">{t("objects.genLogsEmpty")}</div>;
   }
@@ -25,13 +35,14 @@ export function GenLogsDetail({ detail, onRegen }: Props) {
         <span className="genlogs-detail-name">{detail.object_name}</span>
         <span className="genlogs-detail-file">{detail.file}</span>
         <span style={{ flex: 1 }} />
-        <button className="btn small" onClick={() => void openPath(detail.dir)}>
+        <button className="btn small" onClick={() => void openDir()}>
           📂 {t("objects.genLogsOpenDir")}
         </button>
         <button className="btn small primary" onClick={() => onRegen(detail)}>
           🔁 {t("objects.genLogsRegen")}
         </button>
       </div>
+      {dirErr && <div className="genlogs-direrr">{t("objects.genLogsOpenDirFail", { err: dirErr })}</div>}
       <div className="genlogs-info">
         <div className="genlogs-info-row">
           <label>{t("objects.genLogsTime")}</label>
@@ -64,6 +75,7 @@ export function GenLogsDetail({ detail, onRegen }: Props) {
           <tr>
             <th>{t("objects.genDataKey")}</th>
             <th>{t("objects.genDataKind")}</th>
+            <th>{t("objects.genDataDesc")}</th>
             <th>{t("objects.genDataMock")}</th>
             <th>{t("objects.genDataEnabled")}</th>
           </tr>
@@ -73,6 +85,7 @@ export function GenLogsDetail({ detail, onRegen }: Props) {
             <tr key={i} className={p.enabled ? "" : "gen-row-off"}>
               <td>{p.key}</td>
               <td>{p.kind}</td>
+              <td className="genlogs-desc">{p.desc || "—"}</td>
               <td>{p.mock || "—"}</td>
               <td>{p.enabled ? "✓" : "—"}</td>
             </tr>

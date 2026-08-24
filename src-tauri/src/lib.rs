@@ -9165,6 +9165,8 @@ struct GenPropItem {
     kind: String,
     mock: String,
     enabled: bool,
+    #[serde(default)]
+    desc: Option<String>,
 }
 
 /// 单条生成记录（.gen_log/<时间戳>_<object-uuid>.json）

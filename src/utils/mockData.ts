@@ -187,6 +187,8 @@ export interface GenEntry {
   kind: string;
   mock: string;
   enabled: boolean;
+  /** 属性描述（写入日志 / 生成内容） */
+  desc?: string;
 }
 
 /** 分批异步生成数据行（避免阻塞 UI） */
@@ -210,6 +212,20 @@ export async function genRows(entries: GenEntry[], count: number): Promise<Recor
 /** 生成 JSON 文本（数组） */
 export function rowsToJson(rows: Record<string, unknown>[]): string {
   return JSON.stringify(rows, null, 2);
+}
+
+/** 生成 CSV 文本（表头为参与属性 key；含逗号/引号/换行的值加双引号转义） */
+export function rowsToCsv(rows: Record<string, unknown>[]): string {
+  if (rows.length === 0) return "";
+  const cols = Object.keys(rows[0]);
+  const escCell = (v: unknown): string => {
+    if (v === null || v === undefined) return "";
+    const s = String(v);
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const head = cols.join(",");
+  const lines = rows.map((r) => cols.map((c) => escCell(r[c])).join(","));
+  return [head, ...lines].join("\n");
 }
 
 /** 生成 SQL 文本（INSERT，每 500 行一个语句；表名/列名反引号包裹） */

@@ -3,7 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { Modal } from "./Modal";
 import { ObjectDef, ObjectProp } from "../types";
 import { genData, GenDataResult } from "../commands";
-import { genRows, rowsToJson, rowsToSql } from "../utils/mockData";
+import { genRows, rowsToCsv, rowsToJson, rowsToSql } from "../utils/mockData";
 import MockPicker from "./MockPicker";
 
 interface Props {
@@ -44,13 +44,17 @@ export default function GenDataModal({
       return { prop: p, enabled: it ? it.enabled : true, mock: it ? it.mock : p.mock };
     });
   });
-  const [format, setFormat] = useState<"json" | "sql">(initialFormat === "sql" ? "sql" : "json");
+  const [format, setFormat] = useState<"json" | "sql" | "csv">(
+    initialFormat === "sql" || initialFormat === "csv" ? initialFormat : "json"
+  );
   const [table, setTable] = useState(initialTable ?? (obj.object_name || obj.name));
   const [count, setCount] = useState(initialCount ?? 10000);
   const [dir, setDir] = useState(initialDir ?? "");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [mockIndex, setMockIndex] = useState<number | null>(null);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
 
   const chooseDir = async () => {
     try {
@@ -82,10 +86,17 @@ export default function GenDataModal({
     try {
       // 让 busy 状态先渲染，再开始批量生成
       await new Promise((r) => setTimeout(r, 30));
-      const entries = enabled.map((r) => ({ key: r.prop.key, kind: r.prop.kind, mock: r.mock, enabled: true }));
+      const entries = enabled.map((r) => ({
+        key: r.prop.key,
+        kind: r.prop.kind,
+        mock: r.mock,
+        enabled: true,
+        desc: r.prop.description,
+      }));
       const data = await genRows(entries, n);
-      const content = format === "json" ? rowsToJson(data) : rowsToSql(data, table.trim());
-      const ext = format === "json" ? "json" : "sql";
+      const content =
+        format === "json" ? rowsToJson(data) : format === "csv" ? rowsToCsv(data) : rowsToSql(data, table.trim());
+      const ext = format === "json" ? "json" : format === "csv" ? "csv" : "sql";
       const ts = new Date();
       const stamp = `${ts.getFullYear()}${String(ts.getMonth() + 1).padStart(2, "0")}${String(ts.getDate()).padStart(2, "0")}_${String(ts.getHours()).padStart(2, "0")}${String(ts.getMinutes()).padStart(2, "0")}${String(ts.getSeconds()).padStart(2, "0")}`;
       const fileName = `${obj.object_name || obj.name}_${stamp}.${ext}`;
@@ -99,7 +110,13 @@ export default function GenDataModal({
         elapsedMs: Date.now() - start,
         objectUuid: obj.uuid,
         objectName: obj.object_name || obj.name,
-        props: rows.map((r) => ({ key: r.prop.key, kind: r.prop.kind, mock: r.mock, enabled: r.enabled })),
+        props: rows.map((r) => ({
+          key: r.prop.key,
+          kind: r.prop.kind,
+          mock: r.mock,
+          enabled: r.enabled,
+          desc: r.prop.description,
+        })),
       });
       onDone(res);
       onClose();
@@ -143,14 +160,53 @@ export default function GenDataModal({
                     }}
                   />
                 </th>
+                <th className="gen-col-drag" />
                 <th>{t("objects.genDataKey")}</th>
                 <th>{t("objects.genDataKind")}</th>
+                <th>{t("objects.genDataDesc")}</th>
                 <th>{t("objects.genDataMock")}</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r, i) => (
-                <tr key={r.prop.key} className={r.enabled ? "" : "gen-row-off"}>
+                <tr
+                  key={r.prop.key}
+                  className={`${r.enabled ? "" : "gen-row-off "}${
+                    dragIndex !== null && overIndex === i ? "gen-drag-over" : ""
+                  }`}
+                  draggable={!busy}
+                  onDragStart={(e) => {
+                    setDragIndex(i);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (dragIndex !== null && dragIndex !== i) setOverIndex(i);
+                  }}
+                  onDragLeave={() => {
+                    if (overIndex === i) setOverIndex(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (dragIndex === null || dragIndex === i) {
+                      setDragIndex(null);
+                      setOverIndex(null);
+                      return;
+                    }
+                    setRows((rs) => {
+                      const next = [...rs];
+                      const [moved] = next.splice(dragIndex, 1);
+                      next.splice(i, 0, moved);
+                      return next;
+                    });
+                    setDragIndex(null);
+                    setOverIndex(null);
+                  }}
+                  onDragEnd={() => {
+                    setDragIndex(null);
+                    setOverIndex(null);
+                  }}
+                >
                   <td className="gen-col-check">
                     <input
                       type="checkbox"
@@ -158,10 +214,14 @@ export default function GenDataModal({
                       onChange={(e) => setRow(i, { enabled: e.target.checked })}
                     />
                   </td>
+                  <td className="gen-col-drag" title={t("objects.genDataDrag")}>
+                    <span className="gen-drag-handle">⠿</span>
+                  </td>
                   <td>{r.prop.key}</td>
                   <td>
                     <span className="gen-kind">{r.prop.kind}</span>
                   </td>
+                  <td className="gen-desc-cell">{r.prop.description || "—"}</td>
                   <td>
                     <div className="gen-mock-cell">
                       <input
@@ -204,6 +264,15 @@ export default function GenDataModal({
                     onChange={() => setFormat("sql")}
                   />
                   SQL
+                </label>
+                <label className={`gen-pill${format === "csv" ? " active" : ""}`}>
+                  <input
+                    type="radio"
+                    name="genFormat"
+                    checked={format === "csv"}
+                    onChange={() => setFormat("csv")}
+                  />
+                  CSV
                 </label>
               </div>
             </div>
