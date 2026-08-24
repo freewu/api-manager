@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { Modal } from "./Modal";
 import { ObjectDef, ObjectProp } from "../types";
 import { genData, GenDataResult } from "../commands";
 import { genRows, rowsToJson, rowsToSql } from "../utils/mockData";
@@ -90,12 +91,21 @@ export default function GenDataModal({ obj, onClose, onDone, t }: Props) {
   };
 
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal gen-modal">
-        <div className="modal-head">
-          <span>⚙ {t("objects.genDataTitle")} · {obj.name}</span>
-          <button className="modal-close" onClick={onClose}>×</button>
-        </div>
+    <Modal
+      title={`⚙ ${t("objects.genDataTitle")} · ${obj.name}`}
+      onClose={busy ? () => {} : onClose}
+      className="gen-modal"
+      footer={
+        <>
+          <button className="btn" onClick={onClose} disabled={busy}>
+            {t("common.cancel")}
+          </button>
+          <button className="btn primary" onClick={() => void generate()} disabled={busy}>
+            {busy ? "⏳ " + t("objects.genDataGenerating") : "⚙ " + t("objects.genDataGenerate")}
+          </button>
+        </>
+      }
+    >
         <div className="gen-body">
           <table className="gen-prop-table">
             <thead>
@@ -209,16 +219,6 @@ export default function GenDataModal({ obj, onClose, onDone, t }: Props) {
 
           {err && <div className="gen-err">{err}</div>}
         </div>
-        <div className="modal-foot">
-          <button className="btn" onClick={onClose} disabled={busy}>
-            {t("common.cancel")}
-          </button>
-          <button className="btn primary" onClick={() => void generate()} disabled={busy}>
-            {busy ? "⏳ " + t("objects.genDataGenerating") : "⚙ " + t("objects.genDataGenerate")}
-          </button>
-        </div>
-      </div>
-
       {mockIndex !== null && rows[mockIndex] && (
         <MockPicker
           onPick={(v) => {
@@ -228,6 +228,6 @@ export default function GenDataModal({ obj, onClose, onDone, t }: Props) {
           onClose={() => setMockIndex(null)}
         />
       )}
-    </div>
+    </Modal>
   );
 }
