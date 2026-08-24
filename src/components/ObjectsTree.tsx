@@ -718,6 +718,15 @@ export default function ObjectsTree({
           </button>
           <button
             onClick={() => {
+              const o = store.objects.find((x) => x.uuid === objMenu.uuid);
+              setObjMenu(null);
+              if (o) setGenDataObj(o);
+            }}
+          >
+            ⚙ {t("objects.genData")}
+          </button>
+          <button
+            onClick={() => {
               setObjMenu(null);
               toggleDeprecated("object", objMenu.uuid);
             }}

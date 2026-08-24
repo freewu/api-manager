@@ -131,6 +131,8 @@ export default function ObjectsView({
   const [mockPickIndex, setMockPickIndex] = useState<number | null>(null);
   /** 正在选择引用对象的属性下标（null = 未打开） */
   const [refPickIndex, setRefPickIndex] = useState<number | null>(null);
+  /** Java 展示风格 tab：lombok / native（切换显示，均同时生成） */
+  const [javaStyle, setJavaStyle] = useState<"lombok" | "native">("lombok");
   /** Java 双风格代码（lombok / native 同时生成） */
   const codeJava = useMemo(() => {
     if (!draft || codeLang !== "java") return null;
@@ -481,34 +483,41 @@ export default function ObjectsView({
                 title={t("codegen.switchLang")}
                 onChange={setCodeLang}
               />
+              {codeLang === "java" && (
+                <div className="objects-java-style">
+                  <label className={`objects-style-pill${javaStyle === "lombok" ? " active" : ""}`}>
+                    <input
+                      type="radio"
+                      name="javaStyle"
+                      checked={javaStyle === "lombok"}
+                      onChange={() => setJavaStyle("lombok")}
+                    />
+                    {t("objects.javaStyleLombok")}
+                  </label>
+                  <label className={`objects-style-pill${javaStyle === "native" ? " active" : ""}`}>
+                    <input
+                      type="radio"
+                      name="javaStyle"
+                      checked={javaStyle === "native"}
+                      onChange={() => setJavaStyle("native")}
+                    />
+                    {t("objects.javaStyleNative")}
+                  </label>
+                </div>
+              )}
               <button className="btn small" onClick={() => void copyCode()}>
                 {copied ? t("resp.copied") : "📋 " + t("common.copy")}
               </button>
               <span className="objects-codegen-tip">{t("objects.codegenTip")}</span>
             </div>
             {codeLang === "java" && codeJava ? (
-              <>
-                <div className="objects-style-block">
-                  <div className="objects-style-label">{t("objects.javaStyleLombok")}</div>
-                  {codeJava.lombok ? (
-                    <pre className="objects-codegen-pre">
-                      <code dangerouslySetInnerHTML={{ __html: highlight(codeJava.lombok, "java") }} />
-                    </pre>
-                  ) : (
-                    <div className="objects-codegen-empty">{t("objects.codegenNoName")}</div>
-                  )}
-                </div>
-                <div className="objects-style-block">
-                  <div className="objects-style-label">{t("objects.javaStyleNative")}</div>
-                  {codeJava.native ? (
-                    <pre className="objects-codegen-pre">
-                      <code dangerouslySetInnerHTML={{ __html: highlight(codeJava.native, "java") }} />
-                    </pre>
-                  ) : (
-                    <div className="objects-codegen-empty">{t("objects.codegenNoName")}</div>
-                  )}
-                </div>
-              </>
+              codeJava[javaStyle] ? (
+                <pre className="objects-codegen-pre">
+                  <code dangerouslySetInnerHTML={{ __html: highlight(codeJava[javaStyle], "java") }} />
+                </pre>
+              ) : (
+                <div className="objects-codegen-empty">{t("objects.codegenNoName")}</div>
+              )
             ) : codeOther ? (
               <pre className="objects-codegen-pre">
                 <code dangerouslySetInnerHTML={{ __html: highlight(codeOther, codeLang) }} />
