@@ -795,6 +795,14 @@ export default function ObjectsTree({
           >
             ▦ {t("objects.newObject")}
           </button>
+          <button
+            onClick={() => {
+              setCtxMenu(null);
+              setGroupStats({ id: "", name: t("objects.statAll") });
+            }}
+          >
+            📊 {t("objects.statAll")}
+          </button>
         </div>
       )}
 
@@ -802,10 +810,13 @@ export default function ObjectsTree({
       {groupStats && (
         <GroupStatsModal
           groupName={groupStats.name}
-          objects={store.objects.filter(
-            (o) => o.group === groupStats.id || o.group.startsWith(groupStats.id + "/")
-          )}
-          usageOf={usageOf}
+          objects={
+            groupStats.id
+              ? store.objects.filter(
+                  (o) => o.group === groupStats.id || o.group.startsWith(groupStats.id + "/")
+                )
+              : store.objects
+          }
           isDeprecated={isObjDeprecated}
           onClose={() => setGroupStats(null)}
         />

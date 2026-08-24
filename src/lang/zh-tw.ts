@@ -685,6 +685,8 @@ export const TW: Record<string, string> = {
   "objects.statApiRefs": "接口引用",
   "objects.statRefCount": "{count} 處引用",
   "objects.statEmpty": "該分組下暫無對象",
+  "objects.statAll": "全部對象統計",
+  "objects.statDeprecated": "已廢棄",
   "objects.confirmDelete": "確定刪除物件「{name}」嗎？",
   "objects.confirmDeleteGroup": "確定刪除群組「{name}」嗎？群組內物件將移到未分組",
   "objects.jsonInvalid": "JSON 格式錯誤",

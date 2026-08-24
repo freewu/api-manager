@@ -704,6 +704,8 @@ export const ZH: Record<string, string> = {
   "objects.statApiRefs": "接口引用",
   "objects.statRefCount": "{count} 处引用",
   "objects.statEmpty": "该分组下暂无对象",
+  "objects.statAll": "全部对象统计",
+  "objects.statDeprecated": "已废弃",
   "objects.confirmDelete": "确定删除对象「{name}」吗？",
   "objects.confirmDeleteGroup": "确定删除分组「{name}」吗？组内对象将移到未分组",
   "objects.jsonInvalid": "JSON 格式错误",

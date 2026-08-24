@@ -695,6 +695,8 @@ export const EN: Record<string, string> = {
   "objects.statApiRefs": "API refs",
   "objects.statRefCount": "{count} refs",
   "objects.statEmpty": "No objects in this group",
+  "objects.statAll": "All objects stats",
+  "objects.statDeprecated": "Deprecated",
   "objects.confirmDelete": "Delete object \"{name}\"?",
   "objects.confirmDeleteGroup": "Delete group \"{name}\"? Objects in it will be moved to Ungrouped",
   "objects.jsonInvalid": "Invalid JSON",
