@@ -6,9 +6,9 @@ export async function objectHash(props: ObjectProp[]): Promise<string> {
   const parts = (props || [])
     .map((p) => {
       let s = `${p.key.trim()}:${p.kind}`;
-      if (p.kind === "list") s += `:${p.itemKind}`;
+      if (p.kind === "List") s += `:${p.itemKind}`;
       if (
-        (p.kind === "object" || (p.kind === "list" && p.itemKind === "object")) &&
+        (p.kind === "Object" || (p.kind === "List" && p.itemKind === "Object")) &&
         p.refHash
       ) {
         s += `:${p.refHash}`;

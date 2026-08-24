@@ -34,11 +34,11 @@ impl Default for ObjectGroup {
 #[serde(rename_all = "camelCase", default)]
 pub struct ObjectProp {
     pub key: String,
-    /// string / number / boolean / datetime / date / time / object / list / any
+    /// String / Integer / Float / Boolean / Datetime / Date / Time / List / Object / Any
     pub kind: String,
-    /// list 的元素类型（string / number / boolean / datetime / date / time / object / any）
+    /// List 的元素类型（String / Integer / Float / Boolean / Datetime / Date / Time / Object / Any）
     pub item_kind: String,
-    /// object / list(object) 引用的对象 hash（空表示未引用）
+    /// Object / List(Object) 引用的对象 hash（空表示未引用）
     pub ref_hash: String,
     pub description: String,
     /// mock 值（示例数据，不参与结构 hash）
@@ -49,8 +49,8 @@ impl Default for ObjectProp {
     fn default() -> Self {
         Self {
             key: String::new(),
-            kind: "string".into(),
-            item_kind: "string".into(),
+            kind: "String".into(),
+            item_kind: "String".into(),
             ref_hash: String::new(),
             description: String::new(),
             mock: String::new(),
@@ -154,11 +154,11 @@ pub fn object_hash(props: &[ObjectProp]) -> String {
         .iter()
         .map(|p| {
             let mut s = format!("{}:{}", p.key.trim(), p.kind);
-            if p.kind == "list" {
+            if p.kind == "List" {
                 s.push(':');
                 s.push_str(&p.item_kind);
             }
-            if (p.kind == "object" || (p.kind == "list" && p.item_kind == "object"))
+            if (p.kind == "Object" || (p.kind == "List" && p.item_kind == "Object"))
                 && !p.ref_hash.is_empty()
             {
                 s.push(':');
@@ -254,7 +254,61 @@ pub fn list_objects(root: &Path) -> Result<ObjectStore, String> {
         }
     }
     scan(&dir, "", &mut groups, &mut objects, &info_deprecated);
-    Ok(ObjectStore { groups, objects })
+    let mut store = ObjectStore { groups, objects };
+    migrate_object_kinds(&mut store);
+    Ok(store)
+}
+
+/// 旧版本对象数据兼容：属性类型归一化（旧小写类型 → 新 PascalCase 类型，与接口文档 tab 一致）。
+/// 类型变化导致结构 hash 变化，因此同时重算对象 hash，并把 refHash 引用从旧 hash 迁移到新 hash
+/// （与 save_objects 的冲突后缀规则一致，保证同结构对象 hash 唯一）。
+fn migrate_object_kinds(store: &mut ObjectStore) {
+    for o in &mut store.objects {
+        for p in &mut o.properties {
+            p.kind = normalize_kind(&p.kind);
+            p.item_kind = normalize_kind(&p.item_kind);
+        }
+    }
+    let mut map: HashMap<String, String> = HashMap::new();
+    let mut used: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for o in &mut store.objects {
+        let base = object_hash(&o.properties);
+        let mut h = base.clone();
+        let mut n = 2;
+        while used.contains(&h) {
+            h = format!("{base}-{n}");
+            n += 1;
+        }
+        used.insert(h.clone());
+        if o.hash != h {
+            map.insert(o.hash.clone(), h.clone());
+            o.hash = h;
+        }
+    }
+    for o in &mut store.objects {
+        for p in &mut o.properties {
+            if let Some(h) = map.get(&p.ref_hash) {
+                p.ref_hash = h.clone();
+            }
+        }
+    }
+}
+
+/// 属性类型归一化：旧小写类型 → 新 PascalCase 类型；新类型或未知值原样返回。
+/// 旧 "number" 无法区分整数/浮点，统一归为 Integer（用户可手动改为 Float）。
+fn normalize_kind(k: &str) -> String {
+    match k {
+        "string" => "String".into(),
+        "number" => "Integer".into(),
+        "boolean" => "Boolean".into(),
+        "datetime" => "Datetime".into(),
+        "date" => "Date".into(),
+        "time" => "Time".into(),
+        "list" => "List".into(),
+        "object" => "Object".into(),
+        "any" => "Any".into(),
+        other => other.to_string(),
+    }
 }
 
 /// 保存对象存储（全量重建 data/.object 目录）。
@@ -380,30 +434,36 @@ pub fn import_json_object(
                 };
                 match val {
                     serde_json::Value::String(_) => {
-                        p.kind = "string".into();
+                        p.kind = "String".into();
                     }
                     serde_json::Value::Number(n) => {
                         p.kind = if n.as_i64().is_some() || n.as_u64().is_some() {
-                            "number".into()
+                            "Integer".into()
                         } else {
-                            "number".into()
+                            "Float".into()
                         };
                     }
-                    serde_json::Value::Bool(_) => p.kind = "boolean".into(),
-                    serde_json::Value::Null => p.kind = "any".into(),
+                    serde_json::Value::Bool(_) => p.kind = "Boolean".into(),
+                    serde_json::Value::Null => p.kind = "Any".into(),
                     serde_json::Value::Array(arr) => {
                         let item_kind = if arr.is_empty() {
-                            "any".to_string()
+                            "Any".to_string()
                         } else {
                             // 取第一个非空元素推断类型
-                            let mut it = "any".to_string();
+                            let mut it = "Any".to_string();
                             for el in arr {
                                 match el {
-                                    serde_json::Value::String(_) => it = "string".into(),
-                                    serde_json::Value::Number(_) => it = "number".into(),
-                                    serde_json::Value::Bool(_) => it = "boolean".into(),
+                                    serde_json::Value::String(_) => it = "String".into(),
+                                    serde_json::Value::Number(n) => {
+                                        it = if n.as_i64().is_some() || n.as_u64().is_some() {
+                                            "Integer".into()
+                                        } else {
+                                            "Float".into()
+                                        };
+                                    }
+                                    serde_json::Value::Bool(_) => it = "Boolean".into(),
                                     serde_json::Value::Object(_) => {
-                                        it = "object".into();
+                                        it = "Object".into();
                                         break;
                                     }
                                     _ => {}
@@ -411,9 +471,9 @@ pub fn import_json_object(
                             }
                             it
                         };
-                        p.kind = "list".into();
+                        p.kind = "List".into();
                         p.item_kind = item_kind.clone();
-                        if item_kind == "object" {
+                        if item_kind == "Object" {
                             // 提取数组元素对象为独立对象
                             if let Some(first) = arr.iter().find(|e| e.is_object()) {
                                 let child_name = format!("{}{}", suggested_name, capitalize(k));
@@ -431,7 +491,7 @@ pub fn import_json_object(
                         }
                     }
                     serde_json::Value::Object(_) => {
-                        p.kind = "object".into();
+                        p.kind = "Object".into();
                         let child_name = format!("{}{}", suggested_name, capitalize(k));
                         let h = build(store, generated, created, reused, group, val, &child_name)?;
                         p.ref_hash = h;
@@ -897,7 +957,7 @@ fn extract_comment(attrs: &str) -> String {
     String::new()
 }
 
-/// SQL 类型 → 对象属性类型
+/// SQL 类型 → 对象属性类型（PascalCase，与接口文档 tab 风格一致）
 fn map_sql_type(t: &str) -> &'static str {
     let t = t.to_ascii_uppercase();
     if t.starts_with("INT")
@@ -906,28 +966,30 @@ fn map_sql_type(t: &str) -> &'static str {
         || t.starts_with("SMALLINT")
         || t.starts_with("TINYINT")
         || t.starts_with("MEDIUMINT")
-        || t.starts_with("DEC")
-        || t.starts_with("NUM")
-        || t.starts_with("FLOAT")
-        || t.starts_with("DOUBLE")
-        || t.starts_with("REAL")
-        || t.starts_with("MONEY")
         || t == "YEAR"
     {
-        "number"
+        "Integer"
+    } else if t.starts_with("FLOAT")
+        || t.starts_with("DOUBLE")
+        || t.starts_with("DEC")
+        || t.starts_with("NUM")
+        || t.starts_with("REAL")
+        || t.starts_with("MONEY")
+    {
+        "Float"
     } else if t.starts_with("BOOL") || t == "BIT" {
-        "boolean"
+        "Boolean"
     } else if t.starts_with("DATETIME") || t.starts_with("TIMESTAMP") {
-        "datetime"
+        "Datetime"
     } else if t.starts_with("DATE") {
-        "date"
+        "Date"
     } else if t.starts_with("TIME") {
-        "time"
+        "Time"
     } else if t.starts_with("JSON") {
-        "any"
+        "Any"
     } else {
         // VARCHAR / CHAR / TEXT / BLOB / CLOB / BINARY / ENUM / UUID 等
-        "string"
+        "String"
     }
 }
 
@@ -1088,7 +1150,14 @@ pub fn read_object_version(root: &Path, uuid: &str, version: u32) -> Result<Obje
     }
     let path = root.join(".object_version").join(&uuid).join(format!("{version}.json"));
     let text = std::fs::read_to_string(&path).map_err(|e| format!("读取对象版本失败: {e}"))?;
-    serde_json::from_str(&text).map_err(|e| format!("解析对象版本失败: {e}"))
+    let mut o: ObjectDef =
+        serde_json::from_str(&text).map_err(|e| format!("解析对象版本失败: {e}"))?;
+    // 旧版本快照中的小写类型归一化为新 PascalCase 类型（仅影响展示，不改磁盘）
+    for p in &mut o.properties {
+        p.kind = normalize_kind(&p.kind);
+        p.item_kind = normalize_kind(&p.item_kind);
+    }
+    Ok(o)
 }
 
 #[cfg(test)]
@@ -1105,8 +1174,8 @@ mod tests {
     #[test]
     fn test_object_hash_sorted_keys() {
         let mut p1 = vec![
-            ObjectProp { key: "b".into(), kind: "string".into(), ..Default::default() },
-            ObjectProp { key: "a".into(), kind: "number".into(), ..Default::default() },
+            ObjectProp { key: "b".into(), kind: "String".into(), ..Default::default() },
+            ObjectProp { key: "a".into(), kind: "Integer".into(), ..Default::default() },
         ];
         let h1 = object_hash(&p1);
         assert_eq!(h1.len(), 12);
@@ -1115,16 +1184,16 @@ mod tests {
         assert_eq!(object_hash(&p1), h1);
         // 不同结构不同 hash
         let p2 = vec![
-            ObjectProp { key: "a".into(), kind: "number".into(), ..Default::default() },
-            ObjectProp { key: "b".into(), kind: "boolean".into(), ..Default::default() },
+            ObjectProp { key: "a".into(), kind: "Integer".into(), ..Default::default() },
+            ObjectProp { key: "b".into(), kind: "Boolean".into(), ..Default::default() },
         ];
         assert_ne!(object_hash(&p2), h1);
         // list + 引用参与 hash
         let p3 = vec![
-            ObjectProp { key: "a".into(), kind: "list".into(), item_kind: "object".into(), ref_hash: "x".into(), ..Default::default() },
+            ObjectProp { key: "a".into(), kind: "List".into(), item_kind: "Object".into(), ref_hash: "x".into(), ..Default::default() },
         ];
         let p4 = vec![
-            ObjectProp { key: "a".into(), kind: "list".into(), item_kind: "object".into(), ref_hash: "y".into(), ..Default::default() },
+            ObjectProp { key: "a".into(), kind: "List".into(), item_kind: "Object".into(), ref_hash: "y".into(), ..Default::default() },
         ];
         assert_ne!(object_hash(&p3), object_hash(&p4));
     }
@@ -1146,11 +1215,11 @@ mod tests {
         assert_eq!(user.group, "g1");
         // 引用关系
         let addr_prop = user.properties.iter().find(|p| p.key == "addr").unwrap();
-        assert_eq!(addr_prop.kind, "object");
+        assert_eq!(addr_prop.kind, "Object");
         assert!(!addr_prop.ref_hash.is_empty());
         let orders_prop = user.properties.iter().find(|p| p.key == "orders").unwrap();
-        assert_eq!(orders_prop.kind, "list");
-        assert_eq!(orders_prop.item_kind, "object");
+        assert_eq!(orders_prop.kind, "List");
+        assert_eq!(orders_prop.item_kind, "Object");
 
         // 第二次导入相同结构：全部复用
         let res2 = import_json_object(&root, "User2", "g2", json).unwrap();
@@ -1173,13 +1242,16 @@ mod tests {
 
     #[test]
     fn test_map_sql_type_date_time() {
-        assert_eq!(map_sql_type("DATETIME"), "datetime");
-        assert_eq!(map_sql_type("TIMESTAMP"), "datetime");
-        assert_eq!(map_sql_type("TIMESTAMP(6)"), "datetime");
-        assert_eq!(map_sql_type("DATE"), "date");
-        assert_eq!(map_sql_type("TIME"), "time");
-        assert_eq!(map_sql_type("VARCHAR(50)"), "string");
-        assert_eq!(map_sql_type("INT"), "number");
+        assert_eq!(map_sql_type("DATETIME"), "Datetime");
+        assert_eq!(map_sql_type("TIMESTAMP"), "Datetime");
+        assert_eq!(map_sql_type("TIMESTAMP(6)"), "Datetime");
+        assert_eq!(map_sql_type("DATE"), "Date");
+        assert_eq!(map_sql_type("TIME"), "Time");
+        assert_eq!(map_sql_type("VARCHAR(50)"), "String");
+        assert_eq!(map_sql_type("INT"), "Integer");
+        assert_eq!(map_sql_type("FLOAT"), "Float");
+        assert_eq!(map_sql_type("DOUBLE"), "Float");
+        assert_eq!(map_sql_type("DECIMAL(10,2)"), "Float");
     }
 
     #[test]
@@ -1208,13 +1280,13 @@ CREATE TABLE IF NOT EXISTS public.orders (
         assert_eq!(cols.len(), 4);
         let (name, kind, _desc) = parse_column(&cols[0]).unwrap();
         assert_eq!(name, "id");
-        assert_eq!(kind, "number");
+        assert_eq!(kind, "Integer");
         let (name, kind, desc) = parse_column(&cols[1]).unwrap();
         assert_eq!(name, "name");
-        assert_eq!(kind, "string");
+        assert_eq!(kind, "String");
         assert_eq!(desc, "用户名称", "COMMENT 应提取为描述");
         let (_, kind, _) = parse_column(&cols[2]).unwrap();
-        assert_eq!(kind, "number");
+        assert_eq!(kind, "Integer");
         // 表级约束应被忽略
         let constraint_cols: Vec<_> = split_columns(&tables[1].2);
         let parsed: Vec<_> = constraint_cols.iter().filter_map(|c| parse_column(c)).collect();
@@ -1260,7 +1332,7 @@ CREATE TABLE `my_users` (
         let first = o.properties.iter().find(|p| p.key == "first name").unwrap();
         assert_eq!(first.description, "名字");
         let bio = o.properties.iter().find(|p| p.key == "bio").unwrap();
-        assert_eq!(bio.kind, "string");
+        assert_eq!(bio.kind, "String");
     }
 
     #[test]
@@ -1270,7 +1342,7 @@ CREATE TABLE `my_users` (
         let o = ObjectDef {
             hash: "stale".into(),
             name: "A".into(),
-            properties: vec![ObjectProp { key: "x".into(), kind: "string".into(), ..Default::default() }],
+            properties: vec![ObjectProp { key: "x".into(), kind: "String".into(), ..Default::default() }],
             ..Default::default()
         };
         store.objects.push(o.clone());
@@ -1309,7 +1381,7 @@ CREATE TABLE `my_users` (
             object_name: String::new(),
             package_name: String::new(),
             description: "用户".into(),
-            properties: vec![ObjectProp { key: "id".into(), kind: "number".into(), ..Default::default() }],
+            properties: vec![ObjectProp { key: "id".into(), kind: "Integer".into(), ..Default::default() }],
             created_at: 1,
             updated_at: 2,
         });
@@ -1404,6 +1476,58 @@ CREATE TABLE `my_users` (
         assert!(list_object_versions(&root, "../").unwrap().is_empty());
         // 无效 uuid 保存报错
         assert!(save_object_version(&root, "bad/../uuid", &obj).is_err());
+    }
+
+    #[test]
+    fn test_migrate_old_lowercase_kinds() {
+        let root = tmpdir("migrate");
+        // 模拟旧版本数据：小写类型 + 引用关系（refHash 基于旧类型 hash）
+        let dir = root.join(".object");
+        std::fs::create_dir_all(&dir).unwrap();
+        let old_child = serde_json::json!({
+            "uuid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "hash": "child-old-hash",
+            "name": "Child",
+            "group": "",
+            "deprecated": false,
+            "objectName": "Child",
+            "packageName": "",
+            "description": "",
+            "properties": [{"key": "id", "kind": "number", "itemKind": "number", "refHash": "", "description": "", "mock": ""}],
+            "createdAt": 1,
+            "updatedAt": 2
+        });
+        std::fs::write(dir.join("Child.obj.json"), serde_json::to_string(&old_child).unwrap()).unwrap();
+        let old_parent = serde_json::json!({
+            "uuid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "hash": "parent-old-hash",
+            "name": "Parent",
+            "group": "",
+            "deprecated": false,
+            "objectName": "Parent",
+            "packageName": "",
+            "description": "",
+            "properties": [
+                {"key": "createdAt", "kind": "datetime", "itemKind": "string", "refHash": "", "description": "", "mock": ""},
+                {"key": "child", "kind": "object", "itemKind": "string", "refHash": "child-old-hash", "description": "", "mock": ""}
+            ],
+            "createdAt": 1,
+            "updatedAt": 2
+        });
+        std::fs::write(dir.join("Parent.obj.json"), serde_json::to_string(&old_parent).unwrap()).unwrap();
+
+        let store = list_objects(&root).unwrap();
+        assert_eq!(store.objects.len(), 2);
+        let parent = store.objects.iter().find(|o| o.name == "Parent").unwrap();
+        let child = store.objects.iter().find(|o| o.name == "Child").unwrap();
+        // 类型归一化为 PascalCase
+        assert_eq!(parent.properties[0].kind, "Datetime");
+        assert_eq!(parent.properties[1].kind, "Object");
+        assert_eq!(child.properties[0].kind, "Integer");
+        // hash 重算，且引用迁移到新 hash
+        assert_ne!(parent.hash, "parent-old-hash");
+        assert_eq!(parent.properties[1].ref_hash, child.hash, "refHash 应从旧 hash 迁移到新 hash");
+        assert_eq!(child.hash.len(), 12);
     }
 
     #[test]

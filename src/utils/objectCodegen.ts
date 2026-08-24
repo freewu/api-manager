@@ -36,7 +36,7 @@ const findObj = (all: ObjectDef[], hash: string, name: string): ObjectDef | unde
 function typeOf(lang: string, p: ObjectProp, obj: ObjectDef, all: ObjectDef[]): string {
   const base = (kind: string): string => {
     // 日期/时间类型：各语言映射到标准日期类型
-    if (kind === "datetime" || kind === "date" || kind === "time") {
+    if (kind === "Datetime" || kind === "Date" || kind === "Time") {
       switch (lang) {
         case "typescript":
         case "dart":
@@ -44,56 +44,160 @@ function typeOf(lang: string, p: ObjectProp, obj: ObjectDef, all: ObjectDef[]): 
           return "Date";
         case "java":
         case "kotlin":
-          return kind === "datetime" ? "LocalDateTime" : kind === "date" ? "LocalDate" : "LocalTime";
+          return kind === "Datetime" ? "LocalDateTime" : kind === "Date" ? "LocalDate" : "LocalTime";
         case "csharp":
-          return kind === "datetime" ? "DateTime" : kind === "date" ? "DateOnly" : "TimeOnly";
+          return kind === "Datetime" ? "DateTime" : kind === "Date" ? "DateOnly" : "TimeOnly";
         case "go":
           return "time.Time";
         case "python":
-          return kind;
+          return kind.toLowerCase();
         case "delphi":
           return "TDateTime";
         default:
-          return kind;
+          return kind.toLowerCase();
       }
     }
     switch (lang) {
       case "typescript":
       case "dart":
-        return kind === "number" ? "number" : kind;
+        return kind === "Integer" || kind === "Float"
+          ? "number"
+          : kind === "Boolean"
+            ? "boolean"
+            : kind === "Any"
+              ? "any"
+              : kind === "String"
+                ? "string"
+                : kind.toLowerCase();
       case "java":
       case "csharp":
       case "kotlin":
-      case "delphi":
       case "objectivec":
-        return kind === "number" ? "double" : kind;
+        return kind === "Integer"
+          ? "int"
+          : kind === "Float"
+            ? "double"
+            : kind === "Boolean"
+              ? "boolean"
+              : kind === "Any"
+                ? "Object"
+                : kind === "String"
+                  ? "String"
+                  : kind.toLowerCase();
+      case "delphi":
+        return kind === "Integer"
+          ? "Integer"
+          : kind === "Float"
+            ? "Double"
+            : kind === "Boolean"
+              ? "Boolean"
+              : kind === "Any"
+                ? "TObject"
+                : kind === "String"
+                  ? "string"
+                  : kind.toLowerCase();
       case "go":
+        return kind === "Integer"
+          ? "int64"
+          : kind === "Float"
+            ? "float64"
+            : kind === "Boolean"
+              ? "bool"
+              : kind === "Any"
+                ? "any"
+                : kind === "String"
+                  ? "string"
+                  : kind.toLowerCase();
       case "rust":
-        return kind === "number" ? "f64" : kind === "boolean" ? "bool" : kind;
+        return kind === "Integer"
+          ? "i64"
+          : kind === "Float"
+            ? "f64"
+            : kind === "Boolean"
+              ? "bool"
+              : kind === "Any"
+                ? "any"
+                : kind === "String"
+                  ? "String"
+                  : kind.toLowerCase();
       case "python":
-        return kind === "boolean" ? "bool" : kind;
+        return kind === "Integer"
+          ? "int"
+          : kind === "Float"
+            ? "float"
+            : kind === "Boolean"
+              ? "bool"
+              : kind === "Any"
+                ? "Any"
+                : kind === "String"
+                  ? "str"
+                  : kind.toLowerCase();
       case "swift":
-        return kind === "number" ? "Double" : kind === "boolean" ? "Bool" : "String";
+        return kind === "Integer"
+          ? "Int"
+          : kind === "Float"
+            ? "Double"
+            : kind === "Boolean"
+              ? "Bool"
+              : kind === "Any"
+                ? "Any"
+                : kind === "String"
+                  ? "String"
+                  : kind.toLowerCase();
       case "php":
+        return kind === "Integer"
+          ? "int"
+          : kind === "Float"
+            ? "float"
+            : kind === "Boolean"
+              ? "bool"
+              : kind === "Any"
+                ? "mixed"
+                : kind === "String"
+                  ? "string"
+                  : kind.toLowerCase();
       case "ruby":
+      case "erlang":
+        return kind.toLowerCase();
       case "julia":
-        return kind;
+        return kind === "Integer"
+          ? "Int64"
+          : kind === "Float"
+            ? "Float64"
+            : kind === "Boolean"
+              ? "Bool"
+              : kind === "Any"
+                ? "Any"
+                : kind === "String"
+                  ? "String"
+                  : kind.toLowerCase();
       case "c":
       case "cpp":
-        return kind === "number" ? "double" : kind === "boolean" ? "bool" : kind;
-      case "erlang":
-        return kind;
+        return kind === "Integer"
+          ? "int"
+          : kind === "Float"
+            ? "double"
+            : kind === "Boolean"
+              ? "bool"
+              : kind === "Any"
+                ? "void*"
+                : kind === "String"
+                  ? "char*"
+                  : kind.toLowerCase();
       default:
-        return kind;
+        return kind.toLowerCase();
     }
   };
-  if (p.kind === "object") {
+  if (p.kind === "Object") {
     const ref = findObj(all, p.refHash, obj.name);
     if (ref) return ref.object_name?.trim() || ref.name;
     return "any";
   }
-  if (p.kind === "list") {
-    const inner = p.itemKind === "object" ? ((findObj(all, p.refHash, obj.name)?.object_name?.trim() || findObj(all, p.refHash, obj.name)?.name) ?? "any") : base(p.itemKind);
+  if (p.kind === "List") {
+    const inner =
+      p.itemKind === "Object"
+        ? (findObj(all, p.refHash, obj.name)?.object_name?.trim() || findObj(all, p.refHash, obj.name)?.name) ?? "any"
+        : base(p.itemKind);
     switch (lang) {
       case "typescript":
       case "dart":
@@ -128,7 +232,7 @@ function typeOf(lang: string, p: ObjectProp, obj: ObjectDef, all: ObjectDef[]): 
         return `${inner}[]`;
     }
   }
-  if (p.kind === "any") return lang === "python" ? "Any" : lang === "go" || lang === "rust" ? "any" : "any";
+  if (p.kind === "Any") return lang === "python" ? "Any" : lang === "go" || lang === "rust" ? "any" : "any";
   return base(p.kind);
 }
 
@@ -166,7 +270,7 @@ export function generateObjectCode(lang: string, obj: ObjectDef, all: ObjectDef[
         for (const p of props) {
           const t = typeOf(lang, p, obj, all);
           const capKey = cap(p.key);
-          const getter = p.kind === "boolean" ? `is${capKey}` : `get${capKey}`;
+          const getter = p.kind === "Boolean" ? `is${capKey}` : `get${capKey}`;
           methods.push(
             `\n  public ${t} ${getter}() {\n    return ${p.key};\n  }`,
             `\n  public void set${capKey}(${t} ${p.key}) {\n    this.${p.key} = ${p.key};\n  }`

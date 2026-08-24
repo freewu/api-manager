@@ -430,7 +430,7 @@ export interface ObjectGroup {
 }
 
 /** 对象属性类型 */
-export const PROP_KINDS = ["string", "number", "boolean", "datetime", "date", "time", "object", "list", "any"] as const;
+export const PROP_KINDS = ["String", "Integer", "Float", "Boolean", "Datetime", "Date", "Time", "List", "Object", "Any"] as const;
 
 export interface ObjectProp {
   key: string;

@@ -80,10 +80,10 @@ interface Props {
   defaultCodeLang: string;
 }
 
-const ITEM_KINDS = ["string", "number", "boolean", "datetime", "date", "time", "object", "any"];
+const ITEM_KINDS = ["String", "Integer", "Float", "Boolean", "Datetime", "Date", "Time", "Object", "Any"];
 
 function emptyProp(): ObjectProp {
-  return { key: "", kind: "string", itemKind: "", refHash: "", description: "", mock: "" };
+  return { key: "", kind: "String", itemKind: "", refHash: "", description: "", mock: "" };
 }
 
 /** 对象管理：右侧对象配置（类似接口文档管理的响应编辑，kv 表格风格） */
@@ -395,8 +395,8 @@ export default function ObjectsView({
                         setProp(i, {
                           ...p,
                           kind: e.target.value,
-                          itemKind: e.target.value === "list" ? "string" : "",
-                          refHash: ["object", "list"].includes(e.target.value) ? p.refHash : "",
+                          itemKind: e.target.value === "List" ? "String" : "",
+                          refHash: ["Object", "List"].includes(e.target.value) ? p.refHash : "",
                         })
                       }
                     >
@@ -408,7 +408,7 @@ export default function ObjectsView({
                     </select>
                   </td>
                   <td>
-                    {p.kind === "list" && (
+                    {p.kind === "List" && (
                       <select
                         className="doc-type-select"
                         value={p.itemKind}
@@ -416,7 +416,7 @@ export default function ObjectsView({
                           setProp(i, {
                             ...p,
                             itemKind: e.target.value,
-                            refHash: e.target.value === "object" ? p.refHash : "",
+                            refHash: e.target.value === "Object" ? p.refHash : "",
                           })
                         }
                       >
@@ -429,7 +429,7 @@ export default function ObjectsView({
                     )}
                   </td>
                   <td className="objects-ref-cell">
-                    {(p.kind === "object" || (p.kind === "list" && p.itemKind === "object")) &&
+                    {(p.kind === "Object" || (p.kind === "List" && p.itemKind === "Object")) &&
                       store.objects.length > 0 && (
                         <button
                           className="objects-ref-pick"

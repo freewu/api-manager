@@ -1060,31 +1060,31 @@ function jsonToObjectProps(value: unknown): ObjectProp[] {
   for (const [key, v] of Object.entries(value)) {
     const p: ObjectProp = {
       key,
-      kind: "string",
+      kind: "String",
       itemKind: "",
       refHash: "",
       description: "",
       mock: "",
     };
     if (v === null) {
-      p.kind = "any";
+      p.kind = "Any";
     } else if (Array.isArray(v)) {
-      p.kind = "list";
+      p.kind = "List";
       if (v.length > 0) {
         const first = v[0];
-        if (first && typeof first === "object") p.itemKind = "object";
-        else if (typeof first === "number") p.itemKind = "number";
-        else if (typeof first === "boolean") p.itemKind = "boolean";
-        else p.itemKind = "string";
+        if (first && typeof first === "object") p.itemKind = "Object";
+        else if (typeof first === "number") p.itemKind = Number.isInteger(first) ? "Integer" : "Float";
+        else if (typeof first === "boolean") p.itemKind = "Boolean";
+        else p.itemKind = "String";
       }
     } else if (typeof v === "number") {
-      p.kind = "number";
+      p.kind = Number.isInteger(v) ? "Integer" : "Float";
     } else if (typeof v === "boolean") {
-      p.kind = "boolean";
+      p.kind = "Boolean";
     } else if (typeof v === "object") {
-      p.kind = "object";
+      p.kind = "Object";
     } else {
-      p.kind = "string";
+      p.kind = "String";
     }
     out.push(p);
   }

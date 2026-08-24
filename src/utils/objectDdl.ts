@@ -4,22 +4,24 @@ import { ObjectDef } from "../types";
 export function sqlType(p: { kind: string; itemKind: string; refHash: string }): string {
   if (p.refHash) return "BIGINT";
   switch (p.kind) {
-    case "number":
+    case "Integer":
       return "BIGINT";
-    case "boolean":
+    case "Float":
+      return "DOUBLE";
+    case "Boolean":
       return "TINYINT(1)";
-    case "datetime":
+    case "Datetime":
       return "DATETIME";
-    case "date":
+    case "Date":
       return "DATE";
-    case "time":
+    case "Time":
       return "TIME";
-    case "object":
+    case "Object":
       return "JSON";
-    case "list":
+    case "List":
       // list 的元素类型：基本类型展开为同类型多值字段仍用 JSON 存储；object 引用同样 JSON
       return "JSON";
-    case "any":
+    case "Any":
       return "TEXT";
     default:
       return "VARCHAR(255)";

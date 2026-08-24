@@ -67,19 +67,21 @@ export function mockValue(template: string, kind: string): unknown {
     if (!template.trim()) {
       // 空 mock：按类型给默认值
       switch (kind) {
-        case "number":
+        case "Integer":
           return randInt(0, 999);
-        case "boolean":
+        case "Float":
+          return Number((Math.random() * 10000).toFixed(2));
+        case "Boolean":
           return Math.random() < 0.5;
-        case "datetime":
+        case "Datetime":
           return datetimeStr();
-        case "date":
+        case "Date":
           return dateStr();
-        case "time":
+        case "Time":
           return timeStr();
-        case "object":
+        case "Object":
           return null;
-        case "list":
+        case "List":
           return [];
         default:
           return "";
