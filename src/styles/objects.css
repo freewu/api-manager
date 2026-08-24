@@ -476,18 +476,7 @@
   color: var(--accent);
 }
 
-/* 底部工具栏：文件导入按钮（右下角） */
-.objects-side-footer {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 5px 10px;
-  border-top: 1px solid var(--border);
-}
-.objects-import-menu-wrap {
-  position: relative;
-}
+/* 底部导入菜单（sidebar-footer 内，靠右显示） */
 .objects-import-menu {
   bottom: 38px;
   right: 0;

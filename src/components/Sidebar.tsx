@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppSettings, TreeNode } from "../types";
 import { HistoryDay, HistorySummary } from "../commands";
 import { HistoryList } from "./HistoryList";
@@ -478,6 +478,27 @@ export function Sidebar(props: Props) {
   const t = useT();
   const { tree, loading, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, view, onSwitchView, onImportPostman, onImportCurl, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onImportApiDoc, onImportExtra, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
   const [importMenu, setImportMenu] = useState(false);
+  /** 对象管理：底部导入（建表语句 / 建表文件） */
+  const [objImportMenu, setObjImportMenu] = useState(false);
+  const [objDdlOpen, setObjDdlOpen] = useState(false);
+  const [objDdlText, setObjDdlText] = useState("");
+  const objFileRef = useRef<HTMLInputElement | null>(null);
+
+  /** 建表语句 / 建表文件导入：每个 CREATE TABLE 生成一个对象（放未分组） */
+  const doObjImportDdl = async (ddl: string) => {
+    const text = ddl.trim();
+    if (!text) {
+      props.onObjectsToast(t("objects.importDdlEmpty"));
+      return;
+    }
+    try {
+      const res = await props.onObjectsImportDdl("", text);
+      if (res.created.length) props.onObjectsToast(t("objects.importCreated", { n: res.created.length }));
+      if (res.reused.length) props.onObjectsToast(t("objects.importReused", { n: res.reused.length }));
+    } catch (e) {
+      props.onObjectsToast(String(e));
+    }
+  };
 
   // 导入菜单打开时按 ESC 关闭
   useEffect(() => {
@@ -872,6 +893,61 @@ export function Sidebar(props: Props) {
             <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
           </svg>
         </button>
+        {view === "objects" && (
+          <button
+            className="icon-btn objects-import-btn"
+            style={{ marginLeft: "auto" }}
+            onClick={() => setObjImportMenu(!objImportMenu)}
+            title={t("objects.importFile")}
+            aria-label={t("objects.importFile")}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+              <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+            </svg>
+          </button>
+        )}
+        {objImportMenu && (
+          <>
+            <div className="menu-mask" onClick={() => setObjImportMenu(false)} />
+            <div className="import-menu objects-import-menu">
+              <button
+                onClick={() => {
+                  setObjImportMenu(false);
+                  setObjDdlText("");
+                  setObjDdlOpen(true);
+                }}
+              >
+                <span className="import-menu-icon">📝</span>
+                {t("objects.importDdlText")}
+              </button>
+              <button
+                onClick={() => {
+                  setObjImportMenu(false);
+                  objFileRef.current?.click();
+                }}
+              >
+                <span className="import-menu-icon">📄</span>
+                {t("objects.importDdlFile")}
+              </button>
+            </div>
+          </>
+        )}
+        <input
+          ref={objFileRef}
+          type="file"
+          accept=".sql,text/plain"
+          style={{ display: "none" }}
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (!f) return;
+            try {
+              await doObjImportDdl(await f.text());
+            } catch (err) {
+              props.onObjectsToast(String(err));
+            }
+          }}
+        />
         {view === "api" && onExport && settings?.exportEnabled !== false && (
           <button className="icon-btn" onClick={onExport} title={t("sidebar.export")} aria-label={t("sidebar.export")}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
@@ -1376,6 +1452,43 @@ export function Sidebar(props: Props) {
               </button>
             </>
           )}
+        </div>
+      )}
+
+      {/* 对象管理：从建表语句导入弹窗 */}
+      {objDdlOpen && (
+        <div className="objects-import-mask" onClick={() => setObjDdlOpen(false)}>
+          <div className="objects-import-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="objects-import-title">{t("objects.importDdlLabel")}</div>
+            <div className="objects-import-body">
+              <textarea
+                className="ddl-input"
+                rows={10}
+                value={objDdlText}
+                onChange={(e) => setObjDdlText(e.target.value)}
+                placeholder="CREATE TABLE user (&#10;  id BIGINT PRIMARY KEY,&#10;  name VARCHAR(64) NOT NULL&#10;);"
+                spellCheck={false}
+                autoFocus
+              />
+              <div className="objects-import-tip">{t("objects.importDdlTip")}</div>
+            </div>
+            <div className="objects-import-actions">
+              <button className="btn" onClick={() => setObjDdlOpen(false)}>
+                {t("common.cancel")}
+              </button>
+              <button
+                className="btn primary"
+                onClick={() => {
+                  const d = objDdlText;
+                  setObjDdlOpen(false);
+                  setObjDdlText("");
+                  void doObjImportDdl(d);
+                }}
+              >
+                {t("common.confirm")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
