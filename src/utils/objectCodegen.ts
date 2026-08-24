@@ -35,6 +35,28 @@ const findObj = (all: ObjectDef[], hash: string, name: string): ObjectDef | unde
 /** 解析属性类型 → 目标语言类型字符串 */
 function typeOf(lang: string, p: ObjectProp, obj: ObjectDef, all: ObjectDef[]): string {
   const base = (kind: string): string => {
+    // 日期/时间类型：各语言映射到标准日期类型
+    if (kind === "datetime" || kind === "date" || kind === "time") {
+      switch (lang) {
+        case "typescript":
+        case "dart":
+        case "swift":
+          return "Date";
+        case "java":
+        case "kotlin":
+          return kind === "datetime" ? "LocalDateTime" : kind === "date" ? "LocalDate" : "LocalTime";
+        case "csharp":
+          return kind === "datetime" ? "DateTime" : kind === "date" ? "DateOnly" : "TimeOnly";
+        case "go":
+          return "time.Time";
+        case "python":
+          return kind;
+        case "delphi":
+          return "TDateTime";
+        default:
+          return kind;
+      }
+    }
     switch (lang) {
       case "typescript":
       case "dart":

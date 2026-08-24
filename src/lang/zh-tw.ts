@@ -646,6 +646,8 @@ export const TW: Record<string, string> = {
   "objects.propRequired": "必填",
   "objects.propItemType": "元素類型",
   "objects.propDesc": "說明",
+  "objects.propMock": "Mock 值",
+  "objects.propMockPh": "如 張三 / 18 / 2024-01-01",
   "objects.noProps": "暫無屬性，",
   "objects.addProp": "新增屬性",
   "objects.save": "儲存物件",

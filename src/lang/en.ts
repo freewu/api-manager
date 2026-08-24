@@ -657,6 +657,8 @@ export const EN: Record<string, string> = {
   "objects.propRequired": "Required",
   "objects.propItemType": "Item Type",
   "objects.propDesc": "Description",
+  "objects.propMock": "Mock",
+  "objects.propMockPh": "e.g. Alice / 18 / 2024-01-01",
   "objects.noProps": "No properties. ",
   "objects.save": "Save Objects",
   "objects.tabProps": "Properties",

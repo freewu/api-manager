@@ -665,6 +665,8 @@ export const ZH: Record<string, string> = {
   "objects.propRequired": "必填",
   "objects.propItemType": "元素类型",
   "objects.propDesc": "说明",
+  "objects.propMock": "Mock 值",
+  "objects.propMockPh": "如 张三 / 18 / 2024-01-01",
   "objects.noProps": "暂无属性，",
   "objects.addProp": "添加属性",
   "objects.save": "保存对象",

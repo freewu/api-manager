@@ -32,14 +32,16 @@ impl Default for ObjectGroup {
 #[serde(rename_all = "camelCase", default)]
 pub struct ObjectProp {
     pub key: String,
-    /// string / number / boolean / object / list / any
+    /// string / number / boolean / datetime / date / time / object / list / any
     pub kind: String,
-    /// list 的元素类型（string / number / boolean / object / any）
+    /// list 的元素类型（string / number / boolean / datetime / date / time / object / any）
     pub item_kind: String,
     /// object / list(object) 引用的对象 hash（空表示未引用）
     pub ref_hash: String,
     pub description: String,
     pub required: bool,
+    /// mock 值（示例数据，不参与结构 hash）
+    pub mock: String,
 }
 
 impl Default for ObjectProp {
@@ -51,6 +53,7 @@ impl Default for ObjectProp {
             ref_hash: String::new(),
             description: String::new(),
             required: false,
+            mock: String::new(),
         }
     }
 }
@@ -892,8 +895,12 @@ fn map_sql_type(t: &str) -> &'static str {
         "number"
     } else if t.starts_with("BOOL") || t == "BIT" {
         "boolean"
-    } else if t.starts_with("DATE") || t.starts_with("TIME") || t.starts_with("TIMESTAMP") {
-        "string"
+    } else if t.starts_with("DATETIME") || t.starts_with("TIMESTAMP") {
+        "datetime"
+    } else if t.starts_with("DATE") {
+        "date"
+    } else if t.starts_with("TIME") {
+        "time"
     } else if t.starts_with("JSON") {
         "any"
     } else {
@@ -1140,6 +1147,17 @@ mod tests {
         assert!(r.is_err());
         let r2 = import_json_object(&root, "X", "", "[1,2,3]");
         assert!(r2.is_err(), "顶层数组应报错");
+    }
+
+    #[test]
+    fn test_map_sql_type_date_time() {
+        assert_eq!(map_sql_type("DATETIME"), "datetime");
+        assert_eq!(map_sql_type("TIMESTAMP"), "datetime");
+        assert_eq!(map_sql_type("TIMESTAMP(6)"), "datetime");
+        assert_eq!(map_sql_type("DATE"), "date");
+        assert_eq!(map_sql_type("TIME"), "time");
+        assert_eq!(map_sql_type("VARCHAR(50)"), "string");
+        assert_eq!(map_sql_type("INT"), "number");
     }
 
     #[test]

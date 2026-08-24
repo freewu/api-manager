@@ -428,18 +428,20 @@ export interface ObjectGroup {
 }
 
 /** 对象属性类型 */
-export const PROP_KINDS = ["string", "number", "boolean", "object", "list", "any"] as const;
+export const PROP_KINDS = ["string", "number", "boolean", "datetime", "date", "time", "object", "list", "any"] as const;
 
 export interface ObjectProp {
   key: string;
   /** string / number / boolean / object / list / any */
   kind: string;
-  /** list 的元素类型（string / number / boolean / object / any） */
+  /** list 的元素类型（string / number / boolean / datetime / date / time / object / any） */
   itemKind: string;
   /** object / list(object) 引用的对象 hash */
   refHash: string;
   description: string;
   required: boolean;
+  /** mock 值（示例数据，不参与结构 hash） */
+  mock: string;
 }
 
 export interface ObjectDef {

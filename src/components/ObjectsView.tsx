@@ -73,10 +73,10 @@ interface Props {
   onSelectObject: (uuid: string | null) => void;
 }
 
-const ITEM_KINDS = ["string", "number", "boolean", "object", "any"];
+const ITEM_KINDS = ["string", "number", "boolean", "datetime", "date", "time", "object", "any"];
 
 function emptyProp(): ObjectProp {
-  return { key: "", kind: "string", itemKind: "", refHash: "", description: "", required: false };
+  return { key: "", kind: "string", itemKind: "", refHash: "", description: "", required: false, mock: "" };
 }
 
 /** 对象管理：右侧对象配置（类似接口文档管理的响应编辑，kv 表格风格） */
@@ -303,7 +303,8 @@ export default function ObjectsView({
                 <th style={{ width: "12%" }}>{t("objects.propItemType")}</th>
                 <th style={{ width: "15%" }}>{t("objects.propRef")}</th>
                 <th style={{ width: "6%" }}>{t("objects.propRequired")}</th>
-                <th style={{ width: "24%" }}>{t("objects.propDesc")}</th>
+                <th style={{ width: "19%" }}>{t("objects.propDesc")}</th>
+                <th style={{ width: "15%" }}>{t("objects.propMock")}</th>
                 <th style={{ width: "10%" }}>{t("objects.propOps")}</th>
               </tr>
             </thead>
@@ -405,6 +406,15 @@ export default function ObjectsView({
                       className="doc-name-input objects-prop-input"
                       value={p.description}
                       onChange={(e) => setProp(i, { ...p, description: e.target.value })}
+                      spellCheck={false}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="doc-name-input objects-prop-input objects-prop-mock"
+                      value={p.mock}
+                      onChange={(e) => setProp(i, { ...p, mock: e.target.value })}
+                      placeholder={t("objects.propMockPh")}
                       spellCheck={false}
                     />
                   </td>

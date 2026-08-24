@@ -484,7 +484,7 @@ export function Sidebar(props: Props) {
   const [objDdlText, setObjDdlText] = useState("");
   const objFileRef = useRef<HTMLInputElement | null>(null);
 
-  /** 建表语句 / 建表文件导入：每个 CREATE TABLE 生成一个对象（放未分组） */
+  /** 建表语句导入：每个 CREATE TABLE 生成一个对象（放未分组） */
   const doObjImportDdl = async (ddl: string) => {
     const text = ddl.trim();
     if (!text) {
@@ -493,6 +493,36 @@ export function Sidebar(props: Props) {
     }
     try {
       const res = await props.onObjectsImportDdl("", text);
+      if (res.created.length) props.onObjectsToast(t("objects.importCreated", { n: res.created.length }));
+      if (res.reused.length) props.onObjectsToast(t("objects.importReused", { n: res.reused.length }));
+    } catch (e) {
+      props.onObjectsToast(String(e));
+    }
+  };
+
+  /** 建表文件导入：按文件名（去扩展名）创建分组，对象导入到该分组下 */
+  const doObjImportFile = async (f: File) => {
+    const text = (await f.text()).trim();
+    if (!text) {
+      props.onObjectsToast(t("objects.importDdlEmpty"));
+      return;
+    }
+    const groupName = (f.name || "").replace(/\.[^.\\/]*$/, "").trim();
+    let groupId = "";
+    if (groupName) {
+      const existing = props.objectsStore.groups.find((g) => g.id === groupName || g.name === groupName);
+      if (existing) {
+        groupId = existing.id;
+      } else {
+        await props.onObjectsSave({
+          groups: [...props.objectsStore.groups, { id: groupName, name: groupName }],
+          objects: props.objectsStore.objects,
+        });
+        groupId = groupName;
+      }
+    }
+    try {
+      const res = await props.onObjectsImportDdl(groupId, text);
       if (res.created.length) props.onObjectsToast(t("objects.importCreated", { n: res.created.length }));
       if (res.reused.length) props.onObjectsToast(t("objects.importReused", { n: res.reused.length }));
     } catch (e) {
@@ -942,7 +972,7 @@ export function Sidebar(props: Props) {
             e.target.value = "";
             if (!f) return;
             try {
-              await doObjImportDdl(await f.text());
+              await doObjImportFile(f);
             } catch (err) {
               props.onObjectsToast(String(err));
             }
