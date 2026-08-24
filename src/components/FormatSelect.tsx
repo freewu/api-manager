@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 /** 格式 logo 图片映射：value → src/assets/import/ 下的文件名 */
 const FORMAT_ICON_FILES: Record<string, string> = {
   postman: "postman.png",
+  curl: "curl.png",
   openapi: "swagger.png",
   apifox: "apifox.png",
   apipost: "apipost.png",

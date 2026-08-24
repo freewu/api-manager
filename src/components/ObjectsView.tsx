@@ -61,6 +61,10 @@ interface Props {
   onImportDdl: (group: string, ddl: string) => Promise<ObjectImportResult>;
   onJumpApi: (path: string) => void;
   onToast: (msg: string) => void;
+  /** 空状态：请求打开左侧新建对象弹窗 */
+  onRequestNew: () => void;
+  /** 空状态：请求打开左侧导入（粘贴 JSON）弹窗 */
+  onRequestImport: () => void;
   /** 当前选中对象 uuid（null = 未选中） */
   selectedUuid: string | null;
   onSelectObject: (uuid: string | null) => void;
@@ -81,6 +85,8 @@ export default function ObjectsView({
   onImportDdl: _onImportDdl,
   onJumpApi: _onJumpApi,
   onToast,
+  onRequestNew,
+  onRequestImport,
   selectedUuid,
   onSelectObject,
 }: Props) {
@@ -137,6 +143,24 @@ export default function ObjectsView({
   };
 
   if (!selected || !draft) {
+    // 完全没有对象：空状态引导（新增 / 导入）
+    if (store.objects.length === 0) {
+      return (
+        <div className="objects-blank objects-blank-empty">
+          <div className="objects-empty-icon">🗂️</div>
+          <div className="objects-empty-title">{t("objects.emptyTitle")}</div>
+          <div className="objects-empty-sub">{t("objects.emptySub")}</div>
+          <div className="objects-empty-actions">
+            <button className="btn primary" onClick={onRequestNew}>
+              ＋ {t("objects.newObject")}
+            </button>
+            <button className="btn" onClick={onRequestImport}>
+              📥 {t("objects.importObject")}
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="objects-blank">
         <span>{t("objects.selectHint")}</span>

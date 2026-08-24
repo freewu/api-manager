@@ -84,6 +84,9 @@ interface Props {
   onObjectsSave: (store: ObjectStore) => Promise<ObjectStore>;
   objectsSelectedUuid: string | null;
   onObjectsSelect: (uuid: string | null) => void;
+  /** 右侧空状态请求信号（每次 +1） */
+  objectsNewReq: number;
+  objectsImportReq: number;
   onObjectsImport: (name: string, group: string, json: string) => Promise<ObjectImportResult>;
   onObjectsImportDdl: (group: string, ddl: string) => Promise<ObjectImportResult>;
   onObjectsToast: (msg: string) => void;
@@ -785,6 +788,8 @@ export function Sidebar(props: Props) {
           onToast={props.onObjectsToast}
           selectedUuid={props.objectsSelectedUuid}
           onSelectObject={props.onObjectsSelect}
+          newReq={props.objectsNewReq}
+          importReq={props.objectsImportReq}
         />
       )}
       {view === "history" && (

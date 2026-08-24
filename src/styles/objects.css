@@ -198,6 +198,35 @@
   letter-spacing: 0.2em;
 }
 
+/* 无对象时空状态：新增 / 导入引导 */
+.objects-blank-empty {
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+.objects-blank-empty .objects-empty-icon {
+  font-size: 44px;
+}
+.objects-blank-empty .objects-empty-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.1em;
+}
+.objects-blank-empty .objects-empty-sub {
+  font-size: 13px;
+  color: var(--text-faint);
+}
+.objects-blank-empty .objects-empty-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+.objects-blank-empty .objects-empty-actions .btn {
+  min-width: 120px;
+}
+
 /* ==================== 对象配置（右侧，kv 表格风格） ==================== */
 .objects-detail {
   display: flex;

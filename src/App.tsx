@@ -113,6 +113,8 @@ export default function App() {
   } = objects;
   // 对象管理中当前选中对象（按 uuid 定位，左侧树点击 → 右侧展开配置）
   const [objectsSelectedUuid, setObjectsSelectedUuid] = useState<string | null>(null);
+  // 右侧空状态「新增 / 导入」按钮请求信号（每次 +1 触发左侧弹窗）
+  const [objectsReq, setObjectsReq] = useState({ new: 0, imp: 0 });
 
   // ---------- 弹窗操作 ----------
   const modals = useModals({
@@ -551,6 +553,8 @@ export default function App() {
               onObjectsToast={showToast}
               objectsSelectedUuid={objectsSelectedUuid}
               onObjectsSelect={setObjectsSelectedUuid}
+              objectsNewReq={objectsReq.new}
+              objectsImportReq={objectsReq.imp}
             />
             <RightPane
               view={view}
@@ -606,6 +610,8 @@ export default function App() {
               onObjectsJumpApi={jumpToApi}
               objectsSelectedUuid={objectsSelectedUuid}
               onObjectsSelect={setObjectsSelectedUuid}
+              onObjectsRequestNew={() => setObjectsReq((r) => ({ ...r, new: r.new + 1 }))}
+              onObjectsRequestImport={() => setObjectsReq((r) => ({ ...r, imp: r.imp + 1 }))}
               onObjectsToast={showToast}
               objectsList={objectsStore.objects}
             />

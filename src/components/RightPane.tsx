@@ -61,6 +61,9 @@ interface RightPaneProps {
   /** 对象管理中当前选中对象 uuid（右侧展开对象配置） */
   objectsSelectedUuid: string | null;
   onObjectsSelect: (uuid: string | null) => void;
+  /** 右侧空状态：请求左侧新建对象 / 导入对象 */
+  onObjectsRequestNew: () => void;
+  onObjectsRequestImport: () => void;
 }
 
 export function RightPane({
@@ -108,6 +111,8 @@ export function RightPane({
   objectsList,
   objectsSelectedUuid,
   onObjectsSelect,
+  onObjectsRequestNew,
+  onObjectsRequestImport,
 }: RightPaneProps) {
   const t = useT();
   return (
@@ -140,6 +145,8 @@ export function RightPane({
             onToast={onObjectsToast}
             selectedUuid={objectsSelectedUuid}
             onSelectObject={onObjectsSelect}
+            onRequestNew={onObjectsRequestNew}
+            onRequestImport={onObjectsRequestImport}
           />
         ) : view === "history" ? (
           <div className="history-view-content">

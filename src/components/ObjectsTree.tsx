@@ -3,11 +3,6 @@ import { ObjectDef, ObjectImportResult, ObjectProp, ObjectStore, ObjectUsageItem
 
 /** 对象名称校验：字母开头，仅允许字母和数字（不允许空格） */
 const VALID_OBJECT_NAME = /^[A-Za-z][A-Za-z0-9]*$/;
-/** 清洗为合法对象名：移除非法字符；结果不以字母开头或为空则返回 "" */
-const sanitizeObjectName = (raw: string) => {
-  const cleaned = raw.replace(/[^A-Za-z0-9]/g, "");
-  return cleaned && /^[A-Za-z]/.test(cleaned) ? cleaned : "";
-};
 import { useT } from "../i18n";
 import { ObjectVersionModal } from "./ObjectVersionModal";
 
@@ -21,6 +16,10 @@ interface Props {
   /** 当前选中对象 uuid（受控，右侧展开配置；uuid 为稳定唯一标识） */
   selectedUuid: string | null;
   onSelectObject: (uuid: string | null) => void;
+  /** 右侧空状态请求：新增对象（每次 +1 触发打开新建弹窗） */
+  newReq: number;
+  /** 右侧空状态请求：导入对象（打开新建弹窗并聚焦 JSON 输入） */
+  importReq: number;
 }
 
 /** 对象管理：左侧树形目录（分组 = 目录，多级；不显示根目录） */
@@ -28,11 +27,13 @@ export default function ObjectsTree({
   store,
   usage,
   onSave,
-  onImport,
-  onImportDdl,
+  onImport: _onImport,
+  onImportDdl: _onImportDdl,
   onToast,
   selectedUuid,
   onSelectObject,
+  newReq,
+  importReq,
 }: Props) {
   const t = useT();
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
@@ -55,11 +56,23 @@ export default function ObjectsTree({
   const [newDisplayName, setNewDisplayName] = useState("");
   const [newJson, setNewJson] = useState("");
   const [newGroup, setNewGroup] = useState("");
+  /** 右侧空状态请求：打开新增对象弹窗 / 导入（聚焦 JSON） */
+  const [focusJson, setFocusJson] = useState(false);
+  useEffect(() => {
+    if (newReq > 0) {
+      setFocusJson(false);
+      openNewObject("");
+    }
+  }, [newReq]);
+  useEffect(() => {
+    if (importReq > 0) {
+      setFocusJson(true);
+      openNewObject("");
+    }
+  }, [importReq]);
   /** 新建分组弹窗 */
   const [groupOpen, setGroupOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
-  /** 文件导入（.json / .sql） */
-  const fileRef = useRef<HTMLInputElement | null>(null);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   /** 对象行右键菜单（uuid） */
   const [objMenu, setObjMenu] = useState<{ x: number; y: number; uuid: string } | null>(null);
@@ -323,49 +336,9 @@ export default function ObjectsTree({
     setOpenGroups((prev) => new Set(prev).add(id));
   };
 
-  // 展开全部 / 收起全部
-  const expandAll = () => {
-    const all = new Set<string>();
-    const walk = (nodes: GNode[]) => {
-      for (const n of nodes) {
-        all.add(n.id);
-        walk(n.children);
-      }
-    };
-    walk(groupTree);
-    setOpenGroups(all);
-  };
-  const collapseAll = () => setOpenGroups(new Set());
-  const allExpanded =
-    groupTree.length > 0 && groupTree.every((g) => openGroups.has(g.id));
+  // 展开全部 / 收起全部（按钮已移除，保留默认展开第一层逻辑）
 
-  /** 文件导入：.json → 按 JSON 导入（对象名=文件名）；.sql → 解析库名分组导入 */
-  const onPickFile = (f: File) => {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const text = String(reader.result || "");
-      try {
-        if (f.name.toLowerCase().endsWith(".sql")) {
-          const m = text.match(/(?:use|create\s+database)\s+[`"]?([\w-]+)[`"]?\s*;?/i);
-          const db = m ? m[1] : f.name.replace(/\.sql$/i, "");
-          const res = await onImportDdl(db, text);
-          finishImport(res);
-        } else {
-          JSON.parse(text);
-          const name = sanitizeObjectName(f.name.replace(/\.json$/i, ""));
-          if (!name) {
-            onToast(t("objects.nameInvalid"));
-            return;
-          }
-          const res = await onImport(name, "", text);
-          finishImport(res);
-        }
-      } catch {
-        onToast(t("objects.jsonInvalid"));
-      }
-    };
-    reader.readAsText(f);
-  };
+  /** 文件导入已移除（.json / .sql） */
 
   /** 分组改名（id 即目录路径，同步子分组与组内对象） */
   const renameGroupImpl = (id: string, newName: string) => {
@@ -522,19 +495,6 @@ export default function ObjectsTree({
     });
   };
 
-  // ===== 文件导入结果处理（.json / .sql） =====
-  const finishImport = (res: ObjectImportResult) => {
-    const msgs: string[] = [];
-    if (res.created.length) msgs.push(t("objects.importCreated", { n: res.created.length }));
-    if (res.reused.length) msgs.push(t("objects.importReused", { n: res.reused.length }));
-    onToast(msgs.join("，"));
-    const top = res.topHash || (res.objects[0] && res.objects[0].hash) || null;
-    if (top) {
-      const found = store.objects.find((x) => x.hash === top);
-      if (found) onSelectObject(found.uuid);
-    }
-  };
-
   return (
     <div className="history-list-side">
       <div className="history-side-toolbar">
@@ -624,34 +584,6 @@ export default function ObjectsTree({
             </div>
           </>
         )}
-      </div>
-
-      {/* 底部工具栏：左 = 展开/收起，右 = 文件导入（.json / .sql） */}
-      <div className="objects-side-footer">
-        <button
-          className="icon-btn objects-expand-btn"
-          onClick={allExpanded ? collapseAll : expandAll}
-          title={allExpanded ? t("objects.collapseAll") : t("objects.expandAll")}
-        >
-          {allExpanded ? "⤴" : "⤵"}
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".json,.sql"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onPickFile(f);
-            e.target.value = "";
-          }}
-        />
-        <button className="objects-import-file-btn" onClick={() => fileRef.current?.click()}>
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
-            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
-          </svg>
-          <span>{t("objects.importFile")}</span>
-        </button>
       </div>
 
       {/* 对象行右键菜单：版本查看 / 重命名 / 删除 */}
@@ -856,6 +788,7 @@ export default function ObjectsTree({
                   value={newJson}
                   onChange={(e) => setNewJson(e.target.value)}
                   rows={7}
+                  autoFocus={focusJson && newOpen}
                   spellCheck={false}
                   placeholder={'{\n  "id": 1,\n  "name": "alice"\n}'}
                 />
