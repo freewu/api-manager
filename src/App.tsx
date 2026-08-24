@@ -14,7 +14,7 @@ import {
   saveInfo,
   toggleDeprecated,
 } from "./commands";
-import { TreeNode } from "./types";
+import { ObjectDef, TreeNode } from "./types";
 import { AppModals } from "./components/AppModals";
 import { CurlImportModal } from "./components/CurlImportModal";
 import { AppToolbar } from "./components/AppToolbar";
@@ -33,6 +33,8 @@ import { useModals } from "./hooks/useModals";
 import { useImports } from "./hooks/useImports";
 import { useVcs } from "./hooks/useVcs";
 import { useObjects } from "./hooks/useObjects";
+import GenDataModal from "./components/GenDataModal";
+import { GenLogItem } from "./commands";
 import { useT } from "./i18n";
 
 // 非首屏组件懒加载：仅在需要时下载对应 chunk
@@ -50,6 +52,8 @@ export default function App() {
 
   // ---------- 数据生成记录（视图模式，与请求历史一致） ----------
   const genLogs = useGenLogs();
+  /** 记录详情「重新生成」：预填配置打开数据生成弹窗 */
+  const [genRegen, setGenRegen] = useState<{ obj: ObjectDef; rec: GenLogItem } | null>(null);
 
   // ---------- 设置 ----------
   const settingsHook = useSettings((e) => showToast(t("toast.saveSettingsFailed", { err: e })));
@@ -115,6 +119,19 @@ export default function App() {
     doImport: importObjectsJson,
     doImportDdl: importObjectsDdl,
   } = objects;
+  /** 生成记录「重新生成」：按记录配置打开数据生成弹窗 */
+  const handleGenLogsRegen = useCallback(
+    (rec: GenLogItem) => {
+      const obj = objectsStore.objects.find((o) => o.uuid === rec.object_uuid);
+      if (!obj) {
+        showToast(t("objects.genDataObjMissing"));
+        return;
+      }
+      setGenRegen({ obj, rec });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [objectsStore, t]
+  );
   // 对象管理中当前选中对象（按 uuid 定位，左侧树点击 → 右侧展开配置）
   const [objectsSelectedUuid, setObjectsSelectedUuid] = useState<string | null>(null);
   // 右侧空状态「新增 / 导入」按钮请求信号（每次 +1 触发左侧弹窗）
@@ -575,6 +592,7 @@ export default function App() {
               historyDiffLoading={history.diffLoading}
               onHistoryDiffExit={history.exitDiff}
               genLogsDetail={genLogs.records.find((r) => r.file === genLogs.selectedId) ?? null}
+              onGenLogsRegen={handleGenLogsRegen}
               baseUrl={baseUrl}
               currentVersion={currentVersion}
               exampleVersion={exampleVersion}
@@ -626,6 +644,20 @@ export default function App() {
               objectsList={objectsStore.objects}
             />
           </div>
+
+          {genRegen && (
+            <GenDataModal
+              obj={genRegen.obj}
+              initialProps={genRegen.rec.props.map((p) => ({ key: p.key, enabled: p.enabled, mock: p.mock }))}
+              initialFormat={genRegen.rec.format}
+              initialTable={genRegen.rec.table}
+              initialCount={genRegen.rec.count}
+              initialDir={genRegen.rec.dir}
+              onClose={() => setGenRegen(null)}
+              onDone={() => void genLogs.reload()}
+              t={t}
+            />
+          )}
 
           <AppModals
             toast={toast}

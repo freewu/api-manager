@@ -25,6 +25,8 @@ interface RightPaneProps {
   onHistoryDiffExit: () => void;
   /** 数据生成记录详情（视图模式） */
   genLogsDetail: import("../commands").GenLogItem | null;
+  /** 重新生成：用记录配置打开数据生成弹窗 */
+  onGenLogsRegen: (rec: import("../commands").GenLogItem) => void;
   baseUrl: string;
   currentVersion: number;
   enableVersion: boolean;
@@ -77,6 +79,7 @@ export function RightPane({
   historyDiffLoading,
   onHistoryDiffExit,
   genLogsDetail,
+  onGenLogsRegen,
   baseUrl,
   currentVersion,
   exampleVersion,
@@ -163,7 +166,7 @@ export function RightPane({
           </div>
         ) : view === "genlogs" ? (
           <div className="history-view-content">
-            <GenLogsDetail detail={genLogsDetail} />
+            <GenLogsDetail detail={genLogsDetail} onRegen={onGenLogsRegen} />
           </div>
         ) : api ? (
           <ApiWorkspace

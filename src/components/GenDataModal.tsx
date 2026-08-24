@@ -11,6 +11,12 @@ interface Props {
   onClose: () => void;
   onDone: (r: GenDataResult) => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
+  /** 重新生成预填：属性 key → enabled/mock */
+  initialProps?: { key: string; enabled: boolean; mock: string }[];
+  initialFormat?: string;
+  initialTable?: string;
+  initialCount?: number;
+  initialDir?: string;
 }
 
 interface Row {
@@ -20,14 +26,28 @@ interface Row {
 }
 
 /** 数据生成弹窗：配置属性 mock / 参与、格式、表名、记录数与导出目录，异步生成数据文件 */
-export default function GenDataModal({ obj, onClose, onDone, t }: Props) {
-  const [rows, setRows] = useState<Row[]>(() =>
-    obj.properties.map((p) => ({ prop: p, enabled: true, mock: p.mock }))
-  );
-  const [format, setFormat] = useState<"json" | "sql">("json");
-  const [table, setTable] = useState(obj.object_name || obj.name);
-  const [count, setCount] = useState(10000);
-  const [dir, setDir] = useState("");
+export default function GenDataModal({
+  obj,
+  onClose,
+  onDone,
+  t,
+  initialProps,
+  initialFormat,
+  initialTable,
+  initialCount,
+  initialDir,
+}: Props) {
+  const [rows, setRows] = useState<Row[]>(() => {
+    const init = new Map((initialProps ?? []).map((i) => [i.key, i]));
+    return obj.properties.map((p) => {
+      const it = init.get(p.key);
+      return { prop: p, enabled: it ? it.enabled : true, mock: it ? it.mock : p.mock };
+    });
+  });
+  const [format, setFormat] = useState<"json" | "sql">(initialFormat === "sql" ? "sql" : "json");
+  const [table, setTable] = useState(initialTable ?? (obj.object_name || obj.name));
+  const [count, setCount] = useState(initialCount ?? 10000);
+  const [dir, setDir] = useState(initialDir ?? "");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [mockIndex, setMockIndex] = useState<number | null>(null);

@@ -1,4 +1,4 @@
-import { GenLogItem } from "../commands";
+import { GenLogItem, openPath } from "../commands";
 import { useT } from "../i18n";
 
 function fmtMs(ms: number): string {
@@ -8,10 +8,12 @@ function fmtMs(ms: number): string {
 
 interface Props {
   detail: GenLogItem | null;
+  /** 重新生成：用记录配置重新打开数据生成弹窗 */
+  onRegen: (rec: GenLogItem) => void;
 }
 
 /** 数据生成记录详情（右侧，布局与请求历史类似） */
-export function GenLogsDetail({ detail }: Props) {
+export function GenLogsDetail({ detail, onRegen }: Props) {
   const t = useT();
   if (!detail) {
     return <div className="genlogs-empty genlogs-detail-empty">{t("objects.genLogsEmpty")}</div>;
@@ -22,6 +24,13 @@ export function GenLogsDetail({ detail }: Props) {
         <span className="genlogs-badge">{detail.format.toUpperCase()}</span>
         <span className="genlogs-detail-name">{detail.object_name}</span>
         <span className="genlogs-detail-file">{detail.file}</span>
+        <span style={{ flex: 1 }} />
+        <button className="btn small" onClick={() => void openPath(detail.dir)}>
+          📂 {t("objects.genLogsOpenDir")}
+        </button>
+        <button className="btn small primary" onClick={() => onRegen(detail)}>
+          🔁 {t("objects.genLogsRegen")}
+        </button>
       </div>
       <div className="genlogs-info">
         <div className="genlogs-info-row">

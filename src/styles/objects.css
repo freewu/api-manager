@@ -1284,3 +1284,10 @@
   align-items: center;
   justify-content: center;
 }
+
+/* 记录数 */
+.genlogs-list-count {
+  font-size: 11px;
+  opacity: 0.65;
+  font-weight: 400;
+}
