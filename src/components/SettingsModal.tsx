@@ -87,7 +87,6 @@ const EXPORT_FORMATS: { value: ExportFormat; labelKey: string }[] = [
   { value: "hoppscotch", labelKey: "export.hoppscotch" },
   { value: "metersphere", labelKey: "export.metersphere" },
   { value: "rap2-project", labelKey: "export.rap2-project" },
-  { value: "rap2-single", labelKey: "export.rap2-single" },
 ];
 
 /** 左侧导航（目录）项：点击滚动到对应分区 */

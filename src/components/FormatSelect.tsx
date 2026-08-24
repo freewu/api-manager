@@ -34,6 +34,7 @@ const FORMAT_ICON_FILES: Record<string, string> = {
   hoppscotch: "hoppscotch.svg",
   metersphere: "MeterSphere.png",
   rap2: "rap2.png",
+  "rap2-project": "rap2.png",
   docway: "docway.png",
 };
 

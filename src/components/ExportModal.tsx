@@ -64,7 +64,6 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
           { value: "hoppscotch", label: t("export.hoppscotch") },
           { value: "metersphere", label: t("export.metersphere") },
           { value: "rap2-project", label: t("export.rap2-project") },
-          { value: "rap2-single", label: t("export.rap2-single") },
           { value: "docsify", label: t("export.docsify") },
           { value: "markdown", label: t("export.markdown") },
           { value: "html", label: t("export.html") },

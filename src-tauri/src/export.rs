@@ -3485,13 +3485,6 @@ pub fn to_rap2_project(apis: &[(Vec<(String, bool)>, ApiFile)]) -> Value {
     })
 }
 
-/// 单接口格式：data 直接是 interface
-pub fn to_rap2_single(apis: &[(Vec<(String, bool)>, ApiFile)]) -> Value {
-    let api = &apis[0].1;
-    json!({ "data": rap2_interface_out(api) })
-}
-
-
 pub fn export_extra(
     apis: &[(Vec<(String, bool)>, ApiFile)],
     format: &str,
@@ -3508,7 +3501,6 @@ pub fn export_extra(
         "hoppscotch" => (to_hoppscotch(apis), "hoppscotch", "json"),
         "metersphere" => (to_metersphere(apis), "metersphere", "json"),
         "rap2-project" => (to_rap2_project(apis), "rap2-project", "json"),
-        "rap2-single" => (to_rap2_single(apis), "rap2-single", "json"),
         _ => return Err(format!("不支持的格式: {format}")),
     };
     let content = serde_json::to_string_pretty(&val).map_err(|e| format!("序列化失败: {e}"))?;

@@ -472,7 +472,6 @@ export const EN: Record<string, string> = {
   "export.rap2": "RAP2 (auto: single/project)",
   "export.curl": "Curl",
   "export.rap2-project": "RAP2 project (modules)",
-  "export.rap2-single": "RAP2 single API",
   "export.export": "Export",
   "export.format": "Export format",
   "export.html": "HTML document (.html)",

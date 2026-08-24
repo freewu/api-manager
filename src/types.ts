@@ -227,8 +227,7 @@ export type ExportFormat =
   | "docway"
   | "hoppscotch"
   | "metersphere"
-  | "rap2-project"
-  | "rap2-single";
+  | "rap2-project";
 
 /** 主页「导入」菜单支持的格式 */
 export type ImportFormat =
@@ -367,7 +366,6 @@ export const defaultSettings = (): AppSettings => ({
     hoppscotch: false,
     metersphere: false,
     "rap2-project": false,
-    "rap2-single": false,
   },
   htmlNav: "right",
   language: "zh",

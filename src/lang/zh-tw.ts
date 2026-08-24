@@ -461,7 +461,6 @@ export const TW: Record<string, string> = {
   "export.rap2": "RAP2（自動識別單接口/專案）",
   "export.curl": "Curl 命令",
   "export.rap2-project": "RAP2 專案（modules）",
-  "export.rap2-single": "RAP2 單接口",
   "export.export": "導出",
   "export.format": "導出格式",
   "export.html": "HTML 文檔（.html）",
