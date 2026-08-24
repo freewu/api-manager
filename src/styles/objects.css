@@ -1250,3 +1250,10 @@
   opacity: 0.6;
   font-size: 13px;
 }
+
+/* ---------- 建表语句 tab ---------- */
+.objects-ddl-title {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.8;
+}

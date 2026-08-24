@@ -667,6 +667,8 @@ export const EN: Record<string, string> = {
   "objects.tabProps": "Properties",
   "objects.tabDesc": "Description",
   "objects.tabCode": "Codegen",
+  "objects.tabDdl": "DDL",
+  "objects.ddlTip": "Generate MySQL CREATE TABLE from properties",
   "objects.codegenTip": "Code updates live with object properties & references",
   "objects.javaStyleLombok": "Lombok",
   "objects.javaStyleNative": "Native (with get/set)",

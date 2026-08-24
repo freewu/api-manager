@@ -676,6 +676,8 @@ export const ZH: Record<string, string> = {
   "objects.tabProps": "属性",
   "objects.tabDesc": "对象描述",
   "objects.tabCode": "代码生成",
+  "objects.tabDdl": "建表语句",
+  "objects.ddlTip": "根据属性生成 MySQL 建表语句",
   "objects.codegenTip": "代码随对象属性与引用实时生成",
   "objects.javaStyleLombok": "Lombok",
   "objects.javaStyleNative": "原生（含 get/set）",

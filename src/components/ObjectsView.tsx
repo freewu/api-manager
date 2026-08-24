@@ -17,11 +17,13 @@ import ruby from "highlight.js/lib/languages/ruby";
 import rust from "highlight.js/lib/languages/rust";
 import swift from "highlight.js/lib/languages/swift";
 import typescript from "highlight.js/lib/languages/typescript";
+import sql from "highlight.js/lib/languages/sql";
 import "highlight.js/styles/github-dark.css";
 import { useT } from "../i18n";
 import { renderMarkdown, saveObjectVersion } from "../commands";
 import { LangSelect } from "./LangSelect";
 import { OBJECT_LANGS, generateObjectCode } from "../utils/objectCodegen";
+import { generateCreateTable } from "../utils/objectDdl";
 import MockPicker from "./MockPicker";
 import ObjectRefPicker from "./ObjectRefPicker";
 
@@ -55,6 +57,7 @@ for (const [name, lang] of [
   ["rust", rust],
   ["swift", swift],
   ["typescript", typescript],
+  ["sql", sql],
 ] as const) {
   hljs.registerLanguage(name, lang);
 }
@@ -115,7 +118,7 @@ export default function ObjectsView({
   }, [selected, draft]);
 
   // 右侧 tab：属性 / 对象描述 / 代码生成
-  const [tab, setTab] = useState<"props" | "desc" | "code">("props");
+  const [tab, setTab] = useState<"props" | "desc" | "code" | "ddl">("props");
   // 默认语言取设置页 codegenLang（不在对象语言列表时回退第一个）
   const [codeLang, setCodeLang] = useState(() =>
     OBJECT_LANGS.some((l) => l.value === defaultCodeLang) ? defaultCodeLang : OBJECT_LANGS[0].value
@@ -160,6 +163,25 @@ export default function ObjectsView({
     }
     return codeOther;
   }, [codeLang, codeJava, codeOther]);
+  /** 建表语句（SQL） */
+  const ddlText = useMemo(() => {
+    if (!draft) return "";
+    return generateCreateTable(draft);
+  }, [draft]);
+  const ddlHtml = useMemo(() => {
+    if (!ddlText) return "";
+    return highlight(ddlText, "sql");
+  }, [ddlText]);
+  const [ddlCopied, setDdlCopied] = useState(false);
+  const copyDdl = async () => {
+    try {
+      await navigator.clipboard.writeText(ddlText);
+      setDdlCopied(true);
+      setTimeout(() => setDdlCopied(false), 1500);
+    } catch {
+      /* noop */
+    }
+  };
   const highlight = (text: string, lang: string): string => {
     try {
       return hljs.highlight(text, { language: lang }).value;
@@ -316,6 +338,12 @@ export default function ObjectsView({
             onClick={() => setTab("code")}
           >
             {t("objects.tabCode")}
+          </button>
+          <button
+            className={`objects-tab${tab === "ddl" ? " active" : ""}`}
+            onClick={() => setTab("ddl")}
+          >
+            {t("objects.tabDdl")}
           </button>
         </div>
 
@@ -521,6 +549,25 @@ export default function ObjectsView({
             ) : codeOther ? (
               <pre className="objects-codegen-pre">
                 <code dangerouslySetInnerHTML={{ __html: highlight(codeOther, codeLang) }} />
+              </pre>
+            ) : (
+              <div className="objects-codegen-empty">{t("objects.codegenNoName")}</div>
+            )}
+          </div>
+        )}
+
+        {tab === "ddl" && (
+          <div className="objects-codegen">
+            <div className="objects-codegen-head">
+              <span className="objects-ddl-title">🗄 {t("objects.tabDdl")}</span>
+              <button className="btn small" onClick={() => void copyDdl()}>
+                {ddlCopied ? t("resp.copied") : "📋 " + t("common.copy")}
+              </button>
+              <span className="objects-codegen-tip">{t("objects.ddlTip")}</span>
+            </div>
+            {ddlText ? (
+              <pre className="objects-codegen-pre">
+                <code dangerouslySetInnerHTML={{ __html: ddlHtml }} />
               </pre>
             ) : (
               <div className="objects-codegen-empty">{t("objects.codegenNoName")}</div>

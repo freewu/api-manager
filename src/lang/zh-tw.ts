@@ -657,6 +657,8 @@ export const TW: Record<string, string> = {
   "objects.tabProps": "屬性",
   "objects.tabDesc": "物件描述",
   "objects.tabCode": "程式碼產生",
+  "objects.tabDdl": "建表語句",
+  "objects.ddlTip": "依屬性產生 MySQL 建表語句",
   "objects.codegenTip": "程式碼隨物件屬性與引用即時產生",
   "objects.javaStyleLombok": "Lombok",
   "objects.javaStyleNative": "原生（含 get/set）",
