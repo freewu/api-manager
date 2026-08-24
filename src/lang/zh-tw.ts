@@ -622,6 +622,8 @@ export const TW: Record<string, string> = {
   "objects.importDdlLabel": "建表語句 (CREATE TABLE)",
   "objects.importDdlTip": "貼上 SQL CREATE TABLE 語句（可多條），每個表產生一個物件；欄位名 → 欄位，型別自動對應，NOT NULL/主鍵 → 必填，COMMENT → 描述；表級約束自動忽略。相同結構自動重用既有物件。",
   "objects.importDdlEmpty": "請輸入建表語句",
+  "objects.importDdlText": "從建表語句匯入",
+  "objects.importDdlFile": "從建表檔案匯入",
   "objects.importTitle": "從 JSON 匯入物件",
   "objects.importName": "物件名稱",
   "objects.importGroup": "群組",

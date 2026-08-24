@@ -641,6 +641,8 @@ export const ZH: Record<string, string> = {
   "objects.importDdlLabel": "建表语句 (CREATE TABLE)",
   "objects.importDdlTip": "粘贴 SQL CREATE TABLE 语句（可多条），每个表生成一个对象；列名 → 字段，类型自动映射，NOT NULL/主键 → 必填，COMMENT → 描述；表级约束自动忽略。相同结构自动复用已有对象。",
   "objects.importDdlEmpty": "请输入建表语句",
+  "objects.importDdlText": "从建表语句导入",
+  "objects.importDdlFile": "从建表文件导入",
   "objects.importTitle": "从 JSON 导入对象",
   "objects.importName": "对象名称",
   "objects.importGroup": "分组",

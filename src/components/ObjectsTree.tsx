@@ -28,7 +28,7 @@ export default function ObjectsTree({
   usage,
   onSave,
   onImport: _onImport,
-  onImportDdl: _onImportDdl,
+  onImportDdl,
   onToast,
   selectedUuid,
   onSelectObject,
@@ -52,10 +52,14 @@ export default function ObjectsTree({
   >(null);
   /** 新增对象弹窗（名称 + JSON，JSON 可为空） */
   const [newOpen, setNewOpen] = useState(false);
-  const [newName, setNewName] = useState("");
   const [newDisplayName, setNewDisplayName] = useState("");
   const [newJson, setNewJson] = useState("");
   const [newGroup, setNewGroup] = useState("");
+  /** 底部导入菜单 + 建表语句弹窗 + .sql 文件选择 */
+  const [importMenu, setImportMenu] = useState(false);
+  const [ddlOpen, setDdlOpen] = useState(false);
+  const [ddlText, setDdlText] = useState("");
+  const fileRef = useRef<HTMLInputElement | null>(null);
   /** 右侧空状态请求：打开新增对象弹窗 / 导入（聚焦 JSON） */
   const [focusJson, setFocusJson] = useState(false);
   useEffect(() => {
@@ -421,23 +425,13 @@ export default function ObjectsTree({
   /** 打开「新增对象」弹窗（groupId 为该对象所属分组，可为空串 = 未分组） */
   const openNewObject = (groupId: string) => {
     setNewGroup(groupId);
-    setNewName("");
     setNewDisplayName("");
     setNewJson("");
     setNewOpen(true);
   };
 
-  /** 弹窗确认：名称必填（字母开头，仅字母数字），JSON 可选（空 = 创建空对象） */
+  /** 弹窗确认：JSON 可选（空 = 创建空对象）；对象名称自动生成（即文件名 <名称>.obj.json） */
   const doNewObject = async () => {
-    const name = newName.trim();
-    if (!name) {
-      onToast(t("objects.importName"));
-      return;
-    }
-    if (!VALID_OBJECT_NAME.test(name)) {
-      onToast(t("objects.nameInvalid"));
-      return;
-    }
     let props: ObjectProp[] = [];
     if (newJson.trim()) {
       try {
@@ -449,6 +443,7 @@ export default function ObjectsTree({
     }
     setNewOpen(false);
     const now = Math.floor(Date.now() / 1000);
+    const name = `obj${Date.now().toString(36)}`;
     const o: ObjectDef = {
       uuid: crypto.randomUUID(),
       hash: `tmp${Date.now().toString(36)}`,
@@ -464,6 +459,35 @@ export default function ObjectsTree({
     // 新建后直接在右侧展开配置
     const created = fresh.objects.find((x) => x.name === name);
     if (created) onSelectObject(created.uuid);
+  };
+
+  /** 建表语句 / 建表文件导入：每个 CREATE TABLE 生成一个对象（放未分组） */
+  const doImportDdl = async (ddl: string) => {
+    const text = ddl.trim();
+    if (!text) {
+      onToast(t("objects.importDdlEmpty"));
+      return;
+    }
+    try {
+      const res = await onImportDdl("", text);
+      if (res.created.length) onToast(t("objects.importCreated", { n: res.created.length }));
+      if (res.reused.length) onToast(t("objects.importReused", { n: res.reused.length }));
+    } catch (e) {
+      onToast(String(e));
+    }
+  };
+
+  /** 选择 .sql 文件 → 读取内容导入 */
+  const onPickSql = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      const text = await f.text();
+      await doImportDdl(text);
+    } catch (err) {
+      onToast(String(err));
+    }
   };
 
   /** 复制对象：同分组深拷贝副本（新 uuid，英文名加 Copy 后缀） */
@@ -603,6 +627,48 @@ export default function ObjectsTree({
           </>
         )}
       </div>
+
+      {/* 底部工具栏：导入（建表语句 / 建表文件） */}
+      <div className="objects-side-footer">
+        <div className="objects-import-menu-wrap">
+          <button className="objects-import-file-btn" onClick={() => setImportMenu(!importMenu)}>
+            📥 {t("objects.importFile")}
+          </button>
+          {importMenu && (
+            <>
+              <div className="menu-mask" onClick={() => setImportMenu(false)} />
+              <div className="import-menu objects-import-menu">
+                <button
+                  onClick={() => {
+                    setImportMenu(false);
+                    setDdlText("");
+                    setDdlOpen(true);
+                  }}
+                >
+                  <span className="import-menu-icon">📝</span>
+                  {t("objects.importDdlText")}
+                </button>
+                <button
+                  onClick={() => {
+                    setImportMenu(false);
+                    fileRef.current?.click();
+                  }}
+                >
+                  <span className="import-menu-icon">📄</span>
+                  {t("objects.importDdlFile")}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".sql,text/plain"
+        style={{ display: "none" }}
+        onChange={(e) => void onPickSql(e)}
+      />
 
       {/* 对象行右键菜单：版本查看 / 重命名 / 删除 */}
       {objMenu && (
@@ -765,40 +831,13 @@ export default function ObjectsTree({
             <div className="objects-import-title">{t("objects.newObjectTitle")}</div>
             <div className="objects-import-body">
               <label>
-                <span>{t("objects.newObjectName")}</span>
-                <input
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="User"
-                  autoFocus
-                  spellCheck={false}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void doNewObject();
-                  }}
-                />
-                {newName.trim() && !VALID_OBJECT_NAME.test(newName.trim()) && (
-                  <div className="objects-name-error">{t("objects.nameInvalid")}</div>
-                )}
-              </label>
-              <label>
                 <span>{t("objects.displayName")}</span>
                 <input
                   value={newDisplayName}
                   onChange={(e) => setNewDisplayName(e.target.value)}
-
+                  autoFocus={!(focusJson && newOpen)}
                   spellCheck={false}
                 />
-              </label>
-              <label>
-                <span>{t("objects.importGroup")}</span>
-                <select value={newGroup} onChange={(e) => setNewGroup(e.target.value)}>
-                  <option value="">{t("objects.ungrouped")}</option>
-                  {store.groups.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-                </select>
               </label>
               <label>
                 <span>{t("objects.newObjectJson")}</span>
@@ -818,6 +857,43 @@ export default function ObjectsTree({
                 {t("common.cancel")}
               </button>
               <button className="btn primary" onClick={() => void doNewObject()}>
+                {t("common.confirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 从建表语句导入弹窗 */}
+      {ddlOpen && (
+        <div className="objects-import-mask" onClick={() => setDdlOpen(false)}>
+          <div className="objects-import-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="objects-import-title">{t("objects.importDdlLabel")}</div>
+            <div className="objects-import-body">
+              <textarea
+                className="ddl-input"
+                rows={10}
+                value={ddlText}
+                onChange={(e) => setDdlText(e.target.value)}
+                placeholder="CREATE TABLE user (&#10;  id BIGINT PRIMARY KEY,&#10;  name VARCHAR(64) NOT NULL&#10;);"
+                spellCheck={false}
+                autoFocus
+              />
+              <div className="objects-import-tip">{t("objects.importDdlTip")}</div>
+            </div>
+            <div className="objects-import-actions">
+              <button className="btn" onClick={() => setDdlOpen(false)}>
+                {t("common.cancel")}
+              </button>
+              <button
+                className="btn primary"
+                onClick={() => {
+                  const d = ddlText;
+                  setDdlOpen(false);
+                  setDdlText("");
+                  void doImportDdl(d);
+                }}
+              >
                 {t("common.confirm")}
               </button>
             </div>

@@ -633,6 +633,8 @@ export const EN: Record<string, string> = {
   "objects.importDdlLabel": "DDL (CREATE TABLE)",
   "objects.importDdlTip": "Paste SQL CREATE TABLE statements (multiple allowed). Each table becomes an object; column → field, type auto-mapped, NOT NULL/PRIMARY KEY → required, COMMENT → description; table-level constraints ignored. Identical structures reuse existing objects automatically.",
   "objects.importDdlEmpty": "Please enter DDL statements",
+  "objects.importDdlText": "Import from DDL text",
+  "objects.importDdlFile": "Import from .sql file",
   "objects.importTitle": "Import Objects from JSON",
   "objects.importName": "Object Name",
   "objects.importGroup": "Group",

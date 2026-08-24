@@ -485,6 +485,30 @@
   padding: 5px 10px;
   border-top: 1px solid var(--border);
 }
+.objects-import-menu-wrap {
+  position: relative;
+}
+.objects-import-menu {
+  bottom: 38px;
+  right: 0;
+}
+.ddl-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-mono, Consolas, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text);
+  resize: vertical;
+}
+.ddl-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
 .objects-import-file-btn {
   display: flex;
   align-items: center;
