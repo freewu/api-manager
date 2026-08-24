@@ -674,6 +674,8 @@ export const ZH: Record<string, string> = {
   "objects.tabDesc": "对象描述",
   "objects.tabCode": "代码生成",
   "objects.codegenTip": "代码随对象属性与引用实时生成",
+  "objects.javaStyleLombok": "Lombok",
+  "objects.javaStyleNative": "原生（含 get/set）",
   "objects.saved": "已保存",
   "objects.dirty": "有未保存的修改",
   "objects.codegen": "代码生成",

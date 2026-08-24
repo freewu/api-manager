@@ -135,7 +135,12 @@ function typeOf(lang: string, p: ObjectProp, obj: ObjectDef, all: ObjectDef[]): 
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 /** 生成指定语言的对象定义代码 */
-export function generateObjectCode(lang: string, obj: ObjectDef, all: ObjectDef[]): string {
+export interface ObjCodegenOpts {
+  /** Java 生成风格：lombok（默认，@Data 注解）或 native（生成 getter/setter） */
+  javaStyle?: "lombok" | "native";
+}
+
+export function generateObjectCode(lang: string, obj: ObjectDef, all: ObjectDef[], opts?: ObjCodegenOpts): string {
   const props = obj.properties || [];
   // 类名取 object_name；未设置 object_name 则不生成代码
   const name = (obj.object_name || "").trim();
@@ -151,12 +156,29 @@ export function generateObjectCode(lang: string, obj: ObjectDef, all: ObjectDef[
       return `class ${name} {\n${lines.join("\n")}\n}`;
     }
     case "java": {
-      const lines = props.map(
-        (p) => `  public ${typeOf(lang, p, obj, all)} ${p.key};${desc(p)}`
-      );
       const pkg = (obj.package_name || "").trim();
       const head = pkg ? `package ${pkg};\n\n` : "";
-      return `${head}public class ${name} {\n${lines.join("\n")}\n}`;
+      const javaStyle = opts?.javaStyle === "native" ? "native" : "lombok";
+      if (javaStyle === "native") {
+        // 原生：private 字段 + 完整 getter/setter（boolean 用 isXxx）
+        const fields = props.map((p) => `  private ${typeOf(lang, p, obj, all)} ${p.key};${desc(p)}`);
+        const methods: string[] = [];
+        for (const p of props) {
+          const t = typeOf(lang, p, obj, all);
+          const capKey = cap(p.key);
+          const getter = p.kind === "boolean" ? `is${capKey}` : `get${capKey}`;
+          methods.push(
+            `\n  public ${t} ${getter}() {\n    return ${p.key};\n  }`,
+            `\n  public void set${capKey}(${t} ${p.key}) {\n    this.${p.key} = ${p.key};\n  }`
+          );
+        }
+        return `${head}public class ${name} {\n${fields.join("\n")}${methods.join("\n")}\n}`;
+      }
+      // Lombok：@Data 注解，不生成样板方法
+      const lines = props.map(
+        (p) => `  private ${typeOf(lang, p, obj, all)} ${p.key};${desc(p)}`
+      );
+      return `${head}import lombok.Data;\n\n@Data\npublic class ${name} {\n${lines.join("\n")}\n}`;
     }
     case "csharp": {
       const lines = props.map(

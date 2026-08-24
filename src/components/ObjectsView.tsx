@@ -112,13 +112,15 @@ export default function ObjectsView({
   // 右侧 tab：属性 / 对象描述 / 代码生成
   const [tab, setTab] = useState<"props" | "desc" | "code">("props");
   const [codeLang, setCodeLang] = useState(OBJECT_LANGS[0].value);
+  /** Java 生成风格：Lombok（默认） / 原生（含 getter/setter） */
+  const [javaStyle, setJavaStyle] = useState<"lombok" | "native">("lombok");
   /** 生成代码原文（复制用）与高亮 HTML */
   const codeText = useMemo(() => {
     if (!draft) return "";
     // 引用对象解析：以最新草稿替换同 uuid 的 store 对象
     const all = store.objects.map((o) => (o.uuid === draft.uuid ? draft : o));
-    return generateObjectCode(codeLang, draft, all);
-  }, [draft, store.objects, codeLang]);
+    return generateObjectCode(codeLang, draft, all, { javaStyle });
+  }, [draft, store.objects, codeLang, javaStyle]);
   const codeHtml = useMemo(() => {
     if (!codeText) return "";
     try {
@@ -448,6 +450,28 @@ export default function ObjectsView({
                 title={t("codegen.switchLang")}
                 onChange={setCodeLang}
               />
+              {codeLang === "java" && (
+                <div className="objects-java-style">
+                  <label className={`objects-style-pill${javaStyle === "lombok" ? " active" : ""}`}>
+                    <input
+                      type="radio"
+                      name="javaStyle"
+                      checked={javaStyle === "lombok"}
+                      onChange={() => setJavaStyle("lombok")}
+                    />
+                    {t("objects.javaStyleLombok")}
+                  </label>
+                  <label className={`objects-style-pill${javaStyle === "native" ? " active" : ""}`}>
+                    <input
+                      type="radio"
+                      name="javaStyle"
+                      checked={javaStyle === "native"}
+                      onChange={() => setJavaStyle("native")}
+                    />
+                    {t("objects.javaStyleNative")}
+                  </label>
+                </div>
+              )}
               <button className="btn small" onClick={() => void copyCode()}>
                 {copied ? t("resp.copied") : "📋 " + t("common.copy")}
               </button>

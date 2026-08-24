@@ -14,6 +14,7 @@ const LANG_ICON_FILES: Record<string, string> = {
   cpp: "C++.png",
   java: "java.png",
   csharp: "csharp.png",
+  dart: "dart.png",
   javascript: "javascript.png",
   r: "R.png",
   rust: "rust.png",

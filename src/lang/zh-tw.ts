@@ -655,6 +655,8 @@ export const TW: Record<string, string> = {
   "objects.tabDesc": "物件描述",
   "objects.tabCode": "程式碼產生",
   "objects.codegenTip": "程式碼隨物件屬性與引用即時產生",
+  "objects.javaStyleLombok": "Lombok",
+  "objects.javaStyleNative": "原生（含 get/set）",
   "objects.saved": "已儲存",
   "objects.dirty": "有未儲存的修改",
   "objects.codegen": "程式碼產生",

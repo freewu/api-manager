@@ -667,3 +667,31 @@
   color: var(--text-faint);
   font-size: 13px;
 }
+
+/* Java 生成风格切换 */
+.objects-java-style {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+.objects-style-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border: 1px solid var(--border, rgba(128,128,128,.35));
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--text-faint);
+  cursor: pointer;
+  user-select: none;
+}
+.objects-style-pill input {
+  display: none;
+}
+.objects-style-pill.active {
+  color: var(--accent, #4f9cf9);
+  border-color: var(--accent, #4f9cf9);
+  background: color-mix(in srgb, var(--accent, #4f9cf9) 12%, transparent);
+}
