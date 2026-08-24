@@ -9,11 +9,19 @@ interface GroupStatsModalProps {
   objects: ObjectDef[];
   /** 对象引用统计（hash → usage） */
   usageOf: Record<string, ObjectUsageItem>;
+  /** 废弃判定（自身或所属分组废弃） */
+  isDeprecated?: (o: ObjectDef) => boolean;
   onClose: () => void;
 }
 
 /** 分组统计：对象数量 + 各对象接口引用数（含子分组） */
-export default function GroupStatsModal({ groupName, objects, usageOf, onClose }: GroupStatsModalProps) {
+export default function GroupStatsModal({
+  groupName,
+  objects,
+  usageOf,
+  isDeprecated,
+  onClose,
+}: GroupStatsModalProps) {
   const t = useT();
   const apiTotal = objects.reduce((s, o) => s + (usageOf[o.hash]?.apiCount ?? 0), 0);
   return (
@@ -35,10 +43,15 @@ export default function GroupStatsModal({ groupName, objects, usageOf, onClose }
           {objects.map((o) => {
             const count = usageOf[o.hash]?.apiCount ?? 0;
             return (
-              <div key={o.uuid} className={`grpstats-item${o.deprecated ? " deprecated" : ""}`}>
+              <div
+                key={o.uuid}
+                className={`grpstats-item${isDeprecated ? isDeprecated(o) ? " deprecated" : "" : o.deprecated ? " deprecated" : ""}`}
+              >
                 <span className="grpstats-item-name">
                   {o.displayName || o.name}
-                  {o.deprecated && <span className="objects-deprecated-badge">已废弃</span>}
+                  {(isDeprecated ? isDeprecated(o) : o.deprecated) && (
+                    <span className="objects-deprecated-badge">已废弃</span>
+                  )}
                 </span>
                 <span className={`grpstats-item-count${count > 0 ? " has" : ""}`}>
                   {t("objects.statRefCount", { count })}

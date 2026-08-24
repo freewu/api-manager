@@ -116,6 +116,11 @@ export default function ObjectsTree({
     return m;
   }, [usage]);
 
+  /** 对象是否展示为废弃：自身已废弃，或所属分组（含任意祖先分组）已废弃 */
+  const isObjDeprecated = (o: ObjectDef): boolean =>
+    o.deprecated ||
+    store.groups.some((g) => g.deprecated && (o.group === g.id || o.group.startsWith(g.id + "/")));
+
   const kw = search.trim().toLowerCase();
   const filterMatch = (o: ObjectDef) => {
     if (!kw) return true;
@@ -289,6 +294,7 @@ export default function ObjectsTree({
                 depth={depth + 1}
                 usageCount={usageOf[o.hash]?.apiCount ?? 0}
                 selected={selectedUuid === o.uuid}
+                deprecated={isObjDeprecated(o)}
                 onSelect={() => onSelectObject(o.uuid)}
                 onStartEdit={() => setInlineEdit({ kind: "object", uuid: o.uuid, value: o.displayName || "" })}
                 editActive={inlineEdit?.kind === "object" && inlineEdit.uuid === o.uuid}
@@ -599,6 +605,7 @@ export default function ObjectsTree({
               depth={0}
               usageCount={usageOf[o.hash]?.apiCount ?? 0}
               selected={selectedUuid === o.uuid}
+              deprecated={isObjDeprecated(o)}
               onSelect={() => onSelectObject(o.uuid)}
               onStartEdit={() => setInlineEdit({ kind: "object", uuid: o.uuid, value: o.displayName || "" })}
               editActive={(inlineEdit?.kind === "object" || inlineEdit?.kind === "objname") && inlineEdit.uuid === o.uuid}
@@ -633,6 +640,7 @@ export default function ObjectsTree({
               depth={0}
               usageCount={usageOf[o.hash]?.apiCount ?? 0}
               selected={selectedUuid === o.uuid}
+              deprecated={isObjDeprecated(o)}
               onSelect={() => onSelectObject(o.uuid)}
               onStartEdit={() => setInlineEdit({ kind: "object", uuid: o.uuid, value: o.displayName || "" })}
               editActive={(inlineEdit?.kind === "object" || inlineEdit?.kind === "objname") && inlineEdit.uuid === o.uuid}
@@ -798,6 +806,7 @@ export default function ObjectsTree({
             (o) => o.group === groupStats.id || o.group.startsWith(groupStats.id + "/")
           )}
           usageOf={usageOf}
+          isDeprecated={isObjDeprecated}
           onClose={() => setGroupStats(null)}
         />
       )}
@@ -912,6 +921,7 @@ function ObjectRow({
   depth,
   usageCount,
   selected,
+  deprecated,
   onSelect,
   onStartEdit,
   editActive,
@@ -927,6 +937,8 @@ function ObjectRow({
   depth: number;
   usageCount: number;
   selected: boolean;
+  /** 展示为废弃（自身或所属分组废弃） */
+  deprecated: boolean;
   onSelect: () => void;
   /** 双击进入内联编辑（显示名称） */
   onStartEdit: () => void;
@@ -942,7 +954,7 @@ function ObjectRow({
   const t = useT();
   return (
     <div
-      className={`node objects-object-row${selected ? " selected" : ""}${obj.deprecated ? " deprecated" : ""}`}
+      className={`node objects-object-row${selected ? " selected" : ""}${deprecated ? " deprecated" : ""}`}
       style={{ paddingLeft: 6 + depth * 14 }}
       onClick={onSelect}
       onDoubleClick={(e) => {
@@ -980,7 +992,7 @@ function ObjectRow({
         <span className="node-name objects-object-name">
           {obj.displayName || obj.name}
           {obj.displayName && <span className="objects-object-ename">{obj.name}</span>}
-          {obj.deprecated && <span className="objects-deprecated-badge">已废弃</span>}
+          {deprecated && <span className="objects-deprecated-badge">已废弃</span>}
         </span>
       )}
       {usageCount > 0 && (

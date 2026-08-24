@@ -36,20 +36,27 @@ export default function ObjectRefPicker({
       return next;
     });
 
-  const row = (o: ObjectDef) => (
+  /** 对象展示为废弃：自身已废弃，或所属分组（含祖先分组）已废弃 */
+  const isDeprecated = (o: ObjectDef): boolean =>
+    o.deprecated || groups.some((g) => g.deprecated && (o.group === g.id || o.group.startsWith(g.id + "/")));
+
+  const row = (o: ObjectDef) => {
+    const dep = isDeprecated(o);
+    return (
     <button
       key={o.hash}
-      className={`objref-row${o.hash === currentHash ? " active" : ""}${o.deprecated ? " deprecated" : ""}`}
+      className={`objref-row${o.hash === currentHash ? " active" : ""}${dep ? " deprecated" : ""}`}
       onClick={() => onPick(o.hash)}
     >
-      <span className="objref-row-icon">{o.deprecated ? "🚫" : "🧩"}</span>
+      <span className="objref-row-icon">{dep ? "🚫" : "🧩"}</span>
       <span className="objref-row-name">
         <span className="objref-file">{o.name}</span>
         <span className="objref-objname">（{o.object_name}）</span>
       </span>
       {o.hash === currentHash && <span className="objref-row-check">✓</span>}
     </button>
-  );
+    );
+  };
 
   const renderGroup = (g: ObjectGroup, depth: number): ReactNode => {
     // 直接子分组：id 恰好为 父id/子名（不含更深层级）
