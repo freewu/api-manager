@@ -884,3 +884,60 @@
 .objref-folder-icon {
   font-size: 12px;
 }
+
+/* 分组统计弹窗 */
+.modal-grpstats {
+  width: min(420px, 92vw);
+}
+.grpstats-head {
+  display: flex;
+  gap: 16px;
+  padding: 4px 2px 14px;
+  border-bottom: 1px solid var(--border, rgba(128,128,128,.25));
+  margin-bottom: 10px;
+}
+.grpstats-num {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.grpstats-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent, #4f9cf9);
+}
+.grpstats-label {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.grpstats-list {
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.grpstats-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border, rgba(128,128,128,.15));
+  font-size: 13px;
+}
+.grpstats-item.deprecated .grpstats-item-name {
+  text-decoration: line-through;
+  color: var(--text-faint);
+}
+.grpstats-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.grpstats-item-count {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.grpstats-item-count.has {
+  color: var(--accent, #4f9cf9);
+  font-weight: 600;
+}

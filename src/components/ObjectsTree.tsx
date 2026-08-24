@@ -4,6 +4,7 @@ import { ObjectDef, ObjectImportResult, ObjectProp, ObjectStore, ObjectUsageItem
 /** 对象名称校验：字母开头，仅允许字母和数字（不允许空格） */
 import { useT } from "../i18n";
 import { ObjectVersionModal } from "./ObjectVersionModal";
+import GroupStatsModal from "./GroupStatsModal";
 
 interface Props {
   store: ObjectStore;
@@ -74,6 +75,8 @@ export default function ObjectsTree({
   /** 对象行右键菜单（uuid） */
   const [objMenu, setObjMenu] = useState<{ x: number; y: number; uuid: string } | null>(null);
   const [groupMenu, setGroupMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+  /** 分组统计弹窗 */
+  const [groupStats, setGroupStats] = useState<{ id: string; name: string } | null>(null);
   /** 版本查看弹窗（对象 uuid） */
   const [versionModal, setVersionModal] = useState<ObjectDef | null>(null);
   // 拖拽中的对象 uuid
@@ -693,6 +696,15 @@ export default function ObjectsTree({
         <div className="node-ctx-menu" style={{ left: groupMenu.x, top: groupMenu.y }}>
           <button
             onClick={() => {
+              const g = store.groups.find((x) => x.id === groupMenu.id);
+              setGroupMenu(null);
+              if (g) setGroupStats({ id: g.id, name: g.name });
+            }}
+          >
+            📊 {t("objects.groupStats")}
+          </button>
+          <button
+            onClick={() => {
               setGroupMenu(null);
               toggleDeprecated("group", groupMenu.id);
             }}
@@ -734,6 +746,18 @@ export default function ObjectsTree({
             ▦ {t("objects.newObject")}
           </button>
         </div>
+      )}
+
+      {/* 分组统计弹窗 */}
+      {groupStats && (
+        <GroupStatsModal
+          groupName={groupStats.name}
+          objects={store.objects.filter(
+            (o) => o.group === groupStats.id || o.group.startsWith(groupStats.id + "/")
+          )}
+          usageOf={usageOf}
+          onClose={() => setGroupStats(null)}
+        />
       )}
 
       {/* 删除确认弹窗（对象 / 分组） */}

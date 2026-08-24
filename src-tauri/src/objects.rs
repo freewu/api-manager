@@ -200,8 +200,24 @@ pub fn list_objects(root: &Path) -> Result<ObjectStore, String> {
     let mut groups: Vec<ObjectGroup> = Vec::new();
     let mut objects: Vec<ObjectDef> = Vec::new();
 
+    // 分组信息（__info_obj.json，含已废弃标记）：目录重建时合并，旧数据无此文件则回退 false
+    let mut info_deprecated: std::collections::HashMap<String, bool> = std::collections::HashMap::new();
+    if let Ok(text) = std::fs::read_to_string(dir.join("__info_obj.json")) {
+        if let Ok(list) = serde_json::from_str::<Vec<ObjectGroup>>(&text) {
+            for g in list {
+                info_deprecated.insert(g.id, g.deprecated);
+            }
+        }
+    }
+
     // 递归扫描：目录 = 分组（多级嵌套），*.obj.json = 对象
-    fn scan(dir: &Path, group_id: &str, groups: &mut Vec<ObjectGroup>, objects: &mut Vec<ObjectDef>) {
+    fn scan(
+        dir: &Path,
+        group_id: &str,
+        groups: &mut Vec<ObjectGroup>,
+        objects: &mut Vec<ObjectDef>,
+        info_deprecated: &std::collections::HashMap<String, bool>,
+    ) {
         let Ok(entries) = std::fs::read_dir(dir) else { return };
         let mut entries: Vec<_> = entries.flatten().collect();
         entries.sort_by_key(|e| e.file_name());
@@ -214,8 +230,12 @@ pub fn list_objects(root: &Path) -> Result<ObjectStore, String> {
                 } else {
                     format!("{group_id}/{fname}")
                 };
-                groups.push(ObjectGroup { id: id.clone(), name: fname, deprecated: false });
-                scan(&path, &id, groups, objects);
+                groups.push(ObjectGroup {
+                    id: id.clone(),
+                    name: fname,
+                    deprecated: info_deprecated.get(&id).copied().unwrap_or(false),
+                });
+                scan(&path, &id, groups, objects, info_deprecated);
             } else if fname == "__info_obj.json" {
                 continue;
             } else if let Some(stem) = fname.strip_suffix(".obj.json") {
@@ -233,7 +253,7 @@ pub fn list_objects(root: &Path) -> Result<ObjectStore, String> {
             }
         }
     }
-    scan(&dir, "", &mut groups, &mut objects);
+    scan(&dir, "", &mut groups, &mut objects, &info_deprecated);
     Ok(ObjectStore { groups, objects })
 }
 
@@ -1258,6 +1278,20 @@ CREATE TABLE `my_users` (
         let loaded = list_objects(&root).unwrap();
         assert_eq!(loaded.objects[0].hash, object_hash(&o.properties));
         assert_ne!(loaded.objects[0].hash, "stale");
+    }
+
+    #[test]
+    fn test_group_deprecated_persist() {
+        let root = tmpdir("group-dep");
+        let mut store = ObjectStore::default();
+        store.groups.push(ObjectGroup { id: "用户管理".into(), name: "用户管理".into(), deprecated: true });
+        store.groups.push(ObjectGroup { id: "订单/明细".into(), name: "明细".into(), deprecated: false });
+        save_objects(&root, &store).unwrap();
+        let loaded = list_objects(&root).unwrap();
+        let user = loaded.groups.iter().find(|g| g.id == "用户管理").unwrap();
+        assert!(user.deprecated, "已废弃标记应持久化到 __info_obj.json 并回读");
+        let detail = loaded.groups.iter().find(|g| g.id == "订单/明细").unwrap();
+        assert!(!detail.deprecated);
     }
 
     #[test]
