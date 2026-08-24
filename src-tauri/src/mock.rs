@@ -6,10 +6,11 @@ use axum::{
     response::{IntoResponse, Response},
     Router,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
@@ -123,6 +124,149 @@ fn scan_dir(dir: &Path, routes: &mut Vec<MockRoute>) {
             }
         }
     }
+}
+
+// ==================== 自定义 Mock 占位符 ====================
+
+/// 自定义 mock 占位符：文件保存在工作目录 .mock/<name>.js（name 不含 @）
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomMock {
+    /// 占位符标识（不含 @），使用时写作 @name
+    pub name: String,
+    /// 是否启用（未启用则不展示、不参与生成）
+    pub enabled: bool,
+    /// 说明文字
+    pub desc: String,
+    /// JS 代码：(ctx) => 返回值，ctx 提供 randInt/pick/random 等工具
+    pub code: String,
+}
+
+/// mock.js 内置占位符名（自定义占位符不允许与这些冲突）
+const BUILTIN_MOCK_NAMES: &[&str] = &[
+    "cname", "name", "first", "last", "email", "phone", "id", "guid", "integer", "float",
+    "natural", "boolean", "date", "time", "datetime", "now", "url", "domain", "ip",
+    "protocol", "city", "province", "county", "zip", "word", "title", "sentence",
+    "paragraph", "color", "image", "avatar", "string", "character",
+];
+
+fn mock_dir(root: &Path) -> PathBuf {
+    root.join(".mock")
+}
+
+/// 校验占位符标识：非空、字母/数字/下划线、不以数字开头
+pub fn valid_mock_name(name: &str) -> Result<String, String> {
+    let n = name.trim().trim_start_matches('@');
+    if n.is_empty() {
+        return Err("占位符标识不能为空".to_string());
+    }
+    let mut chars = n.chars();
+    let first = chars.next().unwrap();
+    if !(first.is_ascii_alphabetic() || first == '_') {
+        return Err("占位符标识需以字母或下划线开头".to_string());
+    }
+    if !chars.all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return Err("占位符标识仅允许字母/数字/下划线".to_string());
+    }
+    if BUILTIN_MOCK_NAMES.contains(&n) {
+        return Err(format!("@{n} 与 mock.js 内置占位符冲突，请换一个标识"));
+    }
+    Ok(n.to_string())
+}
+
+/// 列出 .mock 目录下所有自定义占位符（按标识排序）
+pub fn list_custom_mocks(root: &Path) -> Vec<CustomMock> {
+    let dir = mock_dir(root);
+    let mut out = Vec::new();
+    if let Ok(entries) = fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let file_name = entry.file_name().to_string_lossy().to_string();
+            if !file_name.ends_with(".js") {
+                continue;
+            }
+            if let Ok(content) = fs::read_to_string(&path) {
+                if let Some(m) = parse_custom_mock(&content, &file_name) {
+                    out.push(m);
+                }
+            }
+        }
+    }
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    out
+}
+
+/// 解析单个占位符文件：文件头 /** */ 注释存元数据，注释之后为 JS 代码
+fn parse_custom_mock(content: &str, file_name: &str) -> Option<CustomMock> {
+    let mut enabled = true;
+    let mut desc = String::new();
+    let trimmed = content.trim_start();
+    let code_start = if let Some(rest) = trimmed.strip_prefix("/**") {
+        if let Some(end) = rest.find("*/") {
+            let meta = &rest[..end];
+            for line in meta.lines() {
+                let line = line.trim().trim_start_matches('*').trim();
+                if let Some(v) = line.strip_prefix("@enabled") {
+                    enabled = v.trim().eq_ignore_ascii_case("true") || v.trim() == "1";
+                } else if let Some(v) = line.strip_prefix("@desc") {
+                    desc = v.trim().to_string();
+                }
+            }
+            &rest[end + 2..]
+        } else {
+            rest
+        }
+    } else {
+        trimmed
+    };
+    let name = file_name.trim_end_matches(".js").to_string();
+    if name.is_empty() {
+        return None;
+    }
+    Some(CustomMock {
+        name,
+        enabled,
+        desc,
+        code: code_start.trim().to_string(),
+    })
+}
+
+/// 保存自定义占位符：写入 .mock/<name>.js；old_name 与 name 不同时视为重命名，删除旧文件
+pub fn save_custom_mock(root: &Path, input: &CustomMock, old_name: Option<&str>) -> Result<(), String> {
+    let name = valid_mock_name(&input.name)?;
+    if input.code.trim().is_empty() {
+        return Err("占位符代码不能为空".to_string());
+    }
+    let dir = mock_dir(root);
+    fs::create_dir_all(&dir).map_err(|e| format!("创建 .mock 目录失败: {e}"))?;
+    let path = dir.join(format!("{name}.js"));
+    if path.exists() && old_name.map(|o| o != name).unwrap_or(true) {
+        return Err(format!("占位符 @{name} 已存在").to_string());
+    }
+    if let Some(old) = old_name {
+        if old != name {
+            let _ = fs::remove_file(dir.join(format!("{old}.js")));
+        }
+    }
+    let content = format!(
+        "/**\n * @name {name}\n * @enabled {}\n * @desc {}\n */\n{}\n",
+        if input.enabled { "true" } else { "false" },
+        input.desc.trim(),
+        input.code.trim()
+    );
+    fs::write(&path, content).map_err(|e| format!("写入占位符文件失败: {e}"))?;
+    Ok(())
+}
+
+/// 删除自定义占位符文件
+pub fn delete_custom_mock(root: &Path, name: &str) -> Result<(), String> {
+    let n = valid_mock_name(name)?;
+    let dir = mock_dir(root);
+    let path = dir.join(format!("{n}.js"));
+    if path.exists() {
+        fs::remove_file(&path).map_err(|e| format!("删除占位符文件失败: {e}"))?;
+    }
+    Ok(())
 }
 
 // ==================== 服务生命周期 ====================
@@ -449,6 +593,71 @@ mod tests {
         assert!(methods.contains(&"GET"));
         assert!(methods.contains(&"POST"));
         assert!(methods.contains(&"DELETE"));
+    }
+
+    #[test]
+    fn test_custom_mock_crud() {
+        let d = std::env::temp_dir().join(format!("apim-custom-mock-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+
+        // 空目录 → 空列表
+        assert!(list_custom_mocks(&d).is_empty());
+
+        // 保存两个占位符
+        save_custom_mock(
+            &d,
+            &CustomMock { name: "cusId".into(), enabled: true, desc: "自定义ID".into(), code: "(ctx) => 'CUS-' + ctx.randInt(1, 9)".into() },
+            None,
+        )
+        .unwrap();
+        save_custom_mock(
+            &d,
+            &CustomMock { name: "cusTime".into(), enabled: false, desc: "自定义时间".into(), code: "(ctx) => 'T'".into() },
+            None,
+        )
+        .unwrap();
+        let list = list_custom_mocks(&d);
+        assert_eq!(list.len(), 2);
+        let cus_id = list.iter().find(|m| m.name == "cusId").unwrap();
+        assert!(cus_id.enabled);
+        assert_eq!(cus_id.desc, "自定义ID");
+        assert!(cus_id.code.contains("randInt"));
+        let cus_time = list.iter().find(|m| m.name == "cusTime").unwrap();
+        assert!(!cus_time.enabled);
+
+        // 重命名：old_name 指向旧名，旧文件被删除
+        save_custom_mock(
+            &d,
+            &CustomMock { name: "cusUid".into(), enabled: true, desc: "改名".into(), code: "(ctx) => 'U'".into() },
+            Some("cusId"),
+        )
+        .unwrap();
+        let list = list_custom_mocks(&d);
+        assert_eq!(list.len(), 2);
+        assert!(list.iter().any(|m| m.name == "cusUid"));
+        assert!(!list.iter().any(|m| m.name == "cusId"));
+
+        // 与内置 mock.js 冲突
+        let r = save_custom_mock(&d, &CustomMock { name: "cname".into(), enabled: true, desc: "".into(), code: "x".into() }, None);
+        assert!(r.is_err());
+        // 重复名称
+        let r2 = save_custom_mock(&d, &CustomMock { name: "cusUid".into(), enabled: true, desc: "".into(), code: "y".into() }, None);
+        assert!(r2.is_err());
+        // 非法名称
+        let r3 = save_custom_mock(&d, &CustomMock { name: "1bad".into(), enabled: true, desc: "".into(), code: "y".into() }, None);
+        assert!(r3.is_err());
+        // 空代码
+        let r4 = save_custom_mock(&d, &CustomMock { name: "ok".into(), enabled: true, desc: "".into(), code: " ".into() }, None);
+        assert!(r4.is_err());
+
+        // 删除
+        delete_custom_mock(&d, "cusTime").unwrap();
+        let list = list_custom_mocks(&d);
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].name, "cusUid");
+
+        let _ = std::fs::remove_dir_all(&d);
     }
 
     #[test]

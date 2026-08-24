@@ -300,6 +300,58 @@
   font-size: 11px;
   color: var(--text-faint);
 }
+.settings-custom-mock-empty {
+  margin-top: 8px;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-faint);
+  text-align: center;
+}
+.settings-custom-mock-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.settings-custom-mock-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg, #fff) 60%, transparent);
+}
+.settings-custom-mock-name {
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent, #4f9cf9);
+  min-width: 120px;
+}
+.settings-custom-mock-name.off {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+.settings-custom-mock-desc {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-custom-mock-ops {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.btn.small.danger {
+  color: #e5484d;
+  border-color: rgba(229, 72, 77, 0.5);
+}
 .settings-port-row {
   margin-top: 8px;
   padding-top: 8px;
@@ -788,4 +840,92 @@
   font-size: 12px;
   color: var(--text-faint);
   line-height: 1.6;
+}
+
+/* 自定义 Mock 占位符 JS 编辑弹窗 */
+.mock-editor-modal {
+  width: min(680px, 92vw);
+}
+.mock-editor-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mock-editor-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mock-editor-label {
+  width: 96px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text);
+}
+.mock-editor-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+.mock-editor-at {
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: 14px;
+  color: var(--accent, #4f9cf9);
+}
+.mock-editor-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input, transparent);
+  color: var(--text);
+  font-size: 13px;
+}
+.mock-editor-name {
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+}
+.mock-editor-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.mock-editor-code-row {
+  align-items: flex-start;
+}
+.mock-editor-code-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mock-editor-code {
+  width: 100%;
+  min-height: 220px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-code, #1e1e1e);
+  color: var(--text);
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+  white-space: pre;
+}
+.mock-editor-code-tools {
+  display: flex;
+  justify-content: flex-end;
+}
+.mock-editor-desc {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.mock-editor-err {
+  font-size: 12px;
+  color: #e5484d;
 }

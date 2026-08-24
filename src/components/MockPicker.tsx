@@ -1,5 +1,8 @@
+import { useEffect, useState } from "react";
 import { Modal } from "./Modal";
 import { useT } from "../i18n";
+import { listCustomMocks } from "../commands";
+import type { CustomMock } from "../types";
 
 /** mock.js 常用占位符（点击插入到属性的 mock 值） */
 export const MOCK_PLACEHOLDERS: { value: string; desc: string }[] = [
@@ -43,9 +46,23 @@ interface MockPickerProps {
   onClose: () => void;
 }
 
-/** 选择 mock.js 占位符的弹窗 */
+/** 选择 mock.js 占位符的弹窗（含自定义占位符分组，激活的自定义占位符来自 .mock/ 目录） */
 export default function MockPicker({ onPick, onClose }: MockPickerProps) {
   const t = useT();
+  const [customs, setCustoms] = useState<CustomMock[]>([]);
+  // 打开弹窗时拉取激活的自定义占位符（设置页修改后下次打开即最新）
+  useEffect(() => {
+    let alive = true;
+    listCustomMocks()
+      .then((c) => {
+        if (alive) setCustoms(c);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const activeCustoms = customs.filter((c) => c.enabled && c.name);
   return (
     <Modal title={t("objects.mockPickTitle")} onClose={onClose} className="modal-mock" maskClassName="objects-import-mask">
       <div className="mock-picker-grid">
@@ -61,6 +78,24 @@ export default function MockPicker({ onPick, onClose }: MockPickerProps) {
           </button>
         ))}
       </div>
+      {activeCustoms.length > 0 && (
+        <>
+          <div className="mock-picker-custom-title">{t("objects.mockPickCustom")}</div>
+          <div className="mock-picker-grid mock-picker-custom">
+            {activeCustoms.map((c) => (
+              <button
+                key={c.name}
+                className="mock-picker-item mock-picker-item-custom"
+                onClick={() => onPick(`@${c.name}`)}
+                title={c.desc}
+              >
+                <span className="mock-picker-value">@{c.name}</span>
+                <span className="mock-picker-desc">{c.desc || "—"}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </Modal>
   );
 }

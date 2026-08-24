@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Modal } from "./Modal";
 import { ObjectDef, ObjectProp } from "../types";
-import { genData, GenDataResult } from "../commands";
+import { genData, GenDataResult, listCustomMocks } from "../commands";
 import { genRows, rowsToCsv, rowsToJson, rowsToSql } from "../utils/mockData";
 import MockPicker from "./MockPicker";
 
@@ -55,6 +55,19 @@ export default function GenDataModal({
   const [mockIndex, setMockIndex] = useState<number | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
+  /** 激活的自定义占位符（挂载时拉取，生成数据时执行） */
+  const [customMocks, setCustomMocks] = useState<import("../types").CustomMock[]>([]);
+  useEffect(() => {
+    let alive = true;
+    listCustomMocks()
+      .then((c) => {
+        if (alive) setCustomMocks(c);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const chooseDir = async () => {
     try {
@@ -93,7 +106,7 @@ export default function GenDataModal({
         enabled: true,
         desc: r.prop.description,
       }));
-      const data = await genRows(entries, n);
+      const data = await genRows(entries, n, customMocks);
       const content =
         format === "json" ? rowsToJson(data) : format === "csv" ? rowsToCsv(data) : rowsToSql(data, table.trim());
       const ext = format === "json" ? "json" : format === "csv" ? "csv" : "sql";

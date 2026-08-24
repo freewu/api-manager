@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   ApiFile,
   AppSettings,
+  CustomMock,
   EnvStore,
   ExampleFile,
   ExampleSummary,
@@ -407,6 +408,18 @@ export function mockStatus(): Promise<MockStatus> {
 
 export function mockReload(): Promise<MockStatus> {
   return invoke<MockStatus>("mock_reload");
+}
+
+export function listCustomMocks(): Promise<CustomMock[]> {
+  return invoke<CustomMock[]>("list_custom_mocks");
+}
+
+export function saveCustomMock(input: CustomMock, oldName?: string): Promise<void> {
+  return invoke("save_custom_mock", { input, oldName });
+}
+
+export function deleteCustomMock(name: string): Promise<void> {
+  return invoke("delete_custom_mock", { name });
 }
 
 // ==================== 对象管理 ====================

@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { AppSettings, ExportFormat, ImportFormat, REQUIRED_EXPORT_FORMATS, REQUIRED_IMPORT_FORMATS } from "../types";
+import { AppSettings, CustomMock, ExportFormat, ImportFormat, REQUIRED_EXPORT_FORMATS, REQUIRED_IMPORT_FORMATS } from "../types";
 import { Modal } from "./Modal";
-import { openExternal, setLanguage } from "../commands";
+import { openExternal, setLanguage, listCustomMocks, saveCustomMock, deleteCustomMock } from "../commands";
 import { CODE_LANGS, CodeLang } from "../utils/codegen";
 import { FormatIcon, FormatSelect } from "./FormatSelect";
 import { LangSelect } from "./LangSelect";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { setLang, useT } from "../i18n";
+import MockEditorModal from "./MockEditorModal";
 import logoUrl from "../assets/logo.png";
 
 interface Props {
@@ -137,6 +138,38 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
   const t = useT();
   const [active, setActive] = useState<string>("appearance");
   const [wsName, setWsName] = useState(workspaceName);
+  /** 自定义 Mock 占位符列表（来自工作目录 .mock/ 下） */
+  const [customMocks, setCustomMocks] = useState<CustomMock[]>([]);
+  /** JS 编辑弹窗：null=关闭；编辑对象（null=新建） */
+  const [mockEditor, setMockEditor] = useState<{ initial: CustomMock | null } | null>(null);
+  /** 加载自定义占位符 */
+  const loadCustomMocks = async () => {
+    try {
+      setCustomMocks(await listCustomMocks());
+    } catch {
+      setCustomMocks([]);
+    }
+  };
+  useEffect(() => {
+    void loadCustomMocks();
+  }, []);
+  /** 保存占位符后刷新列表，并通知对象管理（Mock 占位符弹窗 / 数据生成）重新拉取 */
+  const handleSaveCustomMock = async (input: CustomMock, oldName?: string) => {
+    await saveCustomMock(input, oldName);
+    await loadCustomMocks();
+    window.dispatchEvent(new Event("custom-mocks-changed"));
+  };
+  /** 行内开关切换（失败时忽略并回读列表） */
+  const handleToggleCustomMock = (m: CustomMock, v: boolean) => {
+    handleSaveCustomMock({ ...m, enabled: v }, m.name).catch(() => {
+      void loadCustomMocks();
+    });
+  };
+  const handleDeleteCustomMock = async (m: CustomMock) => {
+    await deleteCustomMock(m.name);
+    await loadCustomMocks();
+    window.dispatchEvent(new Event("custom-mocks-changed"));
+  };
   // 保存工作区名称后（props 更新）同步本地输入框
   useEffect(() => setWsName(workspaceName), [workspaceName]);
   const patch = (p: Partial<AppSettings>) => onSave({ ...settings, ...p });
@@ -373,6 +406,58 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
                 />
               </div>
             </div>
+
+            <div className="settings-feature">
+              <div className="settings-feature-head">
+                <span className="settings-feature-name">{t("settings.customMock")}</span>
+                <button
+                  type="button"
+                  className="btn small"
+                  onClick={() => setMockEditor({ initial: null })}
+                >
+                  ＋ {t("settings.customMockAdd")}
+                </button>
+              </div>
+              <div className="settings-feature-desc">{t("settings.customMockDesc")}</div>
+              {customMocks.length === 0 ? (
+                <div className="settings-custom-mock-empty">{t("settings.customMockEmpty")}</div>
+              ) : (
+                <div className="settings-custom-mock-list">
+                  {customMocks.map((m) => (
+                    <div className="settings-custom-mock-row" key={m.name}>
+                      <Switch
+                        checked={m.enabled}
+                        onChange={(v) => handleToggleCustomMock(m, v)}
+                      />
+                      <span className={`settings-custom-mock-name ${m.enabled ? "" : "off"}`}>
+                        @{m.name}
+                      </span>
+                      <span className="settings-custom-mock-desc">{m.desc || "—"}</span>
+                      <span className="settings-custom-mock-ops">
+                        <button
+                          type="button"
+                          className="btn small"
+                          onClick={() => setMockEditor({ initial: m })}
+                        >
+                          ✏️ {t("settings.customMockEdit")}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn small danger"
+                          onClick={() => {
+                            if (window.confirm(t("settings.customMockDelConfirm", { name: `@${m.name}` }))) {
+                              void handleDeleteCustomMock(m);
+                            }
+                          }}
+                        >
+                          🗑 {t("settings.customMockDel")}
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
 
           <section id="settings-codegen" className="settings-section">
@@ -595,6 +680,15 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
           </section>
         </div>
       </div>
+      {mockEditor && (
+        <MockEditorModal
+          initial={mockEditor.initial}
+          existingNames={customMocks.map((m) => m.name)}
+          onSave={handleSaveCustomMock}
+          onClose={() => setMockEditor(null)}
+          t={t}
+        />
+      )}
     </Modal>
   );
 }

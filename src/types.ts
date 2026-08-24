@@ -419,6 +419,18 @@ export interface MockStatus {
   routeCount: number;
 }
 
+/** 自定义 Mock 占位符（保存在工作目录 .mock/<name>.js，name 不含 @） */
+export interface CustomMock {
+  /** 占位符标识（不含 @），使用时写作 @name */
+  name: string;
+  /** 是否启用（未启用不展示、不参与生成） */
+  enabled: boolean;
+  /** 说明文字 */
+  desc: string;
+  /** JS 代码：(ctx) => 返回值，ctx 提供 randInt/pick/random 等工具 */
+  code: string;
+}
+
 // ==================== 对象管理 ====================
 
 /** 对象分组（分组名支持 "父级/子级" 斜杠实现多级） */

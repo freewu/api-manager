@@ -9379,6 +9379,32 @@ async fn mock_reload(app: AppHandle) -> Result<MockStatus, String> {
     Ok(mock::status(&app))
 }
 
+// ==================== 自定义 Mock 占位符 ====================
+
+#[tauri::command]
+fn list_custom_mocks(
+    state: State<'_, WorkspaceState>,
+) -> Result<Vec<mock::CustomMock>, String> {
+    let root = workspace_root(&state)?;
+    Ok(mock::list_custom_mocks(&root))
+}
+
+#[tauri::command]
+fn save_custom_mock(
+    state: State<'_, WorkspaceState>,
+    input: mock::CustomMock,
+    old_name: Option<String>,
+) -> Result<(), String> {
+    let root = workspace_root(&state)?;
+    mock::save_custom_mock(&root, &input, old_name.as_deref())
+}
+
+#[tauri::command]
+fn delete_custom_mock(state: State<'_, WorkspaceState>, name: String) -> Result<(), String> {
+    let root = workspace_root(&state)?;
+    mock::delete_custom_mock(&root, &name)
+}
+
 // ==================== 系统托盘 ====================
 
 fn show_main_window(app: &AppHandle) {
@@ -9926,6 +9952,9 @@ pub fn run() {
             mock_start,
             mock_stop,
             mock_status,
+            list_custom_mocks,
+            save_custom_mock,
+            delete_custom_mock,
             list_objects,
             save_objects,
             gen_data,

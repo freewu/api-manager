@@ -754,6 +754,18 @@
   font-size: 11px;
   color: var(--text-faint);
 }
+.mock-picker-custom-title {
+  margin: 14px 2px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent, #4f9cf9);
+}
+.mock-picker-grid.mock-picker-custom {
+  max-height: 30vh;
+}
+.mock-picker-item-custom .mock-picker-value {
+  color: var(--accent, #4f9cf9);
+}
 
 /* 引用对象选择弹窗（树状） */
 .modal-objref {

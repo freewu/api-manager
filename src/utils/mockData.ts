@@ -2,7 +2,18 @@
  * mock.js 占位符数据生成（数据生成功能专用）。
  * 支持 MockPicker 中的常用占位符：@cname/@email/@integer(1,100)/@datetime 等；
  * 非占位符（含字面量）原样输出；空 mock 按属性类型给默认值。
+ * 支持自定义占位符：@xxx 未命中内置时查找激活的自定义占位符并执行其 JS 代码。
  */
+
+import type { CustomMock } from "../types";
+
+/** mock.js 内置占位符名（不含 @；自定义占位符不允许与这些冲突） */
+export const BUILTIN_MOCK_NAMES = [
+  "cname", "name", "first", "last", "email", "phone", "id", "guid", "integer", "float",
+  "natural", "boolean", "date", "time", "datetime", "now", "url", "domain", "ip",
+  "protocol", "city", "province", "county", "zip", "word", "title", "sentence",
+  "paragraph", "color", "image", "avatar", "string", "character",
+];
 
 const randInt = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
 const pick = <T,>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)];
@@ -60,8 +71,8 @@ function datetimeStr(d?: Date): string {
   return `${dateStr(t)} ${timeStr(t)}`;
 }
 
-/** 按占位符生成单个值（template 为 mock 值，kind 用于空值回退） */
-export function mockValue(template: string, kind: string): unknown {
+/** 按占位符生成单个值（template 为 mock 值，kind 用于空值回退；customs 为激活的自定义占位符） */
+export function mockValue(template: string, kind: string, customs?: CustomMock[]): unknown {
   const m = /^@(\w+)(?:\(([^)]*)\))?$/.exec(template.trim());
   if (!m) {
     if (!template.trim()) {
@@ -92,6 +103,7 @@ export function mockValue(template: string, kind: string): unknown {
   const name = m[1];
   const args = m[2] ? m[2].split(",").map((x) => x.trim()) : [];
   const num = (i: number, def: number) => (args[i] !== undefined && args[i] !== "" ? Number(args[i]) : def);
+  // 内置占位符
   switch (name) {
     case "cname":
       return cname();
@@ -179,8 +191,26 @@ export function mockValue(template: string, kind: string): unknown {
     }
     case "character":
       return "abcdefghijklmnopqrstuvwxyz0123456789"[randInt(0, 35)];
-    default:
+    default: {
+      // 未命中内置：尝试自定义占位符（启用 + 名称匹配）
+      const cus = customs?.find((c) => c.enabled && c.name === name);
+      if (cus && cus.code.trim()) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-implied-eval
+          const fn = new Function("ctx", `return (${cus.code})(ctx)`);
+          return fn({
+            randInt,
+            pick,
+            random: Math.random,
+            pad,
+            seq: nextId,
+          });
+        } catch {
+          return template;
+        }
+      }
       return template;
+    }
   }
 }
 
@@ -193,8 +223,12 @@ export interface GenEntry {
   desc?: string;
 }
 
-/** 分批异步生成数据行（避免阻塞 UI） */
-export async function genRows(entries: GenEntry[], count: number): Promise<Record<string, unknown>[]> {
+/** 分批异步生成数据行（避免阻塞 UI）；customs 为激活的自定义占位符 */
+export async function genRows(
+  entries: GenEntry[],
+  count: number,
+  customs?: CustomMock[]
+): Promise<Record<string, unknown>[]> {
   const rows: Record<string, unknown>[] = [];
   const BATCH = 2000;
   for (let i = 0; i < count; i += BATCH) {
@@ -202,7 +236,7 @@ export async function genRows(entries: GenEntry[], count: number): Promise<Recor
     for (let j = 0; j < n; j++) {
       const row: Record<string, unknown> = {};
       for (const e of entries) {
-        if (e.enabled) row[e.key] = mockValue(e.mock, e.kind);
+        if (e.enabled) row[e.key] = mockValue(e.mock, e.kind, customs);
       }
       rows.push(row);
     }
