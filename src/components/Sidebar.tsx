@@ -724,6 +724,20 @@ export function Sidebar(props: Props) {
             </div>
           )}
           </>
+        ) : view === "genlogs" ? (
+          <div className="history-side-header">
+            <span className="history-side-title">📄 {t("sidebar.genLogs")}</span>
+            <button
+              className="icon-btn"
+              onClick={() => onSwitchView("api")}
+              title={t("history.back")}
+              aria-label={t("history.back")}
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0 4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z" />
+              </svg>
+            </button>
+          </div>
         ) : view === "objects" ? (
           <div className="history-side-header">
             <span className="history-side-title">🗂️ {t("objects.title")}</span>
