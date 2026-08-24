@@ -243,6 +243,12 @@ export default function App() {
 
   // ---------- 视图切换 ----------
   const [view, setView] = useState<AppView>("api");
+
+  // 进入数据生成记录页面时刷新列表
+  useEffect(() => {
+    if (view === "genlogs") void genLogs.reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
   const switchView = (v: AppView) => {
     setView(v);
     // 每次进入历史视图都自动刷新一次列表

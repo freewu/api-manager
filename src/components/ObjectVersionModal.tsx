@@ -86,8 +86,10 @@ export function ObjectVersionModal({ current, onClose }: Props) {
       try {
         const list = await listObjectVersions(current.uuid);
         if (cancelled) return;
+        // 版本号倒排：最新版本靠上
+        list.sort((a, b) => b.version - a.version);
         setVersions(list);
-        setSelIdx(list.length - 1);
+        setSelIdx(0);
       } catch (e) {
         if (!cancelled) setErr(String(e));
       }
