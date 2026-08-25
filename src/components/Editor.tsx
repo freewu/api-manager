@@ -125,7 +125,17 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   const [mockTestOk, setMockTestOk] = useState(true);
   const [mockTesting, setMockTesting] = useState(false);
   const mockBodyRef = useRef<HTMLTextAreaElement | null>(null);
-  const effectiveUrl = api.url || (baseUrl + api.path);
+  /** URL 为空时点击发送的红框提示 */
+  const [urlError, setUrlError] = useState(false);
+  /** URL 完全等于 bluefrog 时触发的彩蛋 */
+  const [egg, setEgg] = useState(false);
+  const eggTimerRef = useRef<number | null>(null);
+  const triggerEgg = () => {
+    setEgg(true);
+    if (eggTimerRef.current) window.clearTimeout(eggTimerRef.current);
+    eggTimerRef.current = window.setTimeout(() => setEgg(false), 3200);
+  };
+  const effectiveUrl = api.url || (api.path ? baseUrl + api.path : "");
 
   // 示例数量：接口切换或保存示例成功（exampleVersion 变化）时拉取；ExamplesTab 每次加载后也会回报最新数量
   useEffect(() => {
@@ -266,6 +276,25 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
 
   return (
     <div className="editor" style={style}>
+      {egg && (
+        <div className="egg-overlay">
+          {Array.from({ length: 26 }, (_, i) => (
+            <span
+              key={i}
+              className="egg-item"
+              style={{
+                left: `${(i * 37 + 5) % 100}%`,
+                animationDelay: `${(i % 9) * 0.4}s`,
+                animationDuration: `${2.2 + (i % 4) * 0.5}s`,
+                fontSize: `${14 + (i % 6) * 7}px`,
+              }}
+            >
+              {["🎉", "✨", "⭐", "🎊", "💫", "🎈", "🌟", "🎇"][i % 8]}
+            </span>
+          ))}
+          <div className="egg-text">🎉 Bluefrog 🎉</div>
+        </div>
+      )}
       <div className="editor-head">
         {isWs ? (
           <div className="scheme-switch" title={t("editor.wsType")}>
@@ -312,7 +341,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             ))}
           </select>
         )}
-        <div className="url-input-wrap">
+        <div className={`url-input-wrap${urlError ? " url-error" : ""}`}>
           <span className="url-scheme">{isWs ? "WS" : isSocketIo ? "SIO" : "URL"}</span>
           <input
             className="url-input"
@@ -321,19 +350,37 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             title={t("editor.urlTitle")}
             onChange={(e) => {
               const v = e.target.value;
-              if (!isRealtime && v.startsWith(baseUrl) && baseUrl) {
+              // 输入内容后红框提示消失
+              if (urlError) setUrlError(false);
+              // URL 完全等于 bluefrog 时触发彩蛋
+              if (v.trim() === "bluefrog") triggerEgg();
+              if (!v) {
+                // 支持清空为空的 URL
+                onChange({ ...api, url: "", path: "" });
+              } else if (!isRealtime && v.startsWith(baseUrl) && baseUrl) {
                 onChange({ ...api, url: "", path: v.slice(baseUrl.length) || "/" });
               } else {
                 onChange({ ...api, url: v, path: api.path });
               }
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !sending) onSend();
+              if (e.key === "Enter" && !sending) {
+                if (!effectiveUrl.trim()) setUrlError(true);
+                onSend();
+              }
             }}
             spellCheck={false}
           />
         </div>
-        <button className="send-btn" onClick={onSend} disabled={sending}>
+        <button
+          className="send-btn"
+          onClick={() => {
+            // URL 为空：红框提示并仍然发送请求
+            if (!effectiveUrl.trim()) setUrlError(true);
+            onSend();
+          }}
+          disabled={sending}
+        >
           {sending ? t("tab.sending") : t("tab.send")}
         </button>
         {enableVersion && (
