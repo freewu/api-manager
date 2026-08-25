@@ -331,6 +331,7 @@ pub(crate) fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String
                 prop("name", "String", "String", "用户名", "@cname"),
                 prop("email", "String", "String", "邮箱地址", "@email"),
                 prop("role", "String", "String", "用户角色（user / admin / vip）", "user"),
+                prop("zodiac", "String", "String", "星座", "@zodiac"),
                 prop("createdAt", "Datetime", "String", "创建时间", "@datetime"),
             ]),
             obj_def("订单", "Order", "订单管理", "用户订单", vec![
@@ -350,6 +351,18 @@ pub(crate) fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String
         ],
     };
     crate::objects::save_objects_impl(&root, &demo_store)?;
+
+    // 创建星座占位符 @zodiac（自定义 mock 占位符示例，可在接口/对象 mock 数据中使用）
+    crate::mock::save_custom_mock_impl(
+        &root,
+        &crate::mock::CustomMock {
+            name: "zodiac".into(),
+            enabled: true,
+            desc: "十二星座之一".into(),
+            code: "(ctx) => ctx.pick([\"白羊座\",\"金牛座\",\"双子座\",\"巨蟹座\",\"狮子座\",\"处女座\",\"天秤座\",\"天蝎座\",\"射手座\",\"摩羯座\",\"水瓶座\",\"双鱼座\"])".into(),
+        },
+        None,
+    )?;
 
     Ok(())
 }
