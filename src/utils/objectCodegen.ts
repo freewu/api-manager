@@ -238,6 +238,12 @@ function typeOf(lang: string, p: ObjectProp, obj: ObjectDef, all: ObjectDef[]): 
 
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
+/** 下划线命名转驼峰：user_name → userName（连续下划线合并为一次大写） */
+const snakeToCamel = (s: string) => s.replace(/_+([A-Za-z0-9])/g, (_, c) => c.toUpperCase());
+
+/** Go 结构体字段名：每段首字母大写、下划线保留：user_name → User_Name */
+const goField = (s: string) => s.split("_").filter(Boolean).map(cap).join("_");
+
 /** 生成指定语言的对象定义代码 */
 export interface ObjCodegenOpts {
   /** Java 生成风格：lombok（默认，@Data 注解）或 native（生成 getter/setter） */
@@ -264,23 +270,24 @@ export function generateObjectCode(lang: string, obj: ObjectDef, all: ObjectDef[
       const head = pkg ? `package ${pkg};\n\n` : "";
       const javaStyle = opts?.javaStyle === "native" ? "native" : "lombok";
       if (javaStyle === "native") {
-        // 原生：private 字段 + 完整 getter/setter（boolean 用 isXxx）
-        const fields = props.map((p) => `  private ${typeOf(lang, p, obj, all)} ${p.key};${desc(p)}`);
+        // 原生：private 字段 + 完整 getter/setter（boolean 用 isXxx）；字段名下划线转驼峰
+        const fields = props.map((p) => `  private ${typeOf(lang, p, obj, all)} ${snakeToCamel(p.key)};${desc(p)}`);
         const methods: string[] = [];
         for (const p of props) {
           const t = typeOf(lang, p, obj, all);
-          const capKey = cap(p.key);
+          const field = snakeToCamel(p.key);
+          const capKey = cap(field);
           const getter = p.kind === "Boolean" ? `is${capKey}` : `get${capKey}`;
           methods.push(
-            `\n  public ${t} ${getter}() {\n    return ${p.key};\n  }`,
-            `\n  public void set${capKey}(${t} ${p.key}) {\n    this.${p.key} = ${p.key};\n  }`
+            `\n  public ${t} ${getter}() {\n    return ${field};\n  }`,
+            `\n  public void set${capKey}(${t} ${field}) {\n    this.${field} = ${field};\n  }`
           );
         }
         return `${head}public class ${name} {\n${fields.join("\n")}${methods.join("\n")}\n}`;
       }
-      // Lombok：@Data 注解，不生成样板方法
+      // Lombok：@Data 注解，不生成样板方法；字段名下划线转驼峰
       const lines = props.map(
-        (p) => `  private ${typeOf(lang, p, obj, all)} ${p.key};${desc(p)}`
+        (p) => `  private ${typeOf(lang, p, obj, all)} ${snakeToCamel(p.key)};${desc(p)}`
       );
       return `${head}import lombok.Data;\n\n@Data\npublic class ${name} {\n${lines.join("\n")}\n}`;
     }
@@ -298,7 +305,7 @@ export function generateObjectCode(lang: string, obj: ObjectDef, all: ObjectDef[
     }
     case "go": {
       const lines = props.map(
-        (p) => `  ${cap(p.key)} ${typeOf(lang, p, obj, all)} \`json:"${p.key}"\`${desc(p)}`
+        (p) => `  ${goField(p.key)} ${typeOf(lang, p, obj, all)} \`json:"${p.key}"\`${desc(p)}`
       );
       return `type ${name} struct {\n${lines.join("\n")}\n}`;
     }
