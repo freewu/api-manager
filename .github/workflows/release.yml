@@ -82,7 +82,7 @@ jobs:
 
             请根据操作系统下载对应安装包：
 
-            - **Windows**：`.msi` 或 `-setup.exe`（NSIS 安装程序）
+            - **Windows**：`.msi` 或 `-setup.exe`（NSIS 安装程序）、`_x64_portable.exe`（免安装绿色版，直接双击运行，依赖系统 WebView2）
             - **macOS**：`.dmg`（`aarch64` 为 Apple Silicon，`x86_64` 为 Intel）
             - **Linux**：`.AppImage`（免安装）、`.deb`（Debian/Ubuntu）、`.rpm`（Fedora/openSUSE）
 
@@ -90,3 +90,22 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      # Windows 免安装绿色版：直接复制未打包的 release exe 并上传到 Release
+      - name: Prepare portable Windows exe
+        if: matrix.platform == 'windows-latest'
+        shell: bash
+        run: |
+          set -e
+          VER="${GITHUB_REF_NAME#v}"
+          cp src-tauri/target/release/api-manager.exe "API.Manager_${VER}_x64_portable.exe"
+          ls -lh "API.Manager_${VER}_x64_portable.exe"
+
+      - name: Upload portable Windows exe
+        if: matrix.platform == 'windows-latest'
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: API.Manager_*_x64_portable.exe
