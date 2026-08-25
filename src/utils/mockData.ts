@@ -293,16 +293,15 @@ const renderString = (s: string, customs?: CustomMock[]): string =>
 const renderRuleValue = (rule: string, val: unknown, customs?: CustomMock[]): unknown => {
   if (!rule) return renderMockValue(val, customs);
   if (Array.isArray(val)) {
-    // mock.js：|count 随机取 count 项；|min-max 随机取 min~max 项；|1 取 1 项
+    // mock.js：|count / |min-max 生成 count 个元素（从模板数组重复随机选取并渲染，允许重复）；|1 取 1 个
     if (rule === "1") return renderMockValue(pick(val), customs);
     const r = randRange(rule);
     const n = r
       ? randInt(Math.round(r.min), Math.round(r.max))
       : parseInt(rule, 10);
     if (n !== undefined && !Number.isNaN(n) && n >= 0) {
-      return shuffle(val)
-        .slice(0, n)
-        .map((x) => renderMockValue(x, customs));
+      if (val.length === 0) return [];
+      return Array.from({ length: n }, () => renderMockValue(pick(val), customs));
     }
     return renderMockValue(val, customs);
   }

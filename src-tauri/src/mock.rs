@@ -1017,10 +1017,15 @@ fn render_mock_rule(rule: &str, val: &serde_json::Value, customs: &[CustomMock])
                 .map(|(a, b, _)| mock_rand_range(a, b) as usize)
                 .or_else(|| rule.parse::<usize>().ok());
             if let Some(n) = n {
-                let mut items: Vec<&Value> = arr.iter().collect();
-                mock_shuffle(&mut items);
-                items.truncate(n);
-                return Value::Array(items.into_iter().map(|x| render_mock_value(x, customs)).collect());
+                if arr.is_empty() {
+                    return Value::Array(vec![]);
+                }
+                // mock.js 语义：生成 n 个元素，每个从模板数组随机选取（可重复）并渲染
+                let mut out = Vec::with_capacity(n);
+                for _ in 0..n {
+                    out.push(render_mock_value(&mock_pick(arr), customs));
+                }
+                return Value::Array(out);
             }
             render_mock_value(val, customs)
         }

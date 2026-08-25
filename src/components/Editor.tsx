@@ -798,16 +798,12 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                 const next = e.target.value;
                 const prev = api.mock.body;
                 set({ mock: { ...api.mock, body: next } });
-                // 输入 @：弹出占位符选择。仅当在光标处插入单个 @ 字符时触发
-                // （与输入法/IME 无关，粘贴/删除/自动补全不会误触发）
-                const pos = e.target.selectionStart;
-                if (
-                  pos > 0 &&
-                  next[pos - 1] === "@" &&
-                  next.length === prev.length + 1 &&
-                  next.slice(0, pos) === prev.slice(0, pos - 1)
-                ) {
-                  setMockAt(pos - 1);
+                // 输入 @：弹出占位符选择。纯字符串比较（不依赖 selectionStart，
+                // 与输入法/光标位置无关）：新值恰好在某处插入单个 @ 字符时触发
+                if (next.length === prev.length + 1) {
+                  let i = 0;
+                  while (i < prev.length && prev[i] === next[i]) i++;
+                  if (next[i] === "@") setMockAt(i);
                 }
               }}
               spellCheck={false}

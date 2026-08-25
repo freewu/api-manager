@@ -177,5 +177,15 @@ fn test_render_mock_body() {
     // 非 JSON body 原样返回
     let text = render_mock_body("<html>hi @cname</html>", &customs);
     assert_eq!(text, "<html>hi @cname</html>");
+    // 单模板元素 list|min-max：生成 min~max 条（可重复）
+    let out2 = render_mock_body(r#"{"list|1-5":[{"id":"@integer(1,100)"}]}"#, &customs);
+    let v2: serde_json::Value = serde_json::from_str(&out2).unwrap();
+    let arr = v2["list"].as_array().unwrap();
+    assert!(
+        (1..=5).contains(&arr.len()),
+        "list|1-5 长度应为 1-5，实际 {}",
+        arr.len()
+    );
+    assert!(arr.iter().all(|x| x["id"].is_string()));
     let _ = std::fs::remove_dir_all(&d);
 }
