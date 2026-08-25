@@ -252,6 +252,136 @@ export interface GenEntry {
   desc?: string;
 }
 
+// ==================== mock.js 响应体渲染（Mock 页签「测试」/ Mock 服务共用逻辑） ====================
+// 支持：字符串值内 @占位符（含参数、自定义占位符）；键规则 key|count / key|min-max / key|min-max.d / key|1 / key|+step。
+
+/** 打乱数组（mock.js 取随机项用） */
+const shuffle = <T,>(arr: T[]): T[] => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = randInt(0, i);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+/** 解析键规则 "key|count" / "key|min-max" / "key|min-max.d" */
+const parseKeyRule = (key: string): { base: string; rule: string } => {
+  const i = key.indexOf("|");
+  if (i < 0) return { base: key, rule: "" };
+  return { base: key.slice(0, i), rule: key.slice(i + 1) };
+};
+
+/** 解析 min-max / min-max.d 范围规则；非范围返回 null */
+const randRange = (rule: string): { min: number; max: number; dp: number } | null => {
+  const m = /^(-?\d+)-(-?\d+)(?:\.(\d+))?$/.exec(rule);
+  if (!m) return null;
+  const min = Number(m[1]);
+  const max = Number(m[2]);
+  const dp = m[3] ? m[3].length : 0;
+  return { min: Math.min(min, max), max: Math.max(min, max), dp };
+};
+
+/** 字符串值：全局替换其中的 @占位符（未命中内置/未启用自定义的保留原样） */
+const renderString = (s: string, customs?: CustomMock[]): string =>
+  s.replace(/@([A-Za-z_]\w*)(?:\(([^)]*)\))?/g, (whole) => {
+    const v = mockValue(whole, "String", customs);
+    return v === whole ? whole : String(v);
+  });
+
+/** 按键规则渲染单个字段值 */
+const renderRuleValue = (rule: string, val: unknown, customs?: CustomMock[]): unknown => {
+  if (!rule) return renderMockValue(val, customs);
+  if (Array.isArray(val)) {
+    // mock.js：|count 随机取 count 项；|min-max 随机取 min~max 项；|1 取 1 项
+    if (rule === "1") return renderMockValue(pick(val), customs);
+    const r = randRange(rule);
+    const n = r
+      ? randInt(Math.round(r.min), Math.round(r.max))
+      : parseInt(rule, 10);
+    if (n !== undefined && !Number.isNaN(n) && n >= 0) {
+      return shuffle(val)
+        .slice(0, n)
+        .map((x) => renderMockValue(x, customs));
+    }
+    return renderMockValue(val, customs);
+  }
+  if (typeof val === "string") {
+    // mock.js：字符串重复 count / min-max 次
+    const r = randRange(rule);
+    const n = r ? randInt(Math.round(r.min), Math.round(r.max)) : parseInt(rule, 10);
+    if (n !== undefined && !Number.isNaN(n) && n >= 0) {
+      return Array.from({ length: n }, () => renderString(val, customs)).join("");
+    }
+    return renderString(val, customs);
+  }
+  if (typeof val === "number") {
+    const r = randRange(rule);
+    if (r) {
+      if (r.dp > 0) return Number((r.min + Math.random() * (r.max - r.min)).toFixed(r.dp));
+      return randInt(r.min, r.max);
+    }
+    // |+step 自增不跨请求保持状态，返回基值
+    if (rule.startsWith("+")) return val;
+    return val;
+  }
+  if (val !== null && typeof val === "object") {
+    // mock.js：对象随机取 count / min-max 个键
+    const entries = Object.entries(val);
+    const r = randRange(rule);
+    const n = r ? randInt(Math.round(r.min), Math.round(r.max)) : parseInt(rule, 10);
+    if (n !== undefined && !Number.isNaN(n) && n >= 0) {
+      const rec = val as Record<string, unknown>;
+      const keys = shuffle(entries.map(([k]) => k)).slice(0, n);
+      const out: Record<string, unknown> = {};
+      for (const k of keys) {
+        const { base, rule: rr } = parseKeyRule(k);
+        out[base] = renderRuleValue(rr, rec[k], customs);
+      }
+      return out;
+    }
+    return renderMockValue(val, customs);
+  }
+  if (typeof val === "boolean") return Math.random() < 0.5; // |1 随机布尔
+  return renderMockValue(val, customs);
+};
+
+/** 递归渲染 JSON 值：字符串内 @占位符、键规则、数组/对象递归 */
+const renderMockValue = (v: unknown, customs?: CustomMock[]): unknown => {
+  if (typeof v === "string") return renderString(v, customs);
+  if (Array.isArray(v)) return v.map((x) => renderMockValue(x, customs));
+  if (v !== null && typeof v === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v)) {
+      const { base, rule } = parseKeyRule(k);
+      out[base] = renderRuleValue(rule, val, customs);
+    }
+    return out;
+  }
+  return v;
+};
+
+/**
+ * 渲染 mock 响应体文本：先 JSON 解析，再递归应用 mock.js 占位符 / 键规则 / 自定义占位符。
+ * 返回 ok=false 表示 JSON 或渲染出错（用于「测试」按钮检查编写情况）。
+ */
+export function renderMockBody(body: string, customs?: CustomMock[]): { ok: boolean; text: string } {
+  const src = body.trim();
+  if (!src) return { ok: true, text: "" };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(src);
+  } catch (e) {
+    return { ok: false, text: e instanceof Error ? e.message : String(e) };
+  }
+  try {
+    const out = renderMockValue(parsed, customs);
+    return { ok: true, text: JSON.stringify(out, null, 2) };
+  } catch (e) {
+    return { ok: false, text: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 /** 分批异步生成数据行（避免阻塞 UI）；customs 为激活的自定义占位符 */
 export async function genRows(
   entries: GenEntry[],

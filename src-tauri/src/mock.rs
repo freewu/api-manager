@@ -8,6 +8,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use chrono::{Datelike, Timelike};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -40,6 +41,8 @@ pub struct MockServerState {
     pub routes: Arc<RwLock<Vec<MockRoute>>>,
     /// 全局环境变量（来自工作区 __envs.json 的激活环境）
     pub envs: Arc<RwLock<HashMap<String, String>>>,
+    /// 工作区根目录（读取 .mock 自定义占位符）
+    pub root: PathBuf,
 }
 
 fn parse_route(api: &ApiFile) -> Option<MockRoute> {
@@ -292,6 +295,7 @@ pub async fn start_mock(app: &AppHandle, port: u16) -> Result<MockStatus, String
     let server_state = MockServerState {
         routes: routes_arc.clone(),
         envs: envs.clone(),
+        root,
     };
 
     let router: Router<MockServerState> = Router::new()
@@ -494,6 +498,10 @@ async fn mock_handler(
     // 全局环境变量 {{key}}
     body = apply_env_vars(&body, &state.envs.read().unwrap_or_else(|e| e.into_inner()));
 
+    // mock.js 占位符 + 自定义占位符渲染（响应体支持 @cname / @integer(1,100) / "list|1-5": […] 等语法）
+    let customs = list_custom_mocks_impl(&state.root);
+    body = render_mock_body(&body, &customs);
+
     // 返回内容不为空：body 为空时给出提示（HEAD / 204 等本就无响应体的除外）
     let is_head = method == Method::HEAD || method == Method::OPTIONS;
     if body.trim().is_empty() && !is_head && route.status != 204 {
@@ -574,6 +582,521 @@ pub(crate) fn save_custom_mock(
 pub(crate) fn delete_custom_mock(state: State<'_, WorkspaceState>, name: String) -> Result<(), String> {
     let root = workspace_root(&state)?;
     delete_custom_mock_impl(&root, &name)
+}
+
+// ==================== mock.js 响应体渲染（Mock 服务返回时生效） ====================
+// 支持：字符串值内 @占位符（含参数、自定义占位符）；键规则 key|count / key|min-max / key|min-max.d / key|1 / key|+step。
+// 与前端 src/utils/mockData.ts 的 renderMockBody 行为保持一致。
+
+fn mock_rnd_u64() -> u64 {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static STATE: AtomicU64 = AtomicU64::new(0);
+    let mut x = STATE.load(Ordering::Relaxed);
+    if x == 0 {
+        x = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos() as u64)
+            .unwrap_or(0x9e37_79b9_7f4a_7c15);
+    }
+    x ^= x << 13;
+    x ^= x >> 7;
+    x ^= x << 17;
+    STATE.store(x, Ordering::Relaxed);
+    x
+}
+
+fn mock_rnd() -> f64 {
+    (mock_rnd_u64() >> 11) as f64 / (1u64 << 53) as f64
+}
+
+fn mock_rand_range(a: i64, b: i64) -> i64 {
+    if b <= a {
+        return a;
+    }
+    a + (mock_rnd_u64() % ((b - a + 1) as u64)) as i64
+}
+
+fn mock_pick<T: Clone>(arr: &[T]) -> T {
+    if arr.is_empty() {
+        panic!("mock_pick empty");
+    }
+    arr[mock_rand_range(0, arr.len() as i64 - 1) as usize].clone()
+}
+
+fn mock_shuffle<T>(arr: &mut [T]) {
+    for i in (1..arr.len()).rev() {
+        let j = mock_rand_range(0, i as i64) as usize;
+        arr.swap(i, j);
+    }
+}
+
+const SURNAMES: &[&str] = &[
+    "赵", "钱", "孙", "李", "周", "吴", "郑", "王", "冯", "陈", "褚", "卫", "蒋", "沈", "韩", "杨", "朱", "秦",
+    "许", "何", "吕", "施", "张", "孔", "曹", "严", "华", "金", "魏", "陶", "姜", "戚", "谢", "邹", "喻", "柏",
+    "水", "窦", "章", "云", "苏", "潘", "葛", "奚", "范", "彭", "郎", "鲁", "韦", "昌", "马", "苗", "凤", "花",
+    "方", "俞", "任", "袁", "柳", "酆", "鲍", "史", "唐", "费", "廉", "岑", "薛", "雷", "贺", "倪", "汤", "滕",
+    "殷", "罗", "毕", "郝", "邬", "安", "常", "乐", "于", "时", "傅", "皮", "卞", "齐", "康", "伍", "余", "元",
+    "卜", "顾", "孟", "平", "黄", "和", "穆", "萧", "尹", "姚", "邵", "湛", "汪", "祁", "毛", "禹", "狄", "米",
+    "贝", "明", "臧", "计", "伏", "成", "戴", "谈", "宋", "茅", "庞", "熊", "纪", "舒", "屈", "项", "祝", "董",
+    "梁", "杜", "阮", "蓝", "闵", "席", "季", "麻", "强", "贾", "路", "娄", "危", "江", "童", "颜", "郭", "梅",
+    "盛", "林", "刁", "钟", "徐", "邱", "骆", "高", "夏", "蔡", "田", "樊", "胡", "凌", "霍", "虞", "万", "支",
+    "柯", "昝", "管", "卢", "莫", "经", "房", "裘", "缪", "干", "解", "应", "宗", "丁", "宣", "贲", "邓", "郁",
+    "单", "杭", "洪", "包", "诸", "左", "石", "崔", "吉", "钮", "龚", "程", "嵇", "邢", "滑", "裴", "陆", "荣",
+    "翁", "荀", "羊", "於", "惠", "甄", "麹", "家", "封", "芮", "羿", "储", "靳", "汲", "邴", "糜", "松", "井",
+    "段", "富", "巫", "乌", "焦", "巴", "弓", "牧", "隗", "山", "谷", "车", "侯", "宓", "蓬", "全", "郗", "班",
+    "仰", "秋", "仲", "伊", "宫", "宁", "仇", "栾", "暴", "甘", "斜", "厉", "戎", "祖", "武", "符", "刘", "景",
+    "詹", "束", "龙", "叶", "幸", "司", "韶", "郜", "黎", "蓟", "薄", "印", "宿", "白", "怀", "蒲", "邰", "从",
+    "鄂", "索", "咸", "籍", "赖", "卓", "蔺", "屠", "蒙", "池", "乔", "阴", "郁", "胥", "能", "苍", "双", "闻",
+    "莘", "党", "翟", "谭", "贡", "劳", "逄", "姬", "申", "扶", "堵", "冉", "宰", "郦", "雍", "却", "璩", "桑",
+    "桂", "濮", "牛", "寿", "通", "边", "扈", "燕", "冀", "郏", "浦", "尚", "农", "温", "别", "庄", "晏", "柴",
+    "瞿", "阎", "充", "慕", "连", "茹", "习", "宦", "艾", "鱼", "容", "向", "古", "易", "慎", "戈", "廖", "庾",
+    "终", "暨", "居", "衡", "步", "都", "耿", "满", "弘", "匡", "国", "文", "寇", "广", "禄", "阙", "东", "欧",
+    "殳", "沃", "利", "蔚", "越", "夔", "隆", "师", "巩", "厍", "聂", "晁", "勾", "敖", "融", "冷", "訾", "辛",
+    "阚", "那", "简", "饶", "空", "曾", "毋", "沙", "乜", "养", "鞠", "须", "丰", "巢", "关", "蒯", "相", "查",
+    "后", "荆", "红", "游", "竺", "权", "逯", "盖", "益", "桓", "公",
+];
+const GIVEN: &[&str] = &[
+    "伟", "刚", "勇", "毅", "俊", "峰", "强", "军", "平", "保", "东", "文", "辉", "力", "明", "永", "健", "世",
+    "广", "志", "义", "兴", "良", "海", "山", "仁", "波", "宁", "贵", "福", "生", "龙", "元", "全", "国", "胜",
+    "学", "祥", "才", "发", "武", "新", "利", "清", "飞", "彬", "富", "顺", "信", "子", "杰", "涛", "昌", "成",
+    "康", "光", "星", "天", "达", "安", "岩", "中", "茂", "进", "林", "有", "坚", "和", "彪", "博", "诚", "先",
+    "敬", "震", "振", "壮", "会", "思", "群", "豪", "心", "邦", "承", "乐", "绍", "功", "松", "善", "厚", "庆",
+    "磊", "民", "友", "裕", "河", "哲", "江", "超", "浩", "亮", "政", "谦", "亨", "奇", "固", "之", "轮", "翰",
+    "朗", "伯", "宏", "言", "若", "鸣", "朋", "斌", "梁", "栋", "维", "启", "克", "伦", "翔", "旭", "鹏", "泽",
+    "晨", "辰", "士", "以", "建", "家", "致", "树", "炎", "德", "行", "时", "泰", "盛", "雄", "琛", "钧", "冠",
+    "策", "腾", "楠", "榕", "风", "航", "弘",
+];
+const CITIES: &[&str] = &[
+    "北京", "上海", "广州", "深圳", "杭州", "成都", "武汉", "西安", "南京", "天津", "重庆", "苏州", "长沙", "郑州",
+    "青岛", "大连", "宁波", "厦门", "福州", "济南", "合肥", "昆明", "哈尔滨", "沈阳", "长春", "石家庄", "太原",
+    "南昌", "无锡", "温州", "兰州", "南宁", "贵阳", "海口", "银川", "西宁", "呼和浩特", "拉萨", "乌鲁木齐",
+];
+const PROVINCES: &[&str] = &[
+    "北京", "上海", "天津", "重庆", "河北", "山西", "辽宁", "吉林", "黑龙江", "江苏", "浙江", "安徽", "福建", "江西",
+    "山东", "河南", "湖北", "湖南", "广东", "海南", "四川", "贵州", "云南", "陕西", "甘肃", "青海", "内蒙古", "广西",
+    "西藏", "宁夏", "新疆",
+];
+const WORDS: &[&str] = &[
+    "apple", "banana", "cloud", "data", "element", "field", "group", "house", "image", "jacket", "kernel", "light",
+    "model", "node", "object", "pixel", "query", "river", "system", "table", "unit", "value", "window", "yield",
+    "zone", "alpha", "beta", "delta", "gamma", "lambda",
+];
+const DOMAINS: &[&str] = &[
+    "example.com", "test.com", "mail.com", "demo.net", "sample.org", "api.com", "cloud.io", "data.cn",
+];
+const FIRST_NAMES: &[&str] = &[
+    "James", "John", "Robert", "Michael", "William", "David", "Richard", "Joseph", "Thomas", "Charles", "Mary",
+    "Patricia", "Jennifer", "Linda", "Elizabeth", "Barbara", "Susan", "Jessica", "Sarah", "Karen", "Emma",
+    "Olivia", "Liam", "Noah", "Ethan", "Aiden", "Lucas", "Mason", "Logan", "Daniel",
+];
+const LAST_NAMES: &[&str] = &[
+    "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez",
+    "Lee", "Chen", "Wang", "Li", "Zhang", "Liu", "Yang", "Huang", "Zhao", "Wu",
+];
+const PROTOCOLS: &[&str] = &["http", "https", "ws", "wss", "ftp"];
+
+fn mock_date_str(t: Option<chrono::DateTime<chrono::Utc>>) -> String {
+    let dt = t.unwrap_or_else(|| {
+        let now = chrono::Utc::now();
+        let start = chrono::DateTime::from_timestamp(0, 0).unwrap_or(now);
+        let secs = mock_rand_range(0, now.timestamp() - start.timestamp());
+        chrono::DateTime::from_timestamp(secs, 0).unwrap_or(now)
+    });
+    format!("{:04}-{:02}-{:02}", dt.year(), dt.month(), dt.day())
+}
+
+fn mock_time_str(t: Option<chrono::DateTime<chrono::Utc>>) -> String {
+    let dt = t.unwrap_or_else(chrono::Utc::now);
+    format!("{:02}:{:02}:{:02}", dt.hour(), dt.minute(), dt.second())
+}
+
+fn mock_datetime_str(t: Option<chrono::DateTime<chrono::Utc>>) -> String {
+    let dt = t.unwrap_or_else(chrono::Utc::now);
+    format!("{} {}", mock_date_str(Some(dt)), mock_time_str(Some(dt)))
+}
+
+fn mock_guid() -> String {
+    let b: Vec<u8> = (0..16).map(|_| mock_rand_range(0, 255) as u8).collect();
+    let h = |n: u8| format!("{:02x}", n);
+    format!(
+        "{}{}{}{}-{}{}-{}{}-{}{}-{}{}{}{}{}{}",
+        h(b[0]), h(b[1]), h(b[2]), h(b[3]), h(b[4]), h(b[5]), h(b[6]), h(b[7]),
+        h(b[8]), h(b[9]), h(b[10]), h(b[11]), h(b[12]), h(b[13]), h(b[14]), h(b[15])
+    )
+}
+
+fn mock_email() -> String {
+    format!("{}@{}", format!("{}{}", mock_pick(WORDS), mock_rand_range(1, 999)), mock_pick(DOMAINS))
+}
+
+fn mock_id_card() -> String {
+    let base = format!(
+        "{}{:04}{:02}{:02}{:03}",
+        mock_rand_range(110000, 659000),
+        mock_rand_range(1900, 2023),
+        mock_rand_range(1, 12),
+        mock_rand_range(1, 28),
+        mock_rand_range(0, 999)
+    );
+    format!("{}{}", base, mock_rand_range(0, 9))
+}
+
+fn mock_cname() -> String {
+    let sur = mock_pick(SURNAMES);
+    let given = if mock_rnd() < 0.5 {
+        mock_pick(GIVEN).to_string()
+    } else {
+        format!("{}{}", mock_pick(GIVEN), mock_pick(GIVEN))
+    };
+    format!("{}{}", sur, given)
+}
+
+/// 内置 mock.js 占位符生成（args 为括号内参数文本，如 "1, 100"）
+fn builtin_mock_value(name: &str, args: &str) -> Option<String> {
+    let arg_num = |i: usize, def: i64| -> i64 {
+        let v = args.split(',').nth(i).map(|x| x.trim()).unwrap_or("");
+        if v.is_empty() {
+            def
+        } else {
+            v.parse::<i64>().unwrap_or(def)
+        }
+    };
+    let s = match name {
+        "cname" => mock_cname(),
+        "name" => format!("{} {}", mock_pick(FIRST_NAMES), mock_pick(LAST_NAMES)),
+        "first" => mock_pick(FIRST_NAMES).to_string(),
+        "last" => mock_pick(LAST_NAMES).to_string(),
+        "email" => mock_email(),
+        "phone" => format!(
+            "1{}{:09}",
+            mock_pick(&[3, 4, 5, 6, 7, 8, 9]),
+            mock_rand_range(0, 999_999_999)
+        ),
+        "id" => mock_id_card(),
+        "guid" => mock_guid(),
+        "integer" => {
+            let a = arg_num(0, 0);
+            let b = arg_num(1, 10000);
+            mock_rand_range(a.min(b), a.max(b)).to_string()
+        }
+        "natural" => {
+            let a = arg_num(0, 0);
+            let b = arg_num(1, 1000);
+            mock_rand_range(a.min(b), a.max(b)).to_string()
+        }
+        "float" => {
+            let a = arg_num(0, 0) as f64;
+            let b = arg_num(1, 100) as f64;
+            let dp = arg_num(2, 2) as usize;
+            let v = a + mock_rnd() * (b - a);
+            format!("{:.dp$}", v, dp = dp)
+        }
+        "boolean" => (mock_rnd() < 0.5).to_string(),
+        "date" => mock_date_str(None),
+        "time" => mock_time_str(None),
+        "datetime" => mock_datetime_str(None),
+        "now" => mock_datetime_str(Some(chrono::Utc::now())),
+        "url" => format!(
+            "https://www.{}/{}/{}",
+            mock_pick(DOMAINS),
+            mock_pick(WORDS),
+            mock_rand_range(1, 999)
+        ),
+        "domain" => mock_pick(DOMAINS).to_string(),
+        "ip" => format!(
+            "{}.{}.{}.{}",
+            mock_rand_range(1, 223),
+            mock_rand_range(0, 255),
+            mock_rand_range(0, 255),
+            mock_rand_range(1, 254)
+        ),
+        "protocol" => mock_pick(PROTOCOLS).to_string(),
+        "city" => mock_pick(CITIES).to_string(),
+        "province" => mock_pick(PROVINCES).to_string(),
+        "county" => format!(
+            "{}市{}{}",
+            mock_pick(CITIES),
+            mock_pick(&["东", "西", "南", "北", "新", "老"]),
+            mock_pick(&["城区", "区", "县", "镇"])
+        ),
+        "zip" => mock_rand_range(100000, 999999).to_string(),
+        "word" => mock_pick(WORDS).to_string(),
+        "title" => {
+            let mut w = format!("{} {}", mock_pick(WORDS), mock_pick(WORDS));
+            let c = w.chars().next().unwrap_or(' ');
+            w.replace_range(..c.len_utf8(), &c.to_uppercase().to_string());
+            w
+        }
+        "sentence" => format!(
+            "{} {} {} {}.",
+            mock_pick(WORDS),
+            mock_pick(WORDS),
+            mock_pick(WORDS),
+            mock_pick(WORDS)
+        ),
+        "paragraph" => {
+            let n = mock_rand_range(2, 4);
+            let mut sents = String::new();
+            for _ in 0..n {
+                sents.push_str(&format!(
+                    "{} {} {}. ",
+                    mock_pick(WORDS),
+                    mock_pick(WORDS),
+                    mock_pick(WORDS)
+                ));
+            }
+            sents.trim().to_string()
+        }
+        "color" => format!(
+            "#{:02x}{:02x}{:02x}",
+            mock_rand_range(0, 255),
+            mock_rand_range(0, 255),
+            mock_rand_range(0, 255)
+        ),
+        "image" => format!(
+            "https://picsum.photos/seed/{}/400/300",
+            mock_guid().replace('-', "")
+        ),
+        "avatar" => format!("https://i.pravatar.cc/150?u={}", mock_guid().replace('-', "")),
+        "string" => {
+            let n = mock_rand_range(1, arg_num(0, 8).max(1)) as usize;
+            let chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            (0..n).map(|_| chars.as_bytes()[mock_rand_range(0, chars.len() as i64 - 1) as usize] as char).collect()
+        }
+        "character" => {
+            let chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+            (chars.as_bytes()[mock_rand_range(0, chars.len() as i64 - 1) as usize] as char).to_string()
+        }
+        _ => return None,
+    };
+    Some(s)
+}
+
+/// 执行自定义占位符代码：支持常见表达式形式（pick([...]) / randInt(a,b) / random() / seq() / 字符串字面量）。
+/// 完整 JS 语法由前端「测试」按钮（src/utils/mockData.ts）执行，Mock 服务端仅支持上述子集，
+/// 无法解析的表达式保留原样输出。
+fn run_custom_mock_code(code: &str) -> Option<String> {
+    let src = code.trim();
+    let body = src
+        .strip_prefix("(ctx) =>")
+        .or_else(|| src.strip_prefix("ctx =>"))
+        .map(|s| s.trim())
+        .unwrap_or(src);
+    // pick(["a", "b", ...])
+    if let Some(inner) = body.strip_prefix("pick(").and_then(|s| s.strip_suffix(')')) {
+        let items: Vec<&str> = inner
+            .split(',')
+            .map(|s| s.trim().trim_matches('"').trim_matches('\''))
+            .filter(|s| !s.is_empty())
+            .collect();
+        if items.is_empty() {
+            return None;
+        }
+        return Some(mock_pick(&items).to_string());
+    }
+    // randInt(a, b)
+    if let Some(inner) = body.strip_prefix("randInt(").and_then(|s| s.strip_suffix(')')) {
+        let parts: Vec<&str> = inner.split(',').collect();
+        if parts.len() >= 2 {
+            let a = parts[0].trim().parse::<i64>().ok()?;
+            let b = parts[1].trim().parse::<i64>().ok()?;
+            return Some(mock_rand_range(a, b).to_string());
+        }
+    }
+    // random()
+    if body == "random()" {
+        return Some(mock_rnd().to_string());
+    }
+    // seq()：简化实现为随机标识
+    if body == "seq()" {
+        return Some(mock_guid().replace('-', ""));
+    }
+    // 字符串字面量
+    if (body.starts_with('"') && body.ends_with('"')) || (body.starts_with('\'') && body.ends_with('\'')) {
+        return Some(body[1..body.len() - 1].to_string());
+    }
+    None
+}
+
+/// 字符串值：替换其中的 @占位符（未命中内置 / 未启用自定义的保留原样）
+fn render_mock_string(s: &str, customs: &[CustomMock]) -> String {
+    let chars: Vec<(usize, char)> = s.char_indices().collect();
+    let mut out = String::with_capacity(s.len());
+    let mut i = 0;
+    while i < chars.len() {
+        let (_, c) = chars[i];
+        if c != '@' {
+            out.push(c);
+            i += 1;
+            continue;
+        }
+        // 解析名字
+        let mut j = i + 1;
+        let mut name = String::new();
+        while j < chars.len() && (chars[j].1.is_ascii_alphanumeric() || chars[j].1 == '_') {
+            name.push(chars[j].1);
+            j += 1;
+        }
+        if name.is_empty() {
+            out.push('@');
+            i += 1;
+            continue;
+        }
+        // 可选参数 (...)
+        let mut args = "";
+        let mut end = j;
+        if j < chars.len() && chars[j].1 == '(' {
+            let mut close = j + 1;
+            while close < chars.len() && chars[close].1 != ')' {
+                close += 1;
+            }
+            if close < chars.len() {
+                let arg_start = chars[j].0 + 1;
+                let arg_end = chars[close].0;
+                args = &s[arg_start..arg_end];
+                end = close + 1;
+            }
+        }
+        let whole_start = chars[i].0;
+        let whole_end = chars[end - 1].0 + chars[end - 1].1.len_utf8();
+        let whole = &s[whole_start..whole_end];
+        if let Some(v) = builtin_mock_value(&name, args) {
+            out.push_str(&v);
+        } else if let Some(cus) = customs
+            .iter()
+            .find(|c| c.enabled && c.name == name && !c.code.trim().is_empty())
+        {
+            if let Some(v) = run_custom_mock_code(&cus.code) {
+                out.push_str(&v);
+            } else {
+                out.push_str(whole);
+            }
+        } else {
+            out.push_str(whole);
+        }
+        i = end;
+    }
+    out
+}
+
+/// 解析键规则 "key|count" / "key|min-max" / "key|min-max.d"
+fn parse_key_rule(key: &str) -> (String, String) {
+    match key.find('|') {
+        Some(i) => (key[..i].to_string(), key[i + 1..].to_string()),
+        None => (key.to_string(), String::new()),
+    }
+}
+
+/// 解析 min-max / min-max.d 范围规则；非范围返回 None
+fn parse_mock_range(rule: &str) -> Option<(i64, i64, i32)> {
+    let dash = rule.find('-')?;
+    let a: i64 = rule[..dash].trim().parse().ok()?;
+    let rest = &rule[dash + 1..];
+    let (b, dp) = match rest.find('.') {
+        Some(p) => (rest[..p].trim().parse::<i64>().ok()?, (rest[p + 1..].len()) as i32),
+        None => (rest.trim().parse::<i64>().ok()?, 0),
+    };
+    Some((a.min(b), a.max(b), dp))
+}
+
+/// 按键规则渲染单个字段值
+fn render_mock_rule(rule: &str, val: &serde_json::Value, customs: &[CustomMock]) -> serde_json::Value {
+    use serde_json::Value;
+    if rule.is_empty() {
+        return render_mock_value(val, customs);
+    }
+    match val {
+        Value::Array(arr) => {
+            if rule == "1" {
+                if arr.is_empty() {
+                    return Value::Array(vec![]);
+                }
+                return render_mock_value(&mock_pick(arr), customs);
+            }
+            let n = parse_mock_range(rule)
+                .map(|(a, b, _)| mock_rand_range(a, b) as usize)
+                .or_else(|| rule.parse::<usize>().ok());
+            if let Some(n) = n {
+                let mut items: Vec<&Value> = arr.iter().collect();
+                mock_shuffle(&mut items);
+                items.truncate(n);
+                return Value::Array(items.into_iter().map(|x| render_mock_value(x, customs)).collect());
+            }
+            render_mock_value(val, customs)
+        }
+        Value::String(s) => {
+            let n = parse_mock_range(rule)
+                .map(|(a, b, _)| mock_rand_range(a, b) as usize)
+                .or_else(|| rule.parse::<usize>().ok());
+            if let Some(n) = n {
+                return Value::String(render_mock_string(s, customs).repeat(n));
+            }
+            Value::String(render_mock_string(s, customs))
+        }
+        Value::Number(_) => {
+            if let Some((a, b, dp)) = parse_mock_range(rule) {
+                if dp > 0 {
+                    let v = a as f64 + mock_rnd() * (b - a) as f64;
+                    return serde_json::json!(v);
+                }
+                return serde_json::json!(mock_rand_range(a, b));
+            }
+            if rule.starts_with('+') {
+                return val.clone();
+            }
+            val.clone()
+        }
+        Value::Object(map) => {
+            let (n, is_rule) = match parse_mock_range(rule) {
+                Some((a, b, _)) => (mock_rand_range(a, b) as usize, true),
+                None => match rule.parse::<usize>() {
+                    Ok(c) => (c, true),
+                    Err(_) => (0, false),
+                },
+            };
+            if is_rule {
+                let mut keys: Vec<&String> = map.keys().collect();
+                mock_shuffle(&mut keys);
+                keys.truncate(n);
+                let mut out = serde_json::Map::new();
+                for k in keys {
+                    let (base, rr) = parse_key_rule(k);
+                    out.insert(base, render_mock_rule(&rr, &map[k], customs));
+                }
+                return Value::Object(out);
+            }
+            render_mock_value(val, customs)
+        }
+        Value::Bool(_) => Value::Bool(mock_rnd() < 0.5),
+        _ => render_mock_value(val, customs),
+    }
+}
+
+/// 递归渲染 JSON 值
+fn render_mock_value(v: &serde_json::Value, customs: &[CustomMock]) -> serde_json::Value {
+    use serde_json::Value;
+    match v {
+        Value::String(s) => Value::String(render_mock_string(s, customs)),
+        Value::Array(arr) => Value::Array(arr.iter().map(|x| render_mock_value(x, customs)).collect()),
+        Value::Object(map) => {
+            let mut out = serde_json::Map::new();
+            for (k, val) in map {
+                let (base, rule) = parse_key_rule(k);
+                out.insert(base, render_mock_rule(&rule, val, customs));
+            }
+            Value::Object(out)
+        }
+        other => other.clone(),
+    }
+}
+
+/// 渲染 mock 响应体：JSON 解析失败则原样返回（由调用方决定是否提示）
+pub fn render_mock_body(body: &str, customs: &[CustomMock]) -> String {
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(body) else {
+        return body.to_string();
+    };
+    let out = render_mock_value(&v, customs);
+    serde_json::to_string_pretty(&out).unwrap_or_else(|_| body.to_string())
 }
 
 #[cfg(test)]

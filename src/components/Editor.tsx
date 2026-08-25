@@ -1,11 +1,14 @@
-import { Fragment, lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ApiFile, BODY_MODES, BodyData, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, ObjectDef, ObjectGroup, ObjectStore, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { ExamplesTab } from "./ExamplesTab";
 import { renderMarkdown } from "../commands";
 import { useT } from "../i18n";
-import { pickFile, listExamples } from "../commands";
+import { pickFile, listExamples, listCustomMocks } from "../commands";
 import ObjectRefPicker from "./ObjectRefPicker";
+import MockPicker from "./MockPicker";
+import { Modal } from "./Modal";
+import { renderMockBody } from "../utils/mockData";
 
 // 代码生成页签：highlight.js 体积较大，按需懒加载（首次打开「代码」页签时才下载）
 const CodeTab = lazy(() => import("./CodeTab").then((m) => ({ default: m.CodeTab })));
@@ -114,6 +117,14 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   const [formatError, setFormatError] = useState<string | null>(null);
   /** 示例记录数（「示例」页签角标） */
   const [exampleCount, setExampleCount] = useState(0);
+  // ---- Mock 页签：@ 弹窗插入 / 响应体测试 ----
+  /** 输入 @ 时的光标位置（弹窗选中后在此插入占位符），null = 未打开 */
+  const [mockAt, setMockAt] = useState<number | null>(null);
+  /** Mock 响应体测试结果文本，null = 未测试 */
+  const [mockTestResult, setMockTestResult] = useState<string | null>(null);
+  const [mockTestOk, setMockTestOk] = useState(true);
+  const [mockTesting, setMockTesting] = useState(false);
+  const mockBodyRef = useRef<HTMLTextAreaElement | null>(null);
   const effectiveUrl = api.url || (baseUrl + api.path);
 
   // 示例数量：接口切换或保存示例成功（exampleVersion 变化）时拉取；ExamplesTab 每次加载后也会回报最新数量
@@ -130,6 +141,19 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   const switchTab = (t: Tab) => {
     setTab(t);
     onTabChange?.(t);
+  };
+
+  /** Mock 页签「测试」：按当前响应体渲染 mock.js 占位符 + 自定义占位符，检查编写情况 */
+  const runMockTest = async () => {
+    setMockTesting(true);
+    try {
+      const customs = await listCustomMocks().catch(() => []);
+      const r = renderMockBody(api.mock.body, customs.filter((c) => c.enabled));
+      setMockTestOk(r.ok);
+      setMockTestResult(r.ok ? r.text : t("editor.mockTestError") + "：" + r.text);
+    } finally {
+      setMockTesting(false);
+    }
   };
 
   // 切换接口时回到默认页签：GraphQL 默认 Body（GraphQL 请求体），
@@ -766,12 +790,63 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               {t("editor.respBody")} <span className="help">{t("editor.respBodyHint")}</span>
             </div>
             <textarea
+              ref={mockBodyRef}
               className="code-area"
               value={api.mock.body}
               placeholder={'{\n  "code": 0,\n  "data": null\n}'}
               onChange={(e) => set({ mock: { ...api.mock, body: e.target.value } })}
+              onKeyUp={(e) => {
+                // 输入 @：弹出占位符选择（mock.js 内置 + 自定义占位符）
+                if (e.key === "@") {
+                  const el = e.target as HTMLTextAreaElement;
+                  const pos = el.selectionStart;
+                  if (pos > 0) setMockAt(pos - 1);
+                }
+              }}
               spellCheck={false}
             />
+            <div className="mock-body-toolbar">
+              <span className="mock-body-hint">
+                {t("editor.mockBodyHint")}{" "}
+                <code>@cname</code> <code>@integer(1,100)</code> <code>"list|1-5": […]</code>
+              </span>
+              <button
+                className="btn-sm mock-body-test"
+                disabled={mockTesting}
+                onClick={() => void runMockTest()}
+              >
+                {mockTesting ? "…" : "🧪"} {t("editor.mockTest")}
+              </button>
+            </div>
+            {mockAt !== null && (
+              <MockPicker
+                onPick={(v) => {
+                  const pos = mockAt;
+                  const cur = api.mock.body;
+                  set({ mock: { ...api.mock, body: cur.slice(0, pos) + v + cur.slice(pos) } });
+                  setMockAt(null);
+                  requestAnimationFrame(() => {
+                    const el = mockBodyRef.current;
+                    if (el) {
+                      el.focus();
+                      const caret = pos + v.length;
+                      el.setSelectionRange(caret, caret);
+                    }
+                  });
+                }}
+                onClose={() => setMockAt(null)}
+              />
+            )}
+            {mockTestResult !== null && (
+              <Modal
+                title={`${t("editor.mockTest")}${mockTestOk ? "" : " — " + t("editor.mockTestError")}`}
+                onClose={() => setMockTestResult(null)}
+                className="modal-mock-test"
+                maskClassName="objects-import-mask"
+              >
+                <pre className={`mock-test-pre${mockTestOk ? "" : " mock-test-fail"}`}>{mockTestResult}</pre>
+              </Modal>
+            )}
           </div>
         )}
 
@@ -1096,14 +1171,25 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
             <td>
               {isObject &&
                 (pickerStore && objectsList && objectsList.length > 0 ? (
-                  <button
-                    className="doc-name-input doc-object-pick"
-                    title={T("editor.objectName")}
-                    onClick={() => setObjPick({ source, keys: row.keys })}
-                  >
-                    <span className="doc-object-pick-name">{row.objectName || "—"}</span>
-                    <span className="doc-object-pick-caret">▾</span>
-                  </button>
+                  <div className="doc-object-pick-wrap">
+                    <button
+                      className="doc-name-input doc-object-pick"
+                      title={T("editor.objectName")}
+                      onClick={() => setObjPick({ source, keys: row.keys })}
+                    >
+                      <span className="doc-object-pick-name">{row.objectName || "—"}</span>
+                      <span className="doc-object-pick-caret">▾</span>
+                    </button>
+                    {row.objectName && (
+                      <button
+                        className="doc-object-pick-clear"
+                        title={T("editor.clearObjectName")}
+                        onClick={() => updateName(source, row.keys, "")}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <input
                     className="doc-name-input"
