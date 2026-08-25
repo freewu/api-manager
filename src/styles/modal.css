@@ -842,31 +842,49 @@
   line-height: 1.6;
 }
 
-/* 自定义 Mock 占位符 JS 编辑弹窗 */
+
+/* ============ 自定义 Mock 占位符 JS 编辑弹窗（全屏） ============ */
 .mock-editor-modal {
-  width: min(680px, 92vw);
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  max-height: none;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}
+.mock-editor-modal .modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.mock-editor-modal .modal-foot {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-light);
 }
 .mock-editor-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+  padding: 10px 0;
 }
-.mock-editor-row {
+.mock-editor-toolbar {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 .mock-editor-label {
-  width: 96px;
-  flex-shrink: 0;
   font-size: 12px;
   color: var(--text);
+  flex-shrink: 0;
 }
 .mock-editor-name-wrap {
   display: flex;
   align-items: center;
   gap: 4px;
-  flex: 1;
 }
 .mock-editor-at {
   font-family: var(--mono, ui-monospace, Consolas, monospace);
@@ -874,7 +892,6 @@
   color: var(--accent, #4f9cf9);
 }
 .mock-editor-input {
-  flex: 1;
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -884,6 +901,7 @@
 }
 .mock-editor-name {
   font-family: var(--mono, ui-monospace, Consolas, monospace);
+  width: 130px;
 }
 .mock-editor-check {
   display: flex;
@@ -894,38 +912,130 @@
   flex-shrink: 0;
   cursor: pointer;
 }
-.mock-editor-code-row {
-  align-items: flex-start;
-}
-.mock-editor-code-wrap {
+/* 代码区占满剩余屏幕 */
+.mock-editor-code-area {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-.mock-editor-code {
-  width: 100%;
-  min-height: 220px;
-  padding: 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg-code, #1e1e1e);
-  color: var(--text);
-  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.mock-editor-code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-light);
+  background: color-mix(in srgb, var(--bg-panel, #1e1e1e) 70%, transparent);
+  flex-shrink: 0;
+}
+.mock-editor-code-title {
   font-size: 12px;
-  line-height: 1.6;
-  resize: vertical;
-  white-space: pre;
+  font-weight: 600;
+  color: var(--text);
 }
 .mock-editor-code-tools {
   display: flex;
-  justify-content: flex-end;
+  gap: 6px;
+}
+/* JS 编辑器：textarea + 高亮层 */
+.js-code-editor {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.js-code-editor-pre,
+.js-code-editor-ta {
+  margin: 0;
+  position: absolute;
+  inset: 0;
+  padding: 12px;
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: 13px;
+  line-height: 1.6;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+  border: none;
+  border-radius: 0;
+}
+.js-code-editor-pre {
+  pointer-events: none;
+  background: var(--bg-code, #1e1e1e);
+  color: var(--text);
+}
+.js-code-editor-pre code {
+  font-family: inherit;
+  background: transparent;
+  padding: 0;
+}
+.js-code-editor-ta {
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text, #ddd);
+  resize: none;
+  outline: none;
+}
+.js-code-editor-ta::selection {
+  background: rgba(79, 156, 249, 0.35);
+  color: transparent;
+}
+.js-code-editor-ta::placeholder {
+  color: var(--text-faint);
 }
 .mock-editor-desc {
   font-size: 11px;
   color: var(--text-faint);
+  flex-shrink: 0;
 }
 .mock-editor-err {
   font-size: 12px;
   color: #e5484d;
+  flex-shrink: 0;
+}
+/* 测试运行结果面板 */
+.mock-editor-test {
+  flex-shrink: 0;
+  max-height: 30vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--bg-panel, #1e1e1e) 70%, transparent);
+}
+.mock-editor-test.ok {
+  border-color: rgba(46, 160, 67, 0.6);
+}
+.mock-editor-test.fail {
+  border-color: rgba(229, 72, 77, 0.6);
+}
+.mock-editor-test-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-light);
+}
+.mock-editor-test.ok .mock-editor-test-head {
+  color: #2ea043;
+}
+.mock-editor-test.fail .mock-editor-test-head {
+  color: #e5484d;
+}
+.mock-editor-test-out {
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-all;
 }

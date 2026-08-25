@@ -32,6 +32,46 @@ const PROTOCOLS = ["http", "https", "ws", "wss", "ftp"];
 let seq = 0;
 const nextId = () => `${Date.now().toString(36)}${(seq++ % 1296).toString(36)}${randInt(0, 35).toString(36)}`;
 
+/** 自定义占位符代码执行时提供的 ctx 工具 */
+export interface CustomMockCtx {
+  randInt: (a: number, b: number) => number;
+  pick: <T>(arr: readonly T[]) => T;
+  random: () => number;
+  pad: (n: number) => string;
+  seq: () => string;
+}
+
+/** 自定义占位符代码执行环境（测试运行 / 生成数据共用，保证行为一致） */
+export const customMockCtx: CustomMockCtx = {
+  randInt,
+  pick,
+  random: Math.random,
+  pad,
+  seq: nextId,
+};
+
+/**
+ * 执行自定义占位符 JS 代码：代码为 (ctx) => 返回值 的函数。
+ * 测试运行 / 生成数据共用此函数，失败返回 ok=false 与错误信息。
+ */
+export function runCustomMockCode(code: string): { ok: boolean; text: string; value?: unknown } {
+  if (!code.trim()) return { ok: false, text: "code empty" };
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const fn = new Function("ctx", `return (${code})(ctx)`);
+    const value = fn(customMockCtx);
+    let text: string;
+    try {
+      text = JSON.stringify(value, null, 2) ?? String(value);
+    } catch {
+      text = String(value);
+    }
+    return { ok: true, text, value };
+  } catch (e) {
+    return { ok: false, text: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 function guid(): string {
   const h = (n: number) => n.toString(16).padStart(2, "0");
   const b = new Uint8Array(16);
@@ -195,19 +235,8 @@ export function mockValue(template: string, kind: string, customs?: CustomMock[]
       // 未命中内置：尝试自定义占位符（启用 + 名称匹配）
       const cus = customs?.find((c) => c.enabled && c.name === name);
       if (cus && cus.code.trim()) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-implied-eval
-          const fn = new Function("ctx", `return (${cus.code})(ctx)`);
-          return fn({
-            randInt,
-            pick,
-            random: Math.random,
-            pad,
-            seq: nextId,
-          });
-        } catch {
-          return template;
-        }
+        const r = runCustomMockCode(cus.code);
+        if (r.ok) return r.value;
       }
       return template;
     }

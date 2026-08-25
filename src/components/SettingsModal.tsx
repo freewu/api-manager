@@ -8,6 +8,7 @@ import { LangSelect } from "./LangSelect";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { setLang, useT } from "../i18n";
 import MockEditorModal from "./MockEditorModal";
+import { runCustomMockCode } from "../utils/mockData";
 import logoUrl from "../assets/logo.png";
 
 interface Props {
@@ -159,8 +160,12 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
     await loadCustomMocks();
     window.dispatchEvent(new Event("custom-mocks-changed"));
   };
-  /** 行内开关切换（失败时忽略并回读列表） */
+  /** 行内开关切换：启用前先测试代码，测试不通过不允许激活 */
   const handleToggleCustomMock = (m: CustomMock, v: boolean) => {
+    if (v && !runCustomMockCode(m.code).ok) {
+      window.alert(t("mockEditor.testNotPass"));
+      return;
+    }
     handleSaveCustomMock({ ...m, enabled: v }, m.name).catch(() => {
       void loadCustomMocks();
     });
