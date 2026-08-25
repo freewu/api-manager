@@ -342,10 +342,18 @@ export default function App() {
           }
         }
         await loadAll(w);
+        if (create) {
+          // 对象示例由后端直接写入 .object/，这里刷新对象列表，否则对象页看不到 demo 对象
+          try {
+            await objects.refresh();
+          } catch {
+            /* noop */
+          }
+        }
         if (!create) showToast(t("toast.opened"));
       }
     },
-    [modal?.parent, workspace, loadAll, showToast, t]
+    [modal?.parent, workspace, loadAll, objects.refresh, showToast, t]
   );
 
   // ---------- 接口编辑 ----------

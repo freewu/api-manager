@@ -353,7 +353,8 @@ pub(crate) fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String
     crate::objects::save_objects_impl(&root, &demo_store)?;
 
     // 创建星座占位符 @zodiac（自定义 mock 占位符示例，可在接口/对象 mock 数据中使用）
-    crate::mock::save_custom_mock_impl(
+    // 重复生成演示案例时占位符已存在，忽略该错误（其余演示数据仍正常生成）
+    let _ = crate::mock::save_custom_mock_impl(
         &root,
         &crate::mock::CustomMock {
             name: "zodiac".into(),
@@ -362,7 +363,7 @@ pub(crate) fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String
             code: "(ctx) => ctx.pick([\"白羊座\",\"金牛座\",\"双子座\",\"巨蟹座\",\"狮子座\",\"处女座\",\"天秤座\",\"天蝎座\",\"射手座\",\"摩羯座\",\"水瓶座\",\"双鱼座\"])".into(),
         },
         None,
-    )?;
+    );
 
     Ok(())
 }

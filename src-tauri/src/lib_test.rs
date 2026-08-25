@@ -2295,3 +2295,77 @@ let v = export::to_yapi(&apis);
         assert!(del.params.iter().any(|p| p.key == "orderId"), "round-trip path 参数保留");
         let _ = fs::remove_dir_all(&root);
     }
+
+    /// demo 生成的对象示例链路：save_objects_impl 写出 .object/ 目录（分组 + 对象），
+    /// save_custom_mock_impl 写出 .mock/zodiac.js 占位符（create_demo 的后半段）
+    #[test]
+    fn test_demo_creates_objects_and_mock() {
+        let root = std::env::temp_dir().join(format!("apim-demo-obj-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let now = chrono::Local::now().timestamp();
+        let prop = |key: &str, kind: &str, item_kind: &str, description: &str, mock: &str| ObjectProp {
+            key: key.into(),
+            kind: kind.into(),
+            item_kind: item_kind.into(),
+            ref_hash: String::new(),
+            description: description.into(),
+            mock: mock.into(),
+        };
+        let obj_def = |name: &str, object_name: &str, group: &str, description: &str, properties: Vec<ObjectProp>| ObjectDef {
+            uuid: uuid::Uuid::new_v4().to_string(),
+            hash: String::new(),
+            name: name.into(),
+            object_name: object_name.into(),
+            package_name: String::new(),
+            group: group.into(),
+            deprecated: false,
+            description: description.into(),
+            properties,
+            created_at: now,
+            updated_at: now,
+        };
+        let store = ObjectStore {
+            groups: vec![
+                ObjectGroup { id: "用户管理".into(), name: "用户管理".into(), deprecated: false },
+                ObjectGroup { id: "订单管理".into(), name: "订单管理".into(), deprecated: false },
+            ],
+            objects: vec![
+                obj_def("用户", "User", "用户管理", "系统用户信息", vec![
+                    prop("id", "Integer", "Integer", "主键", ""),
+                    prop("name", "String", "String", "用户名", "@cname"),
+                    prop("zodiac", "String", "String", "星座", "@zodiac"),
+                ]),
+                obj_def("订单", "Order", "订单管理", "用户订单", vec![
+                    prop("id", "Integer", "Integer", "订单ID", ""),
+                    prop("no", "String", "String", "订单编号", "SO2024"),
+                    prop("amount", "Float", "Float", "订单金额", "99.5"),
+                ]),
+            ],
+        };
+        crate::objects::save_objects_impl(&root, &store).unwrap();
+        // 分组信息 + 分组目录 + 对象文件（含中文分组路径）
+        assert!(root.join(".object/__info_obj.json").exists(), "分组信息文件存在");
+        assert!(root.join(".object/用户管理/用户.obj.json").exists(), "用户对象文件存在");
+        assert!(root.join(".object/订单管理/订单.obj.json").exists(), "订单对象文件存在");
+        // 对象文件内容：hash 被重算、zodiac mock 示例保留
+        let obj: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(root.join(".object/用户管理/用户.obj.json")).unwrap()).unwrap();
+        assert!(!obj["hash"].as_str().unwrap().is_empty(), "hash 重算非空");
+        let props = obj["properties"].as_array().unwrap();
+        assert!(props.iter().any(|p| p["key"] == "zodiac" && p["mock"] == "@zodiac"), "zodiac 字段保留");
+        // 星座占位符
+        crate::mock::save_custom_mock_impl(
+            &root,
+            &crate::mock::CustomMock {
+                name: "zodiac".into(),
+                enabled: true,
+                desc: "十二星座之一".into(),
+                code: "(ctx) => ctx.pick([\"白羊座\",\"金牛座\"])".into(),
+            },
+            None,
+        )
+        .unwrap();
+        assert!(root.join(".mock/zodiac.js").exists(), "星座占位符文件存在");
+        let _ = std::fs::remove_dir_all(&root);
+    }
