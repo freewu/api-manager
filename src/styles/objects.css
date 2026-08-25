@@ -314,7 +314,43 @@
   padding: 0 2px;
 }
 .objects-section-title .btn-sm {
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.objects-section-title .btn-sm:last-child {
   margin-left: auto;
+}
+.objects-section-title .btn-sm:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-light);
+}
+/* 「生成一条 Mock 数据」：主色按钮 */
+.objects-section-title .btn-sm.objects-gen-mock {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.objects-section-title .btn-sm.objects-gen-mock:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+/* 「添加属性」：绿色按钮 */
+.objects-section-title .btn-sm.objects-add-prop {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: #fff;
+  font-weight: 600;
+}
+.objects-section-title .btn-sm.objects-add-prop:hover {
+  background: color-mix(in srgb, var(--ok) 82%, #000);
+  border-color: var(--ok);
 }
 .objects-props-wrap {
   border: 1px solid var(--border);
@@ -322,6 +358,29 @@
   padding: 8px 10px 10px;
   background: var(--bg-panel);
   overflow-x: auto;
+}
+/* 属性表格行加高 */
+.objects-props-wrap .doc-params-table td {
+  padding: 9px 5px;
+  vertical-align: middle;
+}
+/* 生成的 Mock 数据弹窗 */
+.modal-gen-mock {
+  width: min(560px, 92vw);
+}
+.gen-mock-pre {
+  margin: 0;
+  max-height: 55vh;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre;
 }
 .objects-prop-input {
   width: 100%;

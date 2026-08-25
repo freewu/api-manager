@@ -20,18 +20,21 @@ import typescript from "highlight.js/lib/languages/typescript";
 import sql from "highlight.js/lib/languages/sql";
 import "highlight.js/styles/github-dark.css";
 import { useT } from "../i18n";
-import { renderMarkdown, saveObjectVersion } from "../commands";
+import { listCustomMocks, renderMarkdown, saveObjectVersion } from "../commands";
+import { mockValue } from "../utils/mockData";
 import { LangSelect } from "./LangSelect";
 import { OBJECT_LANGS, generateObjectCode } from "../utils/objectCodegen";
 import { generateCreateTable } from "../utils/objectDdl";
 import MockPicker from "./MockPicker";
 import ObjectRefPicker from "./ObjectRefPicker";
+import { Modal } from "./Modal";
 
 /** 对象名称（object_name）：字母开头，仅字母/数字/下划线 */
 const OBJECT_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
 /** Java 包名（package_name）：小写字母开头，点分隔，每段字母/数字/下划线 */
 const PACKAGE_NAME_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
 import {
+  CustomMock,
   ObjectDef,
   ObjectImportResult,
   ObjectProp,
@@ -284,6 +287,60 @@ export default function ObjectsView({
     setDraft(next);
   };
 
+  /** 生成的 Mock 数据 JSON 文本（非 null = 弹窗展示） */
+  const [genJson, setGenJson] = useState<string | null>(null);
+  const [genCopied, setGenCopied] = useState(false);
+
+  /** 根据属性配置的 mock 生成一条 JSON 数据（支持 @占位符 / 引用对象 / List 嵌套） */
+  const genMockRow = async () => {
+    if (!draft) return;
+    let customs: CustomMock[] = [];
+    try {
+      customs = await listCustomMocks();
+    } catch {
+      /* 自定义占位符拉取失败时忽略 */
+    }
+    const buildObject = (o: ObjectDef, depth: number): Record<string, unknown> => {
+      const out: Record<string, unknown> = {};
+      for (const p of o.properties) {
+        out[p.key || "field"] = buildValue(p, depth);
+      }
+      return out;
+    };
+    const buildValue = (p: ObjectProp, depth: number): unknown => {
+      if (depth > 6) return null; // 防止对象循环引用无限递归
+      if (p.kind === "List") {
+        const arr: unknown[] = [];
+        for (let i = 0; i < 2; i++) {
+          if (p.itemKind === "Object" && p.refHash) {
+            const ref = store.objects.find((x) => x.hash === p.refHash);
+            arr.push(ref ? buildObject(ref, depth + 1) : null);
+          } else {
+            arr.push(mockValue(p.mock, p.itemKind || "String", customs));
+          }
+        }
+        return arr;
+      }
+      if (p.kind === "Object" && p.refHash) {
+        const ref = store.objects.find((x) => x.hash === p.refHash);
+        return ref ? buildObject(ref, depth + 1) : null;
+      }
+      return mockValue(p.mock, p.kind, customs);
+    };
+    setGenJson(JSON.stringify(buildObject(draft, 0), null, 2));
+    setGenCopied(false);
+  };
+  const copyGenJson = async () => {
+    if (genJson === null) return;
+    try {
+      await navigator.clipboard.writeText(genJson);
+      setGenCopied(true);
+      setTimeout(() => setGenCopied(false), 1500);
+    } catch {
+      /* 剪贴板不可用时忽略 */
+    }
+  };
+
 
   return (
     <div className="history-view-content">
@@ -360,7 +417,10 @@ export default function ObjectsView({
           <>
             <div className="objects-section-title">
               {t("objects.props")}
-              <button className="btn-sm" onClick={addProp}>
+              <button className="btn-sm objects-gen-mock" onClick={() => void genMockRow()}>
+                ⚡ {t("objects.genMockRow")}
+              </button>
+              <button className="btn-sm objects-add-prop" onClick={addProp}>
                 ＋ {t("objects.addProp")}
               </button>
             </div>
@@ -597,6 +657,20 @@ export default function ObjectsView({
           }}
           onClose={() => setRefPickIndex(null)}
         />
+      )}
+      {genJson !== null && (
+        <Modal
+          title={t("objects.genMockTitle")}
+          onClose={() => setGenJson(null)}
+          className="modal-gen-mock"
+          footer={
+            <button className="btn primary" onClick={() => void copyGenJson()}>
+              {genCopied ? t("objects.copied") : t("common.copy")}
+            </button>
+          }
+        >
+          <pre className="gen-mock-pre">{genJson}</pre>
+        </Modal>
       )}
     </div>
   );

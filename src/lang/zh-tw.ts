@@ -706,6 +706,8 @@ export const TW: Record<string, string> = {
   "objects.mockCatNum": "數字",
   "objects.noProps": "暫無屬性，",
   "objects.addProp": "新增屬性",
+  "objects.genMockRow": "產生一條 Mock 資料",
+  "objects.genMockTitle": "產生的 Mock 資料",
   "objects.save": "儲存物件",
   "objects.tabProps": "屬性",
   "objects.tabDesc": "物件描述",

@@ -725,6 +725,8 @@ export const ZH: Record<string, string> = {
   "objects.mockCatNum": "数字",
   "objects.noProps": "暂无属性，",
   "objects.addProp": "添加属性",
+  "objects.genMockRow": "生成一条 Mock 数据",
+  "objects.genMockTitle": "生成的 Mock 数据",
   "objects.save": "保存对象",
   "objects.tabProps": "属性",
   "objects.tabDesc": "对象描述",
