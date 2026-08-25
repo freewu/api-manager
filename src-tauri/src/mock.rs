@@ -872,50 +872,19 @@ fn builtin_mock_value(name: &str, args: &str) -> Option<String> {
     Some(s)
 }
 
-/// 执行自定义占位符代码：支持常见表达式形式（pick([...]) / randInt(a,b) / random() / seq() / 字符串字面量）。
-/// 完整 JS 语法由前端「测试」按钮（src/utils/mockData.ts）执行，Mock 服务端仅支持上述子集，
-/// 无法解析的表达式保留原样输出。
+/// 执行自定义占位符 JS 代码：代码为 (ctx) => 返回值 的函数（boa 纯 Rust JS 引擎）。
+/// 完整支持 ctx.randInt / ctx.pick / ctx.random / ctx.pad / ctx.seq；失败返回 None（保留原样）。
 fn run_custom_mock_code(code: &str) -> Option<String> {
-    let src = code.trim();
-    let body = src
-        .strip_prefix("(ctx) =>")
-        .or_else(|| src.strip_prefix("ctx =>"))
-        .map(|s| s.trim())
-        .unwrap_or(src);
-    // pick(["a", "b", ...])
-    if let Some(inner) = body.strip_prefix("pick(").and_then(|s| s.strip_suffix(')')) {
-        let items: Vec<&str> = inner
-            .split(',')
-            .map(|s| s.trim().trim_matches('"').trim_matches('\''))
-            .filter(|s| !s.is_empty())
-            .collect();
-        if items.is_empty() {
-            return None;
-        }
-        return Some(mock_pick(&items).to_string());
-    }
-    // randInt(a, b)
-    if let Some(inner) = body.strip_prefix("randInt(").and_then(|s| s.strip_suffix(')')) {
-        let parts: Vec<&str> = inner.split(',').collect();
-        if parts.len() >= 2 {
-            let a = parts[0].trim().parse::<i64>().ok()?;
-            let b = parts[1].trim().parse::<i64>().ok()?;
-            return Some(mock_rand_range(a, b).to_string());
-        }
-    }
-    // random()
-    if body == "random()" {
-        return Some(mock_rnd().to_string());
-    }
-    // seq()：简化实现为随机标识
-    if body == "seq()" {
-        return Some(mock_guid().replace('-', ""));
-    }
-    // 字符串字面量
-    if (body.starts_with('"') && body.ends_with('"')) || (body.starts_with('\'') && body.ends_with('\'')) {
-        return Some(body[1..body.len() - 1].to_string());
-    }
-    None
+    let mut ctx = boa_engine::Context::default();
+    let src = format!(
+        "const ctx = {{ randInt: (a, b) => a + Math.floor(Math.random() * (b - a + 1)), pick: (arr) => arr[Math.floor(Math.random() * arr.length)], random: Math.random, pad: (n) => String(n).padStart(2, '0'), seq: (() => {{ let i = 0; return () => Date.now().toString(36) + (i++).toString(36); }})() }}; (() => {{ const v = ({0})(ctx); if (typeof v === 'string') return v; if (v === undefined || v === null) return ''; return JSON.stringify(v); }})()",
+        code
+    );
+    let v = ctx
+        .eval(boa_engine::Source::from_bytes(src.as_bytes()))
+        .ok()?;
+    let s = v.to_string(&mut ctx).ok()?;
+    Some(s.to_std_string_escaped())
 }
 
 /// 字符串值：替换其中的 @占位符（未命中内置 / 未启用自定义的保留原样）

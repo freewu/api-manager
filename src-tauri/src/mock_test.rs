@@ -189,3 +189,40 @@ fn test_render_mock_body() {
     assert!(arr.iter().all(|x| x["id"].is_string()));
     let _ = std::fs::remove_dir_all(&d);
 }
+
+#[test]
+fn test_custom_mock_rendered_in_body() {
+    let d = std::env::temp_dir().join(format!("apim-cusrender-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&d);
+    std::fs::create_dir_all(d.join(".mock")).unwrap();
+    // 默认模板风格：多行 JS + const + 字符串拼接
+    std::fs::write(
+        d.join(".mock").join("cusNo.js"),
+        "/**\n * @enabled true\n * @desc 自定义编号\n */\n(ctx) => { const no = ctx.randInt(1000, 9999); return \"CUS-\" + no; }",
+    )
+    .unwrap();
+    // demo 风格：ctx.pick 直接返回
+    std::fs::write(
+        d.join(".mock").join("zodiac.js"),
+        "/**\n * @enabled true\n * @desc 星座\n */\n(ctx) => ctx.pick([\"白羊座\", \"双鱼座\"]) ",
+    )
+    .unwrap();
+    // 未启用：不生效
+    std::fs::write(
+        d.join(".mock").join("off.js"),
+        "/**\n * @enabled false\n */\n(ctx) => 'OFF'",
+    )
+    .unwrap();
+    let customs = list_custom_mocks_impl(&d);
+    assert_eq!(customs.len(), 3);
+    let out = render_mock_body(r#"{"no": "@cusNo", "zodiac": "@zodiac", "off": "@off"}"#, &customs);
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert!(v["no"].as_str().unwrap().starts_with("CUS-"), "no 应为 CUS- 前缀，实际 {}", v["no"]);
+    assert!(
+        ["白羊座", "双鱼座"].contains(&v["zodiac"].as_str().unwrap()),
+        "zodiac 应为星座之一，实际 {}",
+        v["zodiac"]
+    );
+    assert_eq!(v["off"], "@off", "未启用占位符应原样保留");
+    let _ = std::fs::remove_dir_all(&d);
+}
