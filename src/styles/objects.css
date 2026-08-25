@@ -719,7 +719,7 @@
   border-color: var(--accent, #4f9cf9);
 }
 .modal-mock {
-  width: min(680px, 94vw);
+  width: min(960px, 96vw);
 }
 .mock-picker-layout {
   display: flex;
@@ -781,7 +781,7 @@
 }
 .mock-picker-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 8px;
   padding: 2px;
 }
