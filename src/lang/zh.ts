@@ -301,6 +301,8 @@ export const ZH: Record<string, string> = {
   "importResult.folder": "导入到分组",
   "importResult.http": "HTTP 接口",
   "importResult.ws": "WebSocket 接口",
+  "importResult.graphql": "GraphQL 接口",
+  "importResult.socketio": "Socket.IO 接口",
   "importResult.objects": "对象",
   "importResult.failed": "失败",
   "importResult.duplicated": "重复",

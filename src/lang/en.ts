@@ -294,6 +294,8 @@ export const EN: Record<string, string> = {
   "importResult.folder": "Imported to",
   "importResult.http": "HTTP APIs",
   "importResult.ws": "WebSocket APIs",
+  "importResult.graphql": "GraphQL APIs",
+  "importResult.socketio": "Socket.IO APIs",
   "importResult.objects": "Objects",
   "importResult.failed": "Failed",
   "importResult.duplicated": "Duplicated",

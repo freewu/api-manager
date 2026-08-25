@@ -284,6 +284,8 @@ export const TW: Record<string, string> = {
   "importResult.folder": "匯入到分組",
   "importResult.http": "HTTP 接口",
   "importResult.ws": "WebSocket 接口",
+  "importResult.graphql": "GraphQL 接口",
+  "importResult.socketio": "Socket.IO 介面",
   "importResult.objects": "對象",
   "importResult.failed": "失敗",
   "importResult.duplicated": "重複",

@@ -1317,11 +1317,15 @@ pub struct PostmanImportResult {
     pub env: String,
     /// 导入的变量数量
     pub vars: usize,
-    /// 导入统计：http 接口数 / WebSocket 接口数 / 对象数 / 失败数 / 重复数
+    /// 导入统计：http 接口数 / WebSocket 接口数 / GraphQL 接口数 / Socket.IO 接口数 / 对象数 / 失败数 / 重复数
     #[serde(default)]
     pub http: usize,
     #[serde(default)]
     pub ws: usize,
+    #[serde(default)]
+    pub graphql: usize,
+    #[serde(default)]
+    pub socketio: usize,
     #[serde(default)]
     pub objects: usize,
     #[serde(default)]
@@ -1353,8 +1357,7 @@ fn import_postman(
 /// 解析 Postman Collection 文件，在工作区根新建同名分组并导入全部接口；
 /// 同时把集合级 `variable` 合并到工作区环境变量（__envs.json）
 fn import_postman_file(root: &Path, file: &Path) -> Result<PostmanImportResult, String> {
-    let mut http = 0usize;
-    let mut ws = 0usize;
+    let mut stats = ImportStats::default();
     let mut failed = 0usize;
     let mut duplicated = 0usize;
     let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
@@ -1397,7 +1400,7 @@ fn import_postman_file(root: &Path, file: &Path) -> Result<PostmanImportResult, 
         .and_then(|v| v.as_array())
         .cloned()
         .unwrap_or_default();
-    import_postman_items(&folder, &items, &mut http, &mut ws, &mut failed, &mut duplicated)?;
+    import_postman_items(&folder, &items, &mut stats, &mut failed, &mut duplicated)?;
     // 集合级变量 -> 环境变量集（同名合并，否则新建；无激活环境时自动激活）
     let mut env = String::new();
     let mut vars = 0usize;
@@ -1413,8 +1416,10 @@ fn import_postman_file(root: &Path, file: &Path) -> Result<PostmanImportResult, 
         folder: folder.to_string_lossy().to_string(),
         env,
         vars,
-        http,
-        ws,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
         objects: 0,
         failed,
         duplicated,
@@ -1500,8 +1505,7 @@ fn merge_postman_env(root: &Path, env_name: &str, variables: Vec<EnvVariable>) -
 fn import_postman_items(
     dir: &Path,
     items: &[Value],
-    http: &mut usize,
-    ws: &mut usize,
+    stats: &mut ImportStats,
     failed: &mut usize,
     duplicated: &mut usize,
 ) -> Result<(), String> {
@@ -1520,22 +1524,7 @@ fn import_postman_items(
                     continue;
                 }
             };
-            // WebSocket 请求判定：method 为 WS 或 URL 以 ws:// / wss:// 开头
-            let method = request
-                .get("method")
-                .and_then(|v| v.as_str())
-                .unwrap_or("GET")
-                .to_uppercase();
-            let url_raw = request
-                .get("url")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_lowercase();
-            if method == "WS" || url_raw.starts_with("ws://") || url_raw.starts_with("wss://") {
-                *ws += 1;
-            } else {
-                *http += 1;
-            }
+            stats.add(&api.protocol);
             let file_base = sanitize_filename(&name);
             let file_base = if file_base.is_empty() {
                 "未命名接口".to_string()
@@ -1568,7 +1557,7 @@ fn import_postman_items(
                     deprecated: None,
                 },
             )?;
-            import_postman_items(&sub_dir, sub, http, ws, failed, duplicated)?;
+            import_postman_items(&sub_dir, sub, stats, failed, duplicated)?;
         }
     }
     Ok(())
@@ -1588,6 +1577,29 @@ fn postman_request_to_api(name: &str, request: &Value) -> Result<ApiFile, String
         .unwrap_or("")
         .to_string();
     let (path, params) = postman_path_info(url);
+
+    // 接口协议分类：WebSocket（method=WS 或 ws://） / GraphQL（body.mode=graphql） / Socket.IO（method=SOCKET.IO 或 socket.io://） / HTTP
+    let body_mode = request
+        .pointer("/body/mode")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let url_lower = url_raw.to_lowercase();
+    let protocol = if method == "WS"
+        || url_lower.starts_with("ws://")
+        || url_lower.starts_with("wss://")
+    {
+        "websocket".to_string()
+    } else if body_mode == "graphql" {
+        "graphql".to_string()
+    } else if method == "SOCKET.IO"
+        || url_lower.starts_with("socket.io://")
+        || url_lower.starts_with("socketio://")
+    {
+        "socketio".to_string()
+    } else {
+        "http".to_string()
+    };
 
     let mut headers = Vec::new();
     if let Some(arr) = request.pointer("/header").and_then(|v| v.as_array()) {
@@ -1660,7 +1672,7 @@ fn postman_request_to_api(name: &str, request: &Value) -> Result<ApiFile, String
         responses: vec![],
         doc_params: vec![],
         deprecated: false,
-        protocol: "http".into(),
+        protocol,
     })
 }
 
@@ -1762,16 +1774,45 @@ fn postman_body(body: Option<&Value>) -> BodyData {
 }
 
 /// OpenAPI / Swagger 导入结果
+/// 导入统计：按接口协议分类（http / websocket / graphql / socketio）
+#[derive(Default, Clone, Copy)]
+pub struct ImportStats {
+    pub http: usize,
+    pub ws: usize,
+    pub graphql: usize,
+    pub socketio: usize,
+}
+
+impl ImportStats {
+    /// 按协议归入对应分类（未知协议按 http 计）
+    pub fn add(&mut self, protocol: &str) {
+        match protocol {
+            "websocket" => self.ws += 1,
+            "graphql" => self.graphql += 1,
+            "socketio" => self.socketio += 1,
+            _ => self.http += 1,
+        }
+    }
+
+    pub fn total(&self) -> usize {
+        self.http + self.ws + self.graphql + self.socketio
+    }
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenApiImportResult {
     folder: String,
     count: usize,
-    /// 导入统计：http 接口数 / WebSocket 接口数 / 对象数 / 失败数 / 重复数
+    /// 导入统计：http 接口数 / WebSocket 接口数 / GraphQL 接口数 / Socket.IO 接口数 / 对象数 / 失败数 / 重复数
     #[serde(default)]
     pub http: usize,
     #[serde(default)]
     pub ws: usize,
+    #[serde(default)]
+    pub graphql: usize,
+    #[serde(default)]
+    pub socketio: usize,
     #[serde(default)]
     pub objects: usize,
     #[serde(default)]
@@ -1787,6 +1828,8 @@ impl Default for OpenApiImportResult {
             count: 0,
             http: 0,
             ws: 0,
+            graphql: 0,
+            socketio: 0,
             objects: 0,
             failed: 0,
             duplicated: 0,
@@ -1911,6 +1954,15 @@ fn export_api_markdown(
 pub struct MarkdownImportResult {
     folder: String,
     count: usize,
+    /// 导入统计（http / ws / graphql / socketio）
+    #[serde(default)]
+    pub http: usize,
+    #[serde(default)]
+    pub ws: usize,
+    #[serde(default)]
+    pub graphql: usize,
+    #[serde(default)]
+    pub socketio: usize,
 }
 
 /// 导出选中接口/分组为 Postman / OpenAPI / Docsify 格式：弹窗选择保存位置并写入
@@ -2244,8 +2296,10 @@ fn import_markdown(
     // 无分组（# 标题留空）：接口直接写到工作区根目录
     if group.is_empty() {
         let mut count = 0usize;
+        let mut stats = ImportStats::default();
         for mut api in parsed.apis {
             api.uuid = uuid::Uuid::new_v4().to_string();
+            stats.add(&api.protocol);
             let fname = sanitize_filename(&api.name);
             let fname = if fname.is_empty() {
                 "未命名接口".to_string()
@@ -2259,6 +2313,10 @@ fn import_markdown(
         return Ok(Some(MarkdownImportResult {
             folder: root.to_string_lossy().to_string(),
             count,
+            http: stats.http,
+            ws: stats.ws,
+            graphql: stats.graphql,
+            socketio: stats.socketio,
         }));
     }
 
@@ -2283,8 +2341,10 @@ fn import_markdown(
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     for mut api in parsed.apis {
         api.uuid = uuid::Uuid::new_v4().to_string();
+        stats.add(&api.protocol);
         let fname = sanitize_filename(&api.name);
         let fname = if fname.is_empty() {
             "未命名接口".to_string()
@@ -2298,6 +2358,10 @@ fn import_markdown(
     Ok(Some(MarkdownImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
     }))
 }
 
@@ -2362,16 +2426,17 @@ fn import_apifox_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, S
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     // HTTP 接口：apiCollection 为数组（可能多个集合）或对象 {items:[...]}
     match json.get("apiCollection") {
         Some(Value::Array(arr)) => {
             for c in arr {
-                count += import_apifox_items(&folder, c)?;
+                count += import_apifox_items(&folder, c, &mut stats)?;
             }
         }
         Some(obj) => {
             if let Some(items) = obj.get("items").and_then(|v| v.as_array()) {
-                count += import_apifox_items_arr(&folder, items)?;
+                count += import_apifox_items_arr(&folder, items, &mut stats)?;
             }
         }
         _ => {}
@@ -2379,28 +2444,32 @@ fn import_apifox_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, S
     // WebSocket 接口：webSocketCollection（api 无 method，path 即 ws url，消息体在 requestBody.message）
     if let Some(arr) = json.get("webSocketCollection").and_then(|v| v.as_array()) {
         for c in arr {
-            count += import_apifox_items(&folder, c)?;
+            count += import_apifox_items(&folder, c, &mut stats)?;
         }
     }
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
         ..Default::default()
     })
 }
 
 /// 单个 Apifox 集合：取 items 递归导入
-fn import_apifox_items(dir: &Path, collection: &Value) -> Result<usize, String> {
+fn import_apifox_items(dir: &Path, collection: &Value, stats: &mut ImportStats) -> Result<usize, String> {
     let items = collection
         .get("items")
         .and_then(|v| v.as_array())
         .cloned()
         .unwrap_or_default();
-    import_apifox_items_arr(dir, &items)
+    import_apifox_items_arr(dir, &items, stats)
 }
 
 /// Apifox items 递归：带 api 的为接口，带 items 的为分组
-fn import_apifox_items_arr(dir: &Path, items: &[Value]) -> Result<usize, String> {
+fn import_apifox_items_arr(dir: &Path, items: &[Value], stats: &mut ImportStats) -> Result<usize, String> {
     let mut count = 0usize;
     for item in items {
         let name = item
@@ -2410,6 +2479,7 @@ fn import_apifox_items_arr(dir: &Path, items: &[Value]) -> Result<usize, String>
             .to_string();
         if let Some(api_obj) = item.get("api") {
             let api = apifox_api_to_api(&name, api_obj)?;
+            stats.add(&api.protocol);
             let file_base = sanitize_filename(&name);
             let file_base = if file_base.is_empty() {
                 "未命名接口".to_string()
@@ -2447,7 +2517,7 @@ fn import_apifox_items_arr(dir: &Path, items: &[Value]) -> Result<usize, String>
                     },
                 )?;
             }
-            count += import_apifox_items_arr(&sub_dir, sub)?;
+            count += import_apifox_items_arr(&sub_dir, sub, stats)?;
         }
     }
     Ok(count)
@@ -2456,6 +2526,23 @@ fn import_apifox_items_arr(dir: &Path, items: &[Value]) -> Result<usize, String>
 /// 将 Apifox api 对象转换为 ApiFile（WebSocket 接口无 method，path 即地址）
 fn apifox_api_to_api(name: &str, api_obj: &Value) -> Result<ApiFile, String> {
     let is_ws = api_obj.get("method").is_none() && api_obj.get("path").and_then(|v| v.as_str()).map_or(true, |p| p.contains("ws://") || p.contains("wss://"));
+    // 接口协议：优先读 api.protocol（Apifox 导出字段），否则按 is_ws 规则
+    let proto = api_obj
+        .get("protocol")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let protocol = if proto.contains("websocket") || proto.contains("ws") {
+        "websocket".to_string()
+    } else if proto.contains("graphql") {
+        "graphql".to_string()
+    } else if proto.contains("socket") {
+        "socketio".to_string()
+    } else if is_ws {
+        "websocket".to_string()
+    } else {
+        "http".to_string()
+    };
     let method = if is_ws {
         "WS".to_string()
     } else {
@@ -2464,8 +2551,7 @@ fn apifox_api_to_api(name: &str, api_obj: &Value) -> Result<ApiFile, String> {
             .and_then(|v| v.as_str())
             .unwrap_or("GET")
             .to_uppercase()
-    };
-    let path = api_obj
+    };    let path = api_obj
         .get("path")
         .and_then(|v| v.as_str())
         .unwrap_or("/")
@@ -2532,7 +2618,7 @@ fn apifox_api_to_api(name: &str, api_obj: &Value) -> Result<ApiFile, String> {
         responses: vec![],
         doc_params: vec![],
         deprecated: false,
-        protocol: if is_ws { "websocket".into() } else { "http".into() },
+        protocol,
     })
 }
 
@@ -2659,12 +2745,17 @@ fn import_apipost_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
         .collect();
     roots.sort_by_key(|a| a.get("sort").and_then(|v| v.as_i64()).unwrap_or(0));
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     for r in roots {
-        count += import_apipost_node(&folder, r, &by_id)?;
+        count += import_apipost_node(&folder, r, &by_id, &mut stats)?;
     }
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
         ..Default::default()
     })
 }
@@ -2674,6 +2765,7 @@ fn import_apipost_node(
     dir: &Path,
     node: &Value,
     by_id: &HashMap<String, &Value>,
+    stats: &mut ImportStats,
 ) -> Result<usize, String> {
     let name = node
         .get("name")
@@ -2706,12 +2798,13 @@ fn import_apipost_node(
             }
             let mut count = 0usize;
             for c in kids {
-                count += import_apipost_node(&sub_dir, c, by_id)?;
+                count += import_apipost_node(&sub_dir, c, by_id, stats)?;
             }
             Ok(count)
         }
         _ => {
             let api = apipost_request_to_api(&name, node)?;
+            stats.add(&api.protocol);
             let file_base = sanitize_filename(&name);
             let file_base = if file_base.is_empty() {
                 "未命名接口".to_string()
@@ -2746,7 +2839,17 @@ fn apipost_request_to_api(name: &str, node: &Value) -> Result<ApiFile, String> {
         .to_uppercase();
     let url = node.get("url").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let protocol = node.get("protocol").and_then(|v| v.as_str()).unwrap_or("").to_string();
-    let is_ws = protocol.contains("websocket") || protocol.contains("ws");
+    let proto_lower = protocol.to_lowercase();
+    // 接口协议分类：优先读 protocol 字段（http/websocket/graphql/socket.io 等）
+    let protocol = if proto_lower.contains("websocket") || proto_lower == "ws" {
+        "websocket".to_string()
+    } else if proto_lower.contains("graphql") {
+        "graphql".to_string()
+    } else if proto_lower.contains("socket") {
+        "socketio".to_string()
+    } else {
+        "http".to_string()
+    };
     let (path, mut params) = extract_path(&url);
     let request = node.get("request");
     let mut headers = Vec::new();
@@ -2795,7 +2898,7 @@ fn apipost_request_to_api(name: &str, node: &Value) -> Result<ApiFile, String> {
         responses: vec![],
         doc_params: vec![],
         deprecated: false,
-        protocol: if is_ws { "websocket".into() } else { "http".into() },
+        protocol,
     })
 }
 
@@ -2962,18 +3065,23 @@ fn import_raml_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, Str
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     // 顶层 key：以 / 开头的为资源路径，其余为元数据（title/version/baseUri/mediaType/types/...）
     if let Some(obj) = json.as_object() {
         for (key, val) in obj {
             if !key.starts_with('/') {
                 continue;
             }
-            count += raml_resource_to_apis(&folder, key, val, &base_url)?;
+            count += raml_resource_to_apis(&folder, key, val, &base_url, &mut stats)?;
         }
     }
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
         ..Default::default()
     })
 }
@@ -2984,6 +3092,7 @@ fn raml_resource_to_apis(
     path: &str,
     node: &Value,
     base_url: &str,
+    stats: &mut ImportStats,
 ) -> Result<usize, String> {
     let mut count = 0usize;
     let Some(obj) = node.as_object() else {
@@ -2993,7 +3102,7 @@ fn raml_resource_to_apis(
     for (key, val) in obj {
         if key.starts_with('/') {
             let joined = format!("{}{}", path.trim_end_matches('/'), key);
-            count += raml_resource_to_apis(dir, &joined, val, base_url)?;
+            count += raml_resource_to_apis(dir, &joined, val, base_url, stats)?;
             continue;
         }
         let method = key.to_uppercase();
@@ -3003,7 +3112,7 @@ fn raml_resource_to_apis(
         ) {
             continue;
         }
-        count += raml_method_to_api(dir, &method, path, val, base_url)?;
+        count += raml_method_to_api(dir, &method, path, val, base_url, stats)?;
     }
     Ok(count)
 }
@@ -3015,7 +3124,8 @@ fn raml_method_to_api(
     path: &str,
     op: &Value,
     base_url: &str,
-) -> Result<usize, String> {
+
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut headers = Vec::new();
     let mut query = Vec::new();
     // 查询参数：queryParameters[key] = { type, required, default, description }
@@ -3142,6 +3252,7 @@ fn raml_method_to_api(
         protocol: "http".into(),
     };
     write_pretty(&file_path, &api)?;
+        stats.add(&api.protocol);
     Ok(1)
 }
 
@@ -3219,20 +3330,25 @@ fn import_wadl_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, Str
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     for res in root_el.descendants().filter(|n| n.is_element() && n.has_tag_name("resources")) {
         for child in res.children().filter(|n| n.is_element() && n.has_tag_name("resource")) {
-            count += wadl_resource_to_apis(&folder, "", child)?;
+            count += wadl_resource_to_apis(&folder, "", child, &mut stats)?;
         }
     }
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
         ..Default::default()
     })
 }
 
 /// WADL resource 递归：子 resource 拼接 path，method 写接口文件
-fn wadl_resource_to_apis(dir: &Path, parent_path: &str, res: roxmltree::Node) -> Result<usize, String> {
+fn wadl_resource_to_apis(dir: &Path, parent_path: &str, res: roxmltree::Node, stats: &mut ImportStats) -> Result<usize, String> {
     let rel = res.attribute("path").unwrap_or("");
     let path = if parent_path.is_empty() {
         format!("/{}", rel.trim_start_matches('/'))
@@ -3244,16 +3360,17 @@ fn wadl_resource_to_apis(dir: &Path, parent_path: &str, res: roxmltree::Node) ->
     let mut count = 0usize;
     for child in res.children().filter(|n| n.is_element()) {
         if child.has_tag_name("resource") {
-            count += wadl_resource_to_apis(dir, &path, child)?;
+            count += wadl_resource_to_apis(dir, &path, child, stats)?;
         } else if child.has_tag_name("method") {
-            count += wadl_method_to_api(dir, &path, child)?;
+            count += wadl_method_to_api(dir, &path, child, stats)?;
         }
     }
     Ok(count)
 }
 
 /// WADL method 元素 → ApiFile
-fn wadl_method_to_api(dir: &Path, path: &str, method_el: roxmltree::Node) -> Result<usize, String> {
+fn wadl_method_to_api(dir: &Path, path: &str, method_el: roxmltree::Node,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let method = method_el.attribute("name").unwrap_or("GET").to_uppercase();
     let mut headers = Vec::new();
     let mut query = Vec::new();
@@ -3320,6 +3437,7 @@ fn wadl_method_to_api(dir: &Path, path: &str, method_el: roxmltree::Node) -> Res
         protocol: "http".into(),
     };
     write_pretty(&file_path, &api)?;
+        stats.add(&api.protocol);
     Ok(1)
 }
 
@@ -3418,6 +3536,7 @@ fn import_har_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, Stri
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     // 按 host 分组，避免重复建同名 host 目录
     let mut by_host: BTreeMap<String, Vec<&Value>> = BTreeMap::new();
     for e in entries {
@@ -3458,18 +3577,23 @@ fn import_har_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, Stri
             )?;
         }
         for e in list {
-            count += har_entry_to_api(&sub, e)?;
+            count += har_entry_to_api(&sub, e, &mut stats)?;
         }
     }
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
         ..Default::default()
     })
 }
 
 /// HAR entry → ApiFile：method/url/headers/queryString/postData，响应存为返回示例
-fn har_entry_to_api(dir: &Path, entry: &Value) -> Result<usize, String> {
+fn har_entry_to_api(dir: &Path, entry: &Value,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let req = entry.get("request").and_then(|v| v.as_object()).cloned().unwrap_or_default();
     let method = req
         .get("method")
@@ -3612,6 +3736,7 @@ fn har_entry_to_api(dir: &Path, entry: &Value) -> Result<usize, String> {
         protocol: "http".into(),
     };
     write_pretty(&file_path, &api)?;
+        stats.add(&api.protocol);
     Ok(1)
 }
 
@@ -3671,25 +3796,30 @@ fn import_yapi_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, Str
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     for g in arr {
-        count += yapi_node_to_apis(&folder, g)?;
+        count += yapi_node_to_apis(&folder, g, &mut stats)?;
     }
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
         ..Default::default()
     })
 }
 
 /// YApi 节点递归：有 children 建分组，有 api 写接口文件
-fn yapi_node_to_apis(dir: &Path, node: &Value) -> Result<usize, String> {
+fn yapi_node_to_apis(dir: &Path, node: &Value, stats: &mut ImportStats) -> Result<usize, String> {
     let name = node
         .get("name")
         .and_then(|v| v.as_str())
         .unwrap_or("未命名")
         .to_string();
     if let Some(api) = node.get("api") {
-        return yapi_api_to_api(dir, &name, api);
+        return yapi_api_to_api(dir, &name, api, stats);
     }
     let kids = node.get("children").and_then(|v| v.as_array());
     let Some(kids) = kids else {
@@ -3724,13 +3854,14 @@ fn yapi_node_to_apis(dir: &Path, node: &Value) -> Result<usize, String> {
     }
     let mut count = 0usize;
     for c in kids {
-        count += yapi_node_to_apis(&sub_dir, c)?;
+        count += yapi_node_to_apis(&sub_dir, c, stats)?;
     }
     Ok(count)
 }
 
 /// YApi api 对象 → ApiFile
-fn yapi_api_to_api(dir: &Path, title: &str, api: &Value) -> Result<usize, String> {
+fn yapi_api_to_api(dir: &Path, title: &str, api: &Value,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let method = api
         .get("method")
         .and_then(|v| v.as_str())
@@ -3898,6 +4029,7 @@ fn yapi_api_to_api(dir: &Path, title: &str, api: &Value) -> Result<usize, String
         protocol,
     };
     write_pretty(&file_path, &api_file)?;
+        stats.add(&api_file.protocol);
     Ok(1)
 }
 
@@ -4028,6 +4160,7 @@ fn import_apidog_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     if let Some(folders) = v.get("folders").and_then(|x| x.as_array()) {
         for f in folders {
             let fname = str_field(f, "name");
@@ -4037,15 +4170,16 @@ fn import_apidog_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
             let sub = mk_group_dir(&folder, &fname, &str_field(f, "description"))?;
             if let Some(apis) = f.get("apis").and_then(|x| x.as_array()) {
                 for a in apis {
-                    count += apidog_api_to_api(&sub, a)?;
+                    count += apidog_api_to_api(&sub, a, &mut stats)?;
                 }
             }
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, http: stats.http, ws: stats.ws, graphql: stats.graphql, socketio: stats.socketio, ..Default::default() })
 }
 
-fn apidog_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
+fn apidog_api_to_api(dir: &Path, a: &Value,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut method = str_field(a, "method").to_uppercase();
     if method.is_empty() {
         method = "GET".to_string();
@@ -4151,6 +4285,7 @@ fn apidog_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
         protocol,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
+        stats.add(&api.protocol);
     Ok(1)
 }
 
@@ -4195,6 +4330,7 @@ fn import_bruno_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, S
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     if let Some(folders) = v.get("folders").and_then(|x| x.as_array()) {
         for f in folders {
             let fname = str_field(&f.get("info").cloned().unwrap_or(Value::Null), "name");
@@ -4202,18 +4338,19 @@ fn import_bruno_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, S
                 continue;
             }
             let sub = mk_group_dir(&folder, &fname, "")?;
-            count += bruno_walk(&sub, f, &vars)?;
+            count += bruno_walk(&sub, f, &vars, &mut stats)?;
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, http: stats.http, ws: stats.ws, graphql: stats.graphql, socketio: stats.socketio, ..Default::default() })
 }
 
 /// 递归处理 bruno 分组（requests + 嵌套 folders）
-fn bruno_walk(dir: &Path, f: &Value, vars: &HashMap<String, String>) -> Result<usize, String> {
+fn bruno_walk(dir: &Path, f: &Value, vars: &HashMap<String, String>,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut count = 0usize;
     if let Some(reqs) = f.get("requests").and_then(|x| x.as_array()) {
         for r in reqs {
-            count += bruno_req_to_api(dir, r, vars)?;
+            count += bruno_req_to_api(dir, r, vars, stats)?;
         }
     }
     if let Some(subs) = f.get("folders").and_then(|x| x.as_array()) {
@@ -4223,13 +4360,14 @@ fn bruno_walk(dir: &Path, f: &Value, vars: &HashMap<String, String>) -> Result<u
                 continue;
             }
             let sub = mk_group_dir(dir, &fname, "")?;
-            count += bruno_walk(&sub, sf, vars)?;
+            count += bruno_walk(&sub, sf, vars, stats)?;
         }
     }
     Ok(count)
 }
 
-fn bruno_req_to_api(dir: &Path, r: &Value, vars: &HashMap<String, String>) -> Result<usize, String> {
+fn bruno_req_to_api(dir: &Path, r: &Value, vars: &HashMap<String, String>,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let info = r.get("info").cloned().unwrap_or(Value::Null);
     if str_field(&info, "type") == "graphql" {
         return Ok(0);
@@ -4320,6 +4458,7 @@ fn bruno_req_to_api(dir: &Path, r: &Value, vars: &HashMap<String, String>) -> Re
         protocol,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
+        stats.add(&api.protocol);
     Ok(1)
 }
 
@@ -4361,13 +4500,15 @@ fn import_apizza_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     if let Some(folders) = v.get("folders").and_then(|x| x.as_array()) {
-        count += apizza_walk(&folder, folders, &vars)?;
+        count += apizza_walk(&folder, folders, &vars, &mut stats)?;
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, http: stats.http, ws: stats.ws, graphql: stats.graphql, socketio: stats.socketio, ..Default::default() })
 }
 
-fn apizza_walk(dir: &Path, folders: &[Value], vars: &HashMap<String, String>) -> Result<usize, String> {
+fn apizza_walk(dir: &Path, folders: &[Value], vars: &HashMap<String, String>,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut count = 0usize;
     for f in folders {
         let fname = str_field(f, "folderName");
@@ -4377,17 +4518,18 @@ fn apizza_walk(dir: &Path, folders: &[Value], vars: &HashMap<String, String>) ->
         let sub = mk_group_dir(dir, &fname, &str_field(f, "folderDesc"))?;
         if let Some(apis) = f.get("apis").and_then(|x| x.as_array()) {
             for a in apis {
-                count += apizza_api_to_api(&sub, a, vars)?;
+                count += apizza_api_to_api(&sub, a, vars, stats)?;
             }
         }
         if let Some(ch) = f.get("children").and_then(|x| x.as_array()) {
-            count += apizza_walk(&sub, ch, vars)?;
+            count += apizza_walk(&sub, ch, vars, stats)?;
         }
     }
     Ok(count)
 }
 
-fn apizza_api_to_api(dir: &Path, a: &Value, vars: &HashMap<String, String>) -> Result<usize, String> {
+fn apizza_api_to_api(dir: &Path, a: &Value, vars: &HashMap<String, String>,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut method = str_field(a, "method").to_uppercase();
     if method.is_empty() {
         method = "GET".to_string();
@@ -4483,6 +4625,7 @@ fn apizza_api_to_api(dir: &Path, a: &Value, vars: &HashMap<String, String>) -> R
         protocol,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
+        stats.add(&api.protocol);
     Ok(1)
 }
 
@@ -4648,17 +4791,19 @@ fn import_nei_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, Str
         }
     }
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     if let Some(ifs) = v.get("interfaces").and_then(|x| x.as_array()) {
         for it in ifs {
             let gid = it.get("group").and_then(|x| x.as_i64()).unwrap_or(0);
             let dir = group_dirs.get(&gid).cloned().unwrap_or_else(|| folder.clone());
-            count += nei_api_to_api(&dir, it, &datatypes)?;
+            count += nei_api_to_api(&dir, it, &datatypes, &mut stats)?;
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, http: stats.http, ws: stats.ws, graphql: stats.graphql, socketio: stats.socketio, ..Default::default() })
 }
 
-fn nei_api_to_api(dir: &Path, it: &Value, datatypes: &HashMap<i64, &Value>) -> Result<usize, String> {
+fn nei_api_to_api(dir: &Path, it: &Value, datatypes: &HashMap<i64, &Value>,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut method = str_field(it, "method").to_uppercase();
     if method.is_empty() {
         method = "GET".to_string();
@@ -4797,6 +4942,7 @@ fn nei_api_to_api(dir: &Path, it: &Value, datatypes: &HashMap<i64, &Value>) -> R
         protocol,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
+        stats.add(&api.protocol);
     Ok(1)
 }
 
@@ -4821,11 +4967,13 @@ fn import_doclever_files(root: &Path, file: &Path) -> Result<OpenApiImportResult
         },
     )?;
     let mut count = 0usize;
-    count += doclever_walk(&folder, arr)?;
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
+    let mut stats = ImportStats::default();
+    count += doclever_walk(&folder, arr, &mut stats)?;
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, http: stats.http, ws: stats.ws, graphql: stats.graphql, socketio: stats.socketio, ..Default::default() })
 }
 
-fn doclever_walk(dir: &Path, items: &[Value]) -> Result<usize, String> {
+fn doclever_walk(dir: &Path, items: &[Value],
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut count = 0usize;
     for it in items {
         let is_folder = it.get("folder").and_then(|x| x.as_bool()).unwrap_or(false);
@@ -4836,16 +4984,17 @@ fn doclever_walk(dir: &Path, items: &[Value]) -> Result<usize, String> {
             }
             let sub = mk_group_dir(dir, &fname, &str_field(it, "desc"))?;
             if let Some(ch) = it.get("children").and_then(|x| x.as_array()) {
-                count += doclever_walk(&sub, ch)?;
+                count += doclever_walk(&sub, ch, stats)?;
             }
         } else {
-            count += doclever_api_to_api(dir, it)?;
+            count += doclever_api_to_api(dir, it, stats)?;
         }
     }
     Ok(count)
 }
 
-fn doclever_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
+fn doclever_api_to_api(dir: &Path, a: &Value,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut method = str_field(a, "method").to_uppercase();
     if method.is_empty() {
         method = "GET".to_string();
@@ -4931,6 +5080,7 @@ fn doclever_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
         protocol,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
+        stats.add(&api.protocol);
     Ok(1)
 }
 
@@ -4956,6 +5106,7 @@ fn import_io_docs_files(root: &Path, file: &Path) -> Result<OpenApiImportResult,
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     if let Some(res) = v.get("resources").and_then(|x| x.as_object()) {
         for (rname, rv) in res {
             if rname.is_empty() {
@@ -4964,15 +5115,16 @@ fn import_io_docs_files(root: &Path, file: &Path) -> Result<OpenApiImportResult,
             let sub = mk_group_dir(&folder, rname, &str_field(rv, "description"))?;
             if let Some(ms) = rv.get("methods").and_then(|x| x.as_object()) {
                 for (_, mv) in ms {
-                    count += io_docs_api_to_api(&sub, mv)?;
+                    count += io_docs_api_to_api(&sub, mv, &mut stats)?;
                 }
             }
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, http: stats.http, ws: stats.ws, graphql: stats.graphql, socketio: stats.socketio, ..Default::default() })
 }
 
-fn io_docs_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
+fn io_docs_api_to_api(dir: &Path, a: &Value,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut method = str_field(a, "httpMethod").to_uppercase();
     if method.is_empty() {
         method = "GET".to_string();
@@ -5043,6 +5195,7 @@ fn io_docs_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
         protocol: "http".to_string(),
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
+        stats.add(&api.protocol);
     Ok(1)
 }
 
@@ -5102,17 +5255,19 @@ fn import_easydoc_files(root: &Path, file: &Path) -> Result<OpenApiImportResult,
         }
     }
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     if let Some(apis) = data.get("api_list").and_then(|x| x.as_array()) {
         for a in apis {
             let cid = a.get("catalog_id").and_then(|x| x.as_i64()).unwrap_or(0);
             let dir = cat_dirs.get(&cid).cloned().unwrap_or_else(|| folder.clone());
-            count += easydoc_api_to_api(&dir, a)?;
+            count += easydoc_api_to_api(&dir, a, &mut stats)?;
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, http: stats.http, ws: stats.ws, graphql: stats.graphql, socketio: stats.socketio, ..Default::default() })
 }
 
-fn easydoc_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
+fn easydoc_api_to_api(dir: &Path, a: &Value,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut method = str_field(a, "method").to_uppercase();
     if method.is_empty() {
         method = "GET".to_string();
@@ -5198,6 +5353,7 @@ fn easydoc_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
         protocol,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
+        stats.add(&api.protocol);
     Ok(1)
 }
 
@@ -5222,6 +5378,7 @@ fn import_docway_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     if let Some(docs) = v.get("docs").and_then(|x| x.as_array()) {
         for d in docs {
             let dname = str_field(d, "name");
@@ -5232,14 +5389,14 @@ fn import_docway_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
             if let Some(ch) = d.get("children").and_then(|x| x.as_array()) {
                 for c in ch {
                     if c.get("method").is_some() {
-                        count += docway_api_to_api(&sub, c)?;
+                        count += docway_api_to_api(&sub, c, &mut stats)?;
                     } else {
                         let cname = str_field(c, "name");
                         if !cname.is_empty() {
                             let sub2 = mk_group_dir(&sub, &cname, "")?;
                             if let Some(ch2) = c.get("children").and_then(|x| x.as_array()) {
                                 for c2 in ch2 {
-                                    count += docway_api_to_api(&sub2, c2)?;
+                                    count += docway_api_to_api(&sub2, c2, &mut stats)?;
                                 }
                             }
                         }
@@ -5248,10 +5405,11 @@ fn import_docway_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
             }
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, http: stats.http, ws: stats.ws, graphql: stats.graphql, socketio: stats.socketio, ..Default::default() })
 }
 
-fn docway_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
+fn docway_api_to_api(dir: &Path, a: &Value,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut method = str_field(a, "method").to_uppercase();
     if method.is_empty() {
         method = "GET".to_string();
@@ -5322,6 +5480,7 @@ fn docway_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
         protocol,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
+        stats.add(&api.protocol);
     Ok(1)
 }
 
@@ -5346,18 +5505,20 @@ fn import_hoppscotch_files(root: &Path, file: &Path) -> Result<OpenApiImportResu
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     if let Some(folders) = v.get("folders").and_then(|x| x.as_array()) {
-        count += hoppscotch_walk(&folder, folders)?;
+        count += hoppscotch_walk(&folder, folders, &mut stats)?;
     }
     if let Some(reqs) = v.get("requests").and_then(|x| x.as_array()) {
         for r in reqs {
-            count += hoppscotch_req_to_api(&folder, r)?;
+            count += hoppscotch_req_to_api(&folder, r, &mut stats)?;
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, http: stats.http, ws: stats.ws, graphql: stats.graphql, socketio: stats.socketio, ..Default::default() })
 }
 
-fn hoppscotch_walk(dir: &Path, folders: &[Value]) -> Result<usize, String> {
+fn hoppscotch_walk(dir: &Path, folders: &[Value],
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut count = 0usize;
     for f in folders {
         let fname = str_field(f, "name");
@@ -5367,17 +5528,18 @@ fn hoppscotch_walk(dir: &Path, folders: &[Value]) -> Result<usize, String> {
         let sub = mk_group_dir(dir, &fname, &str_field(f, "description"))?;
         if let Some(reqs) = f.get("requests").and_then(|x| x.as_array()) {
             for r in reqs {
-                count += hoppscotch_req_to_api(&sub, r)?;
+                count += hoppscotch_req_to_api(&sub, r, stats)?;
             }
         }
         if let Some(subs) = f.get("folders").and_then(|x| x.as_array()) {
-            count += hoppscotch_walk(&sub, subs)?;
+            count += hoppscotch_walk(&sub, subs, stats)?;
         }
     }
     Ok(count)
 }
 
-fn hoppscotch_req_to_api(dir: &Path, r: &Value) -> Result<usize, String> {
+fn hoppscotch_req_to_api(dir: &Path, r: &Value,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut method = str_field(r, "method").to_uppercase();
     if method.is_empty() {
         method = "GET".to_string();
@@ -5456,6 +5618,7 @@ fn hoppscotch_req_to_api(dir: &Path, r: &Value) -> Result<usize, String> {
         protocol,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
+        stats.add(&api.protocol);
     Ok(1)
 }
 
@@ -5504,17 +5667,19 @@ fn import_metersphere_files(root: &Path, file: &Path) -> Result<OpenApiImportRes
         walk_nodes(&folder, nt, &mut node_dirs)?;
     }
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     if let Some(apis) = v.get("data").and_then(|x| x.as_array()) {
         for a in apis {
             let mid = str_field(a, "moduleId");
             let dir = node_dirs.get(&mid).cloned().unwrap_or_else(|| folder.clone());
-            count += metersphere_api_to_api(&dir, a)?;
+            count += metersphere_api_to_api(&dir, a, &mut stats)?;
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, http: stats.http, ws: stats.ws, graphql: stats.graphql, socketio: stats.socketio, ..Default::default() })
 }
 
-fn metersphere_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
+fn metersphere_api_to_api(dir: &Path, a: &Value,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut method = str_field(a, "method").to_uppercase();
     if method.is_empty() {
         method = "GET".to_string();
@@ -5582,6 +5747,7 @@ fn metersphere_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
         protocol,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
+        stats.add(&api.protocol);
     Ok(1)
 }
 
@@ -5817,6 +5983,7 @@ fn import_rap2_project(root: &Path, data: &Value) -> Result<OpenApiImportResult,
     let folder = unique_path(root, &if name.is_empty() { "RAP2 导入".to_string() } else { name.clone() }, "");
     fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     let mut order = 0i32;
     let modules = data.get("modules").and_then(|x| x.as_array()).cloned().unwrap_or_default();
     for m in modules {
@@ -5826,6 +5993,7 @@ fn import_rap2_project(root: &Path, data: &Value) -> Result<OpenApiImportResult,
         for it in interfaces {
             order += 1;
             let api = rap2_interface_to_api(&it);
+            stats.add(&api.protocol);
             write_pretty(
                 &dir.join(format!("{}.json", sanitize_filename(&api.name))),
                 &api,
@@ -5842,6 +6010,10 @@ fn import_rap2_project(root: &Path, data: &Value) -> Result<OpenApiImportResult,
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
         ..Default::default()
     })
 }
@@ -5852,10 +6024,16 @@ fn import_rap2_single(root: &Path, data: &Value) -> Result<OpenApiImportResult, 
     fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
     let api = rap2_interface_to_api(data);
     let fname = sanitize_filename(&api.name);
+    let mut stats = ImportStats::default();
+    stats.add(&api.protocol);
     write_pretty(&folder.join(format!("{fname}.json")), &api)?;
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count: 1,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
         ..Default::default()
     })
 }
@@ -6044,16 +6222,21 @@ fn import_apidoc_files(
         }
     }
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     if let Some(apis) = data.get("apis").and_then(|v| v.as_array()) {
         for a in apis {
             let gname = a.get("group").and_then(|v| v.as_str()).unwrap_or("");
             let dir = group_dirs.get(gname).unwrap_or(&folder);
-            count += apidoc_api_to_api(dir, a)?;
+            count += apidoc_api_to_api(dir, a, &mut stats)?;
         }
     }
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
         ..Default::default()
     })
 }
@@ -6080,7 +6263,8 @@ fn strip_html(s: &str) -> String {
 }
 
 /// apiDoc api 对象 → ApiFile
-fn apidoc_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
+fn apidoc_api_to_api(dir: &Path, a: &Value,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut method = a.get("method").and_then(|v| v.as_str()).unwrap_or("GET").trim().to_uppercase();
     if method.is_empty() {
         method = "GET".to_string();
@@ -6267,6 +6451,7 @@ fn apidoc_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
         protocol,
     };
     write_pretty(&file_path, &api_file)?;
+        stats.add(&api_file.protocol);
     Ok(1)
 }
 
@@ -6425,6 +6610,7 @@ fn import_jmeter_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, S
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     // 递归处理所有 hashTree（TestPlan 级 sampler 罕见；ThreadGroup 为分组）
     let mut pending_headers: Vec<KeyValue> = Vec::new();
     let mut pending_group: Option<String> = None;
@@ -6434,10 +6620,15 @@ fn import_jmeter_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, S
         &vars,
         &mut pending_headers,
         &mut pending_group,
+        &mut stats,
     )?;
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
         ..Default::default()
     })
 }
@@ -6476,7 +6667,8 @@ fn jmeter_walk_hash_tree(
     vars: &HashMap<String, String>,
     pending_headers: &mut Vec<KeyValue>,
     pending_group: &mut Option<String>,
-) -> Result<usize, String> {
+
+    stats: &mut ImportStats) -> Result<usize, String> {
     let mut count = 0usize;
     for child in el.children().filter(|n| n.is_element()) {
         match child.tag_name().name() {
@@ -6508,7 +6700,7 @@ fn jmeter_walk_hash_tree(
                 }
             }
             "HTTPSamplerProxy" => {
-                count += jmeter_sampler_to_api(child, dir, vars, pending_headers)?;
+                count += jmeter_sampler_to_api(child, dir, vars, pending_headers, stats)?;
             }
             "hashTree" => {
                 if let Some(gname) = pending_group.take() {
@@ -6540,6 +6732,7 @@ fn jmeter_walk_hash_tree(
                         vars,
                         pending_headers,
                         pending_group,
+                        stats,
                     )?;
                 } else {
                     count += jmeter_walk_hash_tree(
@@ -6548,6 +6741,7 @@ fn jmeter_walk_hash_tree(
                         vars,
                         pending_headers,
                         pending_group,
+                        stats,
                     )?;
                 }
             }
@@ -6571,7 +6765,8 @@ fn jmeter_sampler_to_api(
     dir: &Path,
     vars: &HashMap<String, String>,
     headers: &[KeyValue],
-) -> Result<usize, String> {
+
+    stats: &mut ImportStats) -> Result<usize, String> {
     let name = el.attribute("testname").unwrap_or("未命名接口").to_string();
     let mut method = jmeter_child_string(el, "HTTPSampler.method");
     if method.is_empty() {
@@ -6718,6 +6913,7 @@ fn jmeter_sampler_to_api(
         protocol: api_protocol,
     };
     write_pretty(&file_path, &api_file)?;
+        stats.add(&api_file.protocol);
     Ok(1)
 }
 
@@ -6796,20 +6992,26 @@ fn import_eolink_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, S
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     if let Some(groups) = json.get("apiGroupList").and_then(|v| v.as_array()) {
         for g in groups {
-            count += eolink_group_to_apis(&folder, g)?;
+            count += eolink_group_to_apis(&folder, g, &mut stats)?;
         }
     }
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
         ..Default::default()
     })
 }
 
 /// Eolink 分组递归：本组建目录，apiList 写入本组，childGroupList 递归子目录
-fn eolink_group_to_apis(dir: &Path, group: &Value) -> Result<usize, String> {
+fn eolink_group_to_apis(dir: &Path, group: &Value,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let name = group
         .get("groupName")
         .and_then(|v| v.as_str())
@@ -6840,19 +7042,20 @@ fn eolink_group_to_apis(dir: &Path, group: &Value) -> Result<usize, String> {
     let mut count = 0usize;
     if let Some(apis) = group.get("apiList").and_then(|v| v.as_array()) {
         for a in apis {
-            count += eolink_api_to_api(&sub_dir, a)?;
+            count += eolink_api_to_api(&sub_dir, a, stats)?;
         }
     }
     if let Some(children) = group.get("childGroupList").and_then(|v| v.as_array()) {
         for c in children {
-            count += eolink_group_to_apis(&sub_dir, c)?;
+            count += eolink_group_to_apis(&sub_dir, c, stats)?;
         }
     }
     Ok(count)
 }
 
 /// Eolink API 对象 → ApiFile
-fn eolink_api_to_api(dir: &Path, api: &Value) -> Result<usize, String> {
+fn eolink_api_to_api(dir: &Path, api: &Value,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let method = api
         .get("apiMethod")
         .and_then(|v| v.as_str())
@@ -7111,6 +7314,7 @@ fn eolink_api_to_api(dir: &Path, api: &Value) -> Result<usize, String> {
         protocol,
     };
     write_pretty(&file_path, &api_file)?;
+        stats.add(&api_file.protocol);
     Ok(1)
 }
 
@@ -7199,24 +7403,30 @@ fn import_insomnia_file(root: &Path, file: &Path) -> Result<OpenApiImportResult,
         },
     )?;
     let mut count = 0usize;
+    let mut stats = ImportStats::default();
     let coll_env = doc
         .get("environment")
         .cloned()
         .unwrap_or(Value::Null);
     if let Some(children) = doc.get("children").and_then(|v| v.as_array()) {
         for c in children {
-            count += insomnia_node_to_apis(&folder, c, &coll_env)?;
+            count += insomnia_node_to_apis(&folder, c, &coll_env, &mut stats)?;
         }
     }
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
         ..Default::default()
     })
 }
 
 /// Insomnia 节点递归：有 url/method 的是请求，否则是文件夹
-fn insomnia_node_to_apis(dir: &Path, node: &Value, coll_env: &Value) -> Result<usize, String> {
+fn insomnia_node_to_apis(dir: &Path, node: &Value, coll_env: &Value,
+    stats: &mut ImportStats) -> Result<usize, String> {
     let name = node
         .get("name")
         .and_then(|v| v.as_str())
@@ -7234,7 +7444,7 @@ fn insomnia_node_to_apis(dir: &Path, node: &Value, coll_env: &Value) -> Result<u
         .unwrap_or("")
         .to_string();
     if !url.is_empty() && !method.is_empty() {
-        return insomnia_request_to_api(dir, &name, node, &url, &method, coll_env);
+        return insomnia_request_to_api(dir, &name, node, &url, &method, coll_env, stats);
     }
     let kids = node.get("children").and_then(|v| v.as_array());
     let Some(kids) = kids else {
@@ -7267,7 +7477,7 @@ fn insomnia_node_to_apis(dir: &Path, node: &Value, coll_env: &Value) -> Result<u
     }
     let mut count = 0usize;
     for c in kids {
-        count += insomnia_node_to_apis(&sub_dir, c, coll_env)?;
+        count += insomnia_node_to_apis(&sub_dir, c, coll_env, stats)?;
     }
     Ok(count)
 }
@@ -7280,7 +7490,8 @@ fn insomnia_request_to_api(
     url: &str,
     method: &str,
     coll_env: &Value,
-) -> Result<usize, String> {
+
+    stats: &mut ImportStats) -> Result<usize, String> {
     let protocol = if url.starts_with("ws://") || url.starts_with("wss://") {
         "websocket".to_string()
     } else {
@@ -7435,6 +7646,7 @@ fn insomnia_request_to_api(
         protocol,
     };
     write_pretty(&file_path, &api_file)?;
+        stats.add(&api_file.protocol);
     Ok(1)
 }
 
@@ -7460,7 +7672,7 @@ fn import_openapi(
 
 /// 解析 OpenAPI / Swagger 文件（支持 .json 与 .yml/.yaml），在工作区根新建分组，按 tag 分小组并导入全部接口
 fn import_openapi_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, String> {
-    let mut http = 0usize;
+    let mut stats = ImportStats::default();
     let mut failed = 0usize;
     let mut duplicated = 0usize;
     let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
@@ -7589,7 +7801,7 @@ fn import_openapi_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
                 }
                 write_pretty(&target_path, &api)?;
                 count += 1;
-                http += 1;
+                stats.add(&api.protocol);
             }
         }
     }
@@ -7600,7 +7812,10 @@ fn import_openapi_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
-        http,
+        http: stats.http,
+        ws: stats.ws,
+        graphql: stats.graphql,
+        socketio: stats.socketio,
         failed,
         duplicated,
         ..Default::default()

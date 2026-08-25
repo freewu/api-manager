@@ -9,6 +9,10 @@ export interface ImportResultView {
   http: number;
   /** WebSocket 接口数 */
   ws: number;
+  /** GraphQL 接口数 */
+  graphql: number;
+  /** Socket.IO 接口数 */
+  socketio: number;
   /** 对象数 */
   objects: number;
   /** 失败数 */
@@ -22,14 +26,16 @@ interface Props {
   onClose: () => void;
 }
 
-/** 导入结果查看弹窗：展示 http/WebSocket/对象/失败/重复 统计 */
+/** 导入结果查看弹窗：展示 Http/WebSocket/GraphQL/Socket.IO/对象/失败/重复 统计 */
 export default function ImportResultModal({ result, onClose }: Props) {
   const t = useT();
   if (!result) return null;
-  const total = result.http + result.ws + result.objects;
+  const total = result.http + result.ws + result.graphql + result.socketio;
   const rows: { key: string; value: number; kind: "ok" | "warn" | "bad" }[] = [
     { key: "importResult.http", value: result.http, kind: "ok" },
     { key: "importResult.ws", value: result.ws, kind: "ok" },
+    { key: "importResult.graphql", value: result.graphql, kind: "ok" },
+    { key: "importResult.socketio", value: result.socketio, kind: "ok" },
     { key: "importResult.objects", value: result.objects, kind: "ok" },
     { key: "importResult.failed", value: result.failed, kind: "bad" },
     { key: "importResult.duplicated", value: result.duplicated, kind: "warn" },

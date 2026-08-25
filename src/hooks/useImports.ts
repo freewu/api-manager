@@ -42,11 +42,13 @@ export function useImports(opts: {
   const fail = (e: unknown) => onToast(t("toast.importFailed", { err: String(e) }));
 
   /** 归一化为导入结果视图并打开查看弹窗 */
-  const showResult = (r: { folder: string; http?: number; ws?: number; objects?: number; failed?: number; duplicated?: number }) => {
+  const showResult = (r: { folder: string; http?: number; ws?: number; graphql?: number; socketio?: number; objects?: number; failed?: number; duplicated?: number }) => {
     setResult({
       folder: r.folder,
       http: r.http ?? 0,
       ws: r.ws ?? 0,
+      graphql: r.graphql ?? 0,
+      socketio: r.socketio ?? 0,
       objects: r.objects ?? 0,
       failed: r.failed ?? 0,
       duplicated: r.duplicated ?? 0,

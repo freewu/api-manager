@@ -76,6 +76,8 @@ export interface PostmanImportResult {
   /** 导入统计 */
   http?: number;
   ws?: number;
+  graphql?: number;
+  socketio?: number;
   objects?: number;
   failed?: number;
   duplicated?: number;
@@ -91,6 +93,8 @@ export interface OpenApiImportResult {
   /** 导入统计 */
   http?: number;
   ws?: number;
+  graphql?: number;
+  socketio?: number;
   objects?: number;
   failed?: number;
   duplicated?: number;
@@ -186,6 +190,11 @@ export function exportApiMarkdown(
 export interface MarkdownImportResult {
   folder: string;
   count: number;
+  /** 导入统计 */
+  http?: number;
+  ws?: number;
+  graphql?: number;
+  socketio?: number;
 }
 
 /** 导入 Markdown 接口文档（弹窗选 .md 文件） */
