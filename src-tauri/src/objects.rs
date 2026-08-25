@@ -192,7 +192,7 @@ pub fn find_object_by_name<'a>(store: &'a ObjectStore, name: &str) -> Option<&'a
 }
 
 /// 列出对象存储（无文件时返回空）
-pub fn list_objects(root: &Path) -> Result<ObjectStore, String> {
+pub fn list_objects_impl(root: &Path) -> Result<ObjectStore, String> {
     let dir = root.join(".object");
     if !dir.exists() {
         return Ok(ObjectStore::default());
@@ -315,7 +315,7 @@ fn normalize_kind(k: &str) -> String {
 /// 目录即分组：分组信息写入 __info_obj.json，每个对象一个 <名称>.obj.json 文件。
 /// 保存时重新计算每个对象的 hash（属性变化后保持一致），
 /// 并修复失效引用（refHash 指向不存在的对象时尝试按名称匹配，否则清空）。
-pub fn save_objects(root: &Path, store: &ObjectStore) -> Result<String, String> {
+pub fn save_objects_impl(root: &Path, store: &ObjectStore) -> Result<String, String> {
     let dir = root.join(".object");
     if dir.exists() {
         std::fs::remove_dir_all(&dir).map_err(|e| format!("清理对象目录失败: {e}"))?;
@@ -410,13 +410,13 @@ pub fn save_objects(root: &Path, store: &ObjectStore) -> Result<String, String> 
 
 /// 从 JSON 文本生成对象定义（嵌套 object 提取为独立对象，hash 相同则复用）。
 /// 返回创建的对象列表（顶层对象排最后，嵌套对象在前，便于前端合并）。
-pub fn import_json_object(
+pub fn import_json_object_impl(
     root: &Path,
     name: &str,
     group: &str,
     json_text: &str,
 ) -> Result<ObjectImportResult, String> {
-    let mut store = list_objects(root)?;
+    let mut store = list_objects_impl(root)?;
     let mut created: Vec<String> = Vec::new();
     let mut reused: Vec<String> = Vec::new();
     let mut generated: Vec<ObjectDef> = Vec::new();
@@ -567,7 +567,7 @@ pub fn import_json_object(
     // 合并新建对象并持久化（保证后续导入能按 hash 复用已有对象）
     if !generated.is_empty() {
         store.objects.extend(generated.clone());
-        save_objects(root, &store)?;
+        save_objects_impl(root, &store)?;
     }
 
     Ok(ObjectImportResult {
@@ -581,8 +581,8 @@ pub fn import_json_object(
 /// 通过 SQL CREATE TABLE 建表语句生成对象（每个表一个对象）。
 /// 类型映射见 map_sql_type；列名 → key，NOT NULL/PRIMARY KEY → 必填，COMMENT → 描述；
 /// 表级约束（PRIMARY KEY(...)/FOREIGN KEY/UNIQUE KEY/CONSTRAINT/CHECK/INDEX）自动忽略。
-pub fn import_ddl(root: &Path, group: &str, ddl: &str) -> Result<ObjectImportResult, String> {
-    let mut store = list_objects(root)?;
+pub fn import_ddl_impl(root: &Path, group: &str, ddl: &str) -> Result<ObjectImportResult, String> {
+    let mut store = list_objects_impl(root)?;
     let mut created: Vec<String> = Vec::new();
     let mut reused: Vec<String> = Vec::new();
     let mut generated: Vec<ObjectDef> = Vec::new();
@@ -645,7 +645,7 @@ pub fn import_ddl(root: &Path, group: &str, ddl: &str) -> Result<ObjectImportRes
     }
     if !generated.is_empty() {
         store.objects.extend(generated.clone());
-        save_objects(root, &store)?;
+        save_objects_impl(root, &store)?;
     }
     Ok(ObjectImportResult {
         objects: generated,
@@ -1022,7 +1022,7 @@ fn capitalize(s: &str) -> String {
 /// 统计每个对象被接口文档引用的数量与接口列表。
 /// 遍历工作区接口 json（排除 .history/.examples/.object/.versions/__info.json 等隐藏目录），
 /// 通过 docParams 的 objectName（Object 类型）匹配对象名。
-pub fn object_usage(root: &Path, store: &ObjectStore) -> Result<Vec<ObjectUsageItem>, String> {
+pub fn object_usage_impl(root: &Path, store: &ObjectStore) -> Result<Vec<ObjectUsageItem>, String> {
     let mut by_name: HashMap<String, Vec<ObjectUsageApi>> = HashMap::new();
 
     // 递归收集 docParams 中的 objectName 引用
@@ -1220,7 +1220,7 @@ mod tests {
     fn test_import_json_nested_and_reuse() {
         let root = tmpdir("import");
         let json = r#"{"name":"alice","age":18,"addr":{"city":"bj","zip":"100000"},"tags":["a","b"],"orders":[{"id":1}]}"#;
-        let res = import_json_object(&root, "User", "g1", json).unwrap();
+        let res = import_json_object_impl(&root, "User", "g1", json).unwrap();
         // 顶层 User + 嵌套 Addr + 嵌套 OrdersItem
         assert_eq!(res.objects.len(), 3, "应有 User/Addr/OrdersItem 三个对象");
         assert_eq!(res.created.len(), 3);
@@ -1240,21 +1240,21 @@ mod tests {
         assert_eq!(orders_prop.item_kind, "Object");
 
         // 第二次导入相同结构：全部复用
-        let res2 = import_json_object(&root, "User2", "g2", json).unwrap();
+        let res2 = import_json_object_impl(&root, "User2", "g2", json).unwrap();
         assert_eq!(res2.created.len(), 0, "相同结构应复用");
         assert_eq!(res2.reused.len(), 3);
         assert_eq!(res2.objects.len(), 0, "复用时不重建对象");
         // top_hash 指向已存在的顶层对象（User 或 User2，结构相同 hash 相同）
-        let store = list_objects(&root).unwrap();
+        let store = list_objects_impl(&root).unwrap();
         assert!(store.objects.iter().any(|o| o.hash == res2.top_hash), "top_hash 应在 store 中");
     }
 
     #[test]
     fn test_import_json_invalid() {
         let root = tmpdir("invalid");
-        let r = import_json_object(&root, "X", "", "{bad");
+        let r = import_json_object_impl(&root, "X", "", "{bad");
         assert!(r.is_err());
-        let r2 = import_json_object(&root, "X", "", "[1,2,3]");
+        let r2 = import_json_object_impl(&root, "X", "", "[1,2,3]");
         assert!(r2.is_err(), "顶层数组应报错");
     }
 
@@ -1315,18 +1315,18 @@ CREATE TABLE IF NOT EXISTS public.orders (
     fn test_import_ddl_creates_and_reuses() {
         let root = tmpdir("ddl");
         let ddl = "CREATE TABLE t_user (id INT NOT NULL, name VARCHAR(50));";
-        let res = import_ddl(&root, "db", ddl).unwrap();
+        let res = import_ddl_impl(&root, "db", ddl).unwrap();
         assert_eq!(res.created.len(), 1);
         assert_eq!(res.objects[0].name, "t_user");
         assert_eq!(res.objects[0].group, "db");
         assert_eq!(res.objects[0].properties.len(), 2);
         // 相同结构再次导入 → 复用
-        let res2 = import_ddl(&root, "db", ddl).unwrap();
+        let res2 = import_ddl_impl(&root, "db", ddl).unwrap();
         assert_eq!(res2.created.len(), 0);
         assert_eq!(res2.reused.len(), 1);
         // 多表
         let ddl2 = "CREATE TABLE a (x INT);\nCREATE TABLE b (y VARCHAR(10) NOT NULL);";
-        let res3 = import_ddl(&root, "", ddl2).unwrap();
+        let res3 = import_ddl_impl(&root, "", ddl2).unwrap();
         assert_eq!(res3.created.len(), 2);
     }
 
@@ -1342,7 +1342,7 @@ CREATE TABLE `my_users` (
   CONSTRAINT pk PRIMARY KEY (`first name`)
 );
 "#;
-        let res = import_ddl(&root, "", ddl).unwrap();
+        let res = import_ddl_impl(&root, "", ddl).unwrap();
         assert_eq!(res.created.len(), 1);
         let o = &res.objects[0];
         assert_eq!(o.name, "my_users", "反引号表名应清洗");
@@ -1364,8 +1364,8 @@ CREATE TABLE `my_users` (
             ..Default::default()
         };
         store.objects.push(o.clone());
-        save_objects(&root, &store).unwrap();
-        let loaded = list_objects(&root).unwrap();
+        save_objects_impl(&root, &store).unwrap();
+        let loaded = list_objects_impl(&root).unwrap();
         assert_eq!(loaded.objects[0].hash, object_hash(&o.properties));
         assert_ne!(loaded.objects[0].hash, "stale");
     }
@@ -1376,8 +1376,8 @@ CREATE TABLE `my_users` (
         let mut store = ObjectStore::default();
         store.groups.push(ObjectGroup { id: "用户管理".into(), name: "用户管理".into(), deprecated: true });
         store.groups.push(ObjectGroup { id: "订单/明细".into(), name: "明细".into(), deprecated: false });
-        save_objects(&root, &store).unwrap();
-        let loaded = list_objects(&root).unwrap();
+        save_objects_impl(&root, &store).unwrap();
+        let loaded = list_objects_impl(&root).unwrap();
         let user = loaded.groups.iter().find(|g| g.id == "用户管理").unwrap();
         assert!(user.deprecated, "已废弃标记应持久化到 __info_obj.json 并回读");
         let detail = loaded.groups.iter().find(|g| g.id == "订单/明细").unwrap();
@@ -1429,7 +1429,7 @@ CREATE TABLE `my_users` (
             created_at: 1,
             updated_at: 2,
         });
-        save_objects(&root, &store).unwrap();
+        save_objects_impl(&root, &store).unwrap();
 
         let base = root.join(".object");
         assert!(base.join("__info_obj.json").exists(), "应有分组信息文件");
@@ -1437,7 +1437,7 @@ CREATE TABLE `my_users` (
         assert!(base.join("订单").join("明细").join("OrderItem.obj.json").exists(), "多级分组 = 嵌套目录");
         assert!(base.join("Plain.obj.json").exists(), "未分组对象在根目录");
 
-        let loaded = list_objects(&root).unwrap();
+        let loaded = list_objects_impl(&root).unwrap();
         // 目录即分组：用户管理 + 订单（父级）+ 订单/明细（子级）
         assert_eq!(loaded.groups.len(), 3);
         assert_eq!(loaded.objects.len(), 3);
@@ -1450,7 +1450,7 @@ CREATE TABLE `my_users` (
 
         // 全量重建：删除一个对象后再保存，旧文件不残留
         store.objects.retain(|o| o.name != "User");
-        save_objects(&root, &store).unwrap();
+        save_objects_impl(&root, &store).unwrap();
         assert!(!base.join("用户管理").join("User.obj.json").exists(), "删除对象后旧文件应清除");
     }
 
@@ -1534,7 +1534,7 @@ CREATE TABLE `my_users` (
         });
         std::fs::write(dir.join("Parent.obj.json"), serde_json::to_string(&old_parent).unwrap()).unwrap();
 
-        let store = list_objects(&root).unwrap();
+        let store = list_objects_impl(&root).unwrap();
         assert_eq!(store.objects.len(), 2);
         let parent = store.objects.iter().find(|o| o.name == "Parent").unwrap();
         let child = store.objects.iter().find(|o| o.name == "Child").unwrap();
@@ -1568,7 +1568,7 @@ CREATE TABLE `my_users` (
                 updated_at: 2,
             });
         }
-        let err = save_objects(&root, &store).unwrap_err();
+        let err = save_objects_impl(&root, &store).unwrap_err();
         assert!(err.contains("重复对象"), "应提示重复对象：{err}");
 
         // 调整其中一个的结构后可以保存
@@ -1577,16 +1577,185 @@ CREATE TABLE `my_users` (
             kind: "String".into(),
             ..Default::default()
         }];
-        save_objects(&root, &store).unwrap();
-        let loaded = list_objects(&root).unwrap();
+        save_objects_impl(&root, &store).unwrap();
+        let loaded = list_objects_impl(&root).unwrap();
         assert_eq!(loaded.objects.len(), 2);
         assert_ne!(loaded.objects[0].hash, loaded.objects[1].hash);
 
         // 按 uuid 删除一个，另一个保留
         store.objects.retain(|o| o.uuid != "dddddddddddddddddddddddddddddddd");
-        save_objects(&root, &store).unwrap();
-        let loaded = list_objects(&root).unwrap();
+        save_objects_impl(&root, &store).unwrap();
+        let loaded = list_objects_impl(&root).unwrap();
         assert_eq!(loaded.objects.len(), 1);
         assert_eq!(loaded.objects[0].name, "对象eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
     }
+}
+
+use crate::{workspace_root, WorkspaceState};
+use tauri::State;
+
+
+/// 列出对象存储（分组 + 对象定义）
+#[tauri::command]
+pub(crate) fn list_objects(
+    state: State<'_, WorkspaceState>,
+) -> Result<ObjectStore, String> {
+    let root = workspace_root(&state)?;
+    list_objects_impl(&root)
+}
+
+/// 保存对象存储（整体覆盖写）
+#[tauri::command]
+pub(crate) fn save_objects(
+    state: State<'_, WorkspaceState>,
+    store: ObjectStore,
+) -> Result<String, String> {
+    let root = workspace_root(&state)?;
+    save_objects_impl(&root, &store)
+}
+
+/// 数据生成结果
+#[derive(serde::Serialize)]
+pub(crate) struct GenDataResult {
+    file: String,
+    dir: String,
+    count: usize,
+    elapsed_ms: u64,
+}
+
+/// 数据生成提交的属性配置（写入日志）
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct GenPropItem {
+    key: String,
+    kind: String,
+    mock: String,
+    enabled: bool,
+    #[serde(default)]
+    desc: Option<String>,
+}
+
+/// 单条生成记录（.gen_log/<时间戳>_<object-uuid>.json）
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct GenLogItem {
+    file: String,
+    time: i64,
+    time_str: String,
+    object_uuid: String,
+    object_name: String,
+    dir: String,
+    format: String,
+    table: String,
+    count: usize,
+    elapsed_ms: u64,
+    props: Vec<GenPropItem>,
+}
+
+/// 写入生成的数据文件，并在工作区 .gen_log/<时间戳>_<object-uuid>.json 保存一条生成记录
+/// （含提交的数据与耗时）。
+#[tauri::command]
+pub(crate) fn gen_data(
+    state: State<'_, WorkspaceState>,
+    dir: String,
+    file_name: String,
+    content: String,
+    format: String,
+    table: String,
+    count: usize,
+    elapsed_ms: u64,
+    object_uuid: String,
+    object_name: String,
+    props: Vec<GenPropItem>,
+) -> Result<GenDataResult, String> {
+    let dir_path = std::path::Path::new(&dir);
+    if !dir_path.is_dir() {
+        return Err(format!("导出目录不存在: {dir}"));
+    }
+    let path = dir_path.join(&file_name);
+    std::fs::write(&path, content).map_err(|e| format!("写入文件失败: {e}"))?;
+
+    // 生成记录：工作区根 .gen_log/<时间戳>_<object-uuid>.json（每条记录一个文件）
+    let root = workspace_root(&state)?;
+    let log_dir = root.join(".gen_log");
+    std::fs::create_dir_all(&log_dir).map_err(|e| format!("创建 .gen_log 失败: {e}"))?;
+    let ts = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
+    let log_path = log_dir.join(format!("{ts}_{object_uuid}.json"));
+    let record = GenLogItem {
+        file: file_name.clone(),
+        time: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0),
+        time_str: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+        object_uuid,
+        object_name,
+        dir: dir.clone(),
+        format,
+        table,
+        count,
+        elapsed_ms,
+        props,
+    };
+    let text = serde_json::to_string_pretty(&record).map_err(|e| format!("序列化生成记录失败: {e}"))?;
+    std::fs::write(&log_path, text).map_err(|e| format!("写入生成记录失败: {e}"))?;
+
+    Ok(GenDataResult { file: file_name, dir, count, elapsed_ms })
+}
+
+/// 读取 .gen_log 下全部生成记录（按时间倒序）。
+#[tauri::command]
+pub(crate) fn list_gen_logs(
+    state: State<'_, WorkspaceState>,
+) -> Result<Vec<GenLogItem>, String> {
+    let root = workspace_root(&state)?;
+    let log_dir = root.join(".gen_log");
+    if !log_dir.is_dir() {
+        return Ok(vec![]);
+    }
+    let mut items: Vec<GenLogItem> = vec![];
+    let read = std::fs::read_dir(&log_dir).map_err(|e| format!("读取 .gen_log 失败: {e}"))?;
+    for entry in read.flatten() {
+        let p = entry.path();
+        if p.extension().and_then(|e| e.to_str()) == Some("json") {
+            if let Ok(t) = std::fs::read_to_string(&p) {
+                if let Ok(v) = serde_json::from_str::<GenLogItem>(&t) {
+                    items.push(v);
+                }
+            }
+        }
+    }
+    items.sort_by(|a, b| b.time.cmp(&a.time));
+    Ok(items)
+}
+
+/// 从 JSON 文本生成对象（嵌套 object 提取为独立对象，hash 相同则复用已有对象）
+#[tauri::command]
+pub(crate) fn import_json_object(
+    state: State<'_, WorkspaceState>,
+    name: String,
+    group: String,
+    json: String,
+) -> Result<ObjectImportResult, String> {
+    let root = workspace_root(&state)?;
+    import_json_object_impl(&root, &name, &group, &json)
+}
+
+/// 从 SQL CREATE TABLE 建表语句生成对象（每个表一个对象）
+#[tauri::command]
+pub(crate) fn import_ddl(
+    state: State<'_, WorkspaceState>,
+    group: String,
+    ddl: String,
+) -> Result<ObjectImportResult, String> {
+    let root = workspace_root(&state)?;
+    import_ddl_impl(&root, &group, &ddl)
+}
+
+/// 对象被接口文档引用的统计（接口数量 + 引用接口列表）
+#[tauri::command]
+pub(crate) fn object_usage(
+    state: State<'_, WorkspaceState>,
+    store: ObjectStore,
+) -> Result<Vec<ObjectUsageItem>, String> {
+    let root = workspace_root(&state)?;
+    object_usage_impl(&root, &store)
 }

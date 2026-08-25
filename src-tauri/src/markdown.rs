@@ -2,6 +2,7 @@
 //! 导出与导入格式自洽，保证「查看 Markdown → 保存 → 再导入」能完整还原接口。
 
 use crate::{ApiFile, BodyData, DocParam, KeyValue, MockConfig};
+use serde::Serialize;
 use serde_json::Value;
 use std::fmt::Write as _;
 
@@ -1595,4 +1596,137 @@ mod tests {
         assert_eq!(data.children[0].key, "name");
         assert_eq!(data.children[0].description, "姓名");
     }
+}
+
+use crate::{export, read_api, read_info_file, sanitize_filename, unique_path, workspace_root, WorkspaceState};
+use std::fs;
+use std::path::Path;
+use tauri::{AppHandle, State};
+
+/// 接口 Markdown 文档（供前端预览）
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarkdownDoc {
+    name: String,
+    md: String,
+    html: String,
+}
+
+/// 从接口文件路径推导分组名（父目录名；接口直接在工作区根目录下时为空）
+fn group_of(path: &str, root: &str) -> String {
+    let parent = Path::new(path).parent().unwrap_or(Path::new(""));
+    let norm = |p: &str| p.trim_end_matches(['/', '\\']).trim_end_matches('/').to_string();
+    if norm(&parent.to_string_lossy()) == norm(root) {
+        return String::new();
+    }
+    parent
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default()
+}
+
+/// 将任意 Markdown 文本渲染为 HTML 片段（用于接口描述预览）
+#[tauri::command]
+pub(crate) fn render_markdown(text: String) -> String {
+    md_to_html(&text)
+}
+
+/// 渲染接口的 Markdown 文档（含 HTML 预览版）
+#[tauri::command]
+pub(crate) fn render_api_markdown(state: State<'_, WorkspaceState>, path: String) -> Result<MarkdownDoc, String> {
+    let root = workspace_root(&state)?;
+    let group = group_of(&path, &root.to_string_lossy());
+    let api = read_api(path)?;
+    let md = render(&api, &group, false);
+    let html = md_to_html(&md);
+    Ok(MarkdownDoc { name: api.name, md, html })
+}
+
+/// 生成分组（含其下全部子分组/接口）的单个 Markdown：返回 (分组名, markdown)
+pub(crate) fn group_markdown_doc(root: &Path, path: &str) -> Result<(String, String), String> {
+    let apis = export::collect_apis(root, &[path.to_string()])?;
+    if apis.is_empty() {
+        return Err("所选内容中没有接口".into());
+    }
+    let name = read_info_file(Path::new(path))
+        .name
+        .filter(|n| !n.trim().is_empty())
+        .unwrap_or_else(|| {
+            Path::new(path)
+                .file_name()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_default()
+        });
+    let md = export::markdown_single_file(&name, &apis);
+    Ok((name, md))
+}
+
+/// 渲染分组（含其下全部子分组/接口）为单个 Markdown 文档
+#[tauri::command]
+pub(crate) fn render_group_markdown(state: State<'_, WorkspaceState>, path: String) -> Result<MarkdownDoc, String> {
+    let root = workspace_root(&state)?;
+    let (name, md) = group_markdown_doc(&root, &path)?;
+    let html = md_to_html(&md);
+    Ok(MarkdownDoc { name, md, html })
+}
+
+/// 导出接口 Markdown / HTML：弹出目录选择框，写入 <接口名>.md 或 <接口名>.html
+#[tauri::command]
+pub(crate) fn export_api_markdown(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+    path: String,
+    format: String,
+    nav: String,
+) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let root = workspace_root(&state)?;
+    // 分组（目录）走分组 Markdown；接口文件走单接口 Markdown
+    let (name, md) = if Path::new(&path).is_dir() {
+        group_markdown_doc(&root, &path)?
+    } else {
+        let group = group_of(&path, &root.to_string_lossy());
+        let api = read_api(path)?;
+        (api.name.clone(), render(&api, &group, false))
+    };
+    let fmt = if format.eq_ignore_ascii_case("html") { "html" } else { "md" };
+    let picked = app
+        .dialog()
+        .file()
+        .set_title("选择保存目录")
+        .blocking_pick_folder();
+    let Some(dir) = picked else {
+        return Ok(None);
+    };
+    let dir = dir.into_path().map_err(|e| e.to_string())?;
+    let base = sanitize_filename(&name);
+    let base = if base.trim().is_empty() {
+        "未命名文档".to_string()
+    } else {
+        base
+    };
+    let target = unique_path(&dir, &base, &format!(".{fmt}"));
+    let content = if fmt == "html" {
+        wrap_html(&name, &md, &nav)
+    } else {
+        md
+    };
+    fs::write(&target, content).map_err(|e| format!("写入失败: {e}"))?;
+    Ok(Some(target.to_string_lossy().to_string()))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarkdownImportResult {
+    pub folder: String,
+    pub count: usize,
+    /// 导入统计（http / ws / graphql / socketio）
+    #[serde(default)]
+    pub http: usize,
+    #[serde(default)]
+    pub ws: usize,
+    #[serde(default)]
+    pub graphql: usize,
+    #[serde(default)]
+    pub socketio: usize,
 }

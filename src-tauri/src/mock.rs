@@ -175,7 +175,7 @@ pub fn valid_mock_name(name: &str) -> Result<String, String> {
 }
 
 /// 列出 .mock 目录下所有自定义占位符（按标识排序）
-pub fn list_custom_mocks(root: &Path) -> Vec<CustomMock> {
+pub fn list_custom_mocks_impl(root: &Path) -> Vec<CustomMock> {
     let dir = mock_dir(root);
     let mut out = Vec::new();
     if let Ok(entries) = fs::read_dir(&dir) {
@@ -232,7 +232,7 @@ fn parse_custom_mock(content: &str, file_name: &str) -> Option<CustomMock> {
 }
 
 /// 保存自定义占位符：写入 .mock/<name>.js；old_name 与 name 不同时视为重命名，删除旧文件
-pub fn save_custom_mock(root: &Path, input: &CustomMock, old_name: Option<&str>) -> Result<(), String> {
+pub fn save_custom_mock_impl(root: &Path, input: &CustomMock, old_name: Option<&str>) -> Result<(), String> {
     let name = valid_mock_name(&input.name)?;
     if input.code.trim().is_empty() {
         return Err("占位符代码不能为空".to_string());
@@ -259,7 +259,7 @@ pub fn save_custom_mock(root: &Path, input: &CustomMock, old_name: Option<&str>)
 }
 
 /// 删除自定义占位符文件
-pub fn delete_custom_mock(root: &Path, name: &str) -> Result<(), String> {
+pub fn delete_custom_mock_impl(root: &Path, name: &str) -> Result<(), String> {
     let n = valid_mock_name(name)?;
     let dir = mock_dir(root);
     let path = dir.join(format!("{n}.js"));
@@ -602,22 +602,22 @@ mod tests {
         std::fs::create_dir_all(&d).unwrap();
 
         // 空目录 → 空列表
-        assert!(list_custom_mocks(&d).is_empty());
+        assert!(list_custom_mocks_impl(&d).is_empty());
 
         // 保存两个占位符
-        save_custom_mock(
+        save_custom_mock_impl(
             &d,
             &CustomMock { name: "cusId".into(), enabled: true, desc: "自定义ID".into(), code: "(ctx) => 'CUS-' + ctx.randInt(1, 9)".into() },
             None,
         )
         .unwrap();
-        save_custom_mock(
+        save_custom_mock_impl(
             &d,
             &CustomMock { name: "cusTime".into(), enabled: false, desc: "自定义时间".into(), code: "(ctx) => 'T'".into() },
             None,
         )
         .unwrap();
-        let list = list_custom_mocks(&d);
+        let list = list_custom_mocks_impl(&d);
         assert_eq!(list.len(), 2);
         let cus_id = list.iter().find(|m| m.name == "cusId").unwrap();
         assert!(cus_id.enabled);
@@ -627,33 +627,33 @@ mod tests {
         assert!(!cus_time.enabled);
 
         // 重命名：old_name 指向旧名，旧文件被删除
-        save_custom_mock(
+        save_custom_mock_impl(
             &d,
             &CustomMock { name: "cusUid".into(), enabled: true, desc: "改名".into(), code: "(ctx) => 'U'".into() },
             Some("cusId"),
         )
         .unwrap();
-        let list = list_custom_mocks(&d);
+        let list = list_custom_mocks_impl(&d);
         assert_eq!(list.len(), 2);
         assert!(list.iter().any(|m| m.name == "cusUid"));
         assert!(!list.iter().any(|m| m.name == "cusId"));
 
         // 与内置 mock.js 冲突
-        let r = save_custom_mock(&d, &CustomMock { name: "cname".into(), enabled: true, desc: "".into(), code: "x".into() }, None);
+        let r = save_custom_mock_impl(&d, &CustomMock { name: "cname".into(), enabled: true, desc: "".into(), code: "x".into() }, None);
         assert!(r.is_err());
         // 重复名称
-        let r2 = save_custom_mock(&d, &CustomMock { name: "cusUid".into(), enabled: true, desc: "".into(), code: "y".into() }, None);
+        let r2 = save_custom_mock_impl(&d, &CustomMock { name: "cusUid".into(), enabled: true, desc: "".into(), code: "y".into() }, None);
         assert!(r2.is_err());
         // 非法名称
-        let r3 = save_custom_mock(&d, &CustomMock { name: "1bad".into(), enabled: true, desc: "".into(), code: "y".into() }, None);
+        let r3 = save_custom_mock_impl(&d, &CustomMock { name: "1bad".into(), enabled: true, desc: "".into(), code: "y".into() }, None);
         assert!(r3.is_err());
         // 空代码
-        let r4 = save_custom_mock(&d, &CustomMock { name: "ok".into(), enabled: true, desc: "".into(), code: " ".into() }, None);
+        let r4 = save_custom_mock_impl(&d, &CustomMock { name: "ok".into(), enabled: true, desc: "".into(), code: " ".into() }, None);
         assert!(r4.is_err());
 
         // 删除
-        delete_custom_mock(&d, "cusTime").unwrap();
-        let list = list_custom_mocks(&d);
+        delete_custom_mock_impl(&d, "cusTime").unwrap();
+        let list = list_custom_mocks_impl(&d);
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].name, "cusUid");
 
@@ -675,4 +675,59 @@ mod tests {
         assert!(out.contains("{{path}}")); // 保留
         assert!(out.contains("{{path.id}}")); // 保留
     }
+}
+
+use crate::tray::update_tray_mock_item;
+use crate::{workspace_root, WorkspaceState};
+use tauri::State;
+
+
+#[tauri::command]
+pub(crate) async fn mock_start(app: AppHandle, port: u16) -> Result<MockStatus, String> {
+    let res = start_mock(&app, port).await;
+    update_tray_mock_item(&app);
+    res
+}
+
+#[tauri::command]
+pub(crate) async fn mock_stop(app: AppHandle) -> Result<MockStatus, String> {
+    stop_mock(&app);
+    update_tray_mock_item(&app);
+    Ok(status(&app))
+}
+
+#[tauri::command]
+pub(crate) async fn mock_status(app: AppHandle) -> Result<MockStatus, String> {
+    Ok(status(&app))
+}
+
+#[tauri::command]
+pub(crate) async fn mock_reload(app: AppHandle) -> Result<MockStatus, String> {
+    reload_mock(&app)?;
+    Ok(status(&app))
+}
+
+
+#[tauri::command]
+pub(crate) fn list_custom_mocks(
+    state: State<'_, WorkspaceState>,
+) -> Result<Vec<CustomMock>, String> {
+    let root = workspace_root(&state)?;
+    Ok(list_custom_mocks_impl(&root))
+}
+
+#[tauri::command]
+pub(crate) fn save_custom_mock(
+    state: State<'_, WorkspaceState>,
+    input: CustomMock,
+    old_name: Option<String>,
+) -> Result<(), String> {
+    let root = workspace_root(&state)?;
+    save_custom_mock_impl(&root, &input, old_name.as_deref())
+}
+
+#[tauri::command]
+pub(crate) fn delete_custom_mock(state: State<'_, WorkspaceState>, name: String) -> Result<(), String> {
+    let root = workspace_root(&state)?;
+    delete_custom_mock_impl(&root, &name)
 }

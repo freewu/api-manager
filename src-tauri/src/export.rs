@@ -1,6 +1,7 @@
 //! 导出：Postman Collection v2.1 / OpenAPI 3.0 / Docsify 文档目录。
 //! 收集选中路径（接口或分组）下的全部接口，按格式生成内容。
 
+use crate::markdown;
 use crate::{read_api, read_info_file, sanitize_filename, ApiFile, KeyValue, ENV_FILE, INFO_FILE};
 use serde_json::{json, Map, Value};
 use std::collections::BTreeMap;
@@ -3505,4 +3506,307 @@ pub fn export_extra(
     };
     let content = serde_json::to_string_pretty(&val).map_err(|e| format!("序列化失败: {e}"))?;
     Ok((content, fname.to_string(), ext.to_string()))
+}
+
+use crate::{workspace_root, WorkspaceState};
+use tauri::{AppHandle, State};
+
+/// 导出选中接口/分组为 Postman / OpenAPI / Docsify 格式：弹窗选择保存位置并写入
+#[tauri::command]
+pub(crate) fn export_selection(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+    paths: Vec<String>,
+    format: String,
+    nav: String,
+) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let root = workspace_root(&state)?;
+    let apis = collect_apis(&root, &paths)?;
+    if apis.is_empty() {
+        return Err("所选内容中没有接口".into());
+    }
+    match format.as_str() {
+        "postman" => {
+            let v = to_postman(&apis);
+            let content = serde_json::to_string_pretty(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 Postman Collection")
+                .set_file_name("api-collection.postman_collection.json")
+                .add_filter("Postman Collection", &["json"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "openapi" => {
+            let ws_name = read_info_file(&root).name.unwrap_or_default();
+            let v = to_openapi(&ws_name, &apis);
+            let content = serde_json::to_string_pretty(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 OpenAPI 规范")
+                .set_file_name("openapi.json")
+                .add_filter("OpenAPI", &["json"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "apifox" => {
+            let v = to_apifox(&apis);
+            let content = serde_json::to_string_pretty(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 Apifox 项目")
+                .set_file_name("apifox-project.json")
+                .add_filter("Apifox 项目", &["json"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "apipost" => {
+            let v = to_apipost(&apis);
+            let content = serde_json::to_string_pretty(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 Apipost 项目")
+                .set_file_name("apipost-project.json")
+                .add_filter("Apipost 项目", &["json"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "raml" => {
+            let v = to_raml(&apis);
+            let content =
+                serde_yaml::to_string(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 RAML")
+                .set_file_name("api.raml")
+                .add_filter("RAML", &["raml"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "wadl" => {
+            let content = to_wadl(&apis);
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 WADL")
+                .set_file_name("api.wadl")
+                .add_filter("WADL", &["wadl"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "yapi" => {
+            let v = to_yapi(&apis);
+            let content = serde_json::to_string_pretty(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 YApi")
+                .set_file_name("yapi-project.json")
+                .add_filter("YApi 项目", &["json"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "eolink" => {
+            let v = to_eolink(&apis);
+            let content = serde_json::to_string_pretty(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 Eolink")
+                .set_file_name("eolink-project.json")
+                .add_filter("Eolink 项目", &["json"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "insomnia" => {
+            let v = to_insomnia(&apis);
+            let content = serde_yaml::to_string(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 Insomnia")
+                .set_file_name("insomnia-collection.yml")
+                .add_filter("Insomnia", &["yml", "yaml"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "jmeter" => {
+            let content = to_jmeter(&apis);
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 JMeter")
+                .set_file_name("api-test.jmx")
+                .add_filter("JMeter 测试计划", &["jmx"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "apidoc" => {
+            let (proj, data) = to_apidoc(&apis);
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("导出 apiDoc")
+                .set_file_name("api_project.json")
+                .add_filter("apiDoc", &["json"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            let dir = path.parent().unwrap_or(Path::new("."));
+            let proj_json = serde_json::to_string_pretty(&proj).map_err(|e| format!("序列化失败: {e}"))?;
+            let data_json = serde_json::to_string_pretty(&data).map_err(|e| format!("序列化失败: {e}"))?;
+            fs::write(&path, proj_json).map_err(|e| format!("写入失败: {e}"))?;
+            let data_path = dir.join("api_data.json");
+            fs::write(&data_path, data_json).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "apidog" | "bruno" | "apizza" | "nei" | "doclever" | "io-docs" | "easydoc" | "docway" | "hoppscotch" | "metersphere" | "rap2-project" | "rap2-single" => {
+            let (content, fname, ext) = export_extra(&apis, &format)?;
+            let title = match format.as_str() {
+                "apidog" => "导出 apiDog",
+                "bruno" => "导出 Bruno",
+                "apizza" => "导出 Apizza",
+                "nei" => "导出 NEI",
+                "doclever" => "导出 DOClever",
+                "io-docs" => "导出 IO-Docs",
+                "easydoc" => "导出 EasyDoc",
+                "docway" => "导出 DocWay",
+                "hoppscotch" => "导出 Hoppscotch",
+                "rap2-project" => "导出 RAP2 项目",
+                _ => "导出 RAP2 单接口",
+            };
+            let picked = app
+                .dialog()
+                .file()
+                .set_title(title)
+                .set_file_name(format!("{fname}.{ext}"))
+                .add_filter(title, &["json", "mjson"])
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        "docsify" => {
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("选择 Docsify 文档目录")
+                .blocking_pick_folder();
+            let Some(dir) = picked else {
+                return Ok(None);
+            };
+            let dir = dir.into_path().map_err(|e| e.to_string())?;
+            let files = docsify_files(&apis);
+            for (rel, content) in &files {
+                let target = dir.join(rel);
+                if let Some(parent) = target.parent() {
+                    fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {e}"))?;
+                }
+                fs::write(&target, content).map_err(|e| format!("写入失败: {e}"))?;
+            }
+            Ok(Some(dir.to_string_lossy().to_string()))
+        }
+        "markdown" | "html" => {
+            // 单个 Markdown 文件（html 由该 Markdown 渲染生成）：含全部选中接口
+            let title = read_info_file(&root).name.unwrap_or_default();
+            let title = if title.trim().is_empty() {
+                "接口文档".to_string()
+            } else {
+                title.trim().to_string()
+            };
+            let md = markdown_single_file(&title, &apis);
+            let is_html = format == "html";
+            let picked = app
+                .dialog()
+                .file()
+                .set_title(if is_html {
+                    "导出 HTML 文档"
+                } else {
+                    "导出 Markdown 文档"
+                })
+                .set_file_name(if is_html {
+                    "api-docs.html"
+                } else {
+                    "接口文档.md"
+                })
+                .add_filter(
+                    if is_html { "HTML" } else { "Markdown" },
+                    if is_html { &["html"] } else { &["md"] },
+                )
+                .blocking_save_file();
+            let Some(p) = picked else {
+                return Ok(None);
+            };
+            let path = p.into_path().map_err(|e| e.to_string())?;
+            let content = if is_html {
+                markdown::wrap_html(&title, &md, &nav)
+            } else {
+                md
+            };
+            fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
+            Ok(Some(path.to_string_lossy().to_string()))
+        }
+        _ => Err(format!("不支持的导出格式: {format}")),
+    }
 }

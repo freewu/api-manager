@@ -44,10 +44,11 @@ function computeStats(node: TreeNode): Stats {
   let graphqlApis = 0;
 
   // 单次遍历：累计方法分布（仅 HTTP/GraphQL 外的实时与 GraphQL 单独计数）、mock 与废弃接口数（有副作用，只调用一次）
-  const countApis = (n: TreeNode): number => {
+  // 分组被废弃时，其下所有接口一并计为废弃
+  const countApis = (n: TreeNode, parentDeprecated = false): number => {
     if (n.kind === "api") {
       if (n.mockEnabled) mockEnabled++;
-      if (n.deprecated) deprecatedApis++;
+      if (parentDeprecated || n.deprecated) deprecatedApis++;
       if (n.protocol === "websocket") {
         wsApis++;
       } else if (n.protocol === "socketio") {
@@ -62,7 +63,8 @@ function computeStats(node: TreeNode): Stats {
       return 1;
     }
     let c = 0;
-    for (const child of n.children || []) c += countApis(child);
+    const dep = parentDeprecated || n.deprecated;
+    for (const child of n.children || []) c += countApis(child, dep);
     return c;
   };
 
