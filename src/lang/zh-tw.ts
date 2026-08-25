@@ -699,7 +699,7 @@ export const TW: Record<string, string> = {
   "objects.propMockPh": "如 張三 / 18 / 2024-01-01",
   "objects.mockPick": "選擇 mock.js 佔位符",
   "objects.mockPickTitle": "Mock 佔位符",
-  "objects.mockPickCustom": "自定義佔位符",
+  "objects.mockPickCustom": "自定義",
   "objects.mockCatBasic": "基礎",
   "objects.mockCatTime": "時間",
   "objects.mockCatChar": "字元",

@@ -718,7 +718,7 @@ export const ZH: Record<string, string> = {
   "objects.propMockPh": "如 张三 / 18 / 2024-01-01",
   "objects.mockPick": "选择 mock.js 占位符",
   "objects.mockPickTitle": "Mock 占位符",
-  "objects.mockPickCustom": "自定义占位符",
+  "objects.mockPickCustom": "自定义",
   "objects.mockCatBasic": "基础",
   "objects.mockCatTime": "时间",
   "objects.mockCatChar": "字符",

@@ -762,12 +762,27 @@
   min-width: 0;
   overflow: hidden;
 }
+.mock-picker-panel {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  max-height: 60vh;
+  padding: 2px 4px 6px 2px;
+  scroll-behavior: smooth;
+}
+.mock-picker-section {
+  margin-bottom: 16px;
+}
+.mock-picker-section-title {
+  margin: 2px 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
 .mock-picker-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 8px;
-  max-height: 60vh;
-  overflow-y: auto;
   padding: 2px;
 }
 .mock-picker-item {
@@ -800,9 +815,6 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--accent, #4f9cf9);
-}
-.mock-picker-grid.mock-picker-custom {
-  max-height: 30vh;
 }
 .mock-picker-item-custom .mock-picker-value {
   color: var(--accent, #4f9cf9);

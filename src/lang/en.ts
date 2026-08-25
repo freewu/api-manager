@@ -710,7 +710,7 @@ export const EN: Record<string, string> = {
   "objects.propMockPh": "e.g. Alice / 18 / 2024-01-01",
   "objects.mockPick": "Pick a mock.js placeholder",
   "objects.mockPickTitle": "Mock placeholders",
-  "objects.mockPickCustom": "Custom placeholders",
+  "objects.mockPickCustom": "Custom",
   "objects.mockCatBasic": "Basic",
   "objects.mockCatTime": "Time",
   "objects.mockCatChar": "Text",

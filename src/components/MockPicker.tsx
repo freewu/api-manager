@@ -77,7 +77,7 @@ interface MockPickerProps {
   onClose: () => void;
 }
 
-/** 选择 mock.js 占位符的弹窗：左侧类型分类（基础/时间/字符/数字/自定义），右侧展示对应占位符 */
+/** 选择 mock.js 占位符的弹窗：左侧分类导航（基础/时间/字符/数字/自定义），右侧滚动切换对应占位符 */
 export default function MockPicker({ onPick, onClose }: MockPickerProps) {
   const t = useT();
   const [customs, setCustoms] = useState<CustomMock[]>([]);
@@ -102,10 +102,33 @@ export default function MockPicker({ onPick, onClose }: MockPickerProps) {
     ...MOCK_PLACEHOLDER_GROUPS.map((g) => g.cat),
     ...(activeCustoms.length > 0 ? ["custom"] : []),
   ];
-  const items =
-    activeCat === "custom"
-      ? activeCustoms.map((c) => ({ value: `@${c.name}`, desc: c.desc || "—", custom: true }))
-      : MOCK_PLACEHOLDER_GROUPS.find((g) => g.cat === activeCat)?.items ?? [];
+  // 点击导航 -> 平滑滚动到对应分类
+  const scrollTo = (cat: string) => {
+    setActiveCat(cat);
+    document
+      .getElementById("mock-picker-" + cat)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  // 滚动监听：面板顶部附近的分区高亮对应导航项（scroll-spy，同设置页）
+  const catsKey = cats.join(",");
+  useEffect(() => {
+    const panel = document.getElementById("mock-picker-panel");
+    if (!panel) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) setActiveCat(e.target.id.replace("mock-picker-", ""));
+        }
+      },
+      { root: panel, rootMargin: "-10% 0px -80% 0px" }
+    );
+    for (const cat of cats) {
+      const el = document.getElementById("mock-picker-" + cat);
+      if (el) obs.observe(el);
+    }
+    return () => obs.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catsKey]);
   return (
     <Modal title={t("objects.mockPickTitle")} onClose={onClose} className="modal-mock" maskClassName="objects-import-mask">
       <div className="mock-picker-layout">
@@ -114,26 +137,37 @@ export default function MockPicker({ onPick, onClose }: MockPickerProps) {
             <button
               key={c}
               className={`mock-picker-cat ${activeCat === c ? "active" : ""}`}
-              onClick={() => setActiveCat(c)}
+              onClick={() => scrollTo(c)}
             >
               {t(CAT_KEYS[c])}
             </button>
           ))}
         </div>
-        <div className="mock-picker-right">
-          <div className="mock-picker-grid">
-            {items.map((m) => (
-              <button
-                key={m.value}
-                className={`mock-picker-item ${m.custom ? "mock-picker-item-custom" : ""}`}
-                onClick={() => onPick(m.value)}
-                title={m.desc}
-              >
-                <span className="mock-picker-value">{m.value}</span>
-                <span className="mock-picker-desc">{m.desc}</span>
-              </button>
-            ))}
-          </div>
+        <div className="mock-picker-panel" id="mock-picker-panel">
+          {cats.map((c) => {
+            const items =
+              c === "custom"
+                ? activeCustoms.map((m) => ({ value: `@${m.name}`, desc: m.desc || "—", custom: true }))
+                : MOCK_PLACEHOLDER_GROUPS.find((g) => g.cat === c)?.items ?? [];
+            return (
+              <section key={c} id={`mock-picker-${c}`} className="mock-picker-section">
+                <div className="mock-picker-section-title">{t(CAT_KEYS[c])}</div>
+                <div className={`mock-picker-grid ${c === "custom" ? "mock-picker-custom" : ""}`}>
+                  {items.map((m) => (
+                    <button
+                      key={m.value}
+                      className={`mock-picker-item ${m.custom ? "mock-picker-item-custom" : ""}`}
+                      onClick={() => onPick(m.value)}
+                      title={m.desc}
+                    >
+                      <span className="mock-picker-value">{m.value}</span>
+                      <span className="mock-picker-desc">{m.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </div>
     </Modal>
