@@ -137,6 +137,9 @@ export default function ObjectsView({
   const [mockPickIndex, setMockPickIndex] = useState<number | null>(null);
   /** 正在选择引用对象的属性下标（null = 未打开） */
   const [refPickIndex, setRefPickIndex] = useState<number | null>(null);
+  /** 生成的 Mock 数据 JSON 文本（非 null = 弹窗展示） */
+  const [genJson, setGenJson] = useState<string | null>(null);
+  const [genCopied, setGenCopied] = useState(false);
   /** Java 展示风格 tab：lombok / native（切换显示，均同时生成） */
   const [javaStyle, setJavaStyle] = useState<"lombok" | "native">("lombok");
   /** Java 双风格代码（lombok / native 同时生成） */
@@ -286,10 +289,6 @@ export default function ObjectsView({
     next.properties[i] = p;
     setDraft(next);
   };
-
-  /** 生成的 Mock 数据 JSON 文本（非 null = 弹窗展示） */
-  const [genJson, setGenJson] = useState<string | null>(null);
-  const [genCopied, setGenCopied] = useState(false);
 
   /** 根据属性配置的 mock 生成一条 JSON 数据（支持 @占位符 / 引用对象 / List 嵌套） */
   const genMockRow = async () => {
