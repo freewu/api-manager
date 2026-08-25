@@ -613,11 +613,13 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                   className="code-area"
                   value={api.body.raw}
                   placeholder={
-                    (isGraphql || api.body.mode === "json")
+                    isGraphql
                       ? '{\n  "query": "query { user(id: 1) { id name } }"\n}'
-                      : api.body.mode === "xml"
-                        ? '<root>\n  <item>value</item>\n</root>'
-                        : t("editor.bodyRaw")
+                      : api.body.mode === "json"
+                        ? '{\n  "key": "value"\n}'
+                        : api.body.mode === "xml"
+                          ? '<root>\n  <item>value</item>\n</root>'
+                          : t("editor.bodyRaw")
                   }
                   onChange={(e) => set({ body: { ...api.body, raw: e.target.value } })}
                   spellCheck={false}
