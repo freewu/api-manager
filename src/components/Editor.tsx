@@ -794,13 +794,20 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               className="code-area"
               value={api.mock.body}
               placeholder={'{\n  "code": 0,\n  "data": null\n}'}
-              onChange={(e) => set({ mock: { ...api.mock, body: e.target.value } })}
-              onKeyUp={(e) => {
-                // 输入 @：弹出占位符选择（mock.js 内置 + 自定义占位符）
-                if (e.key === "@") {
-                  const el = e.target as HTMLTextAreaElement;
-                  const pos = el.selectionStart;
-                  if (pos > 0) setMockAt(pos - 1);
+              onChange={(e) => {
+                const next = e.target.value;
+                const prev = api.mock.body;
+                set({ mock: { ...api.mock, body: next } });
+                // 输入 @：弹出占位符选择。仅当在光标处插入单个 @ 字符时触发
+                // （与输入法/IME 无关，粘贴/删除/自动补全不会误触发）
+                const pos = e.target.selectionStart;
+                if (
+                  pos > 0 &&
+                  next[pos - 1] === "@" &&
+                  next.length === prev.length + 1 &&
+                  next.slice(0, pos) === prev.slice(0, pos - 1)
+                ) {
+                  setMockAt(pos - 1);
                 }
               }}
               spellCheck={false}

@@ -151,3 +151,31 @@
         assert!(out.contains("{{path}}")); // 保留
         assert!(out.contains("{{path.id}}")); // 保留
     }
+// 临时验证脚本（并入 mock_test.rs 运行一次后删除）
+#[test]
+fn test_render_mock_body() {
+    let d = std::env::temp_dir().join(format!("apim-verify-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&d);
+    std::fs::create_dir_all(&d).unwrap();
+    let api = serde_json::json!({
+        "uuid": "u1", "name": "t", "method": "GET", "path": "/api/users/{id}",
+        "url": "", "description": "", "headers": [], "query": [], "params": [],
+        "body": { "mode": "json", "raw": "", "form": [] },
+        "mock": { "enabled": true, "status": 200, "headers": [], "delay": 0,
+                  "body": "{\n  \"code\": 0,\n  \"data\": { \"name\": \"@cname\", \"age\": \"@integer(1,100)\", \"tags|1-2\": [\"a\",\"b\",\"c\"] }\n}" },
+        "examples": [], "responses": [], "docParams": [], "deprecated": false,
+        "protocol": "http"
+    });
+    std::fs::write(d.join("t.json"), serde_json::to_string_pretty(&api).unwrap()).unwrap();
+    let routes = scan_workspace(&d);
+    assert_eq!(routes.len(), 1, "应扫描到 1 条路由");
+    let customs = list_custom_mocks_impl(&d);
+    let out = render_mock_body(&routes[0].body, &customs);
+    eprintln!("RENDERED: {}", out);
+    assert!(out.contains("code"));
+    assert!(out.contains("data"));
+    // 非 JSON body 原样返回
+    let text = render_mock_body("<html>hi @cname</html>", &customs);
+    assert_eq!(text, "<html>hi @cname</html>");
+    let _ = std::fs::remove_dir_all(&d);
+}

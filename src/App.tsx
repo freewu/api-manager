@@ -363,10 +363,12 @@ export default function App() {
       await saveApi(selectedPath, api);
       setDirty(false);
       showToast(t("toast.saved"));
+      // Mock 服务运行中：热重载路由，使 mock tab 的最新配置（enabled/body 等）立即生效
+      await reloadMockIfRunning(mock.running);
     } catch (e) {
       showToast(t("toast.saveFailed", { err: String(e) }));
     }
-  }, [dirty, api, selectedPath, showToast, t]);
+  }, [dirty, api, selectedPath, showToast, t, reloadMockIfRunning, mock.running]);
 
   // 选中接口：切换前自动保存当前接口改动，并清空响应
   const selectNode = useCallback(
@@ -514,7 +516,11 @@ export default function App() {
             onSwitchEnv={(name) => void handleEnvSwitch(name)}
             onOpenEnvValue={() => setEnvValue(true)}
             onOpenEnvModal={() => setEnvModal(true)}
-            onToggleMock={() => void toggleMock()}
+            onToggleMock={async () => {
+              // 启动/停止前先保存当前接口改动，确保 mock 服务按 mock tab 最新配置返回
+              await handleAutoSave();
+              await toggleMock();
+            }}
             onRefresh={async () => {
               await reloadTree(true);
               showToast(t("toast.refreshed"));
