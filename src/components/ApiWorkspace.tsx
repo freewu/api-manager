@@ -1,4 +1,4 @@
-import { ApiFile, HttpResult, ObjectDef, WsLogEntry } from "../types";
+import { ApiFile, HttpResult, ObjectDef, ObjectStore, WsLogEntry } from "../types";
 import { Editor } from "./Editor";
 import { Response } from "./Response";
 import { WsResponse } from "./WsResponse";
@@ -33,6 +33,8 @@ interface Props {
   onWsDisconnect: () => void;
   /** 已定义对象列表（文档页签 Object 类型可引用） */
   objectsList?: ObjectDef[];
+  /** 完整对象仓库（含分组），文档页签 Object 类型弹窗选择对象用（与对象管理一致） */
+  objectsStore?: ObjectStore;
 }
 
 /**
@@ -67,6 +69,7 @@ export function ApiWorkspace({
   wsEntries,
   onWsDisconnect,
   objectsList,
+  objectsStore,
 }: Props) {
   /** 实时类接口（WebSocket / Socket.IO）：右侧渲染为消息编辑 + 实时交互记录 */
   const isWs = api.protocol === "websocket" || api.protocol === "socketio";
@@ -89,6 +92,7 @@ export function ApiWorkspace({
       codegenLang={codegenLang}
       onTabChange={onTabChange}
       objectsList={objectsList}
+      objectsStore={objectsStore}
     />
   );
 

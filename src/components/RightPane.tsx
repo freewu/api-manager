@@ -195,6 +195,7 @@ export function RightPane({
             wsEntries={wsEntries}
             onWsDisconnect={onWsDisconnect}
             objectsList={objectsList}
+            objectsStore={objectsStore}
           />
         ) : (
           <div className="empty-editor" onContextMenu={onEmptyContextMenu}>

@@ -1,10 +1,11 @@
 import { Fragment, lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { ApiFile, BODY_MODES, BodyData, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, ObjectDef, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../types";
+import { ApiFile, BODY_MODES, BodyData, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, ObjectDef, ObjectGroup, ObjectStore, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { ExamplesTab } from "./ExamplesTab";
 import { renderMarkdown } from "../commands";
 import { useT } from "../i18n";
 import { pickFile, listExamples } from "../commands";
+import ObjectRefPicker from "./ObjectRefPicker";
 
 // 代码生成页签：highlight.js 体积较大，按需懒加载（首次打开「代码」页签时才下载）
 const CodeTab = lazy(() => import("./CodeTab").then((m) => ({ default: m.CodeTab })));
@@ -89,9 +90,11 @@ interface Props {
   onTabChange?: (tab: string) => void;
   /** 已定义对象列表（文档页签 Object 类型可引用） */
   objectsList?: ObjectDef[];
+  /** 完整对象仓库（含分组），文档页签 Object 类型弹窗选择对象用（与对象管理一致） */
+  objectsStore?: ObjectStore;
 }
 
-export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, enableMock = true, codegenLang = "bash", onTabChange, currentVersion = 0, exampleVersion = 0, objectsList }: Props) {
+export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, enableMock = true, codegenLang = "bash", onTabChange, currentVersion = 0, exampleVersion = 0, objectsList, objectsStore }: Props) {
   const t = useT();
   /** 是否 WebSocket 接口 */
   const isWs = api.protocol === "websocket";
@@ -774,7 +777,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
 
         {tab === "desc" && <DescEditor value={api.description} onChange={(v) => set({ description: v })} onCommit={onCommit} />}
 
-        {tab === "doc" && <DocParamsEditor api={api} set={set} objectsList={objectsList} />}
+        {tab === "doc" && <DocParamsEditor api={api} set={set} objectsList={objectsList} objectsStore={objectsStore} />}
 
         {tab === "code" && enableCodegen && (
           <Suspense fallback={<div className="tab-loading">{t("examples.loading")}</div>}>
@@ -793,8 +796,21 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
  *  响应分为「请求成功」（从 Mock 响应体 JSON 推导）与「请求失败」（手动添加）两种情况；
  *  字段类型可选 String / Integer / Float / Boolean / List / Object，
  *  List 可再选元素类型，Object 可设置对象名称，下级字段用树状表单表示 */
-function DocParamsEditor({ api, set, objectsList }: { api: ApiFile; set: (p: Partial<ApiFile>) => void; objectsList?: ObjectDef[] }) {
+function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile; set: (p: Partial<ApiFile>) => void; objectsList?: ObjectDef[]; objectsStore?: ObjectStore }) {
   const T = useT();
+  /** 正在选择对象名的文档行（source + keys 路径），null = 未打开 */
+  const [objPick, setObjPick] = useState<{ source: DocSource; keys: string[] } | null>(null);
+  /** 选择弹窗用的对象仓库：优先完整 objectsStore（与对象管理分组一致），否则从对象列表构造 */
+  const pickerStore: ObjectStore | null = useMemo(() => {
+    if (objectsStore) return objectsStore;
+    if (!objectsList || objectsList.length === 0) return null;
+    const groups: ObjectGroup[] = [];
+    for (const o of objectsList) {
+      if (!o.group || groups.some((g) => g.id === o.group)) continue;
+      groups.push({ id: o.group, name: o.group.split("/").pop() || o.group, deprecated: false });
+    }
+    return { groups, objects: objectsList };
+  }, [objectsStore, objectsList]);
   // ---- 树节点（由请求配置 / Mock 响应 JSON 推导） ----
   type RNode = {
     key: string;
@@ -817,8 +833,13 @@ function DocParamsEditor({ api, set, objectsList }: { api: ApiFile; set: (p: Par
       float: "Float",
       double: "Float",
       decimal: "Float",
+      datetime: "Datetime",
+      timestamp: "Datetime",
+      date: "Date",
+      time: "Time",
       bool: "Boolean",
       boolean: "Boolean",
+      any: "Any",
       list: "List",
       array: "List",
       object: "Object",
@@ -1074,20 +1095,15 @@ function DocParamsEditor({ api, set, objectsList }: { api: ApiFile; set: (p: Par
           {showObjectName && (
             <td>
               {isObject &&
-                (objectsList && objectsList.length > 0 ? (
-                  <select
-                    className="doc-name-input doc-object-select"
-                    value={row.objectName}
+                (pickerStore && objectsList && objectsList.length > 0 ? (
+                  <button
+                    className="doc-name-input doc-object-pick"
                     title={T("editor.objectName")}
-                    onChange={(e) => updateName(source, row.keys, e.target.value)}
+                    onClick={() => setObjPick({ source, keys: row.keys })}
                   >
-                    <option value="">—</option>
-                    {objectsList.map((o) => (
-                      <option key={o.hash} value={o.name}>
-                        {o.name}
-                      </option>
-                    ))}
-                  </select>
+                    <span className="doc-object-pick-name">{row.objectName || "—"}</span>
+                    <span className="doc-object-pick-caret">▾</span>
+                  </button>
                 ) : (
                   <input
                     className="doc-name-input"
@@ -1208,6 +1224,24 @@ function DocParamsEditor({ api, set, objectsList }: { api: ApiFile; set: (p: Par
             );
           })}
         </div>
+      )}
+      {objPick && pickerStore && (
+        <ObjectRefPicker
+          store={pickerStore}
+          excludeUuid=""
+          currentHash={
+            (() => {
+              const target = getDocAt(objPick.source, objPick.keys);
+              return (objectsList || []).find((o) => o.name === target?.objectName)?.hash || "";
+            })()
+          }
+          onPick={(hash) => {
+            const o = (objectsList || []).find((x) => x.hash === hash);
+            if (o) updateName(objPick.source, objPick.keys, o.name);
+            setObjPick(null);
+          }}
+          onClose={() => setObjPick(null)}
+        />
       )}
     </div>
   );

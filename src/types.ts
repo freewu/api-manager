@@ -85,7 +85,18 @@ export type DocSource =
   | `resp:${string}`;
 
 /** 接口文档字段类型选项 */
-export const DOC_TYPES = ["String", "Integer", "Float", "Boolean", "List", "Object"];
+export const DOC_TYPES = [
+  "String",
+  "Integer",
+  "Float",
+  "Datetime",
+  "Date",
+  "Time",
+  "Boolean",
+  "List",
+  "Object",
+  "Any",
+];
 
 export interface DocParam {
   source: DocSource;
