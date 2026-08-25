@@ -1039,3 +1039,73 @@
   white-space: pre-wrap;
   word-break: break-all;
 }
+
+/* ============ 导入结果查看弹窗 ============ */
+.modal-import-result {
+  width: min(520px, 92vw);
+}
+.import-result-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.import-result-folder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-panel, #1e1e1e) 60%, transparent);
+}
+.import-result-folder-label {
+  font-size: 12px;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+.import-result-folder-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.import-result-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.import-result-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-panel, #1e1e1e) 60%, transparent);
+}
+.import-result-num {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+}
+.import-result-cell.ok .import-result-num {
+  color: var(--accent, #4f9cf9);
+}
+.import-result-cell.warn .import-result-num {
+  color: #d29922;
+}
+.import-result-cell.bad .import-result-num {
+  color: #e5484d;
+}
+.import-result-label {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.import-result-total {
+  font-size: 12px;
+  color: var(--text);
+  text-align: center;
+}

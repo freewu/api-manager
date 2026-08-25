@@ -18,7 +18,15 @@ interface Props {
 export function GenLogsList({ records, loading, selectedId, onSelect, onReload }: Props) {
   const t = useT();
   return (
-    <div className="genlogs-list-view">
+    <div
+      className="genlogs-list-view"
+      onContextMenu={(e) => {
+        // 数据生成记录左侧禁止右键
+        const target = e.target as HTMLElement;
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+        e.preventDefault();
+      }}
+    >
       <div className="genlogs-list-head">
         <span className="genlogs-list-count">{t("objects.genLogsCount", { count: records.length })}</span>
         <span style={{ flex: 1 }} />

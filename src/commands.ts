@@ -73,6 +73,12 @@ export interface PostmanImportResult {
   folder: string;
   env: string;
   vars: number;
+  /** 导入统计 */
+  http?: number;
+  ws?: number;
+  objects?: number;
+  failed?: number;
+  duplicated?: number;
 }
 
 export function importPostman(): Promise<PostmanImportResult | null> {
@@ -82,6 +88,12 @@ export function importPostman(): Promise<PostmanImportResult | null> {
 export interface OpenApiImportResult {
   folder: string;
   count: number;
+  /** 导入统计 */
+  http?: number;
+  ws?: number;
+  objects?: number;
+  failed?: number;
+  duplicated?: number;
 }
 
 export function importOpenApi(): Promise<OpenApiImportResult | null> {

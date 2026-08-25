@@ -17,6 +17,7 @@ import {
 import { ObjectDef, TreeNode } from "./types";
 import { AppModals } from "./components/AppModals";
 import { CurlImportModal } from "./components/CurlImportModal";
+import ImportResultModal from "./components/ImportResultModal";
 import { AppToolbar } from "./components/AppToolbar";
 import { RightPane } from "./components/RightPane";
 import { AppView, Sidebar } from "./components/Sidebar";
@@ -742,6 +743,7 @@ export default function App() {
             onSave={() => void modals.doImportCurl()}
             onClose={() => modals.setCurlOpen(false)}
           />
+          <ImportResultModal result={imports.importResult} onClose={imports.closeImportResult} />
 
           {apiDocView && (
             <ApiDocModal

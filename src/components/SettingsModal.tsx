@@ -136,8 +136,7 @@ function LinkRow({ icon, title, desc, url }: { icon: string; title: string; desc
 }
 
 export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSaveWorkspaceName, onClose, onSave }: Props) {
-  const t = useT();
-  const [active, setActive] = useState<string>("appearance");
+  const t = useT();  const [active, setActive] = useState<string>("appearance");
   const [wsName, setWsName] = useState(workspaceName);
   /** 自定义 Mock 占位符列表（来自工作目录 .mock/ 下） */
   const [customMocks, setCustomMocks] = useState<CustomMock[]>([]);
@@ -229,6 +228,7 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
       title={t("settings.title")}
       onClose={onClose}
       className="modal-settings"
+      noContextMenu
       footer={<span className="settings-auto-hint">⚡ {t("settings.autoHint")}</span>}
     >
       <div className="settings-layout">

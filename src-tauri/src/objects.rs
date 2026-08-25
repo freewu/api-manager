@@ -333,6 +333,24 @@ pub fn save_objects(root: &Path, store: &ObjectStore) -> Result<String, String> 
         std::fs::create_dir_all(dir.join(&g.id)).map_err(|e| format!("创建分组目录失败: {e}"))?;
     }
 
+    // 重复对象检测：相同结构（所有 key 组成的 hash 相同）且不同 uuid 的对象视为重复，不做保存
+    {
+        let mut seen: HashMap<String, &str> = HashMap::new();
+        for o in &store.objects {
+            let h = object_hash(&o.properties);
+            if let Some(prev) = seen.get(&h) {
+                // 同一 uuid 重复出现视为同一条目，放行
+                if *prev == o.uuid && !o.uuid.trim().is_empty() {
+                    continue;
+                }
+                return Err(format!(
+                    "存在结构相同的重复对象（hash 相同），已取消保存：请删除或调整其中一个对象"
+                ));
+            }
+            seen.insert(h, &o.uuid);
+        }
+    }
+
     // 重算 hash（结构签名）+ 修复失效引用（uuid 为空时生成稳定标识，兼容旧数据）
     // hash 仅保证"相同结构复用"，不保证对象唯一：store 内 hash 冲突时追加 -2/-3 后缀，
     // 避免删除/定位按 hash 误伤其他对象（对象唯一性以 uuid 为准）
@@ -1407,7 +1425,7 @@ CREATE TABLE `my_users` (
             object_name: String::new(),
             package_name: String::new(),
             description: String::new(),
-            properties: vec![],
+            properties: vec![ObjectProp { key: "name".into(), kind: "String".into(), ..Default::default() }],
             created_at: 1,
             updated_at: 2,
         });
@@ -1531,10 +1549,10 @@ CREATE TABLE `my_users` (
     }
 
     #[test]
-    fn test_same_structure_objects_keep_unique_hash() {
+    fn test_duplicate_structure_objects_rejected() {
         let root = tmpdir("dup-hash");
         let mut store = ObjectStore::default();
-        // 两个空属性对象（结构 hash 相同）——删除其中一个不得误伤另一个
+        // 两个空属性对象（结构 hash 相同）→ 视为重复对象，拒绝保存
         for u in ["dddddddddddddddddddddddddddddddd", "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"] {
             store.objects.push(ObjectDef {
                 uuid: u.into(),
@@ -1550,13 +1568,19 @@ CREATE TABLE `my_users` (
                 updated_at: 2,
             });
         }
+        let err = save_objects(&root, &store).unwrap_err();
+        assert!(err.contains("重复对象"), "应提示重复对象：{err}");
+
+        // 调整其中一个的结构后可以保存
+        store.objects[1].properties = vec![ObjectProp {
+            key: "name".into(),
+            kind: "String".into(),
+            ..Default::default()
+        }];
         save_objects(&root, &store).unwrap();
         let loaded = list_objects(&root).unwrap();
         assert_eq!(loaded.objects.len(), 2);
-        let h1 = &loaded.objects[0].hash;
-        let h2 = &loaded.objects[1].hash;
-        assert_ne!(h1, h2, "同结构对象的 hash 应唯一（-2 后缀）");
-        assert!(h1.starts_with(h2) || h2.starts_with(h1), "冲突 hash 应保留结构签名前缀");
+        assert_ne!(loaded.objects[0].hash, loaded.objects[1].hash);
 
         // 按 uuid 删除一个，另一个保留
         store.objects.retain(|o| o.uuid != "dddddddddddddddddddddddddddddddd");

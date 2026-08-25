@@ -261,8 +261,10 @@ export default function ObjectsView({
       // 按稳定 uuid 重新定位选中项
       const updated = fresh.objects.find((o) => o.uuid === snapshot.uuid);
       if (updated) onSelectObject(updated.uuid);
-    } catch {
-      onToast(t("toast.saveFailed"));
+    } catch (e) {
+      // 后端可能返回具体错误（如：存在结构相同的重复对象，已取消保存）
+      const msg = String(e).replace(/^Error:?\s*/i, "");
+      onToast(t("objects.saveFailDetail", { err: msg }));
     }
   };
 

@@ -103,6 +103,7 @@ export default function MockEditorModal({ initial, existingNames, onSave, onClos
       title={initial ? `${t("mockEditor.editTitle")} @${initial.name}` : t("mockEditor.newTitle")}
       onClose={busy ? () => {} : onClose}
       className="mock-editor-modal"
+      noContextMenu
       footer={
         <>
           <button className="btn" onClick={onClose} disabled={busy}>

@@ -1317,6 +1317,17 @@ pub struct PostmanImportResult {
     pub env: String,
     /// 导入的变量数量
     pub vars: usize,
+    /// 导入统计：http 接口数 / WebSocket 接口数 / 对象数 / 失败数 / 重复数
+    #[serde(default)]
+    pub http: usize,
+    #[serde(default)]
+    pub ws: usize,
+    #[serde(default)]
+    pub objects: usize,
+    #[serde(default)]
+    pub failed: usize,
+    #[serde(default)]
+    pub duplicated: usize,
 }
 
 #[tauri::command]
@@ -1342,6 +1353,10 @@ fn import_postman(
 /// 解析 Postman Collection 文件，在工作区根新建同名分组并导入全部接口；
 /// 同时把集合级 `variable` 合并到工作区环境变量（__envs.json）
 fn import_postman_file(root: &Path, file: &Path) -> Result<PostmanImportResult, String> {
+    let mut http = 0usize;
+    let mut ws = 0usize;
+    let mut failed = 0usize;
+    let mut duplicated = 0usize;
     let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
     let json: Value =
         serde_json::from_str(&content).map_err(|e| format!("解析 JSON 失败: {e}"))?;
@@ -1382,7 +1397,7 @@ fn import_postman_file(root: &Path, file: &Path) -> Result<PostmanImportResult, 
         .and_then(|v| v.as_array())
         .cloned()
         .unwrap_or_default();
-    import_postman_items(&folder, &items)?;
+    import_postman_items(&folder, &items, &mut http, &mut ws, &mut failed, &mut duplicated)?;
     // 集合级变量 -> 环境变量集（同名合并，否则新建；无激活环境时自动激活）
     let mut env = String::new();
     let mut vars = 0usize;
@@ -1398,6 +1413,11 @@ fn import_postman_file(root: &Path, file: &Path) -> Result<PostmanImportResult, 
         folder: folder.to_string_lossy().to_string(),
         env,
         vars,
+        http,
+        ws,
+        objects: 0,
+        failed,
+        duplicated,
     })
 }
 
@@ -1477,7 +1497,14 @@ fn merge_postman_env(root: &Path, env_name: &str, variables: Vec<EnvVariable>) -
 }
 
 /// 递归导入 item 列表：带 request 的生成接口文件，带 item 的生成子分组
-fn import_postman_items(dir: &Path, items: &[Value]) -> Result<(), String> {
+fn import_postman_items(
+    dir: &Path,
+    items: &[Value],
+    http: &mut usize,
+    ws: &mut usize,
+    failed: &mut usize,
+    duplicated: &mut usize,
+) -> Result<(), String> {
     for item in items {
         let name = item
             .get("name")
@@ -1485,7 +1512,30 @@ fn import_postman_items(dir: &Path, items: &[Value]) -> Result<(), String> {
             .unwrap_or("未命名")
             .to_string();
         if item.get("request").is_some() {
-            let api = postman_request_to_api(&name, &item["request"])?;
+            let request = &item["request"];
+            let api = match postman_request_to_api(&name, request) {
+                Ok(a) => a,
+                Err(_) => {
+                    *failed += 1;
+                    continue;
+                }
+            };
+            // WebSocket 请求判定：method 为 WS 或 URL 以 ws:// / wss:// 开头
+            let method = request
+                .get("method")
+                .and_then(|v| v.as_str())
+                .unwrap_or("GET")
+                .to_uppercase();
+            let url_raw = request
+                .get("url")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_lowercase();
+            if method == "WS" || url_raw.starts_with("ws://") || url_raw.starts_with("wss://") {
+                *ws += 1;
+            } else {
+                *http += 1;
+            }
             let file_base = sanitize_filename(&name);
             let file_base = if file_base.is_empty() {
                 "未命名接口".to_string()
@@ -1493,6 +1543,9 @@ fn import_postman_items(dir: &Path, items: &[Value]) -> Result<(), String> {
                 file_base
             };
             let file_path = unique_path(dir, &file_base, ".json");
+            if file_path != dir.join(format!("{file_base}.json")) {
+                *duplicated += 1;
+            }
             write_pretty(&file_path, &api)?;
         } else if let Some(sub) = item.get("item").and_then(|v| v.as_array()) {
             let sub_base = sanitize_filename(&name);
@@ -1515,7 +1568,7 @@ fn import_postman_items(dir: &Path, items: &[Value]) -> Result<(), String> {
                     deprecated: None,
                 },
             )?;
-            import_postman_items(&sub_dir, sub)?;
+            import_postman_items(&sub_dir, sub, http, ws, failed, duplicated)?;
         }
     }
     Ok(())
@@ -1714,6 +1767,31 @@ fn postman_body(body: Option<&Value>) -> BodyData {
 pub struct OpenApiImportResult {
     folder: String,
     count: usize,
+    /// 导入统计：http 接口数 / WebSocket 接口数 / 对象数 / 失败数 / 重复数
+    #[serde(default)]
+    pub http: usize,
+    #[serde(default)]
+    pub ws: usize,
+    #[serde(default)]
+    pub objects: usize,
+    #[serde(default)]
+    pub failed: usize,
+    #[serde(default)]
+    pub duplicated: usize,
+}
+
+impl Default for OpenApiImportResult {
+    fn default() -> Self {
+        Self {
+            folder: String::new(),
+            count: 0,
+            http: 0,
+            ws: 0,
+            objects: 0,
+            failed: 0,
+            duplicated: 0,
+        }
+    }
 }
 
 /// 接口 Markdown 文档（供前端预览）
@@ -2307,6 +2385,7 @@ fn import_apifox_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, S
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        ..Default::default()
     })
 }
 
@@ -2586,6 +2665,7 @@ fn import_apipost_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        ..Default::default()
     })
 }
 
@@ -2894,6 +2974,7 @@ fn import_raml_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, Str
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        ..Default::default()
     })
 }
 
@@ -3146,6 +3227,7 @@ fn import_wadl_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, Str
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        ..Default::default()
     })
 }
 
@@ -3382,6 +3464,7 @@ fn import_har_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, Stri
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        ..Default::default()
     })
 }
 
@@ -3594,6 +3677,7 @@ fn import_yapi_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, Str
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        ..Default::default()
     })
 }
 
@@ -3958,7 +4042,7 @@ fn import_apidog_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
             }
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
 }
 
 fn apidog_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
@@ -4121,7 +4205,7 @@ fn import_bruno_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, S
             count += bruno_walk(&sub, f, &vars)?;
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
 }
 
 /// 递归处理 bruno 分组（requests + 嵌套 folders）
@@ -4280,7 +4364,7 @@ fn import_apizza_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
     if let Some(folders) = v.get("folders").and_then(|x| x.as_array()) {
         count += apizza_walk(&folder, folders, &vars)?;
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
 }
 
 fn apizza_walk(dir: &Path, folders: &[Value], vars: &HashMap<String, String>) -> Result<usize, String> {
@@ -4571,7 +4655,7 @@ fn import_nei_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, Str
             count += nei_api_to_api(&dir, it, &datatypes)?;
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
 }
 
 fn nei_api_to_api(dir: &Path, it: &Value, datatypes: &HashMap<i64, &Value>) -> Result<usize, String> {
@@ -4738,7 +4822,7 @@ fn import_doclever_files(root: &Path, file: &Path) -> Result<OpenApiImportResult
     )?;
     let mut count = 0usize;
     count += doclever_walk(&folder, arr)?;
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
 }
 
 fn doclever_walk(dir: &Path, items: &[Value]) -> Result<usize, String> {
@@ -4885,7 +4969,7 @@ fn import_io_docs_files(root: &Path, file: &Path) -> Result<OpenApiImportResult,
             }
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
 }
 
 fn io_docs_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
@@ -5025,7 +5109,7 @@ fn import_easydoc_files(root: &Path, file: &Path) -> Result<OpenApiImportResult,
             count += easydoc_api_to_api(&dir, a)?;
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
 }
 
 fn easydoc_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
@@ -5164,7 +5248,7 @@ fn import_docway_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
             }
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
 }
 
 fn docway_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
@@ -5270,7 +5354,7 @@ fn import_hoppscotch_files(root: &Path, file: &Path) -> Result<OpenApiImportResu
             count += hoppscotch_req_to_api(&folder, r)?;
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
 }
 
 fn hoppscotch_walk(dir: &Path, folders: &[Value]) -> Result<usize, String> {
@@ -5427,7 +5511,7 @@ fn import_metersphere_files(root: &Path, file: &Path) -> Result<OpenApiImportRes
             count += metersphere_api_to_api(&dir, a)?;
         }
     }
-    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count })
+    Ok(OpenApiImportResult { folder: folder.to_string_lossy().to_string(), count, ..Default::default() })
 }
 
 fn metersphere_api_to_api(dir: &Path, a: &Value) -> Result<usize, String> {
@@ -5758,6 +5842,7 @@ fn import_rap2_project(root: &Path, data: &Value) -> Result<OpenApiImportResult,
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        ..Default::default()
     })
 }
 
@@ -5771,6 +5856,7 @@ fn import_rap2_single(root: &Path, data: &Value) -> Result<OpenApiImportResult, 
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count: 1,
+        ..Default::default()
     })
 }
 
@@ -5968,6 +6054,7 @@ fn import_apidoc_files(
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        ..Default::default()
     })
 }
 
@@ -6351,6 +6438,7 @@ fn import_jmeter_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, S
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        ..Default::default()
     })
 }
 
@@ -6716,6 +6804,7 @@ fn import_eolink_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, S
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        ..Default::default()
     })
 }
 
@@ -7122,6 +7211,7 @@ fn import_insomnia_file(root: &Path, file: &Path) -> Result<OpenApiImportResult,
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        ..Default::default()
     })
 }
 
@@ -7370,6 +7460,9 @@ fn import_openapi(
 
 /// 解析 OpenAPI / Swagger 文件（支持 .json 与 .yml/.yaml），在工作区根新建分组，按 tag 分小组并导入全部接口
 fn import_openapi_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, String> {
+    let mut http = 0usize;
+    let mut failed = 0usize;
+    let mut duplicated = 0usize;
     let content = fs::read_to_string(file).map_err(|e| format!("读取文件失败: {e}"))?;
     let is_yaml = matches!(
         file.extension().and_then(|e| e.to_str()),
@@ -7442,7 +7535,14 @@ fn import_openapi_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
                 if !op.is_object() {
                     continue;
                 }
-                let api = openapi_op_to_api(method, path_str, op, &shared_params, &base_url, &defs)?;
+                let api = match openapi_op_to_api(method, path_str, op, &shared_params, &base_url, &defs)
+                {
+                    Ok(a) => a,
+                    Err(_) => {
+                        failed += 1;
+                        continue;
+                    }
+                };
                 // 按第一个 tag 分组，无 tag 的放在顶层
                 let tag = op
                     .get("tags")
@@ -7483,8 +7583,13 @@ fn import_openapi_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
                 } else {
                     file_base
                 };
-                write_pretty(&unique_path(&target, &file_base, ".json"), &api)?;
+                let target_path = unique_path(&target, &file_base, ".json");
+                if target_path != target.join(format!("{file_base}.json")) {
+                    duplicated += 1;
+                }
+                write_pretty(&target_path, &api)?;
                 count += 1;
+                http += 1;
             }
         }
     }
@@ -7495,6 +7600,10 @@ fn import_openapi_file(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
     Ok(OpenApiImportResult {
         folder: folder.to_string_lossy().to_string(),
         count,
+        http,
+        failed,
+        duplicated,
+        ..Default::default()
     })
 }
 

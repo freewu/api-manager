@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   importApiDoc,
   importApifox,
@@ -14,9 +15,10 @@ import {
   importWadl,
   importYapi,
 } from "../commands";
+import type { ImportResultView } from "../components/ImportResultModal";
 
 /**
- * 全部导入格式的统一入口：调用后端导入 → 刷新树 → 提示 → 热重载 Mock。
+ * 全部导入格式的统一入口：调用后端导入 → 刷新树 → 展示导入结果弹窗 → 热重载 Mock。
  */
 export function useImports(opts: {
   workspace: string | null;
@@ -27,6 +29,8 @@ export function useImports(opts: {
   t: (key: string, vars?: Record<string, string | number>) => string;
 }) {
   const { workspace, loadAll, mockRunning, reloadMockIfRunning, onToast, t } = opts;
+  /** 导入结果弹窗数据（null = 未打开） */
+  const [result, setResult] = useState<ImportResultView | null>(null);
 
   const finish = async (toastKey: string, vars?: Record<string, string | number>) => {
     if (!workspace) return;
@@ -36,6 +40,18 @@ export function useImports(opts: {
   };
 
   const fail = (e: unknown) => onToast(t("toast.importFailed", { err: String(e) }));
+
+  /** 归一化为导入结果视图并打开查看弹窗 */
+  const showResult = (r: { folder: string; http?: number; ws?: number; objects?: number; failed?: number; duplicated?: number }) => {
+    setResult({
+      folder: r.folder,
+      http: r.http ?? 0,
+      ws: r.ws ?? 0,
+      objects: r.objects ?? 0,
+      failed: r.failed ?? 0,
+      duplicated: r.duplicated ?? 0,
+    });
+  };
 
   const handleImportPostman = async () => {
     try {
@@ -49,6 +65,7 @@ export function useImports(opts: {
         onToast(t("toast.importedPostmanSimple"));
       }
       void reloadMockIfRunning(mockRunning);
+      showResult(result);
     } catch (e) {
       fail(e);
     }
@@ -59,6 +76,7 @@ export function useImports(opts: {
       const result = await importOpenApi();
       if (!result) return;
       await finish("toast.importedOpenApi", { count: result.count });
+      showResult(result);
     } catch (e) {
       fail(e);
     }
@@ -69,6 +87,7 @@ export function useImports(opts: {
       const result = await importApifox();
       if (!result) return;
       await finish("toast.importedApifox", { count: result.count });
+      showResult(result);
     } catch (e) {
       fail(e);
     }
@@ -79,6 +98,7 @@ export function useImports(opts: {
       const result = await importApipost();
       if (!result) return;
       await finish("toast.importedApipost", { count: result.count });
+      showResult(result);
     } catch (e) {
       fail(e);
     }
@@ -89,6 +109,7 @@ export function useImports(opts: {
       const result = await importRaml();
       if (!result) return;
       await finish("toast.importedRaml", { count: result.count });
+      showResult(result);
     } catch (e) {
       fail(e);
     }
@@ -99,6 +120,7 @@ export function useImports(opts: {
       const result = await importWadl();
       if (!result) return;
       await finish("toast.importedWadl", { count: result.count });
+      showResult(result);
     } catch (e) {
       fail(e);
     }
@@ -109,6 +131,7 @@ export function useImports(opts: {
       const result = await importHar();
       if (!result) return;
       await finish("toast.importedHar", { count: result.count });
+      showResult(result);
     } catch (e) {
       fail(e);
     }
@@ -119,6 +142,7 @@ export function useImports(opts: {
       const result = await importYapi();
       if (!result) return;
       await finish("toast.importedYapi", { count: result.count });
+      showResult(result);
     } catch (e) {
       fail(e);
     }
@@ -129,6 +153,7 @@ export function useImports(opts: {
       const result = await importEolink();
       if (!result) return;
       await finish("toast.importedEolink", { count: result.count });
+      showResult(result);
     } catch (e) {
       fail(e);
     }
@@ -139,6 +164,7 @@ export function useImports(opts: {
       const result = await importInsomnia();
       if (!result) return;
       await finish("toast.importedInsomnia", { count: result.count });
+      showResult(result);
     } catch (e) {
       fail(e);
     }
@@ -149,6 +175,7 @@ export function useImports(opts: {
       const result = await importJmeter();
       if (!result) return;
       await finish("toast.importedJmeter", { count: result.count });
+      showResult(result);
     } catch (e) {
       fail(e);
     }
@@ -159,6 +186,7 @@ export function useImports(opts: {
       const result = await importApiDoc();
       if (!result) return;
       await finish("toast.importedApiDoc", { count: result.count });
+      showResult(result);
     } catch (e) {
       fail(e);
     }
@@ -169,6 +197,7 @@ export function useImports(opts: {
       const result = await importMarkdown();
       if (!result) return;
       await finish("toast.importedMarkdown", { count: result.count });
+      showResult(result);
     } catch (e) {
       fail(e);
     }
@@ -179,6 +208,7 @@ export function useImports(opts: {
       const result = await importExtra(format);
       if (!result) return;
       await finish("toast.importedExtra", { count: result.count });
+      showResult(result);
     } catch (e) {
       fail(e);
     }
@@ -199,5 +229,7 @@ export function useImports(opts: {
     handleImportApiDoc,
     handleImportMarkdown,
     handleImportExtra,
+    importResult: result,
+    closeImportResult: () => setResult(null),
   };
 }
