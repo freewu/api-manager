@@ -244,6 +244,8 @@ export default function App() {
 
   // ---------- 视图切换 ----------
   const [view, setView] = useState<AppView>("api");
+  /** 切换工作目录时的转场动画状态（淡出 → 切换 → 淡入） */
+  const [switching, setSwitching] = useState(false);
 
   // 进入数据生成记录页面时刷新列表
   useEffect(() => {
@@ -277,6 +279,10 @@ export default function App() {
   // ---------- 打开工作目录 ----------
   const finishOpenWorkspace = useCallback(
     async (w: string) => {
+      // 切换动画：先淡出 → 回到接口管理视图 → 加载数据 → 淡入
+      setSwitching(true);
+      setView("api");
+      await new Promise((r) => setTimeout(r, 260));
       setWorkspace(w);
       setResponse(null);
       if (!(await hasWorkspaceInfo())) {
@@ -287,6 +293,7 @@ export default function App() {
         await loadAll(w);
         showToast(t("toast.opened"));
       }
+      setSwitching(false);
     },
     [loadAll, showToast, t]
   );
@@ -501,7 +508,7 @@ export default function App() {
           onOpenUpdate={() => setShowUpdateModal(true)}
         />
       ) : (
-        <div className="app">
+        <div className={`app${switching ? " switching" : ""}`}>
           <AppToolbar
             workspace={workspace}
             version={version}

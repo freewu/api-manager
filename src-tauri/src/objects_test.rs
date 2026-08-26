@@ -249,7 +249,7 @@ CREATE TABLE `my_users` (
         });
         save_objects_impl(&root, &store).unwrap();
 
-        let base = root.join(".object");
+        let base = root.join(crate::OBJECT_DATA_DIR);
         assert!(base.join("__info_obj.json").exists(), "应有分组信息文件");
         assert!(base.join("用户管理").join("User.obj.json").exists(), "分组目录下的对象文件");
         assert!(base.join("订单").join("明细").join("OrderItem.obj.json").exists(), "多级分组 = 嵌套目录");
@@ -318,7 +318,7 @@ CREATE TABLE `my_users` (
     fn test_migrate_old_lowercase_kinds() {
         let root = tmpdir("migrate");
         // 模拟旧版本数据：小写类型 + 引用关系（refHash 基于旧类型 hash）
-        let dir = root.join(".object");
+        let dir = root.join(crate::OBJECT_DATA_DIR);
         std::fs::create_dir_all(&dir).unwrap();
         let old_child = serde_json::json!({
             "uuid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

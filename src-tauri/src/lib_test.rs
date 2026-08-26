@@ -432,12 +432,12 @@
         let rel = save_api_version_at(&root, api).unwrap();
         assert!(rel.starts_with(".version/11111111-2222-3333-4444-555555555555/"));
         let ver_file = root
-            .join(".version")
+            .join(crate::VERSION_DATA_DIR)
             .join("11111111-2222-3333-4444-555555555555")
             .join("创建用户.1.json");
         assert!(ver_file.exists(), "版本文件应写入根目录 .version 下");
         assert!(
-            !sub.join(".version").exists(),
+            !sub.join(crate::VERSION_DATA_DIR).exists(),
             "版本目录不应出现在接口所在子目录中"
         );
         let _ = fs::remove_dir_all(&root);
@@ -600,7 +600,7 @@
         current.description = "v2 描述".into();
         save_api(main.to_string_lossy().to_string(), current).unwrap();
         // 列出版本：v2、v1（从大到小）
-        let dir = base.join(".version").join(&uuid);
+        let dir = base.join(crate::VERSION_DATA_DIR).join(&uuid);
         let files: Vec<String> = fs::read_dir(&dir)
             .unwrap()
             .flatten()
@@ -1984,8 +1984,8 @@ let v = export::to_yapi(&apis);
         mk(&g.join("接口A.json"), "uuid-a", "接口A");
         mk(&sub.join("接口B.json"), "uuid-b", "接口B");
         // 点目录不应被复制（.examples 与旧 uuid 绑定）
-        fs::create_dir_all(g.join(".examples")).unwrap();
-        fs::write(g.join(".examples").join("x.json"), "{}").unwrap();
+        fs::create_dir_all(g.join(crate::EXAMPLES_DATA_DIR)).unwrap();
+        fs::write(g.join(crate::EXAMPLES_DATA_DIR).join("x.json"), "{}").unwrap();
 
         let dst = root.join("用户管理 副本");
         copy_dir_with_new_uuids(&g, &dst).unwrap();
@@ -1995,7 +1995,7 @@ let v = export::to_yapi(&apis);
         assert_eq!(a.name, "接口A 副本");
         let b: ApiFile = serde_json::from_str(&fs::read_to_string(dst.join("子分组").join("接口B.json")).unwrap()).unwrap();
         assert_ne!(b.uuid, "uuid-b");
-        assert!(!dst.join(".examples").exists());
+        assert!(!dst.join(crate::EXAMPLES_DATA_DIR).exists());
         let info: Value = serde_json::from_str(&fs::read_to_string(dst.join(INFO_FILE)).unwrap()).unwrap();
         assert_eq!(info["name"], "用户管理 副本");
         let _ = fs::remove_dir_all(&root);
@@ -2345,12 +2345,12 @@ let v = export::to_yapi(&apis);
         };
         crate::objects::save_objects_impl(&root, &store).unwrap();
         // 分组信息 + 分组目录 + 对象文件（含中文分组路径）
-        assert!(root.join(".object/__info_obj.json").exists(), "分组信息文件存在");
-        assert!(root.join(".object/用户管理/用户.obj.json").exists(), "用户对象文件存在");
-        assert!(root.join(".object/订单管理/订单.obj.json").exists(), "订单对象文件存在");
+        assert!(root.join(".api-manager/object/__info_obj.json").exists(), "分组信息文件存在");
+        assert!(root.join(".api-manager/object/用户管理/用户.obj.json").exists(), "用户对象文件存在");
+        assert!(root.join(".api-manager/object/订单管理/订单.obj.json").exists(), "订单对象文件存在");
         // 对象文件内容：hash 被重算、zodiac mock 示例保留
         let obj: serde_json::Value =
-            serde_json::from_str(&std::fs::read_to_string(root.join(".object/用户管理/用户.obj.json")).unwrap()).unwrap();
+            serde_json::from_str(&std::fs::read_to_string(root.join(".api-manager/object/用户管理/用户.obj.json")).unwrap()).unwrap();
         assert!(!obj["hash"].as_str().unwrap().is_empty(), "hash 重算非空");
         let props = obj["properties"].as_array().unwrap();
         assert!(props.iter().any(|p| p["key"] == "zodiac" && p["mock"] == "@zodiac"), "zodiac 字段保留");
@@ -2366,6 +2366,40 @@ let v = export::to_yapi(&apis);
             None,
         )
         .unwrap();
-        assert!(root.join(".mock/zodiac.js").exists(), "星座占位符文件存在");
+        assert!(root.join(".api-manager/mock/zodiac.js").exists(), "星座占位符文件存在");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn test_migrate_legacy_data_dirs() {
+        let root = std::env::temp_dir().join(format!("apimgr-migrate-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        // 模拟存量项目：旧目录散落在根目录
+        let legacy: [&str; 6] = [".version", ".object", ".mock", ".history", ".gen_log", ".examples"];
+        for d in legacy {
+            let dir = root.join(d);
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(dir.join("keep.txt"), "x").unwrap();
+        }
+        crate::migrate_legacy_data_dirs(&root).unwrap();
+        // 旧目录应被移走，新目录 .api-manager/ 下内容完整
+        for d in legacy {
+            assert!(!root.join(d).exists(), "旧目录 {} 应被迁移", d);
+        }
+        for (d, sub) in [
+            (".version", "version"),
+            (".object", "object"),
+            (".mock", "mock"),
+            (".history", "history"),
+            (".gen_log", "gen_log"),
+            (".examples", "examples"),
+        ] {
+            let f = root.join(".api-manager").join(sub).join("keep.txt");
+            assert!(f.exists(), ".api-manager/{sub}/keep.txt 应存在");
+        }
+        // 幂等：.api-manager 已存在时再次调用不报错、不重复迁移
+        crate::migrate_legacy_data_dirs(&root).unwrap();
+        assert!(root.join(".api-manager/version/keep.txt").exists());
         let _ = std::fs::remove_dir_all(&root);
     }

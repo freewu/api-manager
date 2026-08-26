@@ -8,7 +8,7 @@ use tauri::State;
 
 // ==================== 请求历史 ====================
 
-pub const HISTORY_DIR: &str = ".history";
+pub const HISTORY_DIR: &str = crate::HISTORY_DATA_DIR;
 
 /// 单条历史记录文件内容（.history/<日期>/<时间戳>_<uuid>.json）
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -327,7 +327,7 @@ pub(crate) fn history_clear(state: State<'_, WorkspaceState>) -> Result<(), Stri
 
 // ==================== 请求示例 ====================
 
-pub const EXAMPLES_DIR: &str = ".examples";
+pub const EXAMPLES_DIR: &str = crate::EXAMPLES_DATA_DIR;
 
 /// 示例文件内容（.examples/<接口uuid>/<示例名称hash值>.json）
 #[derive(Clone, Debug, Serialize, Deserialize)]

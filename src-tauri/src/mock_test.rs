@@ -194,22 +194,22 @@ fn test_render_mock_body() {
 fn test_custom_mock_rendered_in_body() {
     let d = std::env::temp_dir().join(format!("apim-cusrender-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
-    std::fs::create_dir_all(d.join(".mock")).unwrap();
+    std::fs::create_dir_all(d.join(crate::MOCK_DATA_DIR)).unwrap();
     // 默认模板风格：多行 JS + const + 字符串拼接
     std::fs::write(
-        d.join(".mock").join("cusNo.js"),
+        d.join(crate::MOCK_DATA_DIR).join("cusNo.js"),
         "/**\n * @enabled true\n * @desc 自定义编号\n */\n(ctx) => { const no = ctx.randInt(1000, 9999); return \"CUS-\" + no; }",
     )
     .unwrap();
     // demo 风格：ctx.pick 直接返回
     std::fs::write(
-        d.join(".mock").join("zodiac.js"),
+        d.join(crate::MOCK_DATA_DIR).join("zodiac.js"),
         "/**\n * @enabled true\n * @desc 星座\n */\n(ctx) => ctx.pick([\"白羊座\", \"双鱼座\"]) ",
     )
     .unwrap();
     // 未启用：不生效
     std::fs::write(
-        d.join(".mock").join("off.js"),
+        d.join(crate::MOCK_DATA_DIR).join("off.js"),
         "/**\n * @enabled false\n */\n(ctx) => 'OFF'",
     )
     .unwrap();

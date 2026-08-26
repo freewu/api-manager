@@ -3,6 +3,11 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  /* 切换工作目录时的转场动画 */
+  transition: opacity 0.26s ease;
+}
+.app.switching {
+  opacity: 0;
 }
 
 .main {

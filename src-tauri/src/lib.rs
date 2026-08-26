@@ -9,6 +9,16 @@ mod request;
 mod tray;
 mod demo;
 
+// ---------- 应用数据目录（统一收纳在 .api-manager 下） ----------
+/// 应用数据根目录（对象 / Mock / 历史 / 版本 / 生成日志 / 示例）
+pub const DATA_DIR: &str = ".api-manager";
+pub const VERSION_DATA_DIR: &str = ".api-manager/version";
+pub const OBJECT_DATA_DIR: &str = ".api-manager/object";
+pub const MOCK_DATA_DIR: &str = ".api-manager/mock";
+pub const HISTORY_DATA_DIR: &str = ".api-manager/history";
+pub const GEN_LOG_DATA_DIR: &str = ".api-manager/gen_log";
+pub const EXAMPLES_DATA_DIR: &str = ".api-manager/examples";
+
 // 供 invoke_handler 与 tests（use super::*）引用的跨模块命令/函数
 #[allow(unused_imports)]
 use crate::export::*;
@@ -905,6 +915,43 @@ fn get_recent_workspaces(app: AppHandle) -> Vec<String> {
         .collect()
 }
 
+/// 存量项目迁移：根目录下旧数据目录（.version / .object / .mock / .history / .gen_log / .examples）
+/// 统一移动到 .api-manager/ 下。判断依据：根目录不存在 .api-manager 时执行；
+/// 目标已存在（部分迁移）则跳过该项，避免覆盖。
+pub(crate) fn migrate_legacy_data_dirs(root: &Path) -> Result<(), String> {
+    if root.join(DATA_DIR).exists() {
+        return Ok(());
+    }
+    let pairs: [(&str, &str); 6] = [
+        (".version", VERSION_DATA_DIR),
+        (".object", OBJECT_DATA_DIR),
+        (".mock", MOCK_DATA_DIR),
+        (".history", HISTORY_DATA_DIR),
+        (".gen_log", GEN_LOG_DATA_DIR),
+        (".examples", EXAMPLES_DATA_DIR),
+    ];
+    let mut moved = 0;
+    for (src, dst) in pairs {
+        let s = root.join(src);
+        if !s.exists() {
+            continue;
+        }
+        let d = root.join(dst);
+        if d.exists() {
+            continue;
+        }
+        if let Some(parent) = d.parent() {
+            fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {e}"))?;
+        }
+        fs::rename(&s, &d).map_err(|e| format!("迁移 {src} → {dst} 失败: {e}"))?;
+        moved += 1;
+    }
+    if moved > 0 {
+        eprintln!("[api-manager] 迁移 {moved} 个旧数据目录 → .api-manager/（{})", root.display());
+    }
+    Ok(())
+}
+
 /// 按路径直接打开工作目录（开始页「最近打开」点击时调用）
 #[tauri::command]
 fn open_workspace(
@@ -916,6 +963,7 @@ fn open_workspace(
     if !p.is_dir() {
         return Err(format!("目录不存在: {path}"));
     }
+    migrate_legacy_data_dirs(&p)?;
     if let Ok(mut guard) = state.root.lock() {
         *guard = Some(p);
     }
@@ -940,6 +988,7 @@ fn pick_workspace(app: AppHandle, state: State<'_, WorkspaceState>) -> Result<Op
     match picked {
         Some(path) => {
             let p = path.into_path().map_err(|e| e.to_string())?;
+            migrate_legacy_data_dirs(&p)?;
             let s = p.to_string_lossy().to_string();
             if let Ok(mut guard) = state.root.lock() {
                 *guard = Some(p);
@@ -1038,7 +1087,7 @@ fn save_api_version_at(root: &Path, data: ApiFile) -> Result<String, String> {
         name.trim().to_string()
     };
 
-    let ver_dir = root.join(".version").join(&uuid);
+    let ver_dir = root.join(VERSION_DATA_DIR).join(&uuid);
     fs::create_dir_all(&ver_dir).map_err(|e| format!("创建版本目录失败: {e}"))?;
 
     // 计算下一个版本号：<名称>.1.json / .2.json ...
@@ -1080,7 +1129,7 @@ fn list_versions(state: State<'_, WorkspaceState>, uuid: String) -> Result<Vec<V
     if !valid_uuid(&uuid) {
         return Ok(vec![]);
     }
-    let dir = root.join(".version").join(&uuid);
+    let dir = root.join(VERSION_DATA_DIR).join(&uuid);
     if !dir.exists() {
         return Ok(vec![]);
     }
@@ -1139,7 +1188,7 @@ fn get_current_version(state: State<'_, WorkspaceState>, uuid: String) -> Result
     if !valid_uuid(&uuid) {
         return Ok(0);
     }
-    let dir = root.join(".version").join(&uuid);
+    let dir = root.join(VERSION_DATA_DIR).join(&uuid);
     if !dir.exists() {
         return Ok(0);
     }

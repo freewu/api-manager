@@ -154,7 +154,7 @@ const BUILTIN_MOCK_NAMES: &[&str] = &[
 ];
 
 fn mock_dir(root: &Path) -> PathBuf {
-    root.join(".mock")
+    root.join(crate::MOCK_DATA_DIR)
 }
 
 /// 校验占位符标识：非空、字母/数字/下划线、不以数字开头

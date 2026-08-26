@@ -193,7 +193,7 @@ pub fn find_object_by_name<'a>(store: &'a ObjectStore, name: &str) -> Option<&'a
 
 /// 列出对象存储（无文件时返回空）
 pub fn list_objects_impl(root: &Path) -> Result<ObjectStore, String> {
-    let dir = root.join(".object");
+    let dir = root.join(crate::OBJECT_DATA_DIR);
     if !dir.exists() {
         return Ok(ObjectStore::default());
     }
@@ -316,7 +316,7 @@ fn normalize_kind(k: &str) -> String {
 /// 保存时重新计算每个对象的 hash（属性变化后保持一致），
 /// 并修复失效引用（refHash 指向不存在的对象时尝试按名称匹配，否则清空）。
 pub fn save_objects_impl(root: &Path, store: &ObjectStore) -> Result<String, String> {
-    let dir = root.join(".object");
+    let dir = root.join(crate::OBJECT_DATA_DIR);
     if dir.exists() {
         std::fs::remove_dir_all(&dir).map_err(|e| format!("清理对象目录失败: {e}"))?;
     }
@@ -1263,7 +1263,7 @@ pub(crate) fn gen_data(
 
     // 生成记录：工作区根 .gen_log/<时间戳>_<object-uuid>.json（每条记录一个文件）
     let root = workspace_root(&state)?;
-    let log_dir = root.join(".gen_log");
+    let log_dir = root.join(crate::GEN_LOG_DATA_DIR);
     std::fs::create_dir_all(&log_dir).map_err(|e| format!("创建 .gen_log 失败: {e}"))?;
     let ts = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
     let log_path = log_dir.join(format!("{ts}_{object_uuid}.json"));
@@ -1295,7 +1295,7 @@ pub(crate) fn list_gen_logs(
     state: State<'_, WorkspaceState>,
 ) -> Result<Vec<GenLogItem>, String> {
     let root = workspace_root(&state)?;
-    let log_dir = root.join(".gen_log");
+    let log_dir = root.join(crate::GEN_LOG_DATA_DIR);
     if !log_dir.is_dir() {
         return Ok(vec![]);
     }
