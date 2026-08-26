@@ -302,7 +302,7 @@ pub async fn start_mock(app: &AppHandle, port: u16) -> Result<MockStatus, String
         .fallback(mock_handler)
         .layer(CorsLayer::permissive());
 
-    let listener = tokio::net::TcpListener::bind(("127.0.0.1", port))
+    let listener = tokio::net::TcpListener::bind(("0.0.0.0", port))
         .await
         .map_err(|e| format!("端口 {port} 绑定失败: {e}"))?;
     let addr = listener
@@ -316,7 +316,14 @@ pub async fn start_mock(app: &AppHandle, port: u16) -> Result<MockStatus, String
     let run_state = app.state::<MockRunState>();
     *run_state.running.lock().unwrap() = true;
     *run_state.port.lock().unwrap() = Some(addr.port());
-    *run_state.addr.lock().unwrap() = Some(format!("http://127.0.0.1:{}", addr.port()));
+    // 本机局域网 IP（UDP connect 不发送数据，仅用于探测路由）；失败时回退 127.0.0.1
+    let lan = std::net::UdpSocket::bind("0.0.0.0:0")
+        .and_then(|s| {
+            s.connect("8.8.8.8:80")?;
+            Ok(s.local_addr()?.ip().to_string())
+        })
+        .unwrap_or_else(|_| "127.0.0.1".to_string());
+    *run_state.addr.lock().unwrap() = Some(format!("http://{lan}:{}", addr.port()));
     *run_state.route_count.lock().unwrap() = routes_arc.read().map(|r| r.len()).unwrap_or(0);
     *run_state.routes.lock().unwrap() = Some(routes_arc);
     *run_state.envs.lock().unwrap() = Some(envs);

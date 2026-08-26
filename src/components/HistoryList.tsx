@@ -33,6 +33,23 @@ function methodClass(method: string) {
   return `method-${method.toLowerCase()}`;
 }
 
+/** 历史记录的协议类型（GraphQL 历史记录的 method 为 POST，并入 HTTP） */
+function protoOf(r: HistorySummary): string {
+  if (r.method === "WS") return "websocket";
+  if (r.method === "SIO") return "socketio";
+  return "http";
+}
+
+/** 高级搜索可选的协议类型（历史记录可区分：WebSocket / Socket.IO / HTTP） */
+const HIST_PROTOCOL_OPTIONS = [
+  { id: "http", label: "HTTP" },
+  { id: "websocket", label: "WebSocket" },
+  { id: "socketio", label: "Socket.IO" },
+] as const;
+
+/** 高级搜索可选的 Method（WS / SIO 记录无 Method） */
+const HIST_METHOD_OPTIONS = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
+
 interface Props {
   records: HistorySummary[];
   days: HistoryDay[];
@@ -74,6 +91,14 @@ export function HistoryList({
 }: Props) {
   const t = useT();
   const [confirmClear, setConfirmClear] = useState(false);
+  /** URL 模糊查询 */
+  const [filter, setFilter] = useState("");
+  /** 高级搜索：是否展开过滤面板 */
+  const [advOpen, setAdvOpen] = useState(false);
+  /** 高级搜索：按协议类型多选过滤（空数组 = 不过滤） */
+  const [protocolFilters, setProtocolFilters] = useState<string[]>([]);
+  /** 高级搜索：按 Method 多选过滤（空数组 = 不过滤） */
+  const [methodFilters, setMethodFilters] = useState<string[]>([]);
 
   // 比对模式下按 ESC 退出比对
   useEffect(() => {
@@ -90,18 +115,23 @@ export function HistoryList({
 
   // 已加载的记录按天分组（记录本身已按时间倒序）
   // 比对模式下勾选第 1 条后（含选满 2 条）：非同一接口（apiUuid 不同）的记录全部隐藏，只保留参与比对接口的记录
+  // URL 模糊查询 + 协议类型 / Method 高级搜索过滤
   const groups = useMemo(() => {
+    const q = filter.trim().toLowerCase();
     const filterUuid =
       diffIds.length >= 1 ? records.find((x) => x.id === diffIds[0])?.apiUuid : undefined;
     const map = new Map<string, HistorySummary[]>();
     for (const r of records) {
       if (filterUuid && r.apiUuid !== filterUuid) continue;
+      if (q && !r.url.toLowerCase().includes(q)) continue;
+      if (protocolFilters.length > 0 && !protocolFilters.includes(protoOf(r))) continue;
+      if (methodFilters.length > 0 && !methodFilters.includes(r.method)) continue;
       const day = fmtDay(r.time);
       if (!map.has(day)) map.set(day, []);
       map.get(day)!.push(r);
     }
     return [...map.entries()];
-  }, [records, diffIds]);
+  }, [records, diffIds, filter, protocolFilters, methodFilters]);
 
   const dayCount = useMemo(() => new Map(days.map((d) => [d.day, d.count])), [days]);
 
@@ -128,8 +158,7 @@ export function HistoryList({
         <span className="history-side-count">
           {totalCount > 0 ? t("history.total", { count: totalCount }) : t("history.empty")}
         </span>
-        <span style={{ flex: 1 }} />
-        {diffMode ? (
+        <span style={{ flex: 1 }} />        {diffMode ? (
           <>
             <button
               className={`icon-btn ${diffIds.length === 2 ? "accent" : ""}`}
@@ -199,6 +228,84 @@ export function HistoryList({
           </svg>
         </button>
       </div>
+      {/* URL 模糊搜索 + 高级搜索（协议类型 / Method） */}
+      <div className="history-search-row">
+        <div className="search-box">
+          <span className="icon">🔍</span>
+          <input
+            placeholder={t("history.search")}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            spellCheck={false}
+          />
+          {filter && (
+            <button
+              className="search-clear"
+              onClick={() => setFilter("")}
+              title={t("common.clear")}
+              aria-label={t("common.clear")}
+            >
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true">
+                <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              </svg>
+            </button>
+          )}
+          <button
+            className={`search-adv-toggle${advOpen ? " on" : ""}`}
+            onClick={() => setAdvOpen((s) => !s)}
+            title={t("sidebar.advSearch")}
+            aria-label={t("sidebar.advSearch")}
+          >
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true">
+              <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      {advOpen && (
+        <div className="adv-search">
+          <div className="adv-search-title">{t("sidebar.advProtocolType")}</div>
+          <div className="adv-methods">
+            {HIST_PROTOCOL_OPTIONS.map((p) => {
+              const on = protocolFilters.includes(p.id);
+              return (
+                <label key={p.id} className={`adv-method${on ? " on" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() =>
+                      setProtocolFilters((prev) =>
+                        on ? prev.filter((x) => x !== p.id) : [...prev, p.id]
+                      )
+                    }
+                  />
+                  {p.label}
+                </label>
+              );
+            })}
+          </div>
+          <div className="adv-search-title">{t("sidebar.advMethodType")}</div>
+          <div className="adv-methods">
+            {HIST_METHOD_OPTIONS.map((m) => {
+              const on = methodFilters.includes(m);
+              return (
+                <label key={m} className={`adv-method${on ? " on" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() =>
+                      setMethodFilters((prev) =>
+                        on ? prev.filter((x) => x !== m) : [...prev, m]
+                      )
+                    }
+                  />
+                  {m}
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {diffMode && (
         <div className={`history-diff-hint${diffError ? " error" : ""}`}>
           {diffError ? t(diffError) : t("history.diffHint", { n: diffIds.length })}

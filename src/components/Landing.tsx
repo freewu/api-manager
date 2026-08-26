@@ -43,6 +43,7 @@ export function Landing({
         onToggleMock={() => {}}
         onRefresh={() => {}}
         onOpenUpdate={onOpenUpdate}
+        onToast={() => {}}
       />
       <div className="landing">
         <img className="landing-logo" src={logoUrl} alt="API Manager" />

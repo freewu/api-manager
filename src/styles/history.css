@@ -449,3 +449,12 @@
   background: rgba(245, 158, 11, 0.15);
   color: #f59e0b;
 }
+
+/* URL 模糊搜索行（复用 .search-box 基础样式，补充间距） */
+.history-search-row {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.history-search-row .search-box {
+  margin: 0;
+}

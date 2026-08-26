@@ -24,6 +24,7 @@ interface AppToolbarProps {
   onToggleMock: () => void;
   onRefresh: () => void;
   onOpenUpdate: () => void;
+  onToast: (msg: string) => void;
 }
 
 export function AppToolbar({
@@ -43,6 +44,7 @@ export function AppToolbar({
   onToggleMock,
   onRefresh,
   onOpenUpdate,
+  onToast,
 }: AppToolbarProps) {
   const t = useT();
   const [showRecent, setShowRecent] = useState(false);
@@ -156,6 +158,20 @@ export function AppToolbar({
               <span className="mock-status">
                 {mock.running ? t("toolbar.mockRunning", { count: mock.routeCount }) : t("toolbar.mockStopped")}
               </span>
+              {mock.running && mock.url && (
+                <button
+                  className="btn mock-copy-btn"
+                  onClick={() => {
+                    void navigator.clipboard
+                      .writeText(mock.url!)
+                      .then(() => onToast(t("toolbar.mockAddrCopied")))
+                      .catch(() => onToast(t("toolbar.mockAddrCopyFailed")));
+                  }}
+                  title={t("toolbar.mockAddrTip", { url: mock.url })}
+                >
+                  📋
+                </button>
+              )}
             </div>
           )}
           <button className="btn" onClick={onRefresh} title={t("toolbar.refresh")}>

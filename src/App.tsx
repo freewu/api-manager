@@ -526,6 +526,7 @@ export default function App() {
               showToast(t("toast.refreshed"));
             }}
             onOpenUpdate={() => setShowUpdateModal(true)}
+            onToast={showToast}
           />
           <div className="main">
             <Sidebar
