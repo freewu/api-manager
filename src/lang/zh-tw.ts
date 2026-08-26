@@ -41,7 +41,7 @@ export const TW: Record<string, string> = {
   "mock.noRoutes": "已啟動，但未發現啟用 Mock 的接口（請先在接口的 Mock 頁籤啟用並填寫返回內容）",
   "mock.failed": "Mock 操作失敗: {err}",
   "mock.reloaded": "Mock 服務已重新加載",
-  "toast.opened": "已打開工作區",
+  "toast.opened": "工作目錄切換至:{ws}",
   "toast.autoSaved": "已自動保存修改",
   "toast.openFailed": "打開失敗: {err}",
   "toast.demoCreated": "已生成演示案例",

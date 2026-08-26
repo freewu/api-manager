@@ -244,8 +244,10 @@ export default function App() {
 
   // ---------- 视图切换 ----------
   const [view, setView] = useState<AppView>("api");
-  /** 切换工作目录时的转场动画状态（淡出 → 切换 → 淡入） */
+  /** 切换工作目录时的转场动画状态（遮罩淡入 → 切换 → 遮罩淡出） */
   const [switching, setSwitching] = useState(false);
+  /** 切换遮罩淡出阶段 */
+  const [switchOut, setSwitchOut] = useState(false);
 
   // 进入数据生成记录页面时刷新列表
   useEffect(() => {
@@ -279,10 +281,11 @@ export default function App() {
   // ---------- 打开工作目录 ----------
   const finishOpenWorkspace = useCallback(
     async (w: string) => {
-      // 切换动画：先淡出 → 回到接口管理视图 → 加载数据 → 淡入
+      // 切换动画：全屏遮罩淡入 → 回到接口管理视图并加载数据 → 遮罩淡出
       setSwitching(true);
+      setSwitchOut(false);
       setView("api");
-      await new Promise((r) => setTimeout(r, 260));
+      await new Promise((r) => setTimeout(r, 260)); // 等待遮罩淡入
       setWorkspace(w);
       setResponse(null);
       if (!(await hasWorkspaceInfo())) {
@@ -291,8 +294,10 @@ export default function App() {
         setModal({ type: "demo", parent: w });
       } else {
         await loadAll(w);
-        showToast(t("toast.opened"));
+        showToast(t("toast.opened", { ws: w }));
       }
+      setSwitchOut(true);
+      await new Promise((r) => setTimeout(r, 260)); // 等待遮罩淡出
       setSwitching(false);
     },
     [loadAll, showToast, t]
@@ -357,7 +362,7 @@ export default function App() {
             /* noop */
           }
         }
-        if (!create) showToast(t("toast.opened"));
+        if (!create) showToast(t("toast.opened", { ws: workspace ?? modal?.parent ?? "" }));
       }
     },
     [modal?.parent, workspace, loadAll, objects.refresh, showToast, t]
@@ -508,7 +513,7 @@ export default function App() {
           onOpenUpdate={() => setShowUpdateModal(true)}
         />
       ) : (
-        <div className={`app${switching ? " switching" : ""}`}>
+        <div className="app">
           <AppToolbar
             workspace={workspace}
             version={version}
@@ -774,6 +779,13 @@ export default function App() {
               onClose={() => setApiDocView(null)}
             />
           )}
+        </div>
+      )}
+      {switching && (
+        <div className={`app-switch-overlay${switchOut ? " out" : ""}`}>
+          <span className="app-switch-logo" aria-hidden="true">
+            ⏳
+          </span>
         </div>
       )}
     </Suspense>

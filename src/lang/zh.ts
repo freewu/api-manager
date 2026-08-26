@@ -48,7 +48,7 @@ export const ZH: Record<string, string> = {
   "mock.reloaded": "Mock 服务已重新加载",
 
   // ===== Toast =====
-  "toast.opened": "已打开工作区",
+  "toast.opened": "工作目录切换至:{ws}",
   "toast.autoSaved": "已自动保存修改",
   "toast.openFailed": "打开失败: {err}",
   "toast.demoCreated": "已生成演示案例",

@@ -44,7 +44,7 @@ export const EN: Record<string, string> = {
   "mock.failed": "Mock operation failed: {err}",
   "mock.reloaded": "Mock server reloaded",
 
-  "toast.opened": "Workspace opened",
+  "toast.opened": "Workspace switched to: {ws}",
   "toast.autoSaved": "Changes auto-saved",
   "toast.openFailed": "Open failed: {err}",
   "toast.demoCreated": "Demo workspace generated",

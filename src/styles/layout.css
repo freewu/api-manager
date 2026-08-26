@@ -3,11 +3,51 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  /* 切换工作目录时的转场动画 */
-  transition: opacity 0.26s ease;
 }
-.app.switching {
+
+/* 切换工作目录时的全屏转场遮罩（淡入 → 旋转 logo → 淡出） */
+.app-switch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg) 68%, transparent);
   opacity: 0;
+  animation: switch-fade-in 0.26s ease forwards;
+  pointer-events: none;
+}
+.app-switch-overlay.out {
+  animation: switch-fade-out 0.26s ease forwards;
+}
+.app-switch-logo {
+  font-size: 44px;
+  animation: switch-spin 1s linear infinite;
+}
+@keyframes switch-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes switch-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes switch-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .main {
