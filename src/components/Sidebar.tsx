@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppSettings, TreeNode } from "../types";
-import { HistoryDay, HistorySummary } from "../commands";
+import { HistoryDay, HistorySummary, setFolderCollapsed } from "../commands";
 import { HistoryList } from "./HistoryList";
 import ObjectsTree from "./ObjectsTree";
 import { ObjectImportResult, ObjectStore, ObjectUsageItem } from "../types";
@@ -552,10 +552,12 @@ export function Sidebar(props: Props) {
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [importMenu]);
-  /** 文件夹展开状态（path → open），跨 loadAll/导入刷新保留 */
+  /** 文件夹展开状态（path → open），跨 loadAll/导入刷新保留；并持久化到目录 __info.json（collapsed） */
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
   const toggleOpen = useCallback((path: string, open: boolean) => {
     setOpenMap((m) => ({ ...m, [path]: open }));
+    // 记录开闭状态，重开应用时按此状态显示
+    void setFolderCollapsed(path, !open).catch(() => {});
   }, []);
   const [filter, setFilter] = useState("");
   /** 高级搜索：是否展开过滤面板 */

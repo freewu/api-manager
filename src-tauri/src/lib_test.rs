@@ -703,6 +703,14 @@
         let folder = PathBuf::from(&result.folder);
         assert!(folder.join("__info.json").exists());
 
+        // 分组目录开闭状态：写入 __info.json 的 collapsed 并读回（重开应用按此状态显示）
+        write_folder_collapsed(&folder, true).unwrap();
+        assert_eq!(read_info_file(&folder).collapsed, Some(true), "collapsed 应写回");
+        write_folder_collapsed(&folder, false).unwrap();
+        assert_eq!(read_info_file(&folder).collapsed, Some(false), "重新展开后 collapsed=false");
+        // 已有字段（name）不应被覆盖
+        assert!(read_info_file(&folder).name.is_some(), "name 字段应保留");
+
         // 按 tag 分组到 pets 子目录
         let pets = folder.join("pets");
         assert!(pets.exists());

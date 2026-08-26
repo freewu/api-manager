@@ -291,6 +291,11 @@ export function saveInfo(path: string, data: InfoJson): Promise<void> {
   return invoke<void>("save_info", { path, data });
 }
 
+/** 记录分组目录的开闭状态（写入目录 __info.json 的 collapsed 字段） */
+export function setFolderCollapsed(path: string, collapsed: boolean): Promise<void> {
+  return invoke<void>("set_folder_collapsed", { path, collapsed });
+}
+
 /** 标记 / 取消标记“已废弃”（接口或分组），返回新的废弃状态 */
 export function toggleDeprecated(path: string): Promise<boolean> {
   return invoke<boolean>("toggle_deprecated", { path });

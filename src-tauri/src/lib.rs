@@ -1691,6 +1691,27 @@ fn save_info(
     write_pretty(&p.join(INFO_FILE), &merged)
 }
 
+/// 记录分组目录的开闭状态（写入该目录 __info.json 的 collapsed 字段），重开应用后按此状态显示
+fn write_folder_collapsed(dir: &Path, collapsed: bool) -> Result<(), String> {
+    let mut info = read_info_file(dir);
+    info.collapsed = Some(collapsed);
+    write_pretty(&dir.join(INFO_FILE), &info)
+}
+
+#[tauri::command]
+fn set_folder_collapsed(
+    state: State<'_, WorkspaceState>,
+    path: String,
+    collapsed: bool,
+) -> Result<(), String> {
+    let root = workspace_root(&state)?;
+    let p = PathBuf::from(&path);
+    if !p.starts_with(&root) || !p.is_dir() {
+        return Err("路径不是工作区内的目录".into());
+    }
+    write_folder_collapsed(&p, collapsed)
+}
+
 /// 标记 / 取消标记“已废弃”：接口写入其 JSON 文件的 deprecated 字段，
 /// 分组写入其目录下 __info.json 的 deprecated 字段。返回新的废弃状态。
 #[tauri::command]
@@ -1830,6 +1851,7 @@ pub fn run() {
             delete_entry,
             read_info,
             save_info,
+            set_folder_collapsed,
             toggle_deprecated,
             read_envs,
             save_envs,
