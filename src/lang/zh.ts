@@ -548,6 +548,7 @@ export const ZH: Record<string, string> = {
   "history.loading": "加载中…",
   "history.refresh": "刷新历史",
   "history.search": "搜索 URL…",
+  "history.clearFilters": "清空条件",
   "history.today": "今天",
   "history.yesterday": "昨天",
   "history.beforeYesterday": "前天",

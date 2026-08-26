@@ -264,6 +264,21 @@ export function HistoryList({
       </div>
       {advOpen && (
         <div className="adv-search">
+          <div className="adv-search-head">
+            <span className="adv-search-head-title">{t("sidebar.advSearch")}</span>
+            {(filter !== "" || protocolFilters.length > 0 || methodFilters.length > 0) && (
+              <button
+                className="adv-clear"
+                onClick={() => {
+                  setFilter("");
+                  setProtocolFilters([]);
+                  setMethodFilters([]);
+                }}
+              >
+                {t("history.clearFilters")}
+              </button>
+            )}
+          </div>
           <div className="adv-search-title">{t("sidebar.advProtocolType")}</div>
           <div className="adv-methods">
             {HIST_PROTOCOL_OPTIONS.map((p) => {

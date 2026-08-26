@@ -529,6 +529,7 @@ export const TW: Record<string, string> = {
   "history.loading": "加載中…",
   "history.refresh": "刷新歷史",
   "history.search": "搜索 URL…",
+  "history.clearFilters": "清空條件",
   "history.today": "今天",
   "history.yesterday": "昨天",
   "history.beforeYesterday": "前天",

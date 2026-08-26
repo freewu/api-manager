@@ -540,6 +540,7 @@ export const EN: Record<string, string> = {
   "history.loading": "Loading…",
   "history.refresh": "Refresh history",
   "history.search": "Search URL…",
+  "history.clearFilters": "Clear filters",
   "history.today": "Today",
   "history.yesterday": "Yesterday",
   "history.beforeYesterday": "Day before yesterday",
