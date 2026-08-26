@@ -8,11 +8,24 @@
 
 ## 版本发布（git tag）
 
-- **每次修改版本号后，必须更新 `Update.md`**：将本次版本的更新内容总结记录在文件顶部（用 `git log <上个版本tag>..HEAD --oneline` 梳理），作为 GitHub Release 的 Release notes（`.github/workflows/release.yml` 发布时自动读取 Update.md）。
-- 每次发布（打包安装程序）完成后，执行一条指令即可提交 git tag 并推送到远程（版本号与 `tauri.conf.json` 中的 version 保持一致）：
+### 需要手动修改版本号的位置（全部同步为同一版本号）
+
+| 文件 | 位置 | 说明 |
+| --- | --- | --- |
+| `package.json` | `version` 字段 | 前端包版本 |
+| `src-tauri/tauri.conf.json` | `version` 字段 | 安装包/产物版本 |
+| `src-tauri/Cargo.toml` | `version` 字段 | Rust 侧版本（托盘「API Manager vX」、窗口标题、`env!("CARGO_PKG_VERSION")` 均自动取自此） |
+| `src-tauri/Cargo.lock` | `version` 字段（3 处） | **不用手动改**，`cargo build` 自动同步 |
+| `Update.md` | 顶部新增本次版本更新内容 | 发布时作为 GitHub Release notes（release.yml 自动读取） |
+| git tag | `git tag vX.Y.Z && git push origin vX.Y.Z` | 推送后自动触发 release workflow |
+
+### 发布流程（顺序执行）
+
+1. 三处版本号改完（Cargo.lock 由 `cargo build` 自动更新）
+2. 更新 `Update.md`：用 `git log <上个版本tag>..HEAD --oneline` 梳理本次更新内容，总结记录在文件顶部
+3. 构建验证（`npm run build` / `cargo test`）后提交推送，并打 tag：
   ```bash
   git tag v0.5.2 && git push origin v0.5.2
   ```
-- **版本号需同步修改三处**：`package.json` 的 `version`、`src-tauri/tauri.conf.json` 的 `version`、`src-tauri/Cargo.toml` 的 `version`（Cargo.lock 由 cargo build 自动更新），当前均为 v0.5.2。修改版本号时三处要一起改。
-- 版本号已存在时先删除再重打：`git tag -d v0.5.2 && git push origin :refs/tags/v0.5.2`
-- 查看标签列表：`git tag -l`；查看某标签指向的提交：`git show v0.1.6 --oneline -s`
+4. 版本号已存在时先删除再重打：`git tag -d v0.5.2 && git push origin :refs/tags/v0.5.2`
+5. 查看标签列表：`git tag -l`；查看某标签指向的提交：`git show v0.5.2 --oneline -s`
