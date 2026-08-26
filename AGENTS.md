@@ -11,8 +11,8 @@
 - **每次修改版本号后，必须更新 `Update.md`**：将本次版本的更新内容总结记录在文件顶部（用 `git log <上个版本tag>..HEAD --oneline` 梳理），作为 GitHub Release 的 Release notes（`.github/workflows/release.yml` 发布时自动读取 Update.md）。
 - 每次发布（打包安装程序）完成后，执行一条指令即可提交 git tag 并推送到远程（版本号与 `tauri.conf.json` 中的 version 保持一致）：
   ```bash
-  git tag v0.1.6 && git push origin v0.1.6
+  git tag v0.5.2 && git push origin v0.5.2
   ```
-- **版本号需同步修改 `package.json` 的 `version` 字段**，使其与 `src-tauri/tauri.conf.json` 中的 version 保持一致（当前两者都应为 v0.1.6）。修改版本号时两处要一起改。
-- 版本号已存在时先删除再重打：`git tag -d v0.1.6 && git push origin :refs/tags/v0.1.6`
+- **版本号需同步修改三处**：`package.json` 的 `version`、`src-tauri/tauri.conf.json` 的 `version`、`src-tauri/Cargo.toml` 的 `version`（Cargo.lock 由 cargo build 自动更新），当前均为 v0.5.2。修改版本号时三处要一起改。
+- 版本号已存在时先删除再重打：`git tag -d v0.5.2 && git push origin :refs/tags/v0.5.2`
 - 查看标签列表：`git tag -l`；查看某标签指向的提交：`git show v0.1.6 --oneline -s`
