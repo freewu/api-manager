@@ -70,6 +70,10 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # 用 logo.svg 重新生成应用图标（各平台所需尺寸，含 Windows .ico / macOS .icns）
+      - name: Generate app icons from logo.svg
+        run: npx tauri icon logo.svg
+
       - name: Build & publish (tauri-action)
         uses: tauri-apps/tauri-action@v0
         env:

@@ -32,26 +32,26 @@ init:
     @just init-rust
     @just init-node
 
-# 安装 Rust 工具链（rustup + stable），已安装则跳过
+# 安装 Rust 工具链（rustup + stable），已安装则跳过（绿色 ✓）
 [windows]
 init-rust:
-    rustc --version >nul 2>nul && (echo Rust already installed: & rustc --version) || (echo Installing Rust via rustup... & winget install --id Rustlang.Rustup -e --accept-source-agreements --accept-package-agreements & rustup default stable)
+    rustc --version >nul 2>nul && (powershell -NoProfile -Command "$c=[char]27; Write-Host ($c+'[32m✓'+$c+'[0m') -NoNewline; Write-Host ' Rust already installed: ' -NoNewline" & rustc --version) || (echo Installing Rust via rustup... & winget install --id Rustlang.Rustup -e --accept-source-agreements --accept-package-agreements & rustup default stable)
     rustc --version >nul 2>nul || echo Please reopen a terminal so PATH picks up rustc/cargo from %%USERPROFILE%%\.cargo\bin
 
 [unix]
 init-rust:
-    if command -v cargo >/dev/null 2>&1; then echo "Rust already installed: $(cargo --version)"; else echo "Installing Rust via rustup..."; curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; fi
+    if command -v cargo >/dev/null 2>&1; then printf "\033[32m✓\033[0m Rust already installed: %s\n" "$(cargo --version)"; else echo "Installing Rust via rustup..."; curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; fi
     if ! command -v cargo >/dev/null 2>&1 && [ -f "$HOME/.cargo/env" ]; then . "$HOME/.cargo/env"; echo "cargo activated via ~/.cargo/env"; fi
 
-# 安装 Node.js（Windows 用 winget 装 LTS；macOS 用 Homebrew；Linux 用发行版包管理器）
+# 安装 Node.js（Windows 用 winget 装 LTS；macOS 用 Homebrew；Linux 用发行版包管理器），已安装则跳过（绿色 ✓）
 [windows]
 init-node:
-    node --version >nul 2>nul && (echo Node already installed: & node --version) || (echo Installing Node.js LTS via winget... & winget install --id OpenJS.NodeJS.LTS -e --accept-source-agreements --accept-package-agreements)
+    node --version >nul 2>nul && (powershell -NoProfile -Command "$c=[char]27; Write-Host ($c+'[32m✓'+$c+'[0m') -NoNewline; Write-Host ' Node already installed: ' -NoNewline" & node --version) || (echo Installing Node.js LTS via winget... & winget install --id OpenJS.NodeJS.LTS -e --accept-source-agreements --accept-package-agreements)
     node --version >nul 2>nul || echo Please reopen a terminal so PATH picks up node/npm
 
 [unix]
 init-node:
-    if command -v node >/dev/null 2>&1; then echo "Node already installed: $(node --version)"; else if command -v brew >/dev/null 2>&1; then echo "Installing Node.js via Homebrew..."; brew install node; elif command -v apt-get >/dev/null 2>&1; then echo "Installing Node.js via apt..."; sudo apt-get update && sudo apt-get install -y nodejs npm; elif command -v dnf >/dev/null 2>&1; then echo "Installing Node.js via dnf..."; sudo dnf install -y nodejs npm; elif command -v pacman >/dev/null 2>&1; then echo "Installing Node.js via pacman..."; sudo pacman -Sy --noconfirm nodejs npm; else echo "No supported package manager found. Please install Node.js manually: https://nodejs.org"; fi; fi
+    if command -v node >/dev/null 2>&1; then printf "\033[32m✓\033[0m Node already installed: %s\n" "$(node --version)"; else if command -v brew >/dev/null 2>&1; then echo "Installing Node.js via Homebrew..."; brew install node; elif command -v apt-get >/dev/null 2>&1; then echo "Installing Node.js via apt..."; sudo apt-get update && sudo apt-get install -y nodejs npm; elif command -v dnf >/dev/null 2>&1; then echo "Installing Node.js via dnf..."; sudo dnf install -y nodejs npm; elif command -v pacman >/dev/null 2>&1; then echo "Installing Node.js via pacman..."; sudo pacman -Sy --noconfirm nodejs npm; else echo "No supported package manager found. Please install Node.js manually: https://nodejs.org"; fi; fi
 
 # 开发模式运行（前端热更新 + Rust dev 模式）
 dev:
@@ -84,8 +84,9 @@ exe:
 build:
     npm run tauri build
 
-# 打包并复制到 ./release：仅单体可执行文件（无需安装，拷走即用）
+# 打包并复制到 ./release：仅单体可执行文件（无需安装，拷走即用）；构建前用 logo.svg 重新生成应用图标
 release:
+    @just icon
     npm run build
     cd src-tauri && cargo build --release --features custom-protocol
     @just release-collect
@@ -106,10 +107,9 @@ release-collect:
     for f in src-tauri/target/release/api-manager src-tauri/target/release/api-manager.exe; do if [ -f "$f" ]; then cp -f "$f" release/; fi; done
     ls -la release
 
-# 重新生成应用图标（群青主题 #2E59A7）
+# 重新生成应用图标（源文件 logo.svg，tauri 自动生成各平台所需尺寸）
 icon:
-    node scripts/gen-icon.cjs app-icon.png
-    npx tauri icon app-icon.png
+    npx tauri icon logo.svg
 
 # 清理构建产物
 clean: clean-dist
