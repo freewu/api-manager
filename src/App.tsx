@@ -208,7 +208,7 @@ export default function App() {
 
   // ---------- 请求（HTTP / WebSocket） ----------
   const baseUrl = rootInfo.baseUrl || "";
-  const req = useRequests({ api, envs, baseUrl, onToast: showToast, t });
+  const req = useRequests({ api, envs, baseUrl, onToast: showToast, onEnvChanged: () => void readEnv().then(hydrateEnvs), t });
   const {
     response,
     setResponse,

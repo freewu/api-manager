@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { saveExample, saveHistory, sendRequest } from "../commands";
+import { saveExample, saveHistory, runPrescript, sendRequest } from "../commands";
 import { ApiFile, BodyData, EnvStore, HttpRequestData, HttpResult, WsLogEntry } from "../types";
 import { escapeRe } from "./useWorkspace";
 
@@ -12,9 +12,11 @@ export function useRequests(opts: {
   envs: EnvStore;
   baseUrl: string;
   onToast: (msg: string) => void;
+  /** 前置脚本 global.set 写回环境后的回调（App 据此刷新环境面板） */
+  onEnvChanged?: () => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
 }) {
-  const { api, envs, baseUrl, onToast, t } = opts;
+  const { api, envs, baseUrl, onToast, onEnvChanged, t } = opts;
 
   const [response, setResponse] = useState<HttpResult | null>(null);
   const [lastRequest, setLastRequest] = useState<HttpRequestData | null>(null);
@@ -303,6 +305,34 @@ export function useRequests(opts: {
       const vars: Record<string, string> = {};
       for (const v of activeEnv?.variables || []) {
         if (v.enabled && v.key.trim()) vars[v.key.trim()] = v.value.trim() ? v.value : v.defaultValue;
+      }
+      // 发送前执行前置脚本（仅 HTTP）：脚本 global.set 的变量覆盖环境变量，
+      // 使 {{变量名}} 绑定（url / query / body / headers）使用脚本计算后的最新值
+      if (api.protocol === "http" && (api.prescript ?? "").trim()) {
+        try {
+          const bodyRaw =
+            api.body.mode === "form"
+              ? JSON.stringify(
+                  Object.fromEntries(
+                    api.body.form
+                      .filter((f) => f.enabled && f.key.trim())
+                      .map((f) => [f.key.trim(), f.value])
+                  )
+                )
+              : api.body.raw;
+          const pr = await runPrescript({
+            code: api.prescript,
+            query: api.query.filter((q) => q.enabled && q.key.trim()),
+            path: api.params.filter((p) => p.enabled && p.key.trim()),
+            headers: api.headers.filter((h) => h.enabled && h.key.trim()),
+            body: bodyRaw,
+            globals: vars,
+          });
+          Object.assign(vars, pr.globals);
+          onEnvChanged?.();
+        } catch {
+          // 脚本异常不阻断发送（console 日志在测试面板可见）
+        }
       }
       const sub = (s: string) =>
         s.replace(/\{\{([^{}]+)\}\}/g, (m, k: string) => vars[k.trim()] ?? m);
