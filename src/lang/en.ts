@@ -580,6 +580,8 @@ export const EN: Record<string, string> = {
   "historyDetail.emptyHint": "Click a record on the left to view request and response details",
   "historyDetail.error": "Error",
   "historyDetail.none": "(none)",
+  "historyDetail.reqUrl": "Request URL",
+  "historyDetail.queryParams": "Query params",
   "historyDetail.reqBody": "Request Body",
   "historyDetail.reqHeaders": "Request Headers",
   "historyDetail.respBody": "Response Body",

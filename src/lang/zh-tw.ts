@@ -569,6 +569,8 @@ export const TW: Record<string, string> = {
   "historyDetail.emptyHint": "點擊左側記錄查看請求與響應詳情",
   "historyDetail.error": "錯誤信息",
   "historyDetail.none": "（無）",
+  "historyDetail.reqUrl": "請求 URL",
+  "historyDetail.queryParams": "Query 參數",
   "historyDetail.reqBody": "請求 Body",
   "historyDetail.reqHeaders": "請求 Headers",
   "historyDetail.respBody": "響應 Body",

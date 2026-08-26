@@ -588,6 +588,8 @@ export const ZH: Record<string, string> = {
   "historyDetail.emptyHint": "点击左侧记录查看请求与响应详情",
   "historyDetail.error": "错误信息",
   "historyDetail.none": "（无）",
+  "historyDetail.reqUrl": "请求 URL",
+  "historyDetail.queryParams": "Query 参数",
   "historyDetail.reqBody": "请求 Body",
   "historyDetail.reqHeaders": "请求 Headers",
   "historyDetail.respBody": "响应 Body",
