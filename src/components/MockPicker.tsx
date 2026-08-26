@@ -6,32 +6,42 @@ import type { CustomMock } from "../types";
 
 /** mock.js 常用占位符，按类型分组（点击插入到属性的 mock 值） */
 export const MOCK_PLACEHOLDER_GROUPS: {
-  cat: "basic" | "time" | "character" | "number";
+  cat: "person" | "web" | "basic" | "time" | "character" | "number";
   items: { value: string; desc: string; custom?: boolean }[];
 }[] = [
   {
-    cat: "basic",
+    cat: "person",
     items: [
       { value: "@cname", desc: "中文姓名" },
+      { value: "@id", desc: "身份证号" },
       { value: "@name", desc: "英文姓名" },
       { value: "@first", desc: "英文名" },
       { value: "@last", desc: "英文姓" },
       { value: "@email", desc: "邮箱" },
       { value: "@phone", desc: "手机号" },
-      { value: "@id", desc: "身份证号" },
-      { value: "@guid", desc: "GUID" },
-      { value: "@boolean", desc: "布尔值" },
+      { value: "@avatar", desc: "头像 URL" },
+    ],
+  },
+  {
+    cat: "web",
+    items: [
       { value: "@url", desc: "网址" },
       { value: "@domain", desc: "域名" },
       { value: "@ip", desc: "IP 地址" },
       { value: "@protocol", desc: "协议" },
+      { value: "@image", desc: "图片 URL" },
+    ],
+  },
+  {
+    cat: "basic",
+    items: [
+      { value: "@guid", desc: "GUID" },
+      { value: "@boolean", desc: "布尔值" },
       { value: "@city", desc: "城市" },
       { value: "@province", desc: "省份" },
       { value: "@county", desc: "县" },
       { value: "@zip", desc: "邮编" },
       { value: "@color", desc: "颜色值" },
-      { value: "@image", desc: "图片 URL" },
-      { value: "@avatar", desc: "头像 URL" },
     ],
   },
   {
@@ -65,6 +75,8 @@ export const MOCK_PLACEHOLDER_GROUPS: {
 ];
 
 const CAT_KEYS: Record<string, string> = {
+  person: "objects.mockCatPerson",
+  web: "objects.mockCatWeb",
   basic: "objects.mockCatBasic",
   time: "objects.mockCatTime",
   character: "objects.mockCatChar",
@@ -81,7 +93,7 @@ interface MockPickerProps {
 export default function MockPicker({ onPick, onClose }: MockPickerProps) {
   const t = useT();
   const [customs, setCustoms] = useState<CustomMock[]>([]);
-  const [activeCat, setActiveCat] = useState<string>("basic");
+  const [activeCat, setActiveCat] = useState<string>("person");
   // 打开弹窗时拉取激活的自定义占位符（设置页修改后下次打开即最新）
   useEffect(() => {
     let alive = true;

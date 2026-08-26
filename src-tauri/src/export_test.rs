@@ -19,6 +19,7 @@
                 binary_path: String::new(),
             },
             mock: crate::MockConfig::default(),
+            prescript: String::new(),
             examples: vec![],
             responses: vec![],
             doc_params: vec![],

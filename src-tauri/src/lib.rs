@@ -1,4 +1,5 @@
 mod mock;
+mod prescript;
 mod markdown;
 mod export;
 mod objects;
@@ -31,6 +32,8 @@ use crate::import::*;
 use crate::markdown::*;
 #[allow(unused_imports)]
 use crate::mock::*;
+#[allow(unused_imports)]
+use crate::prescript::*;
 #[allow(unused_imports)]
 use crate::objects::*;
 #[allow(unused_imports)]
@@ -215,6 +218,9 @@ pub struct ApiFile {
     pub body: BodyData,
     #[serde(default)]
     pub mock: MockConfig,
+    /// HTTP 接口前置脚本（发送请求前执行的 JS，可读写全局变量 / 计算签名）
+    #[serde(default)]
+    pub prescript: String,
     #[serde(default)]
     pub examples: Vec<Value>,
     /// 响应页签条目：返回成功 / 返回失败 / 自定义错误返回（名称、状态码、示例体）
@@ -1383,6 +1389,7 @@ fn create_api(
             BodyData::default()
         },
         mock: MockConfig::default(),
+        prescript: String::new(),
         examples: vec![],
         responses: default_responses(),
         doc_params: vec![],
@@ -1796,6 +1803,9 @@ pub fn run() {
             crate::markdown::render_group_markdown,
             crate::markdown::render_markdown,
             crate::markdown::export_api_markdown,
+            crate::prescript::run_prescript,
+            crate::prescript::get_global_vars,
+            crate::prescript::set_global_vars,
             crate::import::import_markdown,
             crate::export::export_selection,
             vcs_info,

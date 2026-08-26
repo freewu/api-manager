@@ -282,6 +282,7 @@ fn insomnia_request_to_api(
         params,
         body,
         mock: MockConfig::default(),
+        prescript: String::new(),
         examples: vec![],
         responses: vec![],
         doc_params: vec![],

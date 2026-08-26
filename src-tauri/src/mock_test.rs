@@ -20,6 +20,7 @@
                 delay: 5,
                 body: "{\"id\": \"{{path.id}}\"}".into(),
             },
+            prescript: String::new(),
             examples: vec![],
             responses: vec![],
             doc_params: vec![],

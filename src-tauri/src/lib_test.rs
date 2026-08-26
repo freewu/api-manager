@@ -423,6 +423,7 @@
             params: vec![],
             body: BodyData::default(),
             mock: MockConfig::default(),
+            prescript: String::new(),
             examples: vec![],
             responses: vec![],
             doc_params: vec![],
@@ -485,6 +486,7 @@
                 delay: 0,
                 body: r#"{"code":0}"#.into(),
             },
+            prescript: String::new(),
             examples: vec![],
             responses: vec![],
             doc_params: vec![DocParam {
@@ -535,6 +537,7 @@
                 delay: 0,
                 body: String::new(),
             },
+            prescript: String::new(),
             examples: vec![],
             responses: vec![],
             doc_params: vec![],
@@ -583,6 +586,7 @@
                 delay: 0,
                 body: String::new(),
             },
+            prescript: String::new(),
             examples: vec![],
             responses: vec![],
             doc_params: vec![],
@@ -900,6 +904,7 @@
                 binary_path: String::new(),
             },
             mock: MockConfig::default(),
+            prescript: String::new(),
             examples: vec![],
             responses: vec![],
             doc_params: vec![],
@@ -1255,6 +1260,7 @@
                 binary_path: String::new(),
             },
             mock: MockConfig::default(),
+            prescript: String::new(),
             examples: vec![],
             responses: vec![ResponseItem {
                 id: "r1".into(),
@@ -1418,6 +1424,7 @@ let v = export::to_yapi(&apis);
                 binary_path: String::new(),
             },
             mock: MockConfig::default(),
+            prescript: String::new(),
             examples: vec![],
             responses: vec![ResponseItem {
                 id: "r1".into(),
@@ -1560,6 +1567,7 @@ let v = export::to_yapi(&apis);
                 binary_path: String::new(),
             },
             mock: MockConfig::default(),
+            prescript: String::new(),
             examples: vec![],
             responses: vec![],
             doc_params: vec![],
@@ -1693,6 +1701,7 @@ let v = export::to_yapi(&apis);
                 binary_path: String::new(),
             },
             mock: MockConfig::default(),
+            prescript: String::new(),
             examples: vec![],
             responses: vec![ResponseItem {
                 id: uuid::Uuid::new_v4().to_string(),
@@ -1929,6 +1938,7 @@ let v = export::to_yapi(&apis);
             params: vec![],
             body: BodyData::default(),
             mock: MockConfig::default(),
+            prescript: String::new(),
             examples: vec![],
             responses: vec![],
             doc_params: vec![],
@@ -1973,6 +1983,7 @@ let v = export::to_yapi(&apis);
                 params: vec![],
                 body: BodyData::default(),
                 mock: MockConfig::default(),
+                prescript: String::new(),
                 examples: vec![],
                 responses: vec![],
                 doc_params: vec![],
@@ -2114,6 +2125,7 @@ let v = export::to_yapi(&apis);
                 }
             },
             mock: MockConfig::default(),
+            prescript: String::new(),
             examples: vec![],
             responses: vec![ResponseItem {
                 id: uuid::Uuid::new_v4().to_string(),
@@ -2251,6 +2263,7 @@ let v = export::to_yapi(&apis);
                 binary_path: String::new(),
             },
             mock: MockConfig::default(),
+            prescript: String::new(),
             examples: vec![],
             responses: vec![ResponseItem {
                 id: uuid::Uuid::new_v4().to_string(),

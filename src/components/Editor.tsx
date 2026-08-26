@@ -1,10 +1,11 @@
 import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { ApiFile, BODY_MODES, BodyData, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, ObjectDef, ObjectGroup, ObjectStore, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../types";
+import { ApiFile, BODY_MODES, BodyData, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, ObjectDef, ObjectGroup, ObjectStore, PrescriptResult, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { ExamplesTab } from "./ExamplesTab";
 import { renderMarkdown } from "../commands";
 import { useT } from "../i18n";
-import { pickFile, listExamples, listCustomMocks } from "../commands";
+import { pickFile, listExamples, listCustomMocks, runPrescript, getGlobalVars, setGlobalVars } from "../commands";
+import JsCodeEditor from "./JsCodeEditor";
 import ObjectRefPicker from "./ObjectRefPicker";
 import MockPicker from "./MockPicker";
 import { Modal } from "./Modal";
@@ -66,7 +67,7 @@ function prettyXml(src: string): string {
   return out.join("\n");
 }
 
-type Tab = "params" | "path" | "headers" | "body" | "response" | "mock" | "desc" | "doc" | "code" | "examples";
+type Tab = "params" | "path" | "headers" | "body" | "prescript" | "response" | "mock" | "desc" | "doc" | "code" | "examples";
 
 interface Props {
   api: ApiFile;
@@ -125,6 +126,21 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   const [mockTestOk, setMockTestOk] = useState(true);
   const [mockTesting, setMockTesting] = useState(false);
   const mockBodyRef = useRef<HTMLTextAreaElement | null>(null);
+  // ---- 前置脚本页签：测试运行 / console 日志 / 全局变量 ----
+  /** 全局变量（工作区级，脚本内 ctx.global.get / set 读写） */
+  const [globals, setGlobals] = useState<Record<string, string>>({});
+  const [preTesting, setPreTesting] = useState(false);
+  const [preResult, setPreResult] = useState<PrescriptResult | null>(null);
+  // 打开接口时拉取工作区全局变量（切换接口同工作区，重新拉取一次无副作用）
+  useEffect(() => {
+    let alive = true;
+    getGlobalVars()
+      .then((g) => alive && setGlobals(g))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [api.uuid]);
   /** URL 为空时点击发送的红框提示 */
   const [urlError, setUrlError] = useState(false);
   /** URL 完全等于 bluefrog 时触发的彩蛋 */
@@ -164,6 +180,59 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
     } finally {
       setMockTesting(false);
     }
+  };
+
+  // 前置脚本测试：把当前请求参数（query/path/headers/body）+ 全局变量传给后端执行，
+  // 展示 console.log 日志与返回值，脚本内 global.set 的变量自动写回工作区
+  const runPreScriptTest = async () => {
+    setPreTesting(true);
+    try {
+      const enabled = (rows: KeyValue[]) =>
+        rows.filter((r) => r.enabled && r.key.trim());
+      let body = api.body.raw;
+      if (api.body.mode === "form") {
+        const obj: Record<string, string> = {};
+        api.body.form.forEach((f) => {
+          if (f.enabled && f.key.trim()) obj[f.key.trim()] = f.value;
+        });
+        body = JSON.stringify(obj);
+      }
+      const r = await runPrescript({
+        code: api.prescript ?? "",
+        query: enabled(api.query),
+        path: enabled(api.params),
+        headers: enabled(api.headers),
+        body,
+        globals,
+      });
+      setPreResult(r);
+      setGlobals(r.globals);
+      void setGlobalVars(r.globals);
+    } catch (e) {
+      setPreResult({ logs: ["[error] " + String(e)], result: "", globals });
+    } finally {
+      setPreTesting(false);
+    }
+  };
+
+  /** 全局变量：Record → KeyValue 行（编辑用） */
+  const globalsRows: KeyValue[] = useMemo(
+    () =>
+      Object.entries(globals).map(([key, value]) => ({
+        key,
+        value,
+        enabled: true,
+        description: "",
+      })),
+    [globals]
+  );
+  const onGlobalsChange = (rows: KeyValue[]) => {
+    const next: Record<string, string> = {};
+    rows.forEach((r) => {
+      if (r.key.trim()) next[r.key.trim()] = r.value;
+    });
+    setGlobals(next);
+    void setGlobalVars(next);
   };
 
   // 切换接口时回到默认页签：GraphQL 默认 Body（GraphQL 请求体），
@@ -433,6 +502,12 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             )}
           {isRealtime && api.body.raw.trim() && <span className="count">•</span>}
         </div>
+        {!isRealtime && !isGraphql && (
+          <div className={`tab ${tab === "prescript" ? "active" : ""}`} onClick={() => switchTab("prescript")}>
+            {t("editor.prescriptTab")}
+            {(api.prescript ?? "").trim() && <span className="count">•</span>}
+          </div>
+        )}
         <div
           className={`tab ${tab === "response" ? "active" : ""}`}
           onClick={() => switchTab("response")}
@@ -789,6 +864,55 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           </div>
         )}
 
+        {!isRealtime && !isGraphql && tab === "prescript" && (
+          <div className="prescript-pane">
+            <div className="section-title">
+              {t("editor.prescriptHint")}{" "}
+              <span className="help">ctx.query / ctx.path / ctx.headers / ctx.body</span>
+            </div>
+            <div className="prescript-editor">
+              <JsCodeEditor
+                value={api.prescript ?? ""}
+                onChange={(v) => set({ prescript: v })}
+                placeholder={"// 发送请求前执行，示例：\n// console.log(ctx.query, ctx.path, ctx.body);\n// const sign = CryptoJS.MD5(ctx.global.get('secret') + ctx.query.t).toString();\n// ctx.global.set('sign', sign);"}
+              />
+            </div>
+            <div className="prescript-toolbar">
+              <button
+                className="btn-sm mock-body-test"
+                disabled={preTesting}
+                onClick={() => void runPreScriptTest()}
+              >
+                {preTesting ? "…" : "▶"} {t("editor.prescriptTest")}
+              </button>
+              <span className="mock-body-hint">{t("editor.prescriptHelp")}</span>
+            </div>
+            {preResult && (
+              <div className="prescript-result">
+                <div className="prescript-result-title">{t("editor.prescriptLogs")}</div>
+                <pre className="prescript-logs">
+                  {preResult.logs.length ? preResult.logs.join("\n") : t("editor.prescriptNoLogs")}
+                </pre>
+                {preResult.result !== "" && (
+                  <>
+                    <div className="prescript-result-title">{t("editor.prescriptResult")}</div>
+                    <pre className="prescript-logs">{preResult.result}</pre>
+                  </>
+                )}
+              </div>
+            )}
+            <div className="section-title">
+              {t("editor.globalVars")}{" "}
+              <span className="help">ctx.global.get / set</span>
+            </div>
+            <KeyValueEditor
+              rows={globalsRows}
+              onChange={onGlobalsChange}
+              keyPlaceholder={t("editor.globalKey")}
+            />
+          </div>
+        )}
+
         {enableMock && tab === "mock" && (
           <div>
             <div className="meta-row">
@@ -873,7 +997,9 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                 onPick={(v) => {
                   const pos = mockAt;
                   const cur = api.mock.body;
-                  set({ mock: { ...api.mock, body: cur.slice(0, pos) + v + cur.slice(pos) } });
+                  // pos 是用户刚输入的 @（占位符触发符），选择后将其替换掉，避免残留 @@xxx
+                  const after = cur[pos] === "@" ? pos + 1 : pos;
+                  set({ mock: { ...api.mock, body: cur.slice(0, pos) + v + cur.slice(after) } });
                   setMockAt(null);
                   requestAnimationFrame(() => {
                     const el = mockBodyRef.current;

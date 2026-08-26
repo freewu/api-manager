@@ -48,6 +48,7 @@
                 delay: 0,
                 body: "{\"code\":0,\"data\":{\"name\":\"张三\"}}".into(),
             },
+            prescript: String::new(),
             examples: vec![],
             responses: vec![],
             doc_params: vec![DocParam {
@@ -221,6 +222,7 @@
                 binary_path: String::new(),
             },
             mock: crate::MockConfig::default(),
+            prescript: String::new(),
             examples: vec![],
             responses: vec![],
             doc_params: vec![],

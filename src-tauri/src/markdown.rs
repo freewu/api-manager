@@ -970,6 +970,7 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
         params: vec![],
         body: BodyData::default(),
         mock: MockConfig::default(),
+        prescript: String::new(),
         examples: vec![],
         responses: vec![],
         doc_params: vec![],

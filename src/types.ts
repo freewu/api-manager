@@ -64,6 +64,8 @@ export interface ApiFile {
   params: KeyValue[];
   body: BodyData;
   mock: MockConfig;
+  /** HTTP 接口前置脚本（发送请求前执行的 JS，可读写全局变量 / 计算签名） */
+  prescript: string;
   examples: unknown[];
   /** 响应页签条目：返回成功 / 返回失败 / 自定义错误返回 */
   responses: ResponseItem[];
@@ -506,6 +508,13 @@ export interface ObjectVersionInfo {
   hash: string;
 }
 
+/** 前置脚本运行结果（console 日志 / 返回值 / 更新后的全局变量） */
+export interface PrescriptResult {
+  logs: string[];
+  result: string;
+  globals: Record<string, string>;
+}
+
 /** 对象被接口文档引用的统计（接口数量 + 引用接口列表） */
 export interface ObjectUsageApi {
   name: string;
@@ -566,6 +575,7 @@ export function emptyApi(): ApiFile {
     params: [],
     body: emptyBody(),
     mock: emptyMock(),
+    prescript: "",
     examples: [],
     responses: [emptyResponse("返回成功", 200), emptyResponse("返回失败", 400)],
     docParams: [],

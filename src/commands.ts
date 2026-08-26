@@ -10,12 +10,14 @@ import type {
   HttpRequestData,
   HttpResult,
   InfoJson,
+  KeyValue,
   MockStatus,
   ObjectDef,
   ObjectImportResult,
   ObjectStore,
   ObjectUsageItem,
   ObjectVersionInfo,
+  PrescriptResult,
   TreeNode,
   UpdateInfo,
   VersionInfo,
@@ -562,4 +564,35 @@ export function genData(p: {
 /** 读取 .gen_log 全部生成记录（按时间倒序） */
 export function listGenLogs(): Promise<GenLogItem[]> {
   return invoke<GenLogItem[]>("list_gen_logs");
+}
+
+// ---------- 前置脚本 / 全局变量 ----------
+
+/** 测试执行前置脚本，返回 console 日志 / 返回值 / 更新后的全局变量 */
+export function runPrescript(p: {
+  code: string;
+  query: KeyValue[];
+  path: KeyValue[];
+  headers: KeyValue[];
+  body: string;
+  globals: Record<string, string>;
+}): Promise<PrescriptResult> {
+  return invoke<PrescriptResult>("run_prescript", {
+    code: p.code,
+    query: p.query,
+    path: p.path,
+    headers: p.headers,
+    body: p.body,
+    globals: p.globals,
+  });
+}
+
+/** 读取工作区全局变量 */
+export function getGlobalVars(): Promise<Record<string, string>> {
+  return invoke<Record<string, string>>("get_global_vars");
+}
+
+/** 保存工作区全局变量 */
+export function setGlobalVars(vars: Record<string, string>): Promise<void> {
+  return invoke<void>("set_global_vars", { vars });
 }
