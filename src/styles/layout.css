@@ -24,7 +24,7 @@
 .app-switch-logo {
   width: 72px;
   height: 72px;
-  animation: switch-spin 1s linear infinite;
+  animation: switch-pulse 1s ease-in-out infinite;
 }
 .app-switch-logo svg {
   width: 100%;
@@ -53,12 +53,15 @@
     opacity: 0;
   }
 }
-@keyframes switch-spin {
-  from {
-    transform: rotate(0deg);
+@keyframes switch-pulse {
+  0% {
+    transform: scale(1);
   }
-  to {
-    transform: rotate(360deg);
+  50% {
+    transform: scale(1.22);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
