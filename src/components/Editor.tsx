@@ -69,6 +69,42 @@ function prettyXml(src: string): string {
 
 type Tab = "params" | "path" | "headers" | "body" | "prescript" | "response" | "mock" | "desc" | "doc" | "code" | "examples";
 
+/** 前置脚本常用代码片段（点击插入到编辑器末尾） */
+const PRESCRIPT_SNIPPETS: { key: string; code: string }[] = [
+  {
+    key: "editor.snipLog",
+    code: "// 打印请求参数\nconsole.log(ctx.query, ctx.path, ctx.headers, ctx.body);",
+  },
+  {
+    key: "editor.snipMd5",
+    code: "// MD5 签名\nconst sign = CryptoJS.MD5(ctx.query.t + ctx.global.get('secret')).toString();\nctx.global.set('sign', sign);",
+  },
+  {
+    key: "editor.snipHmac",
+    code: "// HMAC-SHA256 签名\nconst hmac = CryptoJS.HmacSHA256(JSON.stringify(ctx.body), ctx.global.get('secret')).toString();\nctx.global.set('hmac', hmac);",
+  },
+  {
+    key: "editor.snipAes",
+    code: "// AES 加密（结果写回全局变量，可用 {{enc}} 绑定参数）\nconst enc = CryptoJS.AES.encrypt(JSON.stringify(ctx.body), ctx.global.get('secret')).toString();\nctx.global.set('enc', enc);",
+  },
+  {
+    key: "editor.snipSort",
+    code: "// 参数排序后拼接（签名常见场景）\nconst params = { ...ctx.query };\nconst sorted = Object.keys(params).sort().map(k => k + '=' + params[k]).join('&');\nctx.global.set('sorted', sorted);",
+  },
+  {
+    key: "editor.snipTs",
+    code: "// 时间戳 / 随机数\nconst ts = Date.now();\nconst nonce = Math.floor(Math.random() * 1e9);\nctx.global.set('ts', String(ts));\nctx.global.set('nonce', String(nonce));",
+  },
+  {
+    key: "editor.snipGlobal",
+    code: "// 读写全局变量（即环境变量）\nconst v = ctx.global.get('token');\nctx.global.set('token', 'new-value');",
+  },
+  {
+    key: "editor.snipJson",
+    code: "// 修改 body 后写回全局变量\nctx.body.extra = 'added';\nctx.global.set('body', JSON.stringify(ctx.body));",
+  },
+];
+
 interface Props {
   api: ApiFile;
   baseUrl: string;
@@ -237,6 +273,48 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
     setGlobals(next);
     void setGlobalVars(next);
     onEnvChanged?.();
+  };
+
+  /** 代码片段面板是否展开 */
+  const [snippetsOpen, setSnippetsOpen] = useState(false);
+
+  /** 在编辑器末尾插入代码片段 */
+  const insertSnippet = (code: string) => {
+    const cur = api.prescript ?? "";
+    const next = cur.trim() ? cur + "\n\n" + code : code;
+    set({ prescript: next });
+  };
+
+  /** 根据当前接口参数快速生成示例脚本（追加到末尾） */
+  const genExample = () => {
+    const q = api.query.filter((x) => x.enabled && x.key.trim()).map((x) => x.key.trim());
+    const p = api.params.filter((x) => x.enabled && x.key.trim()).map((x) => x.key.trim());
+    const h = api.headers.filter((x) => x.enabled && x.key.trim()).map((x) => x.key.trim());
+    let bodyProps: string[] = [];
+    try {
+      const obj = JSON.parse(api.body.raw);
+      if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+        bodyProps = Object.keys(obj).slice(0, 8);
+      }
+    } catch {
+      // 非 JSON body：保持空列表
+    }
+    const lines: string[] = [];
+    lines.push("// ===== 由当前接口参数生成的示例脚本 =====");
+    lines.push("// 读取请求参数：");
+    if (q.length) lines.push(`console.log('query:', ctx.query); // ${q.join(", ")}`);
+    if (p.length) lines.push(`console.log('path:', ctx.path); // ${p.join(", ")}`);
+    if (h.length) lines.push(`console.log('headers:', ctx.headers); // ${h.join(", ")}`);
+    if (bodyProps.length) lines.push(`console.log('body:', ctx.body); // ${bodyProps.join(", ")}`);
+    else lines.push("console.log('body:', ctx.body);");
+    lines.push("");
+    lines.push("// 读取全局变量（即当前环境变量）");
+    lines.push("const secret = ctx.global.get('secret');");
+    lines.push("");
+    lines.push("// 计算签名并写回全局变量，之后可用 {{sign}} 绑定到 query / headers");
+    lines.push("const sign = CryptoJS.MD5(secret + (ctx.query.t || '')).toString();");
+    lines.push("ctx.global.set('sign', sign);");
+    insertSnippet(lines.join("\n"));
   };
 
   // 切换接口时回到默认页签：GraphQL 默认 Body（GraphQL 请求体），
@@ -882,6 +960,15 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               />
             </div>
             <div className="prescript-toolbar">
+              <button className="btn-sm mock-body-test" onClick={genExample}>
+                ✨ {t("editor.prescriptGen")}
+              </button>
+              <button
+                className={`btn-sm mock-body-test ${snippetsOpen ? "active" : ""}`}
+                onClick={() => setSnippetsOpen(!snippetsOpen)}
+              >
+                📋 {t("editor.prescriptSnippets")}
+              </button>
               <button
                 className="btn-sm mock-body-test"
                 disabled={preTesting}
@@ -891,6 +978,20 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               </button>
               <span className="mock-body-hint">{t("editor.prescriptHelp")}</span>
             </div>
+            {snippetsOpen && (
+              <div className="prescript-snippets">
+                {PRESCRIPT_SNIPPETS.map((s) => (
+                  <button
+                    key={s.key}
+                    className="prescript-snippet"
+                    onClick={() => insertSnippet(s.code)}
+                    title={s.code}
+                  >
+                    {t(s.key)}
+                  </button>
+                ))}
+              </div>
+            )}
             {preResult && (
               <div className="prescript-result">
                 <div className="prescript-result-title">{t("editor.prescriptLogs")}</div>
