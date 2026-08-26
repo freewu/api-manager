@@ -277,6 +277,12 @@ export default function App() {
     if (v === "history") history.reload();
   };
 
+  // ---------- 启动流程：加载设置（界面语言等，与托盘语言保持一致） ----------
+  useEffect(() => {
+    void settingsHook.load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ---------- 启动流程：恢复上次工作区 ----------
   useEffect(() => {
     (async () => {
