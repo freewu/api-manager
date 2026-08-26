@@ -349,6 +349,7 @@ export const TW: Record<string, string> = {
   "app.envJoin": "、",
   "app.envUnresolved": "URL 中存在未替換的環境變量: {names}（請檢查激活的環境變量，或直接修改 URL）",
   "app.newFolder": "新分組",
+  "app.switching": "切換工作目錄中…",
   "app.resizePaneTip": "拖動調整編輯區高度（雙擊恢復默認）",
   "app.resizeSidebarTip": "拖動調整側邊欄寬度（雙擊恢復默認）",
   "app.unnamedApi": "未命名接口",

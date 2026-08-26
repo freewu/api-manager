@@ -39,6 +39,22 @@ import GenDataModal from "./components/GenDataModal";
 import { GenLogItem } from "./commands";
 import { useT } from "./i18n";
 
+/** 切换工作目录转场动画中的青蛙图标（SVG 内联，随代码打包，无需外部资源） */
+const FROG_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <ellipse cx="60" cy="80" rx="42" ry="34" fill="#4caf50"/>
+  <circle cx="38" cy="42" r="20" fill="#66bb6a"/>
+  <circle cx="82" cy="42" r="20" fill="#66bb6a"/>
+  <circle cx="38" cy="42" r="12" fill="#ffffff"/>
+  <circle cx="82" cy="42" r="12" fill="#ffffff"/>
+  <circle cx="41" cy="44" r="5.5" fill="#1b5e20"/>
+  <circle cx="79" cy="44" r="5.5" fill="#1b5e20"/>
+  <circle cx="43" cy="42" r="2" fill="#ffffff"/>
+  <circle cx="81" cy="42" r="2" fill="#ffffff"/>
+  <circle cx="55" cy="68" r="1.8" fill="#2e7d32"/>
+  <circle cx="65" cy="68" r="1.8" fill="#2e7d32"/>
+  <path d="M44 74 Q60 92 76 74" stroke="#2e7d32" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+</svg>`;
+
 // 非首屏组件懒加载：仅在需要时下载对应 chunk
 const Landing = lazy(() => import("./components/Landing").then((m) => ({ default: m.Landing })));
 const ApiDocModal = lazy(() =>
@@ -785,9 +801,12 @@ export default function App() {
       )}
       {switching && (
         <div className={`app-switch-overlay${switchOut ? " out" : ""}`}>
-          <span className="app-switch-logo" aria-hidden="true">
-            ⏳
-          </span>
+          <div
+            className="app-switch-logo"
+            aria-hidden="true"
+            dangerouslySetInnerHTML={{ __html: FROG_SVG }}
+          />
+          <div className="app-switch-text">{t("app.switching")}</div>
         </div>
       )}
     </Suspense>

@@ -360,6 +360,7 @@ export const EN: Record<string, string> = {
   "app.envJoin": ", ",
   "app.envUnresolved": "URL contains unresolved environment variables: {names} (check the active environment, or edit the URL directly)",
   "app.newFolder": "New Folder",
+  "app.switching": "Switching workspace…",
   "app.resizePaneTip": "Drag to resize editor height (double-click to reset)",
   "app.resizeSidebarTip": "Drag to resize sidebar width (double-click to reset)",
   "app.unnamedApi": "Untitled API",

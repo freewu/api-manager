@@ -368,6 +368,7 @@ export const ZH: Record<string, string> = {
   "app.envJoin": "、",
   "app.envUnresolved": "URL 中存在未替换的环境变量: {names}（请检查激活的环境变量，或直接修改 URL）",
   "app.newFolder": "新分组",
+  "app.switching": "切换工作目录中…",
   "app.resizePaneTip": "拖动调整编辑区高度（双击恢复默认）",
   "app.resizeSidebarTip": "拖动调整侧边栏宽度（双击恢复默认）",
   "app.unnamedApi": "未命名接口",
