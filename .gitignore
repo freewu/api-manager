@@ -27,3 +27,6 @@ release/
 
 # 工作区环境变量存储（运行时产物）
 __envs.json
+
+# 构建产物
+src-tauri/icons/icon.icns

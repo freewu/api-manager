@@ -2425,3 +2425,32 @@ let v = export::to_yapi(&apis);
         assert!(root.join(".api-manager/version/keep.txt").exists());
         let _ = std::fs::remove_dir_all(&root);
     }
+
+/// 语言配置写入 ~/.api-manager/api-manager.config.yaml：写入后读回、保留其他字段、不存在时默认
+#[test]
+fn test_config_language_yaml() {
+    let dir = std::env::temp_dir().join(format!("apimgr-config-test-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let cfg = dir.join("api-manager.config.yaml");
+
+    // 文件不存在：读取返回 None（由调用方回退默认中文）
+    assert_eq!(crate::read_config_language_file(&cfg), None);
+
+    // 写入 en：文件被创建且读回
+    crate::write_config_language_file(&cfg, "en").unwrap();
+    assert_eq!(crate::read_config_language_file(&cfg).as_deref(), Some("en"));
+
+    // 保留已有其他字段（如 mockPort）并更新 language
+    std::fs::write(&cfg, "mockPort: 5050\nlanguage: zh\n").unwrap();
+    crate::write_config_language_file(&cfg, "zh-tw").unwrap();
+    assert_eq!(crate::read_config_language_file(&cfg).as_deref(), Some("zh-tw"));
+    let content = std::fs::read_to_string(&cfg).unwrap();
+    assert!(content.contains("mockPort: 5050"), "其他字段应保留: {content}");
+
+    // 空 language 视为未设置（回退默认）
+    std::fs::write(&cfg, "language: \"\"\n").unwrap();
+    assert_eq!(crate::read_config_language_file(&cfg), None);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}

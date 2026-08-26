@@ -747,15 +747,72 @@ fn settings_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(dir.join("settings.json"))
 }
 
+/// 语言配置文件：用户目录下 ~/.api-manager/api-manager.config.yaml
+fn config_file_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let home = app
+        .path()
+        .home_dir()
+        .map_err(|e| format!("获取用户目录失败: {e}"))?;
+    Ok(home.join(".api-manager").join("api-manager.config.yaml"))
+}
+
+/// 从 yaml 读取 language 字段（保留其他字段，仅读不写时忽略未知键）
+fn read_config_language_file(p: &Path) -> Option<String> {
+    let content = fs::read_to_string(p).ok()?;
+    let v: serde_yaml::Value = serde_yaml::from_str(&content).ok()?;
+    let l = v.get("language")?.as_str()?.trim();
+    if l.is_empty() {
+        None
+    } else {
+        Some(l.to_string())
+    }
+}
+
+/// 写入 language 字段到 yaml（保留文件已有其他字段；文件不存在则新建）
+fn write_config_language_file(p: &Path, lang: &str) -> Result<(), String> {
+    let mut value = fs::read_to_string(p)
+        .ok()
+        .and_then(|s| serde_yaml::from_str::<serde_yaml::Value>(&s).ok())
+        .unwrap_or_else(|| serde_yaml::Value::Mapping(serde_yaml::Mapping::new()));
+    if let Some(map) = value.as_mapping_mut() {
+        map.insert(
+            serde_yaml::Value::String("language".into()),
+            serde_yaml::Value::String(lang.into()),
+        );
+    }
+    let out = serde_yaml::to_string(&value).map_err(|e| format!("序列化失败: {e}"))?;
+    if let Some(parent) = p.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {e}"))?;
+    }
+    fs::write(p, out).map_err(|e| format!("写入失败: {e}"))
+}
+
+/// 保存界面语言到 ~/.api-manager/api-manager.config.yaml（语言切换的主存储）
+pub fn save_config_language(app: &AppHandle, lang: &str) -> Result<(), String> {
+    write_config_language_file(&config_file_path(app)?, lang)
+}
+
+/// 读取界面语言：yaml 存在用 yaml，否则回退旧配置 settings.json 的 language，再否则默认中文
+fn read_config_language(app: &AppHandle, fallback: &str) -> String {
+    config_file_path(app)
+        .ok()
+        .and_then(|p| read_config_language_file(&p))
+        .unwrap_or_else(|| fallback.to_string())
+}
+
 #[tauri::command]
 fn load_settings(app: AppHandle) -> Result<AppSettings, String> {
     let p = settings_path(&app)?;
     if let Ok(content) = fs::read_to_string(&p) {
-        if let Ok(s) = serde_json::from_str::<AppSettings>(&content) {
+        if let Ok(mut s) = serde_json::from_str::<AppSettings>(&content) {
+            // 语言优先取自 ~/.api-manager/api-manager.config.yaml
+            s.language = read_config_language(&app, &s.language);
             return Ok(s);
         }
     }
-    Ok(AppSettings::default())
+    let mut def = AppSettings::default();
+    def.language = read_config_language(&app, &def.language);
+    Ok(def)
 }
 
 #[tauri::command]

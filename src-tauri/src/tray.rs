@@ -2,7 +2,7 @@
 
 use crate::mock;
 use crate::update::{fetch_latest_release, UpdateInfo, RELEASES_PAGE};
-use crate::{load_settings, read_env_file, read_info_file, save_settings, MockRunState,
+use crate::{load_settings, read_env_file, read_info_file, save_config_language, MockRunState,
             TrayState, WorkspaceState};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -175,17 +175,16 @@ pub fn update_tray_update_item(app: &AppHandle) {
     }
 }
 
-/// 切换界面语言：保存设置 + 刷新托盘菜单 + 通知前端刷新文案
+/// 切换界面语言：写入 ~/.api-manager/api-manager.config.yaml + 刷新托盘菜单 + 通知前端刷新文案
 #[tauri::command]
 pub(crate) fn set_language(app: AppHandle, lang: String) -> Result<(), String> {
     let normalized = normalize_lang(&lang);
-    let mut s = load_settings(app.clone())?;
-    if s.language == normalized {
+    let current = settings_lang(&app);
+    if current == normalized {
         // 已是当前语言，无需重复刷新
         return Ok(());
     }
-    s.language = normalized.clone();
-    save_settings(app.clone(), s)?;
+    save_config_language(&app, &normalized)?;
     update_tray_language(&app);
     let _ = app.emit("language-changed", normalized);
     Ok(())
