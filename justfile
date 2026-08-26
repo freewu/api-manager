@@ -27,6 +27,32 @@ default:
 
 # ========== 开发 ==========
 
+# 安装开发环境依赖（Rust 工具链 + Node.js），支持 Windows / macOS / Linux
+init:
+    @just init-rust
+    @just init-node
+
+# 安装 Rust 工具链（rustup + stable），已安装则跳过
+[windows]
+init-rust:
+    rustc --version >nul 2>nul && (echo Rust already installed: & rustc --version) || (echo Installing Rust via rustup... & winget install --id Rustlang.Rustup -e --accept-source-agreements --accept-package-agreements & rustup default stable)
+    rustc --version >nul 2>nul || echo Please reopen a terminal so PATH picks up rustc/cargo from %%USERPROFILE%%\.cargo\bin
+
+[unix]
+init-rust:
+    if command -v cargo >/dev/null 2>&1; then echo "Rust already installed: $(cargo --version)"; else echo "Installing Rust via rustup..."; curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; fi
+    if ! command -v cargo >/dev/null 2>&1 && [ -f "$HOME/.cargo/env" ]; then . "$HOME/.cargo/env"; echo "cargo activated via ~/.cargo/env"; fi
+
+# 安装 Node.js（Windows 用 winget 装 LTS；macOS 用 Homebrew；Linux 用发行版包管理器）
+[windows]
+init-node:
+    node --version >nul 2>nul && (echo Node already installed: & node --version) || (echo Installing Node.js LTS via winget... & winget install --id OpenJS.NodeJS.LTS -e --accept-source-agreements --accept-package-agreements)
+    node --version >nul 2>nul || echo Please reopen a terminal so PATH picks up node/npm
+
+[unix]
+init-node:
+    if command -v node >/dev/null 2>&1; then echo "Node already installed: $(node --version)"; else if command -v brew >/dev/null 2>&1; then echo "Installing Node.js via Homebrew..."; brew install node; elif command -v apt-get >/dev/null 2>&1; then echo "Installing Node.js via apt..."; sudo apt-get update && sudo apt-get install -y nodejs npm; elif command -v dnf >/dev/null 2>&1; then echo "Installing Node.js via dnf..."; sudo dnf install -y nodejs npm; elif command -v pacman >/dev/null 2>&1; then echo "Installing Node.js via pacman..."; sudo pacman -Sy --noconfirm nodejs npm; else echo "No supported package manager found. Please install Node.js manually: https://nodejs.org"; fi; fi
+
 # 开发模式运行（前端热更新 + Rust dev 模式）
 dev:
     npm run tauri dev
