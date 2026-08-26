@@ -80,6 +80,14 @@ const PRESCRIPT_SNIPPETS: { key: string; code: string }[] = [
     code: "// MD5 签名\nconst sign = CryptoJS.MD5(ctx.query.t + ctx.global.get('secret')).toString();\nctx.global.set('sign', sign);",
   },
   {
+    key: "editor.snipSm3",
+    code: "// SM3 国密哈希（gb/t 32905）\nconst sign = sm3(ctx.query.t + ctx.global.get('secret'));\nctx.global.set('sign', sign);",
+  },
+  {
+    key: "editor.snipSm3Hmac",
+    code: "// SM3-HMAC 国密签名（key 传 hex 字符串）\nconst hmac = SM3.hmac(ctx.query.t, '6b6579');\nctx.global.set('sign', hmac);",
+  },
+  {
     key: "editor.snipHmac",
     code: "// HMAC-SHA256 签名\nconst hmac = CryptoJS.HmacSHA256(JSON.stringify(ctx.body), ctx.global.get('secret')).toString();\nctx.global.set('hmac', hmac);",
   },

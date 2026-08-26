@@ -31,6 +31,9 @@ pub struct PrescriptResult {
 /// 注入 crypto-js（UMD 单文件，纯 JS），供脚本计算 MD5 / SHA / HMAC / AES 等
 const CRYPTO_JS: &str = include_str!("../assets/crypto-js.js");
 
+/// 注入 SM3 国密哈希（GB/T 32905-2016 纯 JS 实现），全局提供 `sm3(str)` 与 `SM3.hex(str)`
+const SM3_JS: &str = include_str!("../assets/sm3.js");
+
 /// 注入的 polyfill：crypto-js 的 Utf8 编解码依赖浏览器全局 escape / unescape；
 /// 新版 crypto-js 的 secure random 依赖原生 crypto.getRandomValues（无 fallback）
 const ESCAPE_POLYFILL: &str = r#"
@@ -122,7 +125,7 @@ JSON.stringify({{ logs: __logs, result: (typeof __ret === 'string') ? __ret : ((
         body_json = body_json,
         user_code = code,
     );
-    let src = format!("{ESCAPE_POLYFILL}\n{CRYPTO_JS}\n{skeleton}");
+    let src = format!("{ESCAPE_POLYFILL}\n{CRYPTO_JS}\n{SM3_JS}\n{skeleton}");
 
     let mut ctx = Context::default();
     let v = ctx
@@ -276,6 +279,30 @@ mod tests {
         assert!(r.logs[1].contains("sha=ba7816bf"), "SHA256 前缀");
         assert!(r.logs[2].contains("hmac="), "HMAC 应可计算");
         assert!(r.logs[3].contains("aes="), "AES 应可加密: {:?}", r.logs);
+    }
+
+    #[test]
+    fn test_prescript_sm3() {
+        // 国密 SM3 标准测试向量：sm3('abc') 与长串（GB/T 32905-2016 附录）
+        let r = run(
+            "console.log('a=' + sm3('abc'));\nconsole.log('b=' + SM3.hex(''));\nconsole.log('c=' + sm3('abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd'));",
+        );
+        assert_eq!(r.logs.len(), 3, "日志: {:?}", r.logs);
+        assert!(
+            r.logs[0].contains("a=66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0"),
+            "sm3('abc') 应与标准向量一致: {:?}",
+            r.logs
+        );
+        assert!(
+            r.logs[1].contains("b=1ab21d8355cfa17f8e61194831e81a8f22bec8c728fefb747ed035eb5082aa2b"),
+            "sm3('') 应与标准向量一致: {:?}",
+            r.logs
+        );
+        assert!(
+            r.logs[2].contains("c=debe9ff92275b8a138604889c18e5a4d6fdb70e5387e5765293dcba39c0c5732"),
+            "长串应与标准向量一致: {:?}",
+            r.logs
+        );
     }
 
     #[test]

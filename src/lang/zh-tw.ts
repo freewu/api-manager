@@ -436,6 +436,8 @@ export const TW: Record<string, string> = {
   "editor.prescriptSnippets": "程式碼片段",
   "editor.snipLog": "列印請求參數",
   "editor.snipMd5": "MD5 簽名",
+  "editor.snipSm3": "SM3 國密哈希",
+  "editor.snipSm3Hmac": "SM3-HMAC 國密簽名",
   "editor.snipHmac": "HMAC-SHA256 簽名",
   "editor.snipAes": "AES 加密",
   "editor.snipSort": "參數排序拼接",

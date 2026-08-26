@@ -447,6 +447,8 @@ export const EN: Record<string, string> = {
   "editor.prescriptSnippets": "Snippets",
   "editor.snipLog": "Log request params",
   "editor.snipMd5": "MD5 sign",
+  "editor.snipSm3": "SM3 (Chinese crypto)",
+  "editor.snipSm3Hmac": "SM3-HMAC sign",
   "editor.snipHmac": "HMAC-SHA256 sign",
   "editor.snipAes": "AES encrypt",
   "editor.snipSort": "Sort & join params",

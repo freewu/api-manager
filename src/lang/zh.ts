@@ -455,6 +455,8 @@ export const ZH: Record<string, string> = {
   "editor.prescriptSnippets": "代码片段",
   "editor.snipLog": "打印请求参数",
   "editor.snipMd5": "MD5 签名",
+  "editor.snipSm3": "SM3 国密哈希",
+  "editor.snipSm3Hmac": "SM3-HMAC 国密签名",
   "editor.snipHmac": "HMAC-SHA256 签名",
   "editor.snipAes": "AES 加密",
   "editor.snipSort": "参数排序拼接",
