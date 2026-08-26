@@ -137,7 +137,7 @@ JSON.stringify({{ logs: __logs, result: (typeof __ret === 'string') ? __ret : ((
 /// 前置脚本测试命令：读取接口参数 + 全局变量，执行脚本并返回日志与结果
 #[tauri::command]
 pub fn run_prescript(
-    state: State<'_, WorkspaceState>,
+    _state: State<'_, WorkspaceState>,
     code: String,
     query: Vec<KeyValue>,
     path: Vec<KeyValue>,
