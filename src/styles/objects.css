@@ -850,11 +850,6 @@
   color: var(--text-dim);
   margin-bottom: 6px;
 }
-.help-text {
-  font-size: 11.5px;
-  color: var(--text-faint);
-  margin: -4px 0 2px;
-}
 .prescript-logs {
   margin: 0;
   font-family: var(--font-mono);

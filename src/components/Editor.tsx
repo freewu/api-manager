@@ -255,25 +255,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   };
 
   /** 全局变量：Record → KeyValue 行（编辑用） */
-  const globalsRows: KeyValue[] = useMemo(
-    () =>
-      Object.entries(globals).map(([key, value]) => ({
-        key,
-        value,
-        enabled: true,
-        description: "",
-      })),
-    [globals]
-  );
-  const onGlobalsChange = (rows: KeyValue[]) => {
-    const next: Record<string, string> = {};
-    rows.forEach((r) => {
-      if (r.key.trim()) next[r.key.trim()] = r.value;
-    });
-    setGlobals(next);
-    void setGlobalVars(next);
-    onEnvChanged?.();
-  };
+
 
   /** 代码片段面板是否展开 */
   const [snippetsOpen, setSnippetsOpen] = useState(false);
@@ -1006,16 +988,6 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                 )}
               </div>
             )}
-            <div className="section-title">
-              {t("editor.globalVars")}{" "}
-              <span className="help">ctx.global.get / set</span>
-            </div>
-            <div className="help-text">{t("editor.globalBindHint")}</div>
-            <KeyValueEditor
-              rows={globalsRows}
-              onChange={onGlobalsChange}
-              keyPlaceholder={t("editor.globalKey")}
-            />
           </div>
         )}
 
