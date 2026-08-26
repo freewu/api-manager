@@ -9,6 +9,7 @@ import {
   pickWorkspace,
   readApi,
   readApiVersion,
+  readEnv,
   saveApi,
   saveApiVersion,
   saveInfo,
@@ -650,8 +651,9 @@ export default function App() {
               onSaveVersion={handleSaveVersion}
               onCommit={handleAutoSave}
               onTabChange={(tab) =>
-                setHideResponse(["response", "mock", "desc", "doc", "code", "examples"].includes(tab))
+                setHideResponse(["response", "mock", "prescript", "desc", "doc", "code", "examples"].includes(tab))
               }
+              onEnvChanged={() => void readEnv().then(hydrateEnvs)}
               onStartVResize={startVResize}
               onResetRatio={resetEditorRatio}
               onWsDisconnect={closeWsConnection}

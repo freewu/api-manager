@@ -48,6 +48,7 @@ interface RightPaneProps {
   onSaveVersion: () => void;
   onCommit: () => void;
   onTabChange: (t: string) => void;
+  onEnvChanged?: () => void;
   onStartVResize: (e: React.MouseEvent) => void;
   onResetRatio: () => void;
   onWsDisconnect: () => void;
@@ -100,6 +101,7 @@ export function RightPane({
   onSaveVersion,
   onCommit,
   onTabChange,
+  onEnvChanged,
   onStartVResize,
   onResetRatio,
   onWsDisconnect,
@@ -188,6 +190,7 @@ export function RightPane({
             onSaveVersion={onSaveVersion}
             onCommit={onCommit}
             onTabChange={onTabChange}
+            onEnvChanged={onEnvChanged}
             onStartVResize={onStartVResize}
             onResetRatio={onResetRatio}
             wsConnected={wsConnected}

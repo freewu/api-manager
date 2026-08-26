@@ -4,6 +4,8 @@
 //! - `ctx.query` / `ctx.path` / `ctx.headers`：当前请求参数（对象）
 //! - `ctx.body`：请求体（JSON 可解析时为对象，否则为原始字符串）
 //! - `ctx.global.get(key)` / `ctx.global.set(key, value)`：读写全局变量
+//!   （即「环境」当前激活环境里的变量，脚本内 set 的值会写回环境，
+//!   之后可用 `{{变量名}}` 绑定到 query / body / path / headers，发送时自动替换）
 //! - `CryptoJS`（crypto-js 全量）与 `console.log` 调试日志
 
 use std::collections::HashMap;
@@ -11,7 +13,7 @@ use std::collections::HashMap;
 use boa_engine::{Context, Source};
 use serde::{Deserialize, Serialize};
 
-use crate::{KeyValue, WorkspaceState};
+use crate::{EnvVariable, Environment, KeyValue, WorkspaceState};
 use tauri::State;
 
 /// 前置脚本运行结果
@@ -134,10 +136,58 @@ JSON.stringify({{ logs: __logs, result: (typeof __ret === 'string') ? __ret : ((
         .map_err(|e| format!("脚本结果解析失败: {e}"))
 }
 
-/// 前置脚本测试命令：读取接口参数 + 全局变量，执行脚本并返回日志与结果
+/// 把变量表写回「环境」当前激活环境（存在则更新值，不存在则新增变量行）。
+/// 无激活环境时自动创建并激活一个默认环境。
+fn write_env_vars(root: &std::path::Path, vars: &HashMap<String, String>) -> Result<(), String> {
+    let mut store = crate::read_env_file(root);
+    if store.active.trim().is_empty() {
+        store.active = "Default".to_string();
+    }
+    let active = store.active.clone();
+    let mut found = false;
+    for env in store.environments.iter_mut() {
+        if env.name == active {
+            found = true;
+            for (k, v) in vars {
+                if let Some(vv) = env.variables.iter_mut().find(|x| x.key == *k) {
+                    vv.value = v.clone();
+                    vv.enabled = true;
+                } else {
+                    env.variables.push(EnvVariable {
+                        key: k.clone(),
+                        value: v.clone(),
+                        default_value: String::new(),
+                        description: String::new(),
+                        enabled: true,
+                    });
+                }
+            }
+        }
+    }
+    if !found {
+        let mut env = Environment {
+            name: active.clone(),
+            variables: Vec::new(),
+        };
+        for (k, v) in vars {
+            env.variables.push(EnvVariable {
+                key: k.clone(),
+                value: v.clone(),
+                default_value: String::new(),
+                description: String::new(),
+                enabled: true,
+            });
+        }
+        store.environments.push(env);
+    }
+    crate::write_pretty(&root.join(crate::ENV_FILE), &store)
+}
+
+/// 前置脚本测试命令：读取接口参数 + 全局变量，执行脚本并返回日志与结果；
+/// 脚本内 global.set 的变量自动写回「环境」当前激活环境
 #[tauri::command]
 pub fn run_prescript(
-    _state: State<'_, WorkspaceState>,
+    state: State<'_, WorkspaceState>,
     code: String,
     query: Vec<KeyValue>,
     path: Vec<KeyValue>,
@@ -145,33 +195,28 @@ pub fn run_prescript(
     body: String,
     globals: HashMap<String, String>,
 ) -> Result<PrescriptResult, String> {
-    run_prescript_impl(&code, &query, &path, &headers, &body, &globals)
+    let result = run_prescript_impl(&code, &query, &path, &headers, &body, &globals)?;
+    // global.set 的变量写回环境（前端保存时也会调用 set_global_vars，幂等）
+    let root = crate::workspace_root(&state)?;
+    write_env_vars(&root, &result.globals)?;
+    Ok(result)
 }
 
-/// 读取工作区全局变量（.api-manager/global_vars.json）
+/// 读取全局变量：即「环境」当前激活环境的所有启用变量
 #[tauri::command]
 pub fn get_global_vars(state: State<'_, WorkspaceState>) -> Result<HashMap<String, String>, String> {
     let root = crate::workspace_root(&state)?;
-    let file = root.join(crate::DATA_DIR).join("global_vars.json");
-    if !file.exists() {
-        return Ok(HashMap::new());
-    }
-    let text = std::fs::read_to_string(&file).map_err(|e| format!("读取全局变量失败: {e}"))?;
-    serde_json::from_str(&text).map_err(|e| format!("解析全局变量失败: {e}"))
+    Ok(crate::read_env_map(&root))
 }
 
-/// 保存工作区全局变量
+/// 保存全局变量：写回「环境」当前激活环境（存在则更新值，不存在则新增变量行）
 #[tauri::command]
 pub fn set_global_vars(
     state: State<'_, WorkspaceState>,
     vars: HashMap<String, String>,
 ) -> Result<(), String> {
     let root = crate::workspace_root(&state)?;
-    let dir = root.join(crate::DATA_DIR);
-    std::fs::create_dir_all(&dir).map_err(|e| format!("创建目录失败: {e}"))?;
-    let file = dir.join("global_vars.json");
-    let text = serde_json::to_string_pretty(&vars).map_err(|e| format!("序列化失败: {e}"))?;
-    std::fs::write(&file, text).map_err(|e| format!("写入全局变量失败: {e}"))
+    write_env_vars(&root, &vars)
 }
 
 #[cfg(test)]
@@ -245,5 +290,40 @@ mod tests {
     fn test_prescript_disabled_params_excluded() {
         let r = run("console.log('off=' + ctx.query.off);");
         assert!(r.logs[0].contains("off=undefined"), "未启用参数不应注入: {:?}", r.logs);
+    }
+
+    #[test]
+    fn test_write_env_vars_roundtrip() {
+        // 临时目录（Windows cargo 无法访问 WSL /tmp，用系统 temp）
+        let tag = format!(
+            "apimgr-prescript-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let dir = std::env::temp_dir().join(tag);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        // 无激活环境时自动创建 Default 环境
+        let mut vars = HashMap::new();
+        vars.insert("token".to_string(), "abc".to_string());
+        write_env_vars(&dir, &vars).unwrap();
+        let store = crate::read_env_file(&dir);
+        assert_eq!(store.active, "Default", "无激活环境时应自动创建");
+        assert_eq!(store.environments.len(), 1);
+        assert_eq!(store.environments[0].variables[0].key, "token");
+        assert_eq!(crate::read_env_map(&dir).get("token").unwrap(), "abc");
+
+        // 已有变量更新值、新变量追加行
+        vars.insert("token".to_string(), "xyz".to_string());
+        vars.insert("new".to_string(), "1".to_string());
+        write_env_vars(&dir, &vars).unwrap();
+        let map = crate::read_env_map(&dir);
+        assert_eq!(map.get("token").unwrap(), "xyz", "已有变量应更新值");
+        assert_eq!(map.get("new").unwrap(), "1", "新变量应追加");
+
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

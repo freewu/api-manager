@@ -92,13 +92,15 @@ interface Props {
   exampleVersion?: number;
   /** 页签切换回调（App 据此隐藏/显示响应面板） */
   onTabChange?: (tab: string) => void;
+  /** 前置脚本全局变量（即环境变量）被修改后的回调（App 据此刷新环境面板） */
+  onEnvChanged?: () => void;
   /** 已定义对象列表（文档页签 Object 类型可引用） */
   objectsList?: ObjectDef[];
   /** 完整对象仓库（含分组），文档页签 Object 类型弹窗选择对象用（与对象管理一致） */
   objectsStore?: ObjectStore;
 }
 
-export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, enableMock = true, codegenLang = "bash", onTabChange, currentVersion = 0, exampleVersion = 0, objectsList, objectsStore }: Props) {
+export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, enableMock = true, codegenLang = "bash", onTabChange, onEnvChanged, currentVersion = 0, exampleVersion = 0, objectsList, objectsStore }: Props) {
   const t = useT();
   /** 是否 WebSocket 接口 */
   const isWs = api.protocol === "websocket";
@@ -208,6 +210,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
       setPreResult(r);
       setGlobals(r.globals);
       void setGlobalVars(r.globals);
+      onEnvChanged?.();
     } catch (e) {
       setPreResult({ logs: ["[error] " + String(e)], result: "", globals });
     } finally {
@@ -233,6 +236,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
     });
     setGlobals(next);
     void setGlobalVars(next);
+    onEnvChanged?.();
   };
 
   // 切换接口时回到默认页签：GraphQL 默认 Body（GraphQL 请求体），
@@ -905,6 +909,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               {t("editor.globalVars")}{" "}
               <span className="help">ctx.global.get / set</span>
             </div>
+            <div className="help-text">{t("editor.globalBindHint")}</div>
             <KeyValueEditor
               rows={globalsRows}
               onChange={onGlobalsChange}

@@ -24,6 +24,8 @@ interface Props {
   onSaveVersion: () => void;
   onCommit?: () => void;
   onTabChange?: (t: string) => void;
+  /** 前置脚本全局变量（即环境变量）被修改后的回调（App 据此刷新环境面板） */
+  onEnvChanged?: () => void;
   onStartVResize: (e: React.MouseEvent) => void;
   onResetRatio: () => void;
   // WebSocket 交互记录相关（仅 WS 接口使用）
@@ -62,6 +64,7 @@ export function ApiWorkspace({
   onSaveVersion,
   onCommit,
   onTabChange,
+  onEnvChanged,
   onStartVResize,
   onResetRatio,
   wsConnected,
@@ -91,6 +94,7 @@ export function ApiWorkspace({
       enableMock={enableMock}
       codegenLang={codegenLang}
       onTabChange={onTabChange}
+      onEnvChanged={onEnvChanged}
       objectsList={objectsList}
       objectsStore={objectsStore}
     />
