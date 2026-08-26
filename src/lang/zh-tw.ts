@@ -427,6 +427,7 @@ export const TW: Record<string, string> = {
   "editor.prescriptTab": "前置腳本",
   "editor.prescriptHint": "發送請求前執行的 JS 腳本",
   "editor.prescriptTest": "測試執行",
+  "editor.prescriptRunning": "腳本執行中…",
   "editor.prescriptLogs": "執行日誌（console.log）",
   "editor.prescriptResult": "回傳值",
   "editor.prescriptNoLogs": "（無日誌輸出）",

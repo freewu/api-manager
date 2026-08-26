@@ -446,6 +446,7 @@ export const ZH: Record<string, string> = {
   "editor.prescriptTab": "前置脚本",
   "editor.prescriptHint": "发送请求前执行的 JS 脚本",
   "editor.prescriptTest": "测试运行",
+  "editor.prescriptRunning": "脚本运行中…",
   "editor.prescriptLogs": "运行日志（console.log）",
   "editor.prescriptResult": "返回值",
   "editor.prescriptNoLogs": "（无日志输出）",

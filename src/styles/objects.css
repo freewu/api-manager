@@ -796,9 +796,16 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+/* 其他页签内容不随 flex 拉伸/压缩（保持自然高度滚动） */
+.editor-body > div:not(.prescript-pane) {
+  flex-shrink: 0;
 }
 .prescript-editor {
-  height: 260px;
+  flex: 1;
+  min-height: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
@@ -837,6 +844,38 @@
 .prescript-snippet:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+/* 代码片段弹窗 */
+.prescript-snippets-modal {
+  width: 620px;
+  max-width: 92vw;
+}
+.prescript-snippets-modal .prescript-snippets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+}
+.prescript-snippets-modal .prescript-snippet {
+  text-align: left;
+  padding: 8px 10px;
+}
+/* 测试运行弹窗 */
+.prescript-result-modal {
+  width: 640px;
+  max-width: 92vw;
+}
+.prescript-result-modal .prescript-result {
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--bg-code, #1e1e1e);
+}
+.prescript-running {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-dim);
 }
 .prescript-result {
   border: 1px solid var(--border);

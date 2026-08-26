@@ -169,6 +169,8 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
   const [globals, setGlobals] = useState<Record<string, string>>({});
   const [preTesting, setPreTesting] = useState(false);
   const [preResult, setPreResult] = useState<PrescriptResult | null>(null);
+  /** 测试运行弹窗是否打开 */
+  const [testOpen, setTestOpen] = useState(false);
   // 打开接口时拉取工作区全局变量（切换接口同工作区，重新拉取一次无副作用）
   useEffect(() => {
     let alive = true;
@@ -946,35 +948,53 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                 ✨ {t("editor.prescriptGen")}
               </button>
               <button
-                className={`btn-sm mock-body-test ${snippetsOpen ? "active" : ""}`}
-                onClick={() => setSnippetsOpen(!snippetsOpen)}
+                className="btn-sm mock-body-test"
+                onClick={() => setSnippetsOpen(true)}
               >
                 📋 {t("editor.prescriptSnippets")}
               </button>
               <button
                 className="btn-sm mock-body-test"
                 disabled={preTesting}
-                onClick={() => void runPreScriptTest()}
+                onClick={() => {
+                  setTestOpen(true);
+                  void runPreScriptTest();
+                }}
               >
                 {preTesting ? "…" : "▶"} {t("editor.prescriptTest")}
               </button>
               <span className="mock-body-hint">{t("editor.prescriptHelp")}</span>
             </div>
-            {snippetsOpen && (
-              <div className="prescript-snippets">
-                {PRESCRIPT_SNIPPETS.map((s) => (
-                  <button
-                    key={s.key}
-                    className="prescript-snippet"
-                    onClick={() => insertSnippet(s.code)}
-                    title={s.code}
-                  >
-                    {t(s.key)}
-                  </button>
-                ))}
-              </div>
-            )}
-            {preResult && (
+          </div>
+        )}
+
+        {/* 代码片段弹窗：点击插入到编辑器末尾 */}
+        {snippetsOpen && (
+          <Modal title={t("editor.prescriptSnippets")} onClose={() => setSnippetsOpen(false)} className="prescript-snippets-modal">
+            <div className="prescript-snippets">
+              {PRESCRIPT_SNIPPETS.map((s) => (
+                <button
+                  key={s.key}
+                  className="prescript-snippet"
+                  onClick={() => {
+                    insertSnippet(s.code);
+                    setSnippetsOpen(false);
+                  }}
+                  title={s.code}
+                >
+                  {t(s.key)}
+                </button>
+              ))}
+            </div>
+          </Modal>
+        )}
+
+        {/* 测试运行弹窗：展示 console 日志与脚本返回值 */}
+        {testOpen && (
+          <Modal title={t("editor.prescriptTest")} onClose={() => setTestOpen(false)} className="prescript-result-modal">
+            {preTesting ? (
+              <div className="prescript-running">{t("editor.prescriptRunning")}</div>
+            ) : preResult ? (
               <div className="prescript-result">
                 <div className="prescript-result-title">{t("editor.prescriptLogs")}</div>
                 <pre className="prescript-logs">
@@ -987,8 +1007,8 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                   </>
                 )}
               </div>
-            )}
-          </div>
+            ) : null}
+          </Modal>
         )}
 
         {enableMock && tab === "mock" && (

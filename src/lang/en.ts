@@ -438,6 +438,7 @@ export const EN: Record<string, string> = {
   "editor.prescriptTab": "Pre-script",
   "editor.prescriptHint": "JS script executed before sending",
   "editor.prescriptTest": "Test run",
+  "editor.prescriptRunning": "Running…",
   "editor.prescriptLogs": "Logs (console.log)",
   "editor.prescriptResult": "Return value",
   "editor.prescriptNoLogs": "(no log output)",
