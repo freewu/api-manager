@@ -70,6 +70,17 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # 读取 Update.md 作为 Release notes（每次改版本号时更新该文件）
+      - name: Read release notes from Update.md
+        id: notes
+        shell: bash
+        run: |
+          {
+            echo 'notes<<EOF'
+            cat Update.md
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
       # 用 logo.svg 重新生成应用图标（各平台所需尺寸，含 Windows .ico / macOS .icns）
       - name: Generate app icons from logo.svg
         run: npx tauri icon logo.svg
@@ -82,7 +93,11 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'API Manager v__VERSION__'
           releaseBody: |
-            ## API Manager v__VERSION__
+            ${{ steps.notes.outputs.notes }}
+
+            ---
+
+            ## 安装说明
 
             请根据操作系统下载对应安装包：
 
@@ -112,4 +127,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.notes }}
           files: API.Manager_*_x64_portable.exe

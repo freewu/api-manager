@@ -8,7 +8,8 @@
 
 ## 版本发布（git tag）
 
-- 每次发布（打包安装程序）完成后，执行一条指令即可提交 git tag 并推送到远程（版本号与 `tauri.conf.json` 中的 version 保持一致，当前 v0.1.6）：
+- **每次修改版本号后，必须更新 `Update.md`**：将本次版本的更新内容总结记录在文件顶部（用 `git log <上个版本tag>..HEAD --oneline` 梳理），作为 GitHub Release 的 Release notes（`.github/workflows/release.yml` 发布时自动读取 Update.md）。
+- 每次发布（打包安装程序）完成后，执行一条指令即可提交 git tag 并推送到远程（版本号与 `tauri.conf.json` 中的 version 保持一致）：
   ```bash
   git tag v0.1.6 && git push origin v0.1.6
   ```
