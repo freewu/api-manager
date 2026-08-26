@@ -1101,7 +1101,7 @@ pub fn save_object_version(root: &Path, uuid: &str, snapshot: &ObjectDef) -> Res
     if !crate::valid_uuid(&uuid) {
         return Err("无效的对象 uuid".into());
     }
-    let dir = root.join(".object_version").join(&uuid);
+    let dir = root.join(crate::OBJECT_VERSION_DATA_DIR).join(&uuid);
     std::fs::create_dir_all(&dir).map_err(|e| format!("创建对象版本目录失败: {e}"))?;
     let mut max: u32 = 0;
     if let Ok(rd) = std::fs::read_dir(&dir) {
@@ -1118,7 +1118,7 @@ pub fn save_object_version(root: &Path, uuid: &str, snapshot: &ObjectDef) -> Res
     let target = dir.join(format!("{version}.json"));
     let text = serde_json::to_string_pretty(snapshot).map_err(|e| format!("序列化对象版本失败: {e}"))?;
     std::fs::write(&target, text).map_err(|e| format!("写入对象版本失败: {e}"))?;
-    Ok(format!(".object_version/{uuid}/{version}.json"))
+    Ok(format!(".api-manager/object_version/{uuid}/{version}.json"))
 }
 
 /// 对象版本列表（按版本号升序）
@@ -1127,7 +1127,7 @@ pub fn list_object_versions(root: &Path, uuid: &str) -> Result<Vec<ObjectVersion
     if !crate::valid_uuid(&uuid) {
         return Ok(vec![]);
     }
-    let dir = root.join(".object_version").join(&uuid);
+    let dir = root.join(crate::OBJECT_VERSION_DATA_DIR).join(&uuid);
     if !dir.exists() {
         return Ok(vec![]);
     }
@@ -1166,7 +1166,7 @@ pub fn read_object_version(root: &Path, uuid: &str, version: u32) -> Result<Obje
     if !crate::valid_uuid(&uuid) {
         return Err("无效的对象 uuid".into());
     }
-    let path = root.join(".object_version").join(&uuid).join(format!("{version}.json"));
+    let path = root.join(crate::OBJECT_VERSION_DATA_DIR).join(&uuid).join(format!("{version}.json"));
     let text = std::fs::read_to_string(&path).map_err(|e| format!("读取对象版本失败: {e}"))?;
     let mut o: ObjectDef =
         serde_json::from_str(&text).map_err(|e| format!("解析对象版本失败: {e}"))?;

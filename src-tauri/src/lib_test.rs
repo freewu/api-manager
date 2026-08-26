@@ -2376,7 +2376,7 @@ let v = export::to_yapi(&apis);
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(&root).unwrap();
         // 模拟存量项目：旧目录散落在根目录
-        let legacy: [&str; 6] = [".version", ".object", ".mock", ".history", ".gen_log", ".examples"];
+        let legacy: [&str; 7] = [".version", ".object", ".object_version", ".mock", ".history", ".gen_log", ".examples"];
         for d in legacy {
             let dir = root.join(d);
             std::fs::create_dir_all(&dir).unwrap();
@@ -2390,6 +2390,7 @@ let v = export::to_yapi(&apis);
         for (d, sub) in [
             (".version", "version"),
             (".object", "object"),
+            (".object_version", "object_version"),
             (".mock", "mock"),
             (".history", "history"),
             (".gen_log", "gen_log"),

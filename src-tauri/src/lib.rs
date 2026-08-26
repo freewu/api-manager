@@ -13,6 +13,7 @@ mod demo;
 /// 应用数据根目录（对象 / Mock / 历史 / 版本 / 生成日志 / 示例）
 pub const DATA_DIR: &str = ".api-manager";
 pub const VERSION_DATA_DIR: &str = ".api-manager/version";
+pub const OBJECT_VERSION_DATA_DIR: &str = ".api-manager/object_version";
 pub const OBJECT_DATA_DIR: &str = ".api-manager/object";
 pub const MOCK_DATA_DIR: &str = ".api-manager/mock";
 pub const HISTORY_DATA_DIR: &str = ".api-manager/history";
@@ -922,9 +923,10 @@ pub(crate) fn migrate_legacy_data_dirs(root: &Path) -> Result<(), String> {
     if root.join(DATA_DIR).exists() {
         return Ok(());
     }
-    let pairs: [(&str, &str); 6] = [
+    let pairs: [(&str, &str); 7] = [
         (".version", VERSION_DATA_DIR),
         (".object", OBJECT_DATA_DIR),
+        (".object_version", OBJECT_VERSION_DATA_DIR),
         (".mock", MOCK_DATA_DIR),
         (".history", HISTORY_DATA_DIR),
         (".gen_log", GEN_LOG_DATA_DIR),
