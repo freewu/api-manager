@@ -486,8 +486,8 @@ export default function App() {
     }
   };
 
-  // 拖拽移动接口/目录到其他目录
-  const handleMove = async (srcPath: string, dstDir: string) => {
+  // 拖拽移动接口/目录到其他目录（返回移动后的新路径，供跨目录排序使用）
+  const handleMove = async (srcPath: string, dstDir: string): Promise<string | null> => {
     try {
       const newPath = await moveEntry(srcPath, dstDir);
       await reloadTree();
@@ -497,8 +497,10 @@ export default function App() {
         return prev;
       });
       showToast(t("toast.moved"));
+      return newPath;
     } catch (e) {
       showToast(t("toast.moveFailed", { err: String(e) }));
+      return null;
     }
   };
 

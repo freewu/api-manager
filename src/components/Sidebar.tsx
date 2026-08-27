@@ -62,7 +62,7 @@ interface Props {
   vcs?: "git" | "svn" | null;
   onVcsSync?: () => void;
   onVcsCommitPush?: () => void;
-  onMove: (srcPath: string, dstDir: string) => Promise<void>;
+  onMove: (srcPath: string, dstDir: string) => Promise<string | null>;
   /** 拖动排序：把父分组下同级子项的有序路径列表写入 __info.json */
   onReorder: (parent: string, paths: string[]) => Promise<void>;
   enableVersion: boolean;
@@ -215,11 +215,11 @@ function NodeRow({
     src: string,
     dst: string,
     dstIsFolder: boolean,
-    after: boolean,
+    dropPos: "top" | "bottom" | "inside" | null,
   ) => void;
 }) {
   const t = useT();
-  const [dropPos, setDropPos] = useState<"top" | "bottom" | null>(null);
+  const [dropPos, setDropPos] = useState<"top" | "bottom" | "inside" | null>(null);
   const isFolder = node.kind === "folder";
   // WebSocket 接口无 HTTP method
   const isWs = node.protocol === "websocket";
@@ -305,12 +305,13 @@ function NodeRow({
 
   const selected = selectedPath === node.path;
   const indent = depth * 14 + 6;
-  // 文件夹行与接口行都是拖拽落点：落目录 = 移入；落同级 = 排序（插入其前/后）
+  // 拖拽落点：上/下边缘 = 排序插入位置（虚线框），分组中间 = 移入该分组（整行高亮）
   const dropTarget = node.path;
   const canDrop = !!dragSrc && validDrop(dragSrc, dropTarget, isFolder);
-  // 同级排序（分组与接口均可）：显示插入位置指示线，而非整行高亮
-  const sortDrop = canDrop && !!dragSrc && parentDir(dragSrc) === parentDir(dropTarget);
-  const showDragOver = canDrop && dragOver === dropTarget && !sortDrop;
+  // 排序插入（上/下虚线）不受同级限制：跨目录拖到目标元素前/后 = 移动 + 排序
+  const isSortPos = dropPos === "top" || dropPos === "bottom";
+  const isMoveInto = dropPos === "inside";
+  const showDragOver = canDrop && dragOver === dropTarget && isMoveInto;
 
   return (
     <div>
@@ -336,11 +337,13 @@ function NodeRow({
           e.dataTransfer.dropEffect = "move";
           if (canDrop) {
             onDragOverTarget(dropTarget);
-            if (sortDrop) {
-              // 落点在元素上半部 = 放前面，下半部 = 放后面
-              const r = e.currentTarget.getBoundingClientRect();
-              setDropPos(e.clientY < r.top + r.height / 2 ? "top" : "bottom");
-            }
+            // 上/下 1/4 边缘 = 排序插入位置（虚线框）；分组中间 = 移入；接口中间无操作
+            const r = e.currentTarget.getBoundingClientRect();
+            const rel = e.clientY - r.top;
+            if (rel < r.height / 4) setDropPos("top");
+            else if (rel > (r.height * 3) / 4) setDropPos("bottom");
+            else if (isFolder) setDropPos("inside");
+            else setDropPos(null);
           }
         }}
         onDragLeave={(e) => {
@@ -355,7 +358,7 @@ function NodeRow({
           e.preventDefault();
           e.stopPropagation();
           const src = e.dataTransfer.getData("text/plain") || dragSrc;
-          if (src) onDropTarget(src, dropTarget, isFolder, dropPos === "bottom");
+          if (src) onDropTarget(src, dropTarget, isFolder, dropPos);
           setDropPos(null);
         }}
         onClick={() => {
@@ -377,7 +380,7 @@ function NodeRow({
                 : `${isWs ? "WebSocket" : node.method} ${node.endpoint}`
         }
       >
-        {sortDrop && dragOver === dropTarget && dropPos && (
+        {canDrop && dragOver === dropTarget && isSortPos && dropPos && (
           <div className={`drop-indicator ${dropPos}`} />
         )}
         {isFolder ? (
@@ -623,28 +626,43 @@ export function Sidebar(props: Props) {
     src: string,
     dst: string,
     dstIsFolder: boolean,
-    after: boolean,
+    dropPos: "top" | "bottom" | "inside" | null,
   ) => {
     setDragSrc(null);
     setDragOver(null);
     if (!validDrop(src, dst, dstIsFolder)) return; // 无效落点（自身/子目录/原地）：忽略
-    if (parentDir(src) === parentDir(dst)) {
-      // 同级拖动排序：从树取兄弟顺序，把 src 移到 dst 前/后，整体写回父分组 __info.json
-      const parent = parentDir(src);
-      const paths = siblingPaths(parent);
-      const si = paths.indexOf(src);
-      const di = paths.indexOf(dst);
-      if (si < 0 || di < 0 || si === di) return; // 树中找不到（异常）：跳过
-      paths.splice(si, 1);
-      let insertAt = paths.indexOf(dst);
-      if (insertAt < 0) return;
-      if (after) insertAt += 1;
-      paths.splice(insertAt, 0, src);
-      await props.onReorder(parent, paths);
+    if (dropPos === "top" || dropPos === "bottom") {
+      // 排序插入：上/下虚线框 → 放到目标前/后
+      const after = dropPos === "bottom";
+      if (parentDir(src) === parentDir(dst)) {
+        // 同级排序：从树取兄弟顺序，把 src 移到 dst 前/后，整体写回父分组 __info.json
+        const parent = parentDir(src);
+        const paths = siblingPaths(parent);
+        const si = paths.indexOf(src);
+        if (si < 0) return; // 树中找不到（异常）：跳过
+        paths.splice(si, 1);
+        let at = paths.indexOf(dst);
+        if (at < 0) return;
+        if (after) at += 1;
+        paths.splice(at, 0, src);
+        await props.onReorder(parent, paths);
+      } else {
+        // 跨目录：先移动到目标目录，再插入到目标元素前/后
+        const newPath = await props.onMove(src, parentDir(dst));
+        if (!newPath) return;
+        const parent = parentDir(dst);
+        const paths = siblingPaths(parent);
+        let at = paths.indexOf(dst);
+        if (at < 0) return;
+        if (after) at += 1;
+        paths.splice(at, 0, newPath);
+        await props.onReorder(parent, paths);
+      }
       return;
     }
-    // 移动：落到目录 → 该目录；落到接口 → 该接口所在目录
-    await props.onMove(src, dstIsFolder ? dst : parentDir(dst));
+    if (dropPos !== "inside") return; // 接口中间（无移入语义）：忽略
+    // 移入分组：拖到分组中间 = 移动到该分组下
+    await props.onMove(src, dst);
   };
 
   // 右键菜单：点击任意处 / Esc / 滚动时关闭
