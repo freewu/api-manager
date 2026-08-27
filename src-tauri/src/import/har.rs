@@ -51,9 +51,10 @@ pub(crate) fn import_har_file(root: &Path, file: &Path) -> Result<OpenApiImportR
             description: format!("从 HAR 抓包文件导入（{src_name}）"),
             base_url: None,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -91,9 +92,10 @@ pub(crate) fn import_har_file(root: &Path, file: &Path) -> Result<OpenApiImportR
                     description: String::new(),
                     base_url: None,
                     mock_port: None,
-                    order: None,
                     collapsed: None,
                     deprecated: None,
+                    dirs: vec![],
+                    apis: vec![],
                 },
             )?;
         }
@@ -256,7 +258,6 @@ fn har_entry_to_api(dir: &Path, entry: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol: "http".into(),
-        order: None,
     };
     write_pretty(&file_path, &api)?;
         stats.add(&api.protocol);

@@ -211,9 +211,10 @@ pub(crate) fn import_markdown(
             description: format!("从 Markdown 文档导入（{src_name}）"),
             base_url: None,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;

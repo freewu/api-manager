@@ -52,9 +52,10 @@ pub(crate) fn import_raml_file(root: &Path, file: &Path) -> Result<OpenApiImport
                 Some(base_url.clone())
             },
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -244,7 +245,6 @@ fn raml_method_to_api(
         doc_params: vec![],
         deprecated: false,
         protocol: "http".into(),
-        order: None,
     };
     write_pretty(&file_path, &api)?;
         stats.add(&api.protocol);
@@ -298,9 +298,10 @@ pub(crate) fn import_wadl_file(root: &Path, file: &Path) -> Result<OpenApiImport
                 Some(base_url.clone())
             },
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -410,7 +411,6 @@ fn wadl_method_to_api(dir: &Path, path: &str, method_el: roxmltree::Node,
         doc_params: vec![],
         deprecated: false,
         protocol: "http".into(),
-        order: None,
     };
     write_pretty(&file_path, &api)?;
         stats.add(&api.protocol);

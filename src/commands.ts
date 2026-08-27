@@ -267,14 +267,9 @@ export function createFolder(parent: string, name: string, collapsed?: boolean):
   return invoke<string>("create_folder", { parent, name, collapsed: collapsed ?? null });
 }
 
-/** 拖动排序：按有序子项路径列表保存同级分组 / 接口的 order */
+/** 拖动排序：按有序子项路径列表保存父分组 __info.json 的 dirs / apis 顺序列表 */
 export function reorderChildren(parent: string, paths: string[]): Promise<void> {
   return invoke<void>("reorder_children", { parent, paths });
-}
-
-/** 拖动排序微调：把单个接口 / 分组的 order 改为指定值（放前面 = 目标 -1，放后面 = 目标 +1） */
-export function setItemOrder(path: string, order: number): Promise<void> {
-  return invoke<void>("set_item_order", { path, order });
 }
 
 export function renameEntry(path: string, newName: string): Promise<void> {

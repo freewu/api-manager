@@ -67,11 +67,18 @@ fn mk_group_dir(parent: &Path, name: &str, desc: &str) -> Result<PathBuf, String
             description: desc.to_string(),
             base_url: None,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
+    // 追加到父分组 __info.json 的 dirs（导入顺序即显示顺序）
+    let dir_name = sub
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    crate::info_append_child(parent, &dir_name, true);
     Ok(sub)
 }
 
@@ -128,9 +135,10 @@ fn import_apidog_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
             description: str_field(&pm, "description"),
             base_url,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -258,7 +266,6 @@ fn apidog_api_to_api(dir: &Path, a: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -300,9 +307,10 @@ fn import_bruno_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, S
             description: str_field(&info, "description"),
             base_url,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -433,7 +441,6 @@ fn bruno_req_to_api(dir: &Path, r: &Value, vars: &HashMap<String, String>,
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -472,9 +479,10 @@ fn import_apizza_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
             description: str_field(&v, "projectDesc"),
             base_url,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -602,7 +610,6 @@ fn apizza_api_to_api(dir: &Path, a: &Value, vars: &HashMap<String, String>,
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -715,9 +722,10 @@ fn import_nei_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, Str
             description: str_field(&v, "description"),
             base_url,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     // datatypes 索引
@@ -921,7 +929,6 @@ fn nei_api_to_api(dir: &Path, it: &Value, datatypes: &HashMap<i64, &Value>,
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -943,9 +950,10 @@ fn import_doclever_files(root: &Path, file: &Path) -> Result<OpenApiImportResult
             description: String::new(),
             base_url: None,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -1061,7 +1069,6 @@ fn doclever_api_to_api(dir: &Path, a: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -1084,9 +1091,10 @@ fn import_io_docs_files(root: &Path, file: &Path) -> Result<OpenApiImportResult,
             description: String::new(),
             base_url,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -1178,7 +1186,6 @@ fn io_docs_api_to_api(dir: &Path, a: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol: "http".to_string(),
-        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -1202,9 +1209,10 @@ fn import_easydoc_files(root: &Path, file: &Path) -> Result<OpenApiImportResult,
             description: str_field(&data, "description"),
             base_url,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut cat_dirs: HashMap<i64, PathBuf> = HashMap::new();
@@ -1338,7 +1346,6 @@ fn easydoc_api_to_api(dir: &Path, a: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -1360,9 +1367,10 @@ fn import_docway_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
             description: str_field(&v, "description"),
             base_url: None,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -1467,7 +1475,6 @@ fn docway_api_to_api(dir: &Path, a: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -1489,9 +1496,10 @@ fn import_hoppscotch_files(root: &Path, file: &Path) -> Result<OpenApiImportResu
             description: str_field(&v, "description"),
             base_url: None,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -1607,7 +1615,6 @@ fn hoppscotch_req_to_api(dir: &Path, r: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -1629,9 +1636,10 @@ fn import_metersphere_files(root: &Path, file: &Path) -> Result<OpenApiImportRes
             description: String::new(),
             base_url: None,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     // nodeTree → id → dir
@@ -1738,7 +1746,6 @@ fn metersphere_api_to_api(dir: &Path, a: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -1969,7 +1976,6 @@ fn rap2_interface_to_api(it: &Value) -> ApiFile {
         doc_params: vec![],
         deprecated: false,
         protocol: "http".to_string(),
-        order: None,
     }
 }
 
@@ -1980,14 +1986,16 @@ fn import_rap2_project(root: &Path, data: &Value) -> Result<OpenApiImportResult,
     fs::create_dir_all(&folder).map_err(|e| format!("创建分组失败: {e}"))?;
     let mut count = 0usize;
     let mut stats = ImportStats::default();
-    let mut order = 0i32;
+    let mut dirs: Vec<String> = Vec::new();
     let modules = data.get("modules").and_then(|x| x.as_array()).cloned().unwrap_or_default();
     for m in modules {
         let mname = str_field(&m, "name");
         let dir = mk_group_dir(&folder, &if mname.is_empty() { "未分组".to_string() } else { mname.clone() }, &str_field(&m, "description"))?;
+        dirs.push(
+            dir.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default(),
+        );
         let interfaces = m.get("interfaces").and_then(|x| x.as_array()).cloned().unwrap_or_default();
         for it in interfaces {
-            order += 1;
             let api = rap2_interface_to_api(&it);
             stats.add(&api.protocol);
             write_pretty(
@@ -1997,10 +2005,10 @@ fn import_rap2_project(root: &Path, data: &Value) -> Result<OpenApiImportResult,
             count += 1;
         }
     }
-    // 分组顺序
+    // 分组顺序：按导入顺序写入父分组 __info.json 的 dirs
     let info_path = folder.join(INFO_FILE);
     if let Ok(mut info) = serde_json::from_str::<InfoJson>(&fs::read_to_string(&info_path).unwrap_or_default()) {
-        info.order = Some(order);
+        info.dirs = dirs;
         write_pretty(&info_path, &info)?;
     }
     Ok(OpenApiImportResult {
@@ -2113,9 +2121,10 @@ pub(crate) fn import_apidoc_files(
             description: desc,
             base_url,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     // 分组
@@ -2147,9 +2156,10 @@ pub(crate) fn import_apidoc_files(
                             .to_string(),
                         base_url: None,
                         mock_port: None,
-                        order: None,
                         collapsed: None,
                         deprecated: None,
+                        dirs: vec![],
+                        apis: vec![],
                     },
                 )?;
             }
@@ -2385,7 +2395,6 @@ fn apidoc_api_to_api(dir: &Path, a: &Value,
         doc_params,
         deprecated: false,
         protocol,
-        order: None,
     };
     write_pretty(&file_path, &api_file)?;
         stats.add(&api_file.protocol);

@@ -62,7 +62,6 @@
             }],
             deprecated: false,
             protocol: "http".into(),
-        order: None,
         }
     }
 
@@ -229,7 +228,6 @@
             doc_params: vec![],
             deprecated: false,
             protocol: "http".into(),
-        order: None,
         };
 
         // 注册 types 模拟 openapi_tag 子字段

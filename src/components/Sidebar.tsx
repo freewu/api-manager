@@ -63,8 +63,8 @@ interface Props {
   onVcsSync?: () => void;
   onVcsCommitPush?: () => void;
   onMove: (srcPath: string, dstDir: string) => Promise<void>;
-  /** 拖动排序微调：把单个接口 / 分组的 order 改为指定值 */
-  onReorderOne?: (path: string, order: number) => Promise<void>;
+  /** 拖动排序：把父分组下同级子项的有序路径列表写入 __info.json */
+  onReorder: (parent: string, paths: string[]) => Promise<void>;
   enableVersion: boolean;
   // 请求历史列表数据（由 App 通过 useHistory 提供）
   historyRecords: HistorySummary[];
@@ -216,7 +216,6 @@ function NodeRow({
     dst: string,
     dstIsFolder: boolean,
     after: boolean,
-    dstOrder?: number,
   ) => void;
 }) {
   const t = useT();
@@ -356,7 +355,7 @@ function NodeRow({
           e.preventDefault();
           e.stopPropagation();
           const src = e.dataTransfer.getData("text/plain") || dragSrc;
-          if (src) onDropTarget(src, dropTarget, isFolder, dropPos === "bottom", node.order);
+          if (src) onDropTarget(src, dropTarget, isFolder, dropPos === "bottom");
           setDropPos(null);
         }}
         onClick={() => {
@@ -605,20 +604,43 @@ export function Sidebar(props: Props) {
   const handleDragOverTarget = (dst: string) => setDragOver(dst);
   const handleDragLeaveTarget = (dst: string) =>
     setDragOver((prev) => (prev === dst ? null : prev));
+  // 从树中取父分组下直接子节点的有序路径列表（不含 __info.json，树节点已过滤）
+  const siblingPaths = (parentPath: string): string[] => {
+    const find = (n: TreeNode | null): TreeNode | null => {
+      if (!n) return null;
+      if (n.path === parentPath) return n;
+      for (const c of n.children ?? []) {
+        const r = find(c);
+        if (r) return r;
+      }
+      return null;
+    };
+    const parent = find(props.tree);
+    return (parent?.children ?? []).map((c) => c.path);
+  };
+
   const handleDropTarget = async (
     src: string,
     dst: string,
     dstIsFolder: boolean,
     after: boolean,
-    dstOrder?: number,
   ) => {
     setDragSrc(null);
     setDragOver(null);
     if (!validDrop(src, dst, dstIsFolder)) return; // 无效落点（自身/子目录/原地）：忽略
     if (parentDir(src) === parentDir(dst)) {
-      // 同级拖动排序：放前面 = 目标 order -1，放后面 = 目标 order +1
-      const newOrder = (dstOrder ?? 0) + (after ? 1 : -1);
-      if (props.onReorderOne) await props.onReorderOne(src, newOrder);
+      // 同级拖动排序：从树取兄弟顺序，把 src 移到 dst 前/后，整体写回父分组 __info.json
+      const parent = parentDir(src);
+      const paths = siblingPaths(parent);
+      const si = paths.indexOf(src);
+      const di = paths.indexOf(dst);
+      if (si < 0 || di < 0 || si === di) return; // 树中找不到（异常）：跳过
+      paths.splice(si, 1);
+      let insertAt = paths.indexOf(dst);
+      if (insertAt < 0) return;
+      if (after) insertAt += 1;
+      paths.splice(insertAt, 0, src);
+      await props.onReorder(parent, paths);
       return;
     }
     // 移动：落到目录 → 该目录；落到接口 → 该接口所在目录

@@ -155,7 +155,6 @@ export interface InfoJson {
   description?: string;
   baseUrl?: string;
   mockPort?: number;
-  order?: number;
   collapsed?: boolean;
   /** 分组是否已标记废弃 */
   deprecated?: boolean;
@@ -198,8 +197,6 @@ export interface TreeNode {
   mockEnabled?: boolean;
   description?: string;
   collapsed?: boolean;
-  /** 同级排序序号（越小越靠前） */
-  order?: number;
   apiCount?: number;
   /** 是否已标记废弃（分组无此字段时默认未废弃） */
   deprecated?: boolean;

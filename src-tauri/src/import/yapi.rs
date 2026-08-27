@@ -40,9 +40,10 @@ pub(crate) fn import_yapi_file(root: &Path, file: &Path) -> Result<OpenApiImport
             description: format!("从 YApi 导出文件导入（{src_name}）"),
             base_url: None,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -96,9 +97,10 @@ fn yapi_node_to_apis(dir: &Path, node: &Value, stats: &mut ImportStats) -> Resul
                 description: String::new(),
                 base_url: None,
                 mock_port: None,
-                order: None,
                 collapsed: None,
                 deprecated: None,
+                dirs: vec![],
+                apis: vec![],
             },
         )?;
     }
@@ -278,7 +280,6 @@ fn yapi_api_to_api(dir: &Path, title: &str, api: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     };
     write_pretty(&file_path, &api_file)?;
         stats.add(&api_file.protocol);

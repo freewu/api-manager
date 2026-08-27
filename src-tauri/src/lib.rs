@@ -116,12 +116,16 @@ pub struct InfoJson {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mock_port: Option<u16>,
     #[serde(default)]
-    pub order: Option<i32>,
-    #[serde(default)]
     pub collapsed: Option<bool>,
     /// 标记该分组是否已废弃
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deprecated: Option<bool>,
+    /// 子分组顺序（目录名，按显示顺序；不在列表中的排末尾）
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dirs: Vec<String>,
+    /// 子接口顺序（接口文件名，如 xxx.json；不在列表中的排末尾）
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub apis: Vec<String>,
 }
 
 fn default_method() -> String {
@@ -235,54 +239,47 @@ pub struct ApiFile {
     /// 接口协议：http（HTTP 接口）、websocket（WebSocket 接口）或 socketio（Socket.IO 接口）
     #[serde(default = "default_protocol")]
     pub protocol: String,
-    /// 同级排序序号（拖动排序，越小越靠前；旧数据无此字段时排末尾）
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub order: Option<i32>,
 }
 
 pub(crate) fn default_protocol() -> String {
     "http".to_string()
 }
 
-/// 排序比较键：存量排序值 <10000 的按 *10000 参与比较，
-/// 避免与新建元素（最后一个 +10000）挤在同一区间
-fn sort_key(order: i32) -> i32 {
-    if order < 10000 {
-        order * 10000
-    } else {
-        order
+/// 把子项追加到父目录 __info.json 的顺序列表（新建时调用）
+pub(crate) fn info_append_child(dir: &Path, name: &str, is_dir: bool) {
+    let mut info = read_info_file(dir);
+    let list = if is_dir { &mut info.dirs } else { &mut info.apis };
+    if !list.iter().any(|x| x == name) {
+        list.push(name.to_string());
+        let _ = write_pretty(&dir.join(INFO_FILE), &info);
     }
 }
 
-/// 同级新建时的下一个排序值：当前最大排序键 + 10000（新元素总是排在最后）
-fn next_order(dir: &Path) -> i32 {
-    let mut max = 0;
-    if let Ok(rd) = fs::read_dir(dir) {
-        for entry in rd.flatten() {
-            let p = entry.path();
-            let fname = entry.file_name().to_string_lossy().to_string();
-            if fname.starts_with('.') {
-                continue;
-            }
-            if p.is_dir() {
-                if let Some(o) = read_info_file(&p).order {
-                    max = max.max(sort_key(o));
-                }
-            } else if p.extension().map(|e| e == "json").unwrap_or(false)
-                && fname != INFO_FILE
-                && fname != ENV_FILE
-            {
-                if let Ok(text) = fs::read_to_string(&p) {
-                    if let Ok(v) = serde_json::from_str::<Value>(&text) {
-                        if let Some(o) = v.get("order").and_then(|x| x.as_i64()) {
-                            max = max.max(sort_key(o as i32));
-                        }
-                    }
-                }
-            }
+/// 从父目录 __info.json 的顺序列表中移除子项（移动 / 删除时调用）
+fn info_remove_child(dir: &Path, name: &str, is_dir: bool) {
+    let mut info = read_info_file(dir);
+    let list = if is_dir { &mut info.dirs } else { &mut info.apis };
+    let before = list.len();
+    list.retain(|x| x != name);
+    if list.len() != before {
+        let _ = write_pretty(&dir.join(INFO_FILE), &info);
+    }
+}
+
+/// 把子项名称从顺序列表中替换为新名（重命名时调用，目标父目录 = dir）
+fn info_rename_child(dir: &Path, old_name: &str, new_name: &str, is_dir: bool) {
+    let mut info = read_info_file(dir);
+    let list = if is_dir { &mut info.dirs } else { &mut info.apis };
+    let mut changed = false;
+    for x in list.iter_mut() {
+        if x == old_name {
+            *x = new_name.to_string();
+            changed = true;
         }
     }
-    max + 10000
+    if changed {
+        let _ = write_pretty(&dir.join(INFO_FILE), &info);
+    }
 }
 
 fn default_folder_state() -> String {
@@ -438,9 +435,6 @@ pub struct TreeNode {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub collapsed: Option<bool>,
-    /// 同级排序序号（越小越靠前；存量 <10000 的排序时按 *10000 参与比较）
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub order: Option<i32>,
     /// 该分组下接口总数（含子分组），前端用于显示数量角标
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_count: Option<u32>,
@@ -622,8 +616,8 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
         .map(|s| s.to_string_lossy().to_string())
         .unwrap_or_else(|| dir.to_string_lossy().to_string());
 
-    let mut folders: Vec<(i32, TreeNode)> = Vec::new();
-    let mut apis: Vec<(i32, TreeNode)> = Vec::new();
+    let mut folders: Vec<(String, TreeNode)> = Vec::new();
+    let mut apis: Vec<(String, TreeNode)> = Vec::new();
 
     for entry in fs::read_dir(dir).map_err(|e| format!("读取目录失败: {e}"))? {
         let entry = entry.map_err(|e| e.to_string())?;
@@ -634,27 +628,29 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
         }
         if path.is_dir() {
             if let Ok(node) = build_folder_node(&path) {
-                let child_info = read_info_file(&path);
-                folders.push((child_info.order.unwrap_or(1000), node));
+                folders.push((file_name.clone(), node));
             }
         } else if path.extension().map(|e| e == "json").unwrap_or(false)
             && file_name != INFO_FILE
             && file_name != ENV_FILE
         {
-            apis.push(build_api_node(&path));
+            let node = build_api_node(&path);
+            apis.push((file_name.clone(), node));
         }
     }
 
-    // 分组与接口按统一 order 排序（无 order 时默认 1000，按名称排末尾）
-    // 存量排序值 <10000 的按 *10000 参与比较（需求：旧数据与新建的 10000 级间距隔离）
-    let mut items: Vec<(i32, TreeNode)> = folders;
-    items.extend(apis);
-    items.sort_by(|a, b| {
-        sort_key(a.0)
-            .cmp(&sort_key(b.0))
-            .then(a.1.name.cmp(&b.1.name))
-    });
-    let children = items.into_iter().map(|(_, n)| n).collect::<Vec<_>>();
+    // 排序：分组按 __info.json 的 dirs、接口按 apis（不在列表中的排末尾，按名称）
+    let rank = |list: &[String], name: &str| -> usize {
+        list.iter().position(|x| x == name).unwrap_or(usize::MAX)
+    };
+    folders.sort_by(|a, b| rank(&info.dirs, &a.0).cmp(&rank(&info.dirs, &b.0)).then(a.1.name.cmp(&b.1.name)));
+    apis.sort_by(|a, b| rank(&info.apis, &a.0).cmp(&rank(&info.apis, &b.0)).then(a.1.name.cmp(&b.1.name)));
+    // 分组在前、接口在后
+    let children = folders
+        .into_iter()
+        .map(|(_, n)| n)
+        .chain(apis.into_iter().map(|(_, n)| n))
+        .collect::<Vec<_>>();
     let mut api_count = children
         .iter()
         .map(|c| c.api_count.unwrap_or(0))
@@ -674,7 +670,6 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
         mock_enabled: None,
         description: Some(info.description),
         collapsed: info.collapsed,
-        order: info.order,
         deprecated: info.deprecated,
         protocol: None,
         api_count: Some(api_count),
@@ -682,7 +677,7 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
     })
 }
 
-fn build_api_node(path: &Path) -> (i32, TreeNode) {
+fn build_api_node(path: &Path) -> TreeNode {
     let stem = path
         .file_stem()
         .map(|s| s.to_string_lossy().to_string())
@@ -693,7 +688,6 @@ fn build_api_node(path: &Path) -> (i32, TreeNode) {
     let mut mock_enabled = None;
     let mut deprecated = None;
     let mut protocol = None;
-    let mut order = None;
 
     if let Ok(content) = fs::read_to_string(path) {
         if let Ok(v) = serde_json::from_str::<Value>(&content) {
@@ -710,28 +704,23 @@ fn build_api_node(path: &Path) -> (i32, TreeNode) {
                 .and_then(|e| e.as_bool());
             deprecated = v.get("deprecated").and_then(|d| d.as_bool());
             protocol = v.get("protocol").and_then(|x| x.as_str()).map(String::from);
-            order = v.get("order").and_then(|x| x.as_i64()).map(|i| i as i32);
         }
     }
 
-    (
-        order.unwrap_or(1000),
-        TreeNode {
-            kind: "api".into(),
-            name,
-            path: path.to_string_lossy().to_string(),
-            method,
-            endpoint,
-            mock_enabled,
-            description: None,
-            collapsed: None,
-            order,
-            deprecated,
-            protocol,
-            api_count: None,
-            children: None,
-        },
-    )
+    TreeNode {
+        kind: "api".into(),
+        name,
+        path: path.to_string_lossy().to_string(),
+        method,
+        endpoint,
+        mock_enabled,
+        description: None,
+        collapsed: None,
+        deprecated,
+        protocol,
+        api_count: None,
+        children: None,
+    }
 }
 
 fn workspace_root(state: &State<'_, WorkspaceState>) -> Result<PathBuf, String> {
@@ -1529,8 +1518,10 @@ fn create_api(
             Some("graphql") => "graphql".into(),
             _ => "http".into(),
         },
-        order: Some(next_order(&dir_path)),
     };    write_pretty(&file_path, &data)?;
+    // 记录到父目录 __info.json 的 apis 顺序列表（新建接口排在最后）
+    let fname = file_path.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+    info_append_child(&dir_path, &fname, false);
     Ok(file_path.to_string_lossy().to_string())
 }
 
@@ -1560,17 +1551,21 @@ fn create_folder(
         description: String::new(),
         base_url: None,
         mock_port: None,
-        order: Some(next_order(&parent_path)),
         // 按设置「分组默认状态」设置新建分组开合状态（None = 前端按展开处理）
         collapsed,
         deprecated: None,
+        dirs: vec![],
+        apis: vec![],
     };
     write_pretty(&dir_path.join(INFO_FILE), &info)?;
+    // 记录到父目录 __info.json 的 dirs 顺序列表（新建分组排在最后）
+    let dir_name = dir_path.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+    info_append_child(&parent_path, &dir_name, true);
     Ok(dir_path.to_string_lossy().to_string())
 }
 
-/// 拖动排序：按传入的有序子项路径列表，将同级分组 / 接口的 order 依次写入
-/// （分组写 __info.json 的 order，接口写接口 JSON 的 order）
+/// 拖动排序：按传入的有序子项路径列表，把父分组 __info.json 的 dirs / apis 顺序列表
+/// 分别设为对应顺序（分组目录 → dirs，接口 JSON → apis）
 #[tauri::command]
 fn reorder_children(
     state: State<'_, WorkspaceState>,
@@ -1582,56 +1577,29 @@ fn reorder_children(
     if !parent_path.starts_with(&root) || !parent_path.is_dir() {
         return Err("父目录不在工作区内".into());
     }
-    for (i, p) in paths.iter().enumerate() {
+    let mut info = read_info_file(&parent_path);
+    info.dirs.clear();
+    info.apis.clear();
+    for p in paths.iter() {
         let item = PathBuf::from(p);
-        if !item.starts_with(&parent_path) {
-            return Err(format!("路径不在父目录内: {p}"));
+        if !item.starts_with(&parent_path) || !item.exists() {
+            return Err(format!("子项不在父目录内: {p}"));
         }
-        let order = i as i32;
+        let name = item
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
         if item.is_dir() {
-            let mut info = read_info_file(&item);
-            info.order = Some(order);
-            write_pretty(&item.join(INFO_FILE), &info)?;
+            info.dirs.push(name);
         } else if item.extension().map(|e| e == "json").unwrap_or(false) {
-            let content = fs::read_to_string(&item).map_err(|e| format!("读取接口失败: {e}"))?;
-            let mut api: ApiFile = serde_json::from_str(&content).map_err(|e| format!("解析接口失败: {e}"))?;
-            api.order = Some(order);
-            write_pretty(&item, &api)?;
+            info.apis.push(name);
         }
     }
+    write_pretty(&parent_path.join(INFO_FILE), &info)?;
     Ok(())
 }
 
 /// 拖动排序微调：把单个接口 / 分组的 order 改为指定值（放前面 = 目标 -1，放后面 = 目标 +1）
-fn set_item_order_inner(root: &Path, path: &str, order: i32) -> Result<(), String> {
-    let item = PathBuf::from(path);
-    if !item.starts_with(root) {
-        return Err("路径不在工作区内".into());
-    }
-    if item.is_dir() {
-        let mut info = read_info_file(&item);
-        info.order = Some(order);
-        write_pretty(&item.join(INFO_FILE), &info)?;
-    } else if item.extension().map(|e| e == "json").unwrap_or(false) {
-        let content = fs::read_to_string(&item).map_err(|e| format!("读取接口失败: {e}"))?;
-        let mut api: ApiFile =
-            serde_json::from_str(&content).map_err(|e| format!("解析接口失败: {e}"))?;
-        api.order = Some(order);
-        write_pretty(&item, &api)?;
-    }
-    Ok(())
-}
-
-#[tauri::command]
-fn set_item_order(
-    state: State<'_, WorkspaceState>,
-    path: String,
-    order: i32,
-) -> Result<(), String> {
-    let root = workspace_root(&state)?;
-    set_item_order_inner(&root, &path, order)
-}
-
 #[tauri::command]
 fn rename_entry(
     state: State<'_, WorkspaceState>,
@@ -1651,7 +1619,12 @@ fn rename_entry(
         return Err("名称不能为空".into());
     }
     let parent = old.parent().ok_or("无上级目录")?;
-    let (base, ext) = if old.is_dir() {
+    let is_dir = old.is_dir();
+    let old_name = old
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let (base, ext) = if is_dir {
         (fs_name, String::new())
     } else {
         let ext = old
@@ -1667,7 +1640,13 @@ fn rename_entry(
     };
     let new_path = unique_path(parent, &base, &ext);
     fs::rename(&old, &new_path).map_err(|e| format!("重命名失败: {e}"))?;
-    if old.is_dir() {
+    // 同步父目录 __info.json 顺序列表（目录名 / 接口文件名）
+    let new_name = new_path
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    info_rename_child(parent, &old_name, &new_name, is_dir);
+    if is_dir {
         // 目录重命名时同步更新 __info.json 的 name（显示名，可含 / 路径风格）
         let mut info = read_info_file(&new_path);
         info.name = Some(display_name);
@@ -1691,11 +1670,21 @@ fn delete_entry(state: State<'_, WorkspaceState>, path: String) -> Result<(), St
     let root = workspace_root(&state)?;
     let target = PathBuf::from(&path);
     ensure_inside_workspace(&root, &target)?;
-    if target.is_dir() {
+    let is_dir = target.is_dir();
+    let parent = target.parent().ok_or("无上级目录")?;
+    let name = target
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let res = if is_dir {
         fs::remove_dir_all(&target).map_err(|e| format!("删除失败: {e}"))
     } else {
         fs::remove_file(&target).map_err(|e| format!("删除失败: {e}"))
-    }
+    };
+    res?;
+    // 从父目录 __info.json 顺序列表中移除
+    info_remove_child(parent, &name, is_dir);
+    Ok(())
 }
 
 /// 复制接口/分组到其所在目录：接口重新生成 uuid（分组则递归复制整棵树，
@@ -1730,6 +1719,12 @@ fn copy_entry(state: State<'_, WorkspaceState>, path: String) -> Result<String, 
     } else {
         copy_api_file(&src, &dst)?;
     }
+    // 记录到父目录 __info.json 的顺序列表（副本排在同组末尾）
+    let dst_name = dst
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    info_append_child(parent, &dst_name, src.is_dir());
     Ok(dst.to_string_lossy().to_string())
 }
 
@@ -1839,7 +1834,20 @@ fn move_entry_inner(root: &Path, src: &str, dst_dir: &str) -> Result<String, Str
         (stem, ext)
     };
     let target = unique_path(&dst_path, &base, &ext);
+    let is_dir = src_path.is_dir();
+    // 从源父目录 __info.json 顺序列表中移除，追加到目标父目录
+    let src_parent = src_path.parent().ok_or("无上级目录")?;
+    let src_name = src_path
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
     fs::rename(&src_path, &target).map_err(|e| format!("移动失败: {e}"))?;
+    info_remove_child(src_parent, &src_name, is_dir);
+    let dst_name = target
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    info_append_child(&dst_path, &dst_name, is_dir);
     Ok(target.to_string_lossy().to_string())
 }
 
@@ -2047,7 +2055,6 @@ pub fn run() {
             read_info,
             save_info,
             set_folder_collapsed,
-            set_item_order,
             reorder_children,
             toggle_deprecated,
             read_envs,

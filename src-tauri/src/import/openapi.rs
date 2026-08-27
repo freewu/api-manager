@@ -62,9 +62,10 @@ pub(crate) fn import_openapi_file(root: &Path, file: &Path) -> Result<OpenApiImp
             description: format!("从 OpenAPI {version} 导入（{src_name}）"),
             base_url: None,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
 
@@ -122,11 +123,18 @@ pub(crate) fn import_openapi_file(root: &Path, file: &Path) -> Result<OpenApiImp
                                 description: String::new(),
                                 base_url: None,
                                 mock_port: None,
-                                order: None,
                                 collapsed: None,
                                 deprecated: None,
+                                dirs: vec![],
+                                apis: vec![],
                             },
                         );
+                        // 追加到父分组 __info.json 的 dirs（导入顺序即显示顺序）
+                        let dname = d
+                            .file_name()
+                            .map(|s| s.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        crate::info_append_child(&folder, &dname, true);
                         d
                     });
                     dir.clone()
@@ -299,7 +307,6 @@ fn openapi_op_to_api(
         doc_params: vec![],
         deprecated: false,
         protocol: "http".into(),
-        order: None,
     })
 }
 

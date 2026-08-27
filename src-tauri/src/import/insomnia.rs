@@ -40,9 +40,10 @@ pub(crate) fn import_insomnia_file(root: &Path, file: &Path) -> Result<OpenApiIm
             description: format!("从 Insomnia 导出文件导入（{src_name}）"),
             base_url,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -112,9 +113,10 @@ fn insomnia_node_to_apis(dir: &Path, node: &Value, coll_env: &Value,
                 description: String::new(),
                 base_url: None,
                 mock_port: None,
-                order: None,
                 collapsed: None,
                 deprecated: None,
+                dirs: vec![],
+                apis: vec![],
             },
         )?;
     }
@@ -288,7 +290,6 @@ fn insomnia_request_to_api(
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     };
     write_pretty(&file_path, &api_file)?;
         stats.add(&api_file.protocol);

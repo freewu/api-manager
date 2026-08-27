@@ -59,9 +59,10 @@ pub(crate) fn import_eolink_file(root: &Path, file: &Path) -> Result<OpenApiImpo
             },
             base_url,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -106,9 +107,10 @@ fn eolink_group_to_apis(dir: &Path, group: &Value,
                 description: String::new(),
                 base_url: None,
                 mock_port: None,
-                order: None,
                 collapsed: None,
                 deprecated: None,
+                dirs: vec![],
+                apis: vec![],
             },
         )?;
     }
@@ -386,7 +388,6 @@ fn eolink_api_to_api(dir: &Path, api: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     };
     write_pretty(&file_path, &api_file)?;
         stats.add(&api_file.protocol);

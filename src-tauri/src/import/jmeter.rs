@@ -66,9 +66,10 @@ pub(crate) fn import_jmeter_file(root: &Path, file: &Path) -> Result<OpenApiImpo
             description: format!("从 JMeter 测试计划导入（{src_name}）"),
             base_url,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -182,9 +183,10 @@ fn jmeter_walk_hash_tree(
                                 description: String::new(),
                                 base_url: None,
                                 mock_port: None,
-                                order: None,
                                 collapsed: None,
                                 deprecated: None,
+                                dirs: vec![],
+                                apis: vec![],
                             },
                         )?;
                     }
@@ -374,7 +376,6 @@ fn jmeter_sampler_to_api(
         doc_params: vec![],
         deprecated: false,
         protocol: api_protocol,
-        order: None,
     };
     write_pretty(&file_path, &api_file)?;
         stats.add(&api_file.protocol);

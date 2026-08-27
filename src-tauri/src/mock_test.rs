@@ -26,7 +26,6 @@
             doc_params: vec![],
             deprecated: false,
             protocol: "http".into(),
-        order: None,
         };
         let route = parse_route(&api).unwrap();
         assert_eq!(route.segments.len(), 3);

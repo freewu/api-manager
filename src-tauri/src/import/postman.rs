@@ -49,9 +49,10 @@ pub(crate) fn import_postman_file(root: &Path, file: &Path) -> Result<PostmanImp
             description: format!("从 Postman Collection 导入（{src_name}）"),
             base_url: None,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let items = json
@@ -211,9 +212,10 @@ fn import_postman_items(
                     description: String::new(),
                     base_url: None,
                     mock_port: None,
-                    order: None,
                     collapsed: None,
                     deprecated: None,
+                    dirs: vec![],
+                    apis: vec![],
                 },
             )?;
             import_postman_items(&sub_dir, sub, stats, failed, duplicated)?;
@@ -333,7 +335,6 @@ fn postman_request_to_api(name: &str, request: &Value) -> Result<ApiFile, String
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     })
 }
 

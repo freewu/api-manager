@@ -45,9 +45,10 @@ pub(crate) fn import_apifox_file(root: &Path, file: &Path) -> Result<OpenApiImpo
             description: format!("从 Apifox 项目导入（{src_name}）"),
             base_url: None,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -136,9 +137,10 @@ fn import_apifox_items_arr(dir: &Path, items: &[Value], stats: &mut ImportStats)
                         description: String::new(),
                         base_url: None,
                         mock_port: None,
-                        order: None,
                         collapsed: None,
                         deprecated: None,
+                        dirs: vec![],
+                        apis: vec![],
                     },
                 )?;
             }
@@ -245,7 +247,6 @@ fn apifox_api_to_api(name: &str, api_obj: &Value) -> Result<ApiFile, String> {
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     })
 }
 
@@ -329,9 +330,10 @@ pub(crate) fn import_apipost_file(root: &Path, file: &Path) -> Result<OpenApiImp
             description: format!("从 Apipost 项目导入（{src_name}）"),
             base_url: None,
             mock_port: None,
-            order: None,
             collapsed: None,
             deprecated: None,
+            dirs: vec![],
+            apis: vec![],
         },
     )?;
     // target_id → 节点索引
@@ -396,9 +398,10 @@ fn import_apipost_node(
                         description: String::new(),
                         base_url: None,
                         mock_port: None,
-                        order: None,
                         collapsed: None,
                         deprecated: None,
+                        dirs: vec![],
+                        apis: vec![],
                     },
                 )?;
             }
@@ -506,7 +509,6 @@ fn apipost_request_to_api(name: &str, node: &Value) -> Result<ApiFile, String> {
         doc_params: vec![],
         deprecated: false,
         protocol,
-        order: None,
     })
 }
 
