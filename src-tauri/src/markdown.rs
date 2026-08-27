@@ -976,6 +976,7 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     };
 
     for (sec, sub, text) in &sections {

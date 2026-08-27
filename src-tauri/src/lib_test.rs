@@ -429,6 +429,7 @@
             doc_params: vec![],
         deprecated: false,
         protocol: "http".into(),
+        order: None,
         };
         let rel = save_api_version_at(&root, api).unwrap();
         assert!(rel.starts_with(".version/11111111-2222-3333-4444-555555555555/"));
@@ -500,6 +501,7 @@
             }],
             deprecated: false,
             protocol: "http".into(),
+        order: None,
         };
         ensure_responses(&mut api);
         assert_eq!(api.responses.len(), 2);
@@ -543,6 +545,7 @@
             doc_params: vec![],
         deprecated: false,
         protocol: "http".into(),
+        order: None,
         };
         fs::write(
             g.join("接口A.json"),
@@ -592,6 +595,7 @@
             doc_params: vec![],
         deprecated: false,
         protocol: "http".into(),
+        order: None,
         };
         let main = base.join("接口").join("接口A.json");
         save_api(main.to_string_lossy().to_string(), make("接口A", "v1 描述"))
@@ -731,6 +735,30 @@
         .unwrap();
         assert_eq!(post_api.body.mode, "json");
         assert!(post_api.body.raw.contains("\"name\""));
+
+        // 拖动排序：写入接口文件 order 后，同级按 order 排序（而非名称序）
+        let get_path = pets.join("GET _pets_{id}.json");
+        let post_path = pets.join("POST _pets.json");
+        let mut g: ApiFile =
+            serde_json::from_str(&fs::read_to_string(&get_path).unwrap()).unwrap();
+        g.order = Some(1);
+        write_pretty(&get_path, &g).unwrap();
+        let mut p: ApiFile =
+            serde_json::from_str(&fs::read_to_string(&post_path).unwrap()).unwrap();
+        p.order = Some(0);
+        write_pretty(&post_path, &p).unwrap();
+        let node = build_folder_node(&pets).unwrap();
+        let order_paths: Vec<String> = node
+            .children
+            .unwrap()
+            .iter()
+            .map(|c| c.path.clone())
+            .collect();
+        assert_eq!(
+            order_paths,
+            vec![post_path.to_string_lossy().to_string(), get_path.to_string_lossy().to_string()],
+            "同级接口应按 order 排序（POST(order=0) 在 GET(order=1) 前）"
+        );
 
         // YAML 格式同样支持（.yaml / .yml）
         let yaml_content = serde_yaml::to_string(&spec).unwrap();
@@ -918,6 +946,7 @@
             doc_params: vec![],
             deprecated: false,
             protocol: if is_ws { "websocket".into() } else { "http".into() },
+        order: None,
         };
         let apis = vec![
             (vec![], make("get", "GET", "/users", false)),
@@ -1280,6 +1309,7 @@
             doc_params: vec![],
             deprecated: false,
             protocol: "http".into(),
+        order: None,
         };
         let apis: Vec<(Vec<(String, bool)>, ApiFile)> = vec![
             (vec![("用户模块".to_string(), true)], make("获取用户", "GET", "/user/{id}")),
@@ -1444,6 +1474,7 @@ let v = export::to_yapi(&apis);
             doc_params: vec![],
             deprecated: false,
             protocol: "http".into(),
+        order: None,
         };
         let apis: Vec<(Vec<(String, bool)>, ApiFile)> = vec![(
             vec![("订单模块".to_string(), true), ("订单操作".to_string(), true)],
@@ -1581,6 +1612,7 @@ let v = export::to_yapi(&apis);
             doc_params: vec![],
             deprecated: false,
             protocol: "http".into(),
+        order: None,
         };
         let apis: Vec<(Vec<(String, bool)>, ApiFile)> = vec![
             (vec![("用户模块".to_string(), true)], make("创建用户", "POST", "/user")),
@@ -1721,6 +1753,7 @@ let v = export::to_yapi(&apis);
             doc_params: vec![],
             deprecated: false,
             protocol: "http".into(),
+        order: None,
         };
         let apis: Vec<(Vec<(String, bool)>, ApiFile)> = vec![
             (vec![("订单模块".to_string(), true)], make("订单详情", "GET", "/api/order/{orderId}")),
@@ -1952,6 +1985,7 @@ let v = export::to_yapi(&apis);
             doc_params: vec![],
         deprecated: false,
         protocol: "http".into(),
+        order: None,
         };
         write_pretty(&src, &api).unwrap();
 
@@ -1997,6 +2031,7 @@ let v = export::to_yapi(&apis);
                 doc_params: vec![],
         deprecated: false,
         protocol: "http".into(),
+            order: None,
             };
             write_pretty(p, &api).unwrap();
         };
@@ -2145,6 +2180,7 @@ let v = export::to_yapi(&apis);
             doc_params: vec![],
             deprecated: false,
             protocol: "http".into(),
+        order: None,
         };
         let apis: Vec<(Vec<(String, bool)>, ApiFile)> = vec![
             (vec![("用户模块".to_string(), true)], mk("用户登录", "POST", "/api/user/login", "json")),
@@ -2283,6 +2319,7 @@ let v = export::to_yapi(&apis);
             doc_params: vec![],
             deprecated: false,
             protocol: "http".into(),
+        order: None,
         };
         let apis: Vec<(Vec<(String, bool)>, ApiFile)> = vec![
             (vec![("用户模块".to_string(), true)], mk("登录", "POST", "/api/login")),

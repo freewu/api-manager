@@ -95,6 +95,7 @@ const EXPORT_FORMATS: { value: ExportFormat; labelKey: string }[] = [
 const NAV = [
   { id: "workspace", icon: "📁", titleKey: "settings.nav.workspace", descKey: "settings.nav.workspaceDesc" },
   { id: "language", icon: "🌐", titleKey: "settings.nav.language", descKey: "settings.nav.languageDesc" },
+  { id: "groupstate", icon: "🗂️", titleKey: "settings.nav.groupState", descKey: "settings.nav.groupStateDesc" },
   { id: "appearance", icon: "🎨", titleKey: "settings.nav.appearance", descKey: "settings.nav.appearanceDesc" },
   { id: "version", icon: "📦", titleKey: "settings.nav.version", descKey: "settings.nav.versionDesc" },
   { id: "mock", icon: "🛡️", titleKey: "settings.nav.mock", descKey: "settings.nav.mockDesc" },
@@ -327,6 +328,38 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
               </div>
             </div>
             <div className="settings-desc">{t("settings.langDesc")}</div>
+          </section>
+
+          <section id="settings-groupstate" className="settings-section">
+            <div className="settings-panel-title">{t("settings.nav.groupState")}</div>
+            <div className="settings-row">
+              <span className="settings-label">{t("settings.groupStateTip")}</span>
+              <div className="settings-options">
+                <label
+                  className={`settings-option ${settings.defaultFolderState === "expanded" ? "active" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="defaultFolderState"
+                    checked={settings.defaultFolderState === "expanded"}
+                    onChange={() => patch({ defaultFolderState: "expanded" })}
+                  />
+                  {t("settings.groupState.expanded")}
+                </label>
+                <label
+                  className={`settings-option ${settings.defaultFolderState === "collapsed" ? "active" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="defaultFolderState"
+                    checked={settings.defaultFolderState === "collapsed"}
+                    onChange={() => patch({ defaultFolderState: "collapsed" })}
+                  />
+                  {t("settings.groupState.collapsed")}
+                </label>
+              </div>
+            </div>
+            <div className="settings-desc">{t("settings.groupStateDesc")}</div>
           </section>
 
           <section id="settings-appearance" className="settings-section">

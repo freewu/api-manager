@@ -308,6 +308,8 @@ export interface AppSettings {
   htmlNav: "off" | "left" | "right";
   /** 界面语言（zh / en） */
   language: "zh" | "zh-tw" | "en";
+  /** 新建分组默认开合状态（expanded / collapsed，接口管理与对象管理共用） */
+  defaultFolderState: "expanded" | "collapsed";
   /** 最近打开的工作目录数量上限（最少 3） */
   recentLimit: number;
 }
@@ -382,6 +384,7 @@ export const defaultSettings = (): AppSettings => ({
   },
   htmlNav: "right",
   language: "zh",
+  defaultFolderState: "expanded",
   recentLimit: 5,
 });
 

@@ -278,6 +278,7 @@ fn yapi_api_to_api(dir: &Path, title: &str, api: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     };
     write_pretty(&file_path, &api_file)?;
         stats.add(&api_file.protocol);

@@ -22,6 +22,8 @@ interface Props {
   newReq: number;
   /** 右侧空状态请求：导入对象（打开新建弹窗并聚焦 JSON 输入） */
   importReq: number;
+  /** 新建分组默认开合状态（expanded / collapsed，来自设置） */
+  defaultFolderState?: "expanded" | "collapsed";
 }
 
 /** 对象管理：左侧树形目录（分组 = 目录，多级；不显示根目录） */
@@ -36,6 +38,7 @@ export default function ObjectsTree({
   onSelectObject,
   newReq,
   importReq,
+  defaultFolderState = "expanded",
 }: Props) {
   const t = useT();
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
@@ -359,8 +362,9 @@ export default function ObjectsTree({
       groups: [...store.groups, { id, name: id.split("/").pop() || id, deprecated: false }],
       objects: store.objects,
     });
-    // 新建后自动展开该分组及其父级
+    // 新建后自动展开该分组及其父级（设置「分组默认状态」为折叠时保持折叠）
     setOpenGroups((prev) => {
+      if (defaultFolderState === "collapsed") return prev;
       const next = new Set(prev);
       const parts = id.split("/");
       let acc = "";

@@ -374,6 +374,7 @@ fn jmeter_sampler_to_api(
         doc_params: vec![],
         deprecated: false,
         protocol: api_protocol,
+        order: None,
     };
     write_pretty(&file_path, &api_file)?;
         stats.add(&api_file.protocol);

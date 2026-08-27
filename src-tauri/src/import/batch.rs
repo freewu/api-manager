@@ -258,6 +258,7 @@ fn apidog_api_to_api(dir: &Path, a: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -432,6 +433,7 @@ fn bruno_req_to_api(dir: &Path, r: &Value, vars: &HashMap<String, String>,
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -600,6 +602,7 @@ fn apizza_api_to_api(dir: &Path, a: &Value, vars: &HashMap<String, String>,
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -918,6 +921,7 @@ fn nei_api_to_api(dir: &Path, it: &Value, datatypes: &HashMap<i64, &Value>,
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -1057,6 +1061,7 @@ fn doclever_api_to_api(dir: &Path, a: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -1173,6 +1178,7 @@ fn io_docs_api_to_api(dir: &Path, a: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol: "http".to_string(),
+        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -1332,6 +1338,7 @@ fn easydoc_api_to_api(dir: &Path, a: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -1460,6 +1467,7 @@ fn docway_api_to_api(dir: &Path, a: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -1599,6 +1607,7 @@ fn hoppscotch_req_to_api(dir: &Path, r: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -1729,6 +1738,7 @@ fn metersphere_api_to_api(dir: &Path, a: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     };
     write_pretty(&unique_path(dir, &api.name, ".json"), &api)?;
         stats.add(&api.protocol);
@@ -1959,6 +1969,7 @@ fn rap2_interface_to_api(it: &Value) -> ApiFile {
         doc_params: vec![],
         deprecated: false,
         protocol: "http".to_string(),
+        order: None,
     }
 }
 
@@ -2374,6 +2385,7 @@ fn apidoc_api_to_api(dir: &Path, a: &Value,
         doc_params,
         deprecated: false,
         protocol,
+        order: None,
     };
     write_pretty(&file_path, &api_file)?;
         stats.add(&api_file.protocol);

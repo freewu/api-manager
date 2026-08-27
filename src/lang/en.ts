@@ -109,7 +109,7 @@ export const EN: Record<string, string> = {
   "toast.savedVersion": "New version saved: {rel}",
   "toast.mockReloaded": "Mock reloaded",
 
-  "editor.emptyHint": "Pick an API from the left panel (right-click to create an API / group)",
+  "editor.emptyHint": "Click an API on the left to view (right-click to create an API / group)",
 
   // ===== Modal =====
   "modal.newApi": "New API",
@@ -241,6 +241,8 @@ export const EN: Record<string, string> = {
   "settings.nav.workspaceDesc": "Name · Path",
   "settings.nav.language": "Language",
   "settings.nav.languageDesc": "Simplified Chinese · Traditional Chinese · English",
+  "settings.nav.groupState": "Default group state",
+  "settings.nav.groupStateDesc": "Expand / collapse for new groups",
   "settings.nav.appearance": "Appearance",
   "settings.nav.appearanceDesc": "Theme · Preview",
   "settings.nav.version": "Versions",
@@ -259,6 +261,10 @@ export const EN: Record<string, string> = {
   "settings.autoHint": "Changes apply immediately, no save needed",
   "settings.wsDesc": "Workspace name is the name in root __info.json, shown app-wide; falls back to directory name (auto-saved on blur)",
   "settings.langDesc": "Takes effect immediately; the tray menu switches along (you can also switch from the tray)",
+  "settings.groupStateTip": "Default state for new groups",
+  "settings.groupState.expanded": "Expanded",
+  "settings.groupState.collapsed": "Collapsed",
+  "settings.groupStateDesc": "New groups in both API and object management start in this expand / collapse state",
   "settings.displayMode": "Display mode",
   "settings.enableVersion": "Enable API versions",
   "settings.enableVersionDesc": "Shows the Save button and the Versions context-menu item",
@@ -665,6 +671,8 @@ export const EN: Record<string, string> = {
   "stats.deprecatedFolders": "Deprecated Groups",
   "toast.moveFailed": "Move failed: {err}",
   "toast.moved": "Moved",
+  "toast.reorderFailed": "Failed to save order: {err}",
+  "toast.reordered": "Order saved",
   "toast.wsNameUpdated": "Workspace name updated",
   "version.compare": "Compared with current version",
   "version.current": "Current",

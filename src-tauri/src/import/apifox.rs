@@ -245,6 +245,7 @@ fn apifox_api_to_api(name: &str, api_obj: &Value) -> Result<ApiFile, String> {
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     })
 }
 
@@ -505,6 +506,7 @@ fn apipost_request_to_api(name: &str, node: &Value) -> Result<ApiFile, String> {
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     })
 }
 

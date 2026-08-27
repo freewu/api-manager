@@ -288,6 +288,7 @@ fn insomnia_request_to_api(
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     };
     write_pretty(&file_path, &api_file)?;
         stats.add(&api_file.protocol);

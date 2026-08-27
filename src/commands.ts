@@ -263,8 +263,13 @@ export function createApi(dir: string, name: string, protocol: "http" | "websock
   return invoke<string>("create_api", { dir, name, protocol });
 }
 
-export function createFolder(parent: string, name: string): Promise<string> {
-  return invoke<string>("create_folder", { parent, name });
+export function createFolder(parent: string, name: string, collapsed?: boolean): Promise<string> {
+  return invoke<string>("create_folder", { parent, name, collapsed: collapsed ?? null });
+}
+
+/** 拖动排序：按有序子项路径列表保存同级分组 / 接口的 order */
+export function reorderChildren(parent: string, paths: string[]): Promise<void> {
+  return invoke<void>("reorder_children", { parent, paths });
 }
 
 export function renameEntry(path: string, newName: string): Promise<void> {

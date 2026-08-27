@@ -160,7 +160,7 @@ export function useModals(opts: {
     const name = modalText.trim() || t("app.newFolder");
     try {
       const parent = modal.parent || workspace!;
-      await createFolder(parent, name);
+      await createFolder(parent, name, settings.defaultFolderState === "collapsed");
       setModal(null);
       await reloadTree();
       onToast(t("toast.createdFolder", { name }));

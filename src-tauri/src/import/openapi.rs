@@ -299,6 +299,7 @@ fn openapi_op_to_api(
         doc_params: vec![],
         deprecated: false,
         protocol: "http".into(),
+        order: None,
     })
 }
 

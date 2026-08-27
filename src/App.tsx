@@ -10,6 +10,7 @@ import {
   readApi,
   readApiVersion,
   readEnv,
+  reorderChildren,
   saveApi,
   saveApiVersion,
   saveInfo,
@@ -501,6 +502,17 @@ export default function App() {
     }
   };
 
+  // 同级拖动排序：按有序子项路径列表保存 order 后刷新树
+  const handleReorder = async (parent: string, paths: string[]) => {
+    try {
+      await reorderChildren(parent, paths);
+      await reloadTree();
+      showToast(t("toast.reordered"));
+    } catch (e) {
+      showToast(t("toast.reorderFailed", { err: String(e) }));
+    }
+  };
+
   // 标记 / 取消标记"已废弃"（接口或分组），成功后在左侧树与当前编辑的接口上即时生效
   const handleToggleDeprecated = async (node: TreeNode) => {
     try {
@@ -612,6 +624,7 @@ export default function App() {
               onVcsSync={() => void handleVcsSync()}
               onVcsCommitPush={() => void handleVcsCommitPush()}
               onMove={handleMove}
+              onReorder={handleReorder}
               enableVersion={settings.enableVersion}
               historyRecords={history.records}
               historyDays={history.days}

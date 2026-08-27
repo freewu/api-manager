@@ -3,6 +3,17 @@ import { ApiFile } from "../../types";
 
 export const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+// 编码 query 值但保留 {{xxx}} 全局环境变量占位符（不编码成 %7B%7Bxxx%7D%7D）
+// 占位符用 !KVn! 包裹：!~ 等字符不被 encodeURIComponent 编码，编码后还原
+function encValue(v: string): string {
+  const parts: string[] = [];
+  const masked = v.replace(/\{\{[^{}]+\}\}/g, (m) => {
+    parts.push(m);
+    return `!KV${parts.length - 1}!`;
+  });
+  return encodeURIComponent(masked).replace(/!KV(\d+)!/g, (_, i) => parts[+i]);
+}
+
 export type CodeLang =
   | "curl" // 旧值，兼容已保存的设置（等价 bash）
   | "bash"
@@ -214,7 +225,7 @@ export function buildReq(api: ApiFile, baseUrl: string): Req {
   const query = api.query.filter((q) => q.enabled && q.key.trim());
   if (query.length) {
     const qs = query
-      .map((q) => `${encodeURIComponent(q.key)}=${encodeURIComponent(q.value)}`)
+      .map((q) => `${encValue(q.key)}=${encValue(q.value)}`)
       .join("&");
     url += (url.includes("?") ? "&" : "?") + qs;
   }
@@ -265,7 +276,7 @@ export function buildWsReq(api: ApiFile, baseUrl: string): WsReq {
   }
   const qs = api.query
     .filter((q) => q.enabled && q.key.trim())
-    .map((q) => `${encodeURIComponent(q.key)}=${encodeURIComponent(q.value)}`)
+    .map((q) => `${encValue(q.key)}=${encValue(q.value)}`)
     .join("&");
   if (qs) url += (url.includes("?") ? "&" : "?") + qs;
   const headers = api.headers

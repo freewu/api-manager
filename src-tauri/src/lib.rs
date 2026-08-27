@@ -235,10 +235,17 @@ pub struct ApiFile {
     /// 接口协议：http（HTTP 接口）、websocket（WebSocket 接口）或 socketio（Socket.IO 接口）
     #[serde(default = "default_protocol")]
     pub protocol: String,
+    /// 同级排序序号（拖动排序，越小越靠前；旧数据无此字段时排末尾）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub order: Option<i32>,
 }
 
 pub(crate) fn default_protocol() -> String {
     "http".to_string()
+}
+
+fn default_folder_state() -> String {
+    "expanded".to_string()
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -572,7 +579,7 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
         .unwrap_or_else(|| dir.to_string_lossy().to_string());
 
     let mut folders: Vec<(i32, TreeNode)> = Vec::new();
-    let mut apis: Vec<TreeNode> = Vec::new();
+    let mut apis: Vec<(i32, TreeNode)> = Vec::new();
 
     for entry in fs::read_dir(dir).map_err(|e| format!("读取目录失败: {e}"))? {
         let entry = entry.map_err(|e| e.to_string())?;
@@ -594,15 +601,20 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
         }
     }
 
-    folders.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.name.cmp(&b.1.name)));
-    apis.sort_by(|a, b| a.name.cmp(&b.name));
-    let mut children = folders.into_iter().map(|(_, n)| n).collect::<Vec<_>>();
-    let api_count = children
+    // 分组与接口按统一 order 排序（无 order 时默认 1000，按名称排末尾）
+    let mut items: Vec<(i32, TreeNode)> = folders;
+    items.extend(apis);
+    items.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.name.cmp(&b.1.name)));
+    let mut children = items.into_iter().map(|(_, n)| n).collect::<Vec<_>>();
+    let mut api_count = children
         .iter()
         .map(|c| c.api_count.unwrap_or(0))
-        .sum::<u32>()
-        + apis.len() as u32;
-    children.extend(apis);
+        .sum::<u32>();
+    for c in &children {
+        if c.kind == "api" {
+            api_count += 1;
+        }
+    }
 
     Ok(TreeNode {
         kind: "folder".into(),
@@ -620,7 +632,7 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
     })
 }
 
-fn build_api_node(path: &Path) -> TreeNode {
+fn build_api_node(path: &Path) -> (i32, TreeNode) {
     let stem = path
         .file_stem()
         .map(|s| s.to_string_lossy().to_string())
@@ -631,6 +643,7 @@ fn build_api_node(path: &Path) -> TreeNode {
     let mut mock_enabled = None;
     let mut deprecated = None;
     let mut protocol = None;
+    let mut order = None;
 
     if let Ok(content) = fs::read_to_string(path) {
         if let Ok(v) = serde_json::from_str::<Value>(&content) {
@@ -647,23 +660,27 @@ fn build_api_node(path: &Path) -> TreeNode {
                 .and_then(|e| e.as_bool());
             deprecated = v.get("deprecated").and_then(|d| d.as_bool());
             protocol = v.get("protocol").and_then(|x| x.as_str()).map(String::from);
+            order = v.get("order").and_then(|x| x.as_i64()).map(|i| i as i32);
         }
     }
 
-    TreeNode {
-        kind: "api".into(),
-        name,
-        path: path.to_string_lossy().to_string(),
-        method,
-        endpoint,
-        mock_enabled,
-        description: None,
-        collapsed: None,
-        deprecated,
-        protocol,
-        api_count: None,
-        children: None,
-    }
+    (
+        order.unwrap_or(1000),
+        TreeNode {
+            kind: "api".into(),
+            name,
+            path: path.to_string_lossy().to_string(),
+            method,
+            endpoint,
+            mock_enabled,
+            description: None,
+            collapsed: None,
+            deprecated,
+            protocol,
+            api_count: None,
+            children: None,
+        },
+    )
 }
 
 fn workspace_root(state: &State<'_, WorkspaceState>) -> Result<PathBuf, String> {
@@ -715,6 +732,9 @@ pub struct AppSettings {
     pub html_nav: String,
     /// 界面语言（zh / zh-tw / en，设置页与托盘菜单同步切换）
     pub language: String,
+    /// 新建分组默认开合状态（expanded / collapsed，接口管理与对象管理共用）
+    #[serde(default = "default_folder_state")]
+    pub default_folder_state: String,
     /// 最近打开的工作目录数量上限（最少 3）
     pub recent_limit: usize,
 }
@@ -734,6 +754,7 @@ impl Default for AppSettings {
             export_format: "postman".into(),
             html_nav: "right".into(),
             language: "zh".into(),
+            default_folder_state: "expanded".into(),
             recent_limit: 5,
         }
     }
@@ -1457,6 +1478,7 @@ fn create_api(
             Some("graphql") => "graphql".into(),
             _ => "http".into(),
         },
+        order: None,
     };    write_pretty(&file_path, &data)?;
     Ok(file_path.to_string_lossy().to_string())
 }
@@ -1466,6 +1488,7 @@ fn create_folder(
     state: State<'_, WorkspaceState>,
     parent: String,
     name: String,
+    collapsed: Option<bool>,
 ) -> Result<String, String> {
     let root = workspace_root(&state)?;
     let parent_path = if parent.trim().is_empty() {
@@ -1487,11 +1510,45 @@ fn create_folder(
         base_url: None,
         mock_port: None,
         order: None,
-        collapsed: None,
+        // 按设置「分组默认状态」设置新建分组开合状态（None = 前端按展开处理）
+        collapsed,
         deprecated: None,
     };
     write_pretty(&dir_path.join(INFO_FILE), &info)?;
     Ok(dir_path.to_string_lossy().to_string())
+}
+
+/// 拖动排序：按传入的有序子项路径列表，将同级分组 / 接口的 order 依次写入
+/// （分组写 __info.json 的 order，接口写接口 JSON 的 order）
+#[tauri::command]
+fn reorder_children(
+    state: State<'_, WorkspaceState>,
+    parent: String,
+    paths: Vec<String>,
+) -> Result<(), String> {
+    let root = workspace_root(&state)?;
+    let parent_path = PathBuf::from(&parent);
+    if !parent_path.starts_with(&root) || !parent_path.is_dir() {
+        return Err("父目录不在工作区内".into());
+    }
+    for (i, p) in paths.iter().enumerate() {
+        let item = PathBuf::from(p);
+        if !item.starts_with(&parent_path) {
+            return Err(format!("路径不在父目录内: {p}"));
+        }
+        let order = i as i32;
+        if item.is_dir() {
+            let mut info = read_info_file(&item);
+            info.order = Some(order);
+            write_pretty(&item.join(INFO_FILE), &info)?;
+        } else if item.extension().map(|e| e == "json").unwrap_or(false) {
+            let content = fs::read_to_string(&item).map_err(|e| format!("读取接口失败: {e}"))?;
+            let mut api: ApiFile = serde_json::from_str(&content).map_err(|e| format!("解析接口失败: {e}"))?;
+            api.order = Some(order);
+            write_pretty(&item, &api)?;
+        }
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -1909,6 +1966,7 @@ pub fn run() {
             read_info,
             save_info,
             set_folder_collapsed,
+            reorder_children,
             toggle_deprecated,
             read_envs,
             save_envs,

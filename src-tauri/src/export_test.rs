@@ -25,6 +25,7 @@
             doc_params: vec![],
             deprecated: false,
             protocol: "http".into(),
+        order: None,
         }
     }
 

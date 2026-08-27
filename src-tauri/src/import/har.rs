@@ -256,6 +256,7 @@ fn har_entry_to_api(dir: &Path, entry: &Value,
         doc_params: vec![],
         deprecated: false,
         protocol: "http".into(),
+        order: None,
     };
     write_pretty(&file_path, &api)?;
         stats.add(&api.protocol);

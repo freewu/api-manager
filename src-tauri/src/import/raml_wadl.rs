@@ -244,6 +244,7 @@ fn raml_method_to_api(
         doc_params: vec![],
         deprecated: false,
         protocol: "http".into(),
+        order: None,
     };
     write_pretty(&file_path, &api)?;
         stats.add(&api.protocol);
@@ -409,6 +410,7 @@ fn wadl_method_to_api(dir: &Path, path: &str, method_el: roxmltree::Node,
         doc_params: vec![],
         deprecated: false,
         protocol: "http".into(),
+        order: None,
     };
     write_pretty(&file_path, &api)?;
         stats.add(&api.protocol);

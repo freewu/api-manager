@@ -63,6 +63,8 @@ interface Props {
   onVcsSync?: () => void;
   onVcsCommitPush?: () => void;
   onMove: (srcPath: string, dstDir: string) => Promise<void>;
+  /** 同级拖动排序：按有序子项路径列表保存 order */
+  onReorder?: (parent: string, paths: string[]) => Promise<void>;
   enableVersion: boolean;
   // 请求历史列表数据（由 App 通过 useHistory 提供）
   historyRecords: HistorySummary[];
@@ -119,11 +121,23 @@ function parentDir(p: string): string {
 }
 
 // 拖拽落点有效性：非自身、非自身子目录、非原地
-function validDrop(dragSrc: string, dst: string): boolean {
+// dstIsFolder：落点是目录时，src 已在该目录（原地）视为无效；落点是接口时允许同级排序
+function validDrop(dragSrc: string, dst: string, dstIsFolder: boolean): boolean {
   if (!dst || dst === dragSrc) return false;
-  if (parentDir(dragSrc) === dst) return false; // 已在目标目录
   if (dst.startsWith(dragSrc + "/") || dst.startsWith(dragSrc + "\\")) return false; // 子目录
+  if (dstIsFolder && parentDir(dragSrc) === dst) return false; // 已在目标目录（原地）
   return true;
+}
+
+// 在树中查找某目录（或根节点）下的子项路径顺序，用于同级拖动排序
+function collectSiblingPaths(node: TreeNode | null, parent: string): string[] | null {
+  if (!node) return null;
+  if (node.path === parent) return (node.children ?? []).map((c) => c.path);
+  for (const c of node.children ?? []) {
+    const r = collectSiblingPaths(c, parent);
+    if (r) return r;
+  }
+  return null;
 }
 
 // 废弃状态筛选：all=全部 / active=未废弃 / deprecated=已废弃
@@ -209,7 +223,9 @@ function NodeRow({
   onDragEnd: () => void;
   onDragOverTarget: (dst: string) => void;
   onDragLeaveTarget: (dst: string) => void;
-  onDropTarget: (src: string, dst: string) => void;
+  onDropTarget: (src: string, dst: string, dstIsFolder: boolean) => void;
+  /** 同级拖动排序：按有序子项路径列表保存 order */
+  onReorder?: (parent: string, paths: string[]) => Promise<void>;
 }) {
   const t = useT();
   const isFolder = node.kind === "folder";
@@ -297,9 +313,9 @@ function NodeRow({
 
   const selected = selectedPath === node.path;
   const indent = depth * 14 + 6;
-  // 文件夹行是拖拽落点；接口行的落点是其所在目录
-  const dropTarget = isFolder ? node.path : parentDir(node.path);
-  const canDrop = !!dragSrc && validDrop(dragSrc, dropTarget);
+  // 文件夹行与接口行都是拖拽落点：落目录 = 移入；落同级接口 = 排序（插入其前）
+  const dropTarget = node.path;
+  const canDrop = !!dragSrc && validDrop(dragSrc, dropTarget, isFolder);
 
   return (
     <div>
@@ -335,7 +351,7 @@ function NodeRow({
           e.preventDefault();
           e.stopPropagation();
           const src = e.dataTransfer.getData("text/plain") || dragSrc;
-          if (src) onDropTarget(src, dropTarget);
+          if (src) onDropTarget(src, dropTarget, isFolder);
         }}
         onClick={() => {
           if (isFolder) onToggleOpen(node.path, !open);
@@ -580,11 +596,22 @@ export function Sidebar(props: Props) {
   const handleDragOverTarget = (dst: string) => setDragOver(dst);
   const handleDragLeaveTarget = (dst: string) =>
     setDragOver((prev) => (prev === dst ? null : prev));
-  const handleDropTarget = async (src: string, dst: string) => {
+  const handleDropTarget = async (src: string, dst: string, dstIsFolder: boolean) => {
     setDragSrc(null);
     setDragOver(null);
-    if (!validDrop(src, dst)) return; // 无效落点（自身/子目录/原地）：忽略
-    await props.onMove(src, dst);
+    if (!validDrop(src, dst, dstIsFolder)) return; // 无效落点（自身/子目录/原地）：忽略
+    if (!dstIsFolder && parentDir(src) === parentDir(dst)) {
+      // 同级拖动排序：把 src 插入 dst 之前
+      const parent = parentDir(dst);
+      const order = collectSiblingPaths(props.tree, parent);
+      if (!order || !order.includes(src) || !order.includes(dst)) return;
+      const rest = order.filter((p) => p !== src);
+      rest.splice(rest.indexOf(dst), 0, src);
+      if (props.onReorder) await props.onReorder(parent, rest);
+      return;
+    }
+    // 移动：落到目录 → 该目录；落到接口 → 该接口所在目录
+    await props.onMove(src, dstIsFolder ? dst : parentDir(dst));
   };
 
   // 右键菜单：点击任意处 / Esc / 滚动时关闭
@@ -867,6 +894,7 @@ export function Sidebar(props: Props) {
           onSelectObject={props.onObjectsSelect}
           newReq={props.objectsNewReq}
           importReq={props.objectsImportReq}
+          defaultFolderState={settings?.defaultFolderState ?? "expanded"}
         />
       )}
       {view === "genlogs" && (

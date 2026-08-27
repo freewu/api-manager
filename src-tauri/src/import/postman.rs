@@ -333,6 +333,7 @@ fn postman_request_to_api(name: &str, request: &Value) -> Result<ApiFile, String
         doc_params: vec![],
         deprecated: false,
         protocol,
+        order: None,
     })
 }
 
