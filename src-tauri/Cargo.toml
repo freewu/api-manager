@@ -1,6 +1,6 @@
 [package]
 name = "api-manager"
-version = "0.5.2"
+version = "0.5.3"
 description = "API 接口文档、测试与 Mock 应用"
 authors = ["api-manager"]
 edition = "2021"
