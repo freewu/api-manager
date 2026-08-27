@@ -166,6 +166,10 @@ export default function ObjectsTree({
     const m: Record<string, ObjectDef[]> = { "": [] };
     for (const g of store.groups) m[g.id] = [];
     for (const o of store.objects) (m[o.group] ||= []).push(o);
+    // 同级对象按 order 排序（无 order 的排最后，顺序稳定）
+    for (const k of Object.keys(m)) {
+      m[k].sort((a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER));
+    }
     return m;
   }, [store]);
 
@@ -309,6 +313,9 @@ export default function ObjectsTree({
                 }}
                 onDragStart={() => setDragUuid(o.uuid)}
                 onDragEnd={() => setDragUuid(null)}
+                dragUuid={dragUuid}
+                dragObj={dragObj}
+                onSortDrop={sortObject}
               />
             ))}
             {g.children.map((c) => renderGroup(c, depth + 1))}
@@ -338,6 +345,22 @@ export default function ObjectsTree({
       objects: store.objects.map((x) => (x.uuid === uuid ? { ...x, group: groupId } : x)),
     });
   };
+
+  // 同级拖动排序：放前面 = 目标 order -1，放后面 = 目标 order +1
+  const sortObject = (uuid: string, targetUuid: string, after: boolean) => {
+    const t = store.objects.find((x) => x.uuid === targetUuid);
+    if (!t || uuid === targetUuid) return;
+    const delta = after ? 1 : -1;
+    void saveStore({
+      groups: store.groups,
+      objects: store.objects.map((x) =>
+        x.uuid === uuid ? { ...x, order: (t.order ?? 0) + delta } : x,
+      ),
+    });
+  };
+
+  // 当前拖拽的对象（用于对象行上判断同级排序 vs 普通移动）
+  const dragObj = dragUuid ? store.objects.find((o) => o.uuid === dragUuid) ?? null : null;
 
   const openNewGroup = (parentId = "") => {
     setGroupParent(parentId);
@@ -631,6 +654,9 @@ export default function ObjectsTree({
               }}
               onDragStart={() => setDragUuid(o.uuid)}
               onDragEnd={() => setDragUuid(null)}
+              dragUuid={dragUuid}
+              dragObj={dragObj}
+              onSortDrop={sortObject}
             />
           ))}
         {kw &&
@@ -666,6 +692,9 @@ export default function ObjectsTree({
               }}
               onDragStart={() => setDragUuid(o.uuid)}
               onDragEnd={() => setDragUuid(null)}
+              dragUuid={dragUuid}
+              dragObj={dragObj}
+              onSortDrop={sortObject}
             />
           ))}
         {!kw && (
@@ -985,6 +1014,8 @@ function ObjectRow({
   onDragEnd,
   onCommitEdit,
   onCancelEdit,
+  dragObj,
+  onSortDrop,
 }: {
   obj: ObjectDef;
   depth: number;
@@ -1003,8 +1034,18 @@ function ObjectRow({
   onDragEnd: () => void;
   onCommitEdit: () => void;
   onCancelEdit: () => void;
+  /** 当前拖拽中的对象 uuid（用于判断是否同级排序） */
+  dragUuid: string | null;
+  /** 当前拖拽中的对象（同级排序判断用） */
+  dragObj: ObjectDef | null;
+  /** 同级拖动排序：放前面 = after=false，放后面 = after=true */
+  onSortDrop: (uuid: string, targetUuid: string, after: boolean) => void;
 }) {
   const t = useT();
+  // 插入位置指示：top = 放前面，bottom = 放后面（仅同级对象可排序）
+  const [dropPos, setDropPos] = useState<"top" | "bottom" | null>(null);
+  const sortable =
+    !!dragObj && dragObj.uuid !== obj.uuid && dragObj.group === obj.group;
   return (
     <div
       className={`node objects-object-row${selected ? " selected" : ""}${deprecated ? " deprecated" : ""}`}
@@ -1023,9 +1064,30 @@ function ObjectRow({
         onDragStart();
       }}
       onDragEnd={onDragEnd}
-      onDragOver={(e) => e.stopPropagation()}
-      onDrop={(e) => e.stopPropagation()}
+      onDragOver={(e) => {
+        // 同级对象：显示插入位置指示并允许放置；跨组拖拽时保持原有 stopPropagation
+        if (sortable) {
+          e.preventDefault();
+          e.stopPropagation();
+          const r = e.currentTarget.getBoundingClientRect();
+          setDropPos(e.clientY < r.top + r.height / 2 ? "top" : "bottom");
+        } else {
+          e.stopPropagation();
+          setDropPos(null);
+        }
+      }}
+      onDragLeave={(e) => {
+        const rt = e.relatedTarget as Node | null;
+        if (rt && e.currentTarget.contains(rt)) return;
+        setDropPos(null);
+      }}
+      onDrop={(e) => {
+        e.stopPropagation();
+        if (sortable && dragObj) onSortDrop(dragObj.uuid, obj.uuid, dropPos === "bottom");
+        setDropPos(null);
+      }}
     >
+      {sortable && dropPos && <div className={`drop-indicator ${dropPos}`} />}
       <span className="node-icon objects-object-icon">▦</span>
       {editActive ? (
         <input

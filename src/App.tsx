@@ -10,10 +10,10 @@ import {
   readApi,
   readApiVersion,
   readEnv,
-  reorderChildren,
   saveApi,
   saveApiVersion,
   saveInfo,
+  setItemOrder,
   toggleDeprecated,
 } from "./commands";
 import { ObjectDef, TreeNode } from "./types";
@@ -502,10 +502,10 @@ export default function App() {
     }
   };
 
-  // 同级拖动排序：按有序子项路径列表保存 order 后刷新树
-  const handleReorder = async (parent: string, paths: string[]) => {
+  // 拖动排序微调：放前面 = 目标 order -1，放后面 = +1，写回后刷新树
+  const handleReorderOne = async (path: string, order: number) => {
     try {
-      await reorderChildren(parent, paths);
+      await setItemOrder(path, order);
       await reloadTree();
       showToast(t("toast.reordered"));
     } catch (e) {
@@ -624,7 +624,7 @@ export default function App() {
               onVcsSync={() => void handleVcsSync()}
               onVcsCommitPush={() => void handleVcsCommitPush()}
               onMove={handleMove}
-              onReorder={handleReorder}
+              onReorderOne={handleReorderOne}
               enableVersion={settings.enableVersion}
               historyRecords={history.records}
               historyDays={history.days}

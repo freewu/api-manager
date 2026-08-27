@@ -63,8 +63,8 @@ interface Props {
   onVcsSync?: () => void;
   onVcsCommitPush?: () => void;
   onMove: (srcPath: string, dstDir: string) => Promise<void>;
-  /** 同级拖动排序：按有序子项路径列表保存 order */
-  onReorder?: (parent: string, paths: string[]) => Promise<void>;
+  /** 拖动排序微调：把单个接口 / 分组的 order 改为指定值 */
+  onReorderOne?: (path: string, order: number) => Promise<void>;
   enableVersion: boolean;
   // 请求历史列表数据（由 App 通过 useHistory 提供）
   historyRecords: HistorySummary[];
@@ -128,18 +128,6 @@ function validDrop(dragSrc: string, dst: string, dstIsFolder: boolean): boolean 
   if (dstIsFolder && parentDir(dragSrc) === dst) return false; // 已在目标目录（原地）
   return true;
 }
-
-// 在树中查找某目录（或根节点）下的子项路径顺序，用于同级拖动排序
-function collectSiblingPaths(node: TreeNode | null, parent: string): string[] | null {
-  if (!node) return null;
-  if (node.path === parent) return (node.children ?? []).map((c) => c.path);
-  for (const c of node.children ?? []) {
-    const r = collectSiblingPaths(c, parent);
-    if (r) return r;
-  }
-  return null;
-}
-
 // 废弃状态筛选：all=全部 / active=未废弃 / deprecated=已废弃
 type DepFilter = "all" | "active" | "deprecated";
 
@@ -223,11 +211,16 @@ function NodeRow({
   onDragEnd: () => void;
   onDragOverTarget: (dst: string) => void;
   onDragLeaveTarget: (dst: string) => void;
-  onDropTarget: (src: string, dst: string, dstIsFolder: boolean) => void;
-  /** 同级拖动排序：按有序子项路径列表保存 order */
-  onReorder?: (parent: string, paths: string[]) => Promise<void>;
+  onDropTarget: (
+    src: string,
+    dst: string,
+    dstIsFolder: boolean,
+    after: boolean,
+    dstOrder?: number,
+  ) => void;
 }) {
   const t = useT();
+  const [dropPos, setDropPos] = useState<"top" | "bottom" | null>(null);
   const isFolder = node.kind === "folder";
   // WebSocket 接口无 HTTP method
   const isWs = node.protocol === "websocket";
@@ -313,14 +306,17 @@ function NodeRow({
 
   const selected = selectedPath === node.path;
   const indent = depth * 14 + 6;
-  // 文件夹行与接口行都是拖拽落点：落目录 = 移入；落同级接口 = 排序（插入其前）
+  // 文件夹行与接口行都是拖拽落点：落目录 = 移入；落同级 = 排序（插入其前/后）
   const dropTarget = node.path;
   const canDrop = !!dragSrc && validDrop(dragSrc, dropTarget, isFolder);
+  // 同级排序（分组与接口均可）：显示插入位置指示线，而非整行高亮
+  const sortDrop = canDrop && !!dragSrc && parentDir(dragSrc) === parentDir(dropTarget);
+  const showDragOver = canDrop && dragOver === dropTarget && !sortDrop;
 
   return (
     <div>
       <div
-        className={`node ${selected ? "selected" : ""} ${canDrop && dragOver === dropTarget ? "drag-over" : ""} ${dragSrc === node.path ? "dragging" : ""} ${isFolder ? "folder-node" : ""} ${deprecated ? "deprecated" : ""}`}
+        className={`node ${selected ? "selected" : ""} ${showDragOver ? "drag-over" : ""} ${dragSrc === node.path ? "dragging" : ""} ${isFolder ? "folder-node" : ""} ${deprecated ? "deprecated" : ""}`}
         style={{ paddingLeft: indent }}
         draggable={true}
         onDragStart={(e) => {
@@ -332,13 +328,21 @@ function NodeRow({
         onDragEnd={(e) => {
           e.stopPropagation();
           onDragEnd();
+          setDropPos(null);
         }}
         onDragOver={(e) => {
           // 始终允许放置，避免出现禁止图标；有效性在 drop 时校验
           e.preventDefault();
           e.stopPropagation();
           e.dataTransfer.dropEffect = "move";
-          if (canDrop) onDragOverTarget(dropTarget);
+          if (canDrop) {
+            onDragOverTarget(dropTarget);
+            if (sortDrop) {
+              // 落点在元素上半部 = 放前面，下半部 = 放后面
+              const r = e.currentTarget.getBoundingClientRect();
+              setDropPos(e.clientY < r.top + r.height / 2 ? "top" : "bottom");
+            }
+          }
         }}
         onDragLeave={(e) => {
           e.stopPropagation();
@@ -346,12 +350,14 @@ function NodeRow({
           const rt = e.relatedTarget as Node | null;
           if (rt && e.currentTarget.contains(rt)) return;
           onDragLeaveTarget(dropTarget);
+          setDropPos(null);
         }}
         onDrop={(e) => {
           e.preventDefault();
           e.stopPropagation();
           const src = e.dataTransfer.getData("text/plain") || dragSrc;
-          if (src) onDropTarget(src, dropTarget, isFolder);
+          if (src) onDropTarget(src, dropTarget, isFolder, dropPos === "bottom", node.order);
+          setDropPos(null);
         }}
         onClick={() => {
           if (isFolder) onToggleOpen(node.path, !open);
@@ -372,6 +378,9 @@ function NodeRow({
                 : `${isWs ? "WebSocket" : node.method} ${node.endpoint}`
         }
       >
+        {sortDrop && dragOver === dropTarget && dropPos && (
+          <div className={`drop-indicator ${dropPos}`} />
+        )}
         {isFolder ? (
           <span className={`caret ${open ? "open" : ""}`}>▶</span>
         ) : (
@@ -596,18 +605,20 @@ export function Sidebar(props: Props) {
   const handleDragOverTarget = (dst: string) => setDragOver(dst);
   const handleDragLeaveTarget = (dst: string) =>
     setDragOver((prev) => (prev === dst ? null : prev));
-  const handleDropTarget = async (src: string, dst: string, dstIsFolder: boolean) => {
+  const handleDropTarget = async (
+    src: string,
+    dst: string,
+    dstIsFolder: boolean,
+    after: boolean,
+    dstOrder?: number,
+  ) => {
     setDragSrc(null);
     setDragOver(null);
     if (!validDrop(src, dst, dstIsFolder)) return; // 无效落点（自身/子目录/原地）：忽略
-    if (!dstIsFolder && parentDir(src) === parentDir(dst)) {
-      // 同级拖动排序：把 src 插入 dst 之前
-      const parent = parentDir(dst);
-      const order = collectSiblingPaths(props.tree, parent);
-      if (!order || !order.includes(src) || !order.includes(dst)) return;
-      const rest = order.filter((p) => p !== src);
-      rest.splice(rest.indexOf(dst), 0, src);
-      if (props.onReorder) await props.onReorder(parent, rest);
+    if (parentDir(src) === parentDir(dst)) {
+      // 同级拖动排序：放前面 = 目标 order -1，放后面 = 目标 order +1
+      const newOrder = (dstOrder ?? 0) + (after ? 1 : -1);
+      if (props.onReorderOne) await props.onReorderOne(src, newOrder);
       return;
     }
     // 移动：落到目录 → 该目录；落到接口 → 该接口所在目录

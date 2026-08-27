@@ -19,11 +19,14 @@ pub struct ObjectGroup {
     pub name: String,
     /// 已废弃标记（展示用，不影响功能）
     pub deprecated: bool,
+    /// 同级排序序号（越小越靠前）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub order: Option<i32>,
 }
 
 impl Default for ObjectGroup {
     fn default() -> Self {
-        Self { id: String::new(), name: String::new(), deprecated: false }
+        Self { id: String::new(), name: String::new(), deprecated: false, order: None }
     }
 }
 
@@ -81,6 +84,9 @@ pub struct ObjectDef {
     pub properties: Vec<ObjectProp>,
     pub created_at: i64,
     pub updated_at: i64,
+    /// 同级排序序号（越小越靠前）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub order: Option<i32>,
 }
 
 impl Default for ObjectDef {
@@ -97,6 +103,7 @@ impl Default for ObjectDef {
             properties: vec![],
             created_at: 0,
             updated_at: 0,
+            order: None,
         }
     }
 }
@@ -234,6 +241,7 @@ pub fn list_objects_impl(root: &Path) -> Result<ObjectStore, String> {
                     id: id.clone(),
                     name: fname,
                     deprecated: info_deprecated.get(&id).copied().unwrap_or(false),
+                    order: None,
                 });
                 scan(&path, &id, groups, objects, info_deprecated);
             } else if fname == "__info_obj.json" {
@@ -549,6 +557,7 @@ pub fn import_json_object_impl(
             properties: props,
             created_at: now,
             updated_at: now,
+            order: None,
         };
         generated.push(def);
         created.push(hash.clone());
@@ -636,6 +645,7 @@ pub fn import_ddl_impl(root: &Path, group: &str, ddl: &str) -> Result<ObjectImpo
             properties: props,
             created_at: now,
             updated_at: now,
+            order: None,
         };
         if top_hash.is_empty() {
             top_hash = hash.clone();

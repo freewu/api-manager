@@ -446,6 +446,23 @@
   outline-offset: -2px;
   background: rgba(88, 166, 255, 0.08);
 }
+/* 拖动排序插入位置指示：元素上方 / 下方虚线（仅同级排序时显示） */
+.node .drop-indicator {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  border-radius: 1px;
+  background: repeating-linear-gradient(90deg, var(--accent) 0 5px, transparent 5px 10px);
+  pointer-events: none;
+  z-index: 3;
+}
+.node .drop-indicator.top {
+  top: -1px;
+}
+.node .drop-indicator.bottom {
+  bottom: -1px;
+}
 .node.dragging {
   opacity: 0.45;
 }

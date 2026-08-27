@@ -244,6 +244,47 @@ pub(crate) fn default_protocol() -> String {
     "http".to_string()
 }
 
+/// 排序比较键：存量排序值 <10000 的按 *10000 参与比较，
+/// 避免与新建元素（最后一个 +10000）挤在同一区间
+fn sort_key(order: i32) -> i32 {
+    if order < 10000 {
+        order * 10000
+    } else {
+        order
+    }
+}
+
+/// 同级新建时的下一个排序值：当前最大排序键 + 10000（新元素总是排在最后）
+fn next_order(dir: &Path) -> i32 {
+    let mut max = 0;
+    if let Ok(rd) = fs::read_dir(dir) {
+        for entry in rd.flatten() {
+            let p = entry.path();
+            let fname = entry.file_name().to_string_lossy().to_string();
+            if fname.starts_with('.') {
+                continue;
+            }
+            if p.is_dir() {
+                if let Some(o) = read_info_file(&p).order {
+                    max = max.max(sort_key(o));
+                }
+            } else if p.extension().map(|e| e == "json").unwrap_or(false)
+                && fname != INFO_FILE
+                && fname != ENV_FILE
+            {
+                if let Ok(text) = fs::read_to_string(&p) {
+                    if let Ok(v) = serde_json::from_str::<Value>(&text) {
+                        if let Some(o) = v.get("order").and_then(|x| x.as_i64()) {
+                            max = max.max(sort_key(o as i32));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    max + 10000
+}
+
 fn default_folder_state() -> String {
     "expanded".to_string()
 }
@@ -397,6 +438,9 @@ pub struct TreeNode {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub collapsed: Option<bool>,
+    /// 同级排序序号（越小越靠前；存量 <10000 的排序时按 *10000 参与比较）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<i32>,
     /// 该分组下接口总数（含子分组），前端用于显示数量角标
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_count: Option<u32>,
@@ -602,9 +646,14 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
     }
 
     // 分组与接口按统一 order 排序（无 order 时默认 1000，按名称排末尾）
+    // 存量排序值 <10000 的按 *10000 参与比较（需求：旧数据与新建的 10000 级间距隔离）
     let mut items: Vec<(i32, TreeNode)> = folders;
     items.extend(apis);
-    items.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.name.cmp(&b.1.name)));
+    items.sort_by(|a, b| {
+        sort_key(a.0)
+            .cmp(&sort_key(b.0))
+            .then(a.1.name.cmp(&b.1.name))
+    });
     let children = items.into_iter().map(|(_, n)| n).collect::<Vec<_>>();
     let mut api_count = children
         .iter()
@@ -625,6 +674,7 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
         mock_enabled: None,
         description: Some(info.description),
         collapsed: info.collapsed,
+        order: info.order,
         deprecated: info.deprecated,
         protocol: None,
         api_count: Some(api_count),
@@ -675,6 +725,7 @@ fn build_api_node(path: &Path) -> (i32, TreeNode) {
             mock_enabled,
             description: None,
             collapsed: None,
+            order,
             deprecated,
             protocol,
             api_count: None,
@@ -1478,7 +1529,7 @@ fn create_api(
             Some("graphql") => "graphql".into(),
             _ => "http".into(),
         },
-        order: None,
+        order: Some(next_order(&dir_path)),
     };    write_pretty(&file_path, &data)?;
     Ok(file_path.to_string_lossy().to_string())
 }
@@ -1509,7 +1560,7 @@ fn create_folder(
         description: String::new(),
         base_url: None,
         mock_port: None,
-        order: None,
+        order: Some(next_order(&parent_path)),
         // 按设置「分组默认状态」设置新建分组开合状态（None = 前端按展开处理）
         collapsed,
         deprecated: None,
@@ -1549,6 +1600,36 @@ fn reorder_children(
         }
     }
     Ok(())
+}
+
+/// 拖动排序微调：把单个接口 / 分组的 order 改为指定值（放前面 = 目标 -1，放后面 = 目标 +1）
+fn set_item_order_inner(root: &Path, path: &str, order: i32) -> Result<(), String> {
+    let item = PathBuf::from(path);
+    if !item.starts_with(root) {
+        return Err("路径不在工作区内".into());
+    }
+    if item.is_dir() {
+        let mut info = read_info_file(&item);
+        info.order = Some(order);
+        write_pretty(&item.join(INFO_FILE), &info)?;
+    } else if item.extension().map(|e| e == "json").unwrap_or(false) {
+        let content = fs::read_to_string(&item).map_err(|e| format!("读取接口失败: {e}"))?;
+        let mut api: ApiFile =
+            serde_json::from_str(&content).map_err(|e| format!("解析接口失败: {e}"))?;
+        api.order = Some(order);
+        write_pretty(&item, &api)?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn set_item_order(
+    state: State<'_, WorkspaceState>,
+    path: String,
+    order: i32,
+) -> Result<(), String> {
+    let root = workspace_root(&state)?;
+    set_item_order_inner(&root, &path, order)
 }
 
 #[tauri::command]
@@ -1966,6 +2047,7 @@ pub fn run() {
             read_info,
             save_info,
             set_folder_collapsed,
+            set_item_order,
             reorder_children,
             toggle_deprecated,
             read_envs,

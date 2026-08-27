@@ -198,6 +198,8 @@ export interface TreeNode {
   mockEnabled?: boolean;
   description?: string;
   collapsed?: boolean;
+  /** 同级排序序号（越小越靠前） */
+  order?: number;
   apiCount?: number;
   /** 是否已标记废弃（分组无此字段时默认未废弃） */
   deprecated?: boolean;
@@ -455,6 +457,8 @@ export interface ObjectGroup {
   name: string;
   /** 已废弃标记（展示用，不影响功能） */
   deprecated: boolean;
+  /** 同级排序序号（越小越靠前） */
+  order?: number;
 }
 
 /** 对象属性类型 */
@@ -494,6 +498,8 @@ export interface ObjectDef {
   properties: ObjectProp[];
   createdAt: number;
   updatedAt: number;
+  /** 同级排序序号（越小越靠前） */
+  order?: number;
 }
 
 export interface ObjectStore {

@@ -272,6 +272,11 @@ export function reorderChildren(parent: string, paths: string[]): Promise<void> 
   return invoke<void>("reorder_children", { parent, paths });
 }
 
+/** 拖动排序微调：把单个接口 / 分组的 order 改为指定值（放前面 = 目标 -1，放后面 = 目标 +1） */
+export function setItemOrder(path: string, order: number): Promise<void> {
+  return invoke<void>("set_item_order", { path, order });
+}
+
 export function renameEntry(path: string, newName: string): Promise<void> {
   return invoke<void>("rename_entry", { path, newName });
 }

@@ -318,12 +318,13 @@ pub(crate) fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String
             properties,
             created_at: now,
             updated_at: now,
+            order: None,
         }
     };
     let demo_store = crate::objects::ObjectStore {
         groups: vec![
-            crate::objects::ObjectGroup { id: "用户管理".into(), name: "用户管理".into(), deprecated: false },
-            crate::objects::ObjectGroup { id: "订单管理".into(), name: "订单管理".into(), deprecated: false },
+            crate::objects::ObjectGroup { id: "用户管理".into(), name: "用户管理".into(), deprecated: false, order: None },
+            crate::objects::ObjectGroup { id: "订单管理".into(), name: "订单管理".into(), deprecated: false, order: None },
         ],
         objects: vec![
             obj_def("用户", "User", "用户管理", "系统用户信息", vec![

@@ -176,6 +176,7 @@ CREATE TABLE `my_users` (
         let root = tmpdir("save");
         let mut store = ObjectStore::default();
         let o = ObjectDef {
+            order: None,
             hash: "stale".into(),
             name: "A".into(),
             properties: vec![ObjectProp { key: "x".into(), kind: "String".into(), ..Default::default() }],
@@ -192,8 +193,8 @@ CREATE TABLE `my_users` (
     fn test_group_deprecated_persist() {
         let root = tmpdir("group-dep");
         let mut store = ObjectStore::default();
-        store.groups.push(ObjectGroup { id: "用户管理".into(), name: "用户管理".into(), deprecated: true });
-        store.groups.push(ObjectGroup { id: "订单/明细".into(), name: "明细".into(), deprecated: false });
+        store.groups.push(ObjectGroup { id: "用户管理".into(), name: "用户管理".into(), deprecated: true, order: None });
+        store.groups.push(ObjectGroup { id: "订单/明细".into(), name: "明细".into(), deprecated: false, order: None });
         save_objects_impl(&root, &store).unwrap();
         let loaded = list_objects_impl(&root).unwrap();
         let user = loaded.groups.iter().find(|g| g.id == "用户管理").unwrap();
@@ -206,9 +207,10 @@ CREATE TABLE `my_users` (
     fn test_dir_storage_layout() {
         let root = tmpdir("layout");
         let mut store = ObjectStore::default();
-        store.groups.push(ObjectGroup { id: "用户管理".into(), name: "用户管理".into(), deprecated: false });
-        store.groups.push(ObjectGroup { id: "订单/明细".into(), name: "明细".into(), deprecated: false });
+        store.groups.push(ObjectGroup { id: "用户管理".into(), name: "用户管理".into(), deprecated: false, order: None });
+        store.groups.push(ObjectGroup { id: "订单/明细".into(), name: "明细".into(), deprecated: false, order: None });
         store.objects.push(ObjectDef {
+            order: None,
             uuid: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
             hash: String::new(),
             name: "User".into(),
@@ -222,6 +224,7 @@ CREATE TABLE `my_users` (
             updated_at: 2,
         });
         store.objects.push(ObjectDef {
+            order: None,
             uuid: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".into(),
             hash: String::new(),
             name: "OrderItem".into(),
@@ -235,6 +238,7 @@ CREATE TABLE `my_users` (
             updated_at: 2,
         });
         store.objects.push(ObjectDef {
+            order: None,
             uuid: "cccccccccccccccccccccccccccccccc".into(),
             hash: String::new(),
             name: "Plain".into(),
@@ -277,6 +281,7 @@ CREATE TABLE `my_users` (
         let root = tmpdir("versions");
         let uuid = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         let mut obj = ObjectDef {
+            order: None,
             uuid: uuid.into(),
             hash: "h1".into(),
             name: "User".into(),
@@ -373,6 +378,7 @@ CREATE TABLE `my_users` (
         // 两个空属性对象（结构 hash 相同）→ 视为重复对象，拒绝保存
         for u in ["dddddddddddddddddddddddddddddddd", "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"] {
             store.objects.push(ObjectDef {
+            order: None,
                 uuid: u.into(),
                 hash: "tmp".into(),
                 name: format!("对象{u}").into(),

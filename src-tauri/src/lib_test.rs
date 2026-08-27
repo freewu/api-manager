@@ -569,7 +569,7 @@
     fn restore_api_version_backs_up_then_restores() {
         let base = std::env::temp_dir().join(format!("apim-restore-{}", std::process::id()));
         let _ = fs::remove_dir_all(&base);
-        fs::create_dir_all(base.join("接口"));
+        let _ = fs::create_dir_all(base.join("接口"));
         let uuid = "a1b2c3d4-1111-2222-3333-444455556666".to_string();
         let make = |name: &str, desc: &str| ApiFile {
             uuid: uuid.clone(),
@@ -759,6 +759,25 @@
             vec![post_path.to_string_lossy().to_string(), get_path.to_string_lossy().to_string()],
             "同级接口应按 order 排序（POST(order=0) 在 GET(order=1) 前）"
         );
+
+        // 排序值放大：存量 order<10000 按 *10000 比较（POST=0→0，GET=1→10000），新建取最大键+10000
+        assert_eq!(sort_key(0), 0);
+        assert_eq!(sort_key(1), 10000);
+        assert_eq!(sort_key(3), 30000);
+        assert_eq!(sort_key(50000), 50000, ">=10000 的不放大");
+        // 空目录新建 = 10000；含存量 order=3（键 30000）时新建 = 40000
+        let empty = root.join("empty-dir");
+        fs::create_dir_all(&empty).unwrap();
+        assert_eq!(next_order(&empty), 10000, "空目录新建 order=10000");
+        assert_eq!(next_order(&pets), 20000, "含存量 order=1（键 10000）时新建=20000");
+
+        // 拖动微调：set_item_order 把单个接口 order 改为目标 ±1 并写回文件
+        set_item_order_inner(&root, &post_path.to_string_lossy(), 50001).unwrap();
+        let p2: ApiFile =
+            serde_json::from_str(&fs::read_to_string(&post_path).unwrap()).unwrap();
+        assert_eq!(p2.order, Some(50001), "接口 order 应写回");
+        set_item_order_inner(&root, &folder.to_string_lossy(), 70001).unwrap();
+        assert_eq!(read_info_file(&folder).order, Some(70001), "分组 order 应写回");
 
         // YAML 格式同样支持（.yaml / .yml）
         let yaml_content = serde_yaml::to_string(&spec).unwrap();
@@ -2382,11 +2401,12 @@ let v = export::to_yapi(&apis);
             properties,
             created_at: now,
             updated_at: now,
+            order: None,
         };
         let store = ObjectStore {
             groups: vec![
-                ObjectGroup { id: "用户管理".into(), name: "用户管理".into(), deprecated: false },
-                ObjectGroup { id: "订单管理".into(), name: "订单管理".into(), deprecated: false },
+                ObjectGroup { id: "用户管理".into(), name: "用户管理".into(), deprecated: false, order: None },
+                ObjectGroup { id: "订单管理".into(), name: "订单管理".into(), deprecated: false, order: None },
             ],
             objects: vec![
                 obj_def("用户", "User", "用户管理", "系统用户信息", vec![
@@ -2445,7 +2465,7 @@ let v = export::to_yapi(&apis);
         for d in legacy {
             assert!(!root.join(d).exists(), "旧目录 {} 应被迁移", d);
         }
-        for (d, sub) in [
+        for (_d, sub) in [
             (".version", "version"),
             (".object", "object"),
             (".object_version", "object_version"),
