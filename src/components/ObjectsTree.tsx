@@ -90,6 +90,10 @@ export default function ObjectsTree({
   const [versionModal, setVersionModal] = useState<ObjectDef | null>(null);
   // 拖拽中的对象 uuid
   const [dragUuid, setDragUuid] = useState<string | null>(null);
+  // 拖拽中的分组 id（路径）；与 dragUuid 互斥（同一时刻只拖一个元素）
+  const [dragGroup, setDragGroup] = useState<string | null>(null);
+  /** 分组行拖拽落点指示：上/下边缘 = 排序，中间 = 移入 */
+  const [groupDrop, setGroupDrop] = useState<{ id: string; pos: "top" | "bottom" | "inside" | null } | null>(null);
 
   // 右键菜单：点击任意处 / Esc 时关闭
   useEffect(() => {
@@ -159,6 +163,14 @@ export default function ObjectsTree({
       return node;
     };
     for (const g of store.groups) ensure(g.id);
+    // 同级分组按 order 排序（无 order 的排最后，顺序稳定）；子级递归
+    const orderOf = (id: string) =>
+      store.groups.find((g) => g.id === id)?.order ?? Number.MAX_SAFE_INTEGER;
+    const sortLevel = (nodes: GNode[]) => {
+      nodes.sort((a, b) => orderOf(a.id) - orderOf(b.id) || a.name.localeCompare(b.name));
+      for (const n of nodes) sortLevel(n.children);
+    };
+    sortLevel(roots);
     return roots;
   }, [store.groups]);
 
@@ -201,8 +213,9 @@ export default function ObjectsTree({
     return (
       <div key={g.id}>
         <div
-          className={`node objects-group-row${g.deprecated ? " deprecated" : ""}`}
+          className={`node objects-group-row${g.deprecated ? " deprecated" : ""}${groupDrop?.id === g.id && groupDrop.pos === "inside" ? " drag-over" : ""}`}
           style={{ paddingLeft: 6 + depth * 14 }}
+          draggable
           onClick={() =>
             setOpenGroups((prev) => {
               const next = new Set(prev);
@@ -211,6 +224,13 @@ export default function ObjectsTree({
               return next;
             })
           }
+          onDragStart={(e) => {
+            e.stopPropagation();
+            e.dataTransfer.setData("text/plain", g.id);
+            e.dataTransfer.effectAllowed = "move";
+            setDragGroup(g.id);
+          }}
+          onDragEnd={() => setDragGroup(null)}
           onContextMenu={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -222,14 +242,43 @@ export default function ObjectsTree({
           }}
           title={t("objects.dblclickEdit")}
           onDragOver={(e) => {
-            if (dragUuid) e.preventDefault();
+            if (!dragUuid && !dragGroup) return;
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = "move";
+            if (dragUuid) {
+              // 对象拖到分组：整行 = 移入该分组
+              setGroupDrop({ id: g.id, pos: "inside" });
+            } else if (dragGroup) {
+              // 分组拖到分组：上/下 1/4 边缘 = 排序，中间 = 移入
+              const r = e.currentTarget.getBoundingClientRect();
+              const rel = e.clientY - r.top;
+              if (rel < r.height / 4) setGroupDrop({ id: g.id, pos: "top" });
+              else if (rel > (r.height * 3) / 4) setGroupDrop({ id: g.id, pos: "bottom" });
+              else setGroupDrop({ id: g.id, pos: "inside" });
+            }
+          }}
+          onDragLeave={(e) => {
+            const rt = e.relatedTarget as Node | null;
+            if (rt && e.currentTarget.contains(rt)) return;
+            setGroupDrop((p) => (p?.id === g.id ? null : p));
           }}
           onDrop={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (dragUuid) moveObject(dragUuid, g.id);
+            const pos = groupDrop?.id === g.id ? groupDrop.pos : null;
+            setGroupDrop(null);
+            if (dragUuid && dragObj) {
+              moveObject(dragUuid, g.id);
+            } else if (dragGroup && dragGrp) {
+              if (pos === "top" || pos === "bottom") sortGroup(dragGroup, g.id, pos === "bottom");
+              else if (pos === "inside") moveGroup(dragGroup, g.id);
+            }
           }}
         >
+          {groupDrop?.id === g.id && (groupDrop.pos === "top" || groupDrop.pos === "bottom") && (
+            <div className={`drop-indicator ${groupDrop.pos}`} />
+          )}
           <span className={`caret${isOpen ? " open" : ""}`}>▶</span>
           <span className="node-icon">📁</span>
           {inlineEdit?.kind === "group" && inlineEdit.id === g.id ? (
@@ -313,8 +362,7 @@ export default function ObjectsTree({
                 }}
                 onDragStart={() => setDragUuid(o.uuid)}
                 onDragEnd={() => setDragUuid(null)}
-                dragUuid={dragUuid}
-                dragObj={dragObj}
+                  dragObj={dragObj}
                 onSortDrop={sortObject}
               />
             ))}
@@ -346,21 +394,73 @@ export default function ObjectsTree({
     });
   };
 
-  // 同级拖动排序：放前面 = 目标 order -1，放后面 = 目标 order +1
+  // 对象拖动排序：放前面 = 目标 order -1，放后面 = 目标 order +1；跨组 = 同时移动到目标组
   const sortObject = (uuid: string, targetUuid: string, after: boolean) => {
     const t = store.objects.find((x) => x.uuid === targetUuid);
-    if (!t || uuid === targetUuid) return;
+    const o = store.objects.find((x) => x.uuid === uuid);
+    if (!t || !o || uuid === targetUuid) return;
     const delta = after ? 1 : -1;
     void saveStore({
       groups: store.groups,
       objects: store.objects.map((x) =>
-        x.uuid === uuid ? { ...x, order: (t.order ?? 0) + delta } : x,
+        x.uuid === uuid ? { ...x, group: t.group, order: (t.order ?? 0) + delta } : x,
       ),
     });
   };
 
+  /** 移动分组到目标父分组下（新 id = 父id/原名，子分组与对象前缀同步）；order 可选（跨父排序用） */
+  const moveGroup = (gid: string, targetParent: string, order?: number) => {
+    const g = store.groups.find((x) => x.id === gid);
+    if (!g) return;
+    if (targetParent === gid || targetParent.startsWith(gid + "/")) return; // 循环：不能移入自己/后代
+    const newId = targetParent ? `${targetParent}/${g.name}` : g.name;
+    if (newId === gid) return;
+    if (store.groups.some((x) => x.id === newId)) {
+      onToast(t("objects.groupExists"));
+      return;
+    }
+    const groups = store.groups.map((x) =>
+      x.id === gid || x.id.startsWith(gid + "/")
+        ? {
+            ...x,
+            id: newId + x.id.slice(gid.length),
+            order: x.id === gid && order !== undefined ? order : x.order,
+          }
+        : x
+    );
+    const objects = store.objects.map((o) =>
+      o.group === gid || o.group.startsWith(gid + "/")
+        ? { ...o, group: newId + o.group.slice(gid.length) }
+        : o
+    );
+    void saveStore({ groups, objects });
+  };
+
+  /** 分组拖动排序：同级 = 目标 order ±1；跨父 = 移到目标父级 + order ±1 */
+  const sortGroup = (gid: string, targetGid: string, after: boolean) => {
+    const t = store.groups.find((x) => x.id === targetGid);
+    if (!t || gid === targetGid) return;
+    const newOrder = (t.order ?? 0) + (after ? 1 : -1);
+    const srcParent = gid.includes("/") ? gid.slice(0, gid.lastIndexOf("/")) : "";
+    const dstParent = targetGid.includes("/")
+      ? targetGid.slice(0, targetGid.lastIndexOf("/"))
+      : "";
+    if (srcParent === dstParent) {
+      // 同级排序：仅改 order
+      void saveStore({
+        groups: store.groups.map((x) => (x.id === gid ? { ...x, order: newOrder } : x)),
+        objects: store.objects,
+      });
+    } else {
+      // 跨父：移动到目标父级并设 order
+      moveGroup(gid, dstParent, newOrder);
+    }
+  };
+
   // 当前拖拽的对象（用于对象行上判断同级排序 vs 普通移动）
   const dragObj = dragUuid ? store.objects.find((o) => o.uuid === dragUuid) ?? null : null;
+  // 当前拖拽的分组
+  const dragGrp = dragGroup ? store.groups.find((g) => g.id === dragGroup) ?? null : null;
 
   const openNewGroup = (parentId = "") => {
     setGroupParent(parentId);
@@ -611,11 +711,12 @@ export default function ObjectsTree({
           setCtxMenu({ x: Math.min(e.clientX, window.innerWidth - 190), y: Math.min(e.clientY, window.innerHeight - 120) });
         }}
         onDragOver={(e) => {
-          if (dragUuid) e.preventDefault();
+          if (dragUuid || dragGroup) e.preventDefault();
         }}
         onDrop={(e) => {
           e.preventDefault();
           if (dragUuid) moveObject(dragUuid, "");
+          else if (dragGroup) moveGroup(dragGroup, "");
         }}
       >
         {store.objects.length === 0 && <div className="objects-empty">{t("objects.empty")}</div>}
@@ -654,7 +755,6 @@ export default function ObjectsTree({
               }}
               onDragStart={() => setDragUuid(o.uuid)}
               onDragEnd={() => setDragUuid(null)}
-              dragUuid={dragUuid}
               dragObj={dragObj}
               onSortDrop={sortObject}
             />
@@ -692,7 +792,6 @@ export default function ObjectsTree({
               }}
               onDragStart={() => setDragUuid(o.uuid)}
               onDragEnd={() => setDragUuid(null)}
-              dragUuid={dragUuid}
               dragObj={dragObj}
               onSortDrop={sortObject}
             />
@@ -1034,18 +1133,15 @@ function ObjectRow({
   onDragEnd: () => void;
   onCommitEdit: () => void;
   onCancelEdit: () => void;
-  /** 当前拖拽中的对象 uuid（用于判断是否同级排序） */
-  dragUuid: string | null;
-  /** 当前拖拽中的对象（同级排序判断用） */
+  /** 当前拖拽中的对象（跨组也能排序：移动到目标组并插入对应位置） */
   dragObj: ObjectDef | null;
-  /** 同级拖动排序：放前面 = after=false，放后面 = after=true */
+  /** 同级/跨组拖动排序：放前面 = after=false，放后面 = after=true */
   onSortDrop: (uuid: string, targetUuid: string, after: boolean) => void;
 }) {
   const t = useT();
-  // 插入位置指示：top = 放前面，bottom = 放后面（仅同级对象可排序）
+  // 插入位置指示：top = 放前面，bottom = 放后面（任意组对象均可排序；跨组 = 移动 + 排序）
   const [dropPos, setDropPos] = useState<"top" | "bottom" | null>(null);
-  const sortable =
-    !!dragObj && dragObj.uuid !== obj.uuid && dragObj.group === obj.group;
+  const sortable = !!dragObj && dragObj.uuid !== obj.uuid;
   return (
     <div
       className={`node objects-object-row${selected ? " selected" : ""}${deprecated ? " deprecated" : ""}`}
@@ -1065,12 +1161,15 @@ function ObjectRow({
       }}
       onDragEnd={onDragEnd}
       onDragOver={(e) => {
-        // 同级对象：显示插入位置指示并允许放置；跨组拖拽时保持原有 stopPropagation
         if (sortable) {
+          // 任意组对象：上/下 1/4 边缘显示插入位置指示（跨组 = 移动 + 排序）
           e.preventDefault();
           e.stopPropagation();
           const r = e.currentTarget.getBoundingClientRect();
-          setDropPos(e.clientY < r.top + r.height / 2 ? "top" : "bottom");
+          const rel = e.clientY - r.top;
+          if (rel < r.height / 4) setDropPos("top");
+          else if (rel > (r.height * 3) / 4) setDropPos("bottom");
+          else setDropPos(null);
         } else {
           e.stopPropagation();
           setDropPos(null);
@@ -1083,7 +1182,7 @@ function ObjectRow({
       }}
       onDrop={(e) => {
         e.stopPropagation();
-        if (sortable && dragObj) onSortDrop(dragObj.uuid, obj.uuid, dropPos === "bottom");
+        if (sortable && dragObj && dropPos) onSortDrop(dragObj.uuid, obj.uuid, dropPos === "bottom");
         setDropPos(null);
       }}
     >
