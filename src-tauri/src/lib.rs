@@ -605,7 +605,7 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
     let mut items: Vec<(i32, TreeNode)> = folders;
     items.extend(apis);
     items.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.name.cmp(&b.1.name)));
-    let mut children = items.into_iter().map(|(_, n)| n).collect::<Vec<_>>();
+    let children = items.into_iter().map(|(_, n)| n).collect::<Vec<_>>();
     let mut api_count = children
         .iter()
         .map(|c| c.api_count.unwrap_or(0))
