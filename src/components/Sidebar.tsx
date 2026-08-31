@@ -372,12 +372,12 @@ function NodeRow({
         }}
         title={
           deprecated
-            ? `${t("sidebar.deprecated")} · ${canDrop ? t("sidebar.dropHere") : isFolder ? node.description || node.name : `${isWs ? "WebSocket" : node.method} ${node.endpoint}`}`
+            ? `${t("sidebar.deprecated")} · ${canDrop ? t("sidebar.dropHere") : isFolder ? node.description || node.name : `${isWs ? "WebSocket" : node.protocol === "socketio" ? "Socket.IO" : node.method} ${node.endpoint}`}`
             : canDrop
               ? t("sidebar.dropHere")
               : isFolder
                 ? node.description || node.name
-                : `${isWs ? "WebSocket" : node.method} ${node.endpoint}`
+                : `${isWs ? "WebSocket" : node.protocol === "socketio" ? "Socket.IO" : node.method} ${node.endpoint}`
         }
       >
         {canDrop && dragOver === dropTarget && isSortPos && dropPos && (
@@ -417,7 +417,7 @@ function NodeRow({
             {node.endpoint}
           </span>
         )}
-        {!isFolder && node.method && !isWs && (
+        {!isFolder && node.method && !isWs && node.protocol !== "socketio" && (
           <span className={`node-method ${methodClass(node.method)}`}>{node.method}</span>
         )}
         {!isFolder && node.mockEnabled && <span className="mock-dot" title={t("sidebar.mockEnabled")} />}
