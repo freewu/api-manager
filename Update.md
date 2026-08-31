@@ -1,5 +1,14 @@
 # API Manager 更新记录
 
+## v0.5.5
+
+### 🗂 接口管理
+- Socket.IO 接口左侧列表不再显示 method 徽章
+- Query / Headers / Body(form) 页签支持**批量添加编辑**：点击「批量编辑」切换为 `key: value` 每行一条的文本编辑，保存后恢复表单（匹配行保留启用状态）
+
+### 📦 发布
+- Release notes 只取 Update.md 中对应版本的更新章节，不再包含整个文件
+
 ## v0.5.4
 
 ### 🐸 Mock 服务
