@@ -597,6 +597,7 @@ export const TW: Record<string, string> = {
   "kv.text": "文本",
   "kv.type": "類型",
   "kv.variableFromUrl": "變量名來自 URL 中的 {var}，不可修改",
+  "kv.batchEdit": "批次編輯",
   "markdown.preview": "預覽",
   "markdown.saveHtml": "保存 .html",
   "markdown.saveMd": "保存 .md",

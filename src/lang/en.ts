@@ -608,6 +608,7 @@ export const EN: Record<string, string> = {
   "kv.text": "Text",
   "kv.type": "Type",
   "kv.variableFromUrl": "Variable name comes from {var} in the URL and cannot be modified",
+  "kv.batchEdit": "Batch Edit",
   "markdown.preview": "Preview",
   "markdown.saveHtml": "Save .html",
   "markdown.saveMd": "Save .md",

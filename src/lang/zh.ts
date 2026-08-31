@@ -616,6 +616,7 @@ export const ZH: Record<string, string> = {
   "kv.text": "文本",
   "kv.type": "类型",
   "kv.variableFromUrl": "变量名来自 URL 中的 {var}，不可修改",
+  "kv.batchEdit": "批量编辑",
   "markdown.preview": "预览",
   "markdown.saveHtml": "保存 .html",
   "markdown.saveMd": "保存 .md",

@@ -235,6 +235,47 @@
   margin-top: 8px;
 }
 
+/* 批量编辑（query / body form）：key: value 文本模式 */
+.kv-add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: center;
+}
+.kv-add-row .kv-add {
+  margin-top: 0;
+}
+.kv-batch-btn {
+  opacity: 0.75;
+}
+.kv-batch-btn:hover {
+  opacity: 1;
+}
+.kv-batch-area {
+  width: 100%;
+  min-height: 180px;
+  box-sizing: border-box;
+  resize: vertical;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.kv-batch-area:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.kv-batch-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+
 .body-modes {
   display: flex;
   gap: 2px;

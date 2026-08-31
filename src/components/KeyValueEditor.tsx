@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { pickFile } from "../commands";
 import { useT } from "../i18n";
 
@@ -25,6 +26,8 @@ interface Props<T extends Row> {
   hideRemove?: boolean;
   /** 键名只读（由外部派生，如 URL 中的 {变量名}） */
   readonlyKey?: boolean;
+  /** 显示「批量编辑」按钮：切换为 key: value 文本编辑（query / body form 使用） */
+  allowBatch?: boolean;
   makeRow?: () => T;
 }
 
@@ -39,9 +42,12 @@ export function KeyValueEditor<T extends Row>({
   hideAdd = false,
   hideRemove = false,
   readonlyKey = false,
+  allowBatch = false,
   makeRow,
 }: Props<T>) {
   const t = useT();
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchText, setBatchText] = useState("");
   const vPlaceholder = valuePlaceholder ?? t("common.value");
   const kPlaceholder = keyPlaceholder ?? t("common.key");  const update = (i: number, patch: Partial<Row>) => {
     const next = rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r));
@@ -70,9 +76,59 @@ export function KeyValueEditor<T extends Row>({
     ]);
   };
 
+  /** 批量编辑：当前行序列化为每行一条 `key: value` */
+  const openBatch = () => {
+    setBatchText(
+      rows
+        .map((r) => (r.key.trim() ? `${r.key.trim()}: ${r.value}` : r.value))
+        .filter((l) => l.trim() !== "")
+        .join("\n"),
+    );
+    setBatchMode(true);
+  };
+
+  /** 批量保存：按第一个冒号分割解析，匹配原行保留 enabled / description / isFile */
+  const saveBatch = () => {
+    const next: T[] = batchText
+      .split("\n")
+      .map((l) => l.trimEnd())
+      .filter((l) => l.trim() !== "")
+      .map((l) => {
+        const i = l.indexOf(":");
+        const key = (i >= 0 ? l.slice(0, i) : l).trim();
+        const value = i >= 0 ? l.slice(i + 1).trim() : "";
+        const old = rows.find((r) => r.key.trim() === key);
+        return old
+          ? { ...old, key, value }
+          : ({ key, value, enabled: true, description: "" } as unknown as T);
+      });
+    onChange(next);
+    setBatchMode(false);
+  };
+
   return (
     <div>
-      <table className="kv-table">
+      {batchMode ? (
+        <div className="kv-batch">
+          <textarea
+            className="kv-batch-area"
+            value={batchText}
+            placeholder={"k1: v1\nk2: v2"}
+            spellCheck={false}
+            onChange={(e) => setBatchText(e.target.value)}
+          />
+          <div className="kv-batch-actions">
+            <button className="btn small" onClick={() => setBatchMode(false)}>
+              {t("common.cancel")}
+            </button>
+            <button className="btn small primary" onClick={saveBatch}>
+              {t("common.save")}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <table className="kv-table">
         <thead>
           <tr>
             {showCheck && <th style={{ width: 30 }}></th>}
@@ -171,10 +227,19 @@ export function KeyValueEditor<T extends Row>({
           ))}
         </tbody>
       </table>
-      {!hideAdd && (
-        <button className="btn small kv-add" onClick={add}>
-          + {t("common.add")}
-        </button>
+      <div className="kv-add-row">
+        {!hideAdd && (
+          <button className="btn small kv-add" onClick={add}>
+            + {t("common.add")}
+          </button>
+        )}
+        {allowBatch && (
+          <button className="btn small kv-batch-btn" onClick={openBatch}>
+            ✎ {t("kv.batchEdit")}
+          </button>
+        )}
+      </div>
+        </>
       )}
     </div>
   );

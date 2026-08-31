@@ -617,6 +617,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               rows={api.query}
               onChange={(rows) => set({ query: rows })}
               keyPlaceholder={t("editor.paramName")}
+              allowBatch
             />
             <div className="section-title">
               {t("editor.queryParams")} <span className="help">{t("editor.queryParamsHint")}</span>
@@ -794,6 +795,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                   keyPlaceholder={t("editor.fieldName")}
                   valuePlaceholder={undefined}
                   showFileType
+                  allowBatch
                 />
                 <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 6 }}>
                   {t("editor.fileTypeHint")}
