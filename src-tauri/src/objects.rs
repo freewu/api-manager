@@ -1245,6 +1245,9 @@ pub(crate) struct GenLogItem {
     table: String,
     count: usize,
     elapsed_ms: u64,
+    /// 生成文件大小（字节）；旧记录无此字段时为 0
+    #[serde(default)]
+    file_size: u64,
     props: Vec<GenPropItem>,
 }
 
@@ -1269,6 +1272,7 @@ pub(crate) fn gen_data(
         return Err(format!("导出目录不存在: {dir}"));
     }
     let path = dir_path.join(&file_name);
+    let file_size = content.len() as u64;
     std::fs::write(&path, content).map_err(|e| format!("写入文件失败: {e}"))?;
 
     // 生成记录：工作区根 .gen_log/<时间戳>_<object-uuid>.json（每条记录一个文件）
@@ -1291,6 +1295,7 @@ pub(crate) fn gen_data(
         table,
         count,
         elapsed_ms,
+        file_size,
         props,
     };
     let text = serde_json::to_string_pretty(&record).map_err(|e| format!("序列化生成记录失败: {e}"))?;

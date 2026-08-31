@@ -541,6 +541,8 @@ export interface GenLogItem {
   table: string;
   count: number;
   elapsed_ms: number;
+  /** 生成文件大小（字节）；旧记录可能缺失 */
+  file_size?: number;
   props: GenPropItem[];
 }
 

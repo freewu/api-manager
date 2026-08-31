@@ -6,6 +6,20 @@ function fmtMs(ms: number): string {
   return `${(ms / 1000).toFixed(2)} s`;
 }
 
+/** 文件大小人性化展示：B / KB / MB / GB */
+export function fmtSize(bytes: number): string {
+  if (!bytes || bytes < 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let v = bytes / 1024;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v >= 100 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
+}
+
 interface Props {
   records: GenLogItem[];
   loading: boolean;
@@ -54,6 +68,7 @@ export function GenLogsList({ records, loading, selectedId, onSelect, onReload }
               </div>
               <div className="genlogs-item-sub">
                 {l.time_str} · {l.count.toLocaleString()} 条 · {fmtMs(l.elapsed_ms)}
+                {l.file_size ? ` · ${fmtSize(l.file_size)}` : ""}
               </div>
             </div>
           ))

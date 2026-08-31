@@ -455,10 +455,8 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             </button>
           </div>
         ) : isSocketIo ? (
-          // Socket.IO 展示与 WebSocket 一致：无 method 选择，也不提供 ws/wss 切换
-          <span className="method-select method-fixed" title={t("editor.socketIoType")}>
-            Socket.IO
-          </span>
+          // Socket.IO：不显示 method，也不提供 ws/wss 切换
+          <span />
         ) : isGraphql ? (
           <select className="method-select" value="POST" disabled title={t("editor.graphqlMethodTip")}>
             <option value="POST">POST</option>

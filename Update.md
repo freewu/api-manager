@@ -3,7 +3,7 @@
 ## v0.5.3
 
 ### 🐸 Mock 服务
-- 启动 Mock 服务后内置 `GET /mock-list` 接口：列出当前所有 Mock 路由的 method 与 path
+- 启动 Mock 服务后内置 `GET /mock-list` 接口：HTML 表格展示所有 Mock 路由，method 按类型着色（GET 绿 / POST 橙 / PUT 蓝 / DELETE 红 / PATCH 紫 / HEAD 青 / OPTIONS 灰）
 - 顶栏「复制 Mock 地址」默认复制 `http://ip:port/mock-list`
 
 ### 🌗 显示模式
@@ -11,6 +11,10 @@
 
 ### 🎨 启动动画
 - 黑客帝国字符雨颜色由绿色改为应用主题色（深蓝），loading 文案同步
+
+### 🧾 数据生成
+- 生成记录展示文件大小（B / KB / MB / GB 自动换算）
+- 打开导出目录失败时，目录路径自动复制到剪贴板，提示用户自行打开浏览
 
 ### 🗂 接口管理
 - 拖动排序机制重构：分组/接口顺序统一由父分组 `__info.json` 的 `dirs` / `apis` 数组保存（不再依赖 `order` 字段），新建/移动/删除/重命名时自动同步

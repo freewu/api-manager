@@ -416,21 +416,66 @@ fn route_path_str(route: &MockRoute) -> String {
     p
 }
 
-/// 内置接口 GET /mock-list：列出当前所有 Mock 路由的 method 与 path
+/// HTML 转义（mock-list 页面展示路径/方法，避免特殊字符破坏页面）
+fn escape_html(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+/// 内置接口 GET /mock-list：以 HTML 表格列出所有 Mock 路由（method 按类型着色）
 async fn mock_list_handler(AxState(state): AxState<MockServerState>) -> Response {
     let routes = state.routes.read().unwrap_or_else(|e| e.into_inner());
-    let list: Vec<serde_json::Value> = routes
+    let rows: Vec<(String, String)> = routes
         .iter()
-        .map(|r| json!({ "method": r.method, "path": route_path_str(r) }))
+        .map(|r| (r.method.clone(), route_path_str(r)))
         .collect();
     drop(routes);
+    let mut table = String::new();
+    for (m, p) in &rows {
+        // method 颜色与客户端一致（GET 绿 / POST 橙 / PUT 蓝 / DELETE 红 / PATCH 紫 / HEAD 青 / OPTIONS 灰）
+        let color = match m.as_str() {
+            "GET" => "#2ec27e",
+            "POST" => "#f5a623",
+            "PUT" => "#3b82f6",
+            "DELETE" => "#f26d6d",
+            "PATCH" => "#a855f7",
+            "HEAD" => "#14b8a6",
+            "OPTIONS" => "#7d8590",
+            _ => "#8ab0e8",
+        };
+        table.push_str(&format!(
+            "<tr><td><span class=\"m\" style=\"color:{color}\">{}</span></td><td>{}</td></tr>",
+            escape_html(m),
+            escape_html(p)
+        ));
+    }
+    let html = format!(
+        r#"<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"/>
+<title>Mock 路由列表</title>
+<style>
+body{{margin:0;padding:32px;background:#16171a;color:#e8e9eb;font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;}}
+h1{{font-size:20px;font-weight:600;margin:0 0 6px;}}
+p.sub{{color:#9ba0a8;font-size:13px;margin:0 0 20px;}}
+table{{border-collapse:collapse;width:100%;max-width:720px;background:#1e1f22;border:1px solid #35383e;border-radius:8px;overflow:hidden;}}
+th{{text-align:left;padding:10px 16px;font-size:12px;color:#9ba0a8;border-bottom:1px solid #35383e;}}
+td{{padding:9px 16px;border-bottom:1px solid #2a2d31;font-family:Consolas,"Courier New",monospace;font-size:13px;}}
+tr:last-child td{{border-bottom:none;}}
+.m{{font-weight:700;}}
+</style></head>
+<body>
+<h1>Mock 路由列表</h1>
+<p class="sub">共 {} 条路由</p>
+<table><thead><tr><th style="width:120px">Method</th><th>Path</th></tr></thead><tbody>{}</tbody></table>
+</body></html>"#,
+        rows.len(),
+        table
+    );
     (
-        StatusCode::OK,
-        axum::Json(json!({
-            "code": 0,
-            "data": list,
-            "message": "ok",
-        })),
+        [(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        html,
     )
         .into_response()
 }

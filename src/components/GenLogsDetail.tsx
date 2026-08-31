@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { GenLogItem, openPath } from "../commands";
 import { useT } from "../i18n";
+import { fmtSize } from "./GenLogsList";
 
 function fmtMs(ms: number): string {
   if (ms < 1000) return `${ms} ms`;
@@ -21,8 +22,17 @@ export function GenLogsDetail({ detail, onRegen }: Props) {
     setDirErr("");
     try {
       await openPath(detail!.dir);
-    } catch (e) {
-      setDirErr(String(e));
+    } catch {
+      // 打开导出目录失败：把目录路径复制到剪贴板，提示用户自行打开浏览
+      const copied = await navigator.clipboard
+        .writeText(detail!.dir)
+        .then(() => true)
+        .catch(() => false);
+      setDirErr(
+        copied
+          ? t("objects.genLogsOpenDirCopied", { dir: detail!.dir })
+          : t("objects.genLogsOpenDirFail", { err: detail!.dir }),
+      );
     }
   };
   if (!detail) {
@@ -59,6 +69,10 @@ export function GenLogsDetail({ detail, onRegen }: Props) {
         <div className="genlogs-info-row">
           <label>{t("objects.genLogsElapsed")}</label>
           <span>{fmtMs(detail.elapsed_ms)}</span>
+        </div>
+        <div className="genlogs-info-row">
+          <label>{t("objects.genLogsSize")}</label>
+          <span>{detail.file_size ? fmtSize(detail.file_size) : "—"}</span>
         </div>
         <div className="genlogs-info-row">
           <label>{t("objects.genLogsFile")}</label>
