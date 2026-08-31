@@ -660,6 +660,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               rows={api.headers}
               onChange={(rows) => set({ headers: rows })}
               keyPlaceholder={t("editor.headerName")}
+              allowBatch
             />
           </div>
         )}
