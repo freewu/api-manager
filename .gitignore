@@ -30,3 +30,4 @@ __envs.json
 
 # 构建产物
 src-tauri/icons/icon.icns
+/src-tauri/icons/icon.icns

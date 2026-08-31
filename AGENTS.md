@@ -25,7 +25,7 @@
 2. 更新 `Update.md`：用 `git log <上个版本tag>..HEAD --oneline` 梳理本次更新内容，总结记录在文件顶部
 3. 构建验证（`npm run build` / `cargo test`）后提交推送，并打 tag：
   ```bash
-  git tag v0.5.2 && git push origin v0.5.2
+  git tag <当前版本tag> && git push origin <当前版本tag>
   ```
-4. 版本号已存在时先删除再重打：`git tag -d v0.5.2 && git push origin :refs/tags/v0.5.2`
-5. 查看标签列表：`git tag -l`；查看某标签指向的提交：`git show v0.5.2 --oneline -s`
+4. 版本号已存在时先删除再重打：`git tag -d <当前版本tag> && git push origin :refs/tags/<当前版本tag>`
+5. 查看标签列表：`git tag -l`；查看某标签指向的提交：`git show <当前版本tag> --oneline -s`
