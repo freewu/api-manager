@@ -299,6 +299,7 @@ pub async fn start_mock(app: &AppHandle, port: u16) -> Result<MockStatus, String
     };
 
     let router: Router<MockServerState> = Router::new()
+        .route("/mock-list", axum::routing::get(mock_list_handler))
         .fallback(mock_handler)
         .layer(CorsLayer::permissive());
 
@@ -395,6 +396,44 @@ pub fn reload_mock(app: &AppHandle) -> Result<(), String> {
 }
 
 // ==================== 请求处理 ====================
+
+/// 路由路径字符串（/a/{param}/b，参数保留花括号形式）
+fn route_path_str(route: &MockRoute) -> String {
+    let mut p = String::from("/");
+    for (i, seg) in route.segments.iter().enumerate() {
+        if i > 0 {
+            p.push('/');
+        }
+        match seg {
+            Segment::Literal(l) => p.push_str(l),
+            Segment::Param(n) => {
+                p.push('{');
+                p.push_str(n);
+                p.push('}');
+            }
+        }
+    }
+    p
+}
+
+/// 内置接口 GET /mock-list：列出当前所有 Mock 路由的 method 与 path
+async fn mock_list_handler(AxState(state): AxState<MockServerState>) -> Response {
+    let routes = state.routes.read().unwrap_or_else(|e| e.into_inner());
+    let list: Vec<serde_json::Value> = routes
+        .iter()
+        .map(|r| json!({ "method": r.method, "path": route_path_str(r) }))
+        .collect();
+    drop(routes);
+    (
+        StatusCode::OK,
+        axum::Json(json!({
+            "code": 0,
+            "data": list,
+            "message": "ok",
+        })),
+    )
+        .into_response()
+}
 
 /// 全局环境变量 {{key}} 替换（保留 path/method 等系统变量不受覆盖）
 pub fn apply_env_vars(body: &str, envs: &HashMap<String, String>) -> String {

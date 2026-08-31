@@ -50,7 +50,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 pub const INFO_FILE: &str = "__info.json";
 pub const ENV_FILE: &str = "__envs.json";
@@ -94,6 +94,12 @@ pub struct TrayState {
     pub lang_zh_item: Mutex<Option<tauri::menu::CheckMenuItem<tauri::Wry>>>,
     pub lang_tw_item: Mutex<Option<tauri::menu::CheckMenuItem<tauri::Wry>>>,
     pub lang_en_item: Mutex<Option<tauri::menu::CheckMenuItem<tauri::Wry>>>,
+    /// 显示模式子菜单（展开后勾选深色 / 浅色 / 跟随系统）
+    pub theme_submenu: Mutex<Option<tauri::menu::Submenu<tauri::Wry>>>,
+    /// 显示模式子菜单项（CheckMenuItem，勾选态表示当前模式）
+    pub theme_dark_item: Mutex<Option<tauri::menu::CheckMenuItem<tauri::Wry>>>,
+    pub theme_light_item: Mutex<Option<tauri::menu::CheckMenuItem<tauri::Wry>>>,
+    pub theme_system_item: Mutex<Option<tauri::menu::CheckMenuItem<tauri::Wry>>>,
     /// 「检查更新」菜单项，发现新版本后文字改为「发现新版本 vX.Y.Z」
     pub update_item: Mutex<Option<tauri::menu::IconMenuItem<tauri::Wry>>>,
     /// 最近一次发现的最新版本号（Some 时点击「检查更新」直接打开发布页）
@@ -853,12 +859,46 @@ pub fn save_config_language(app: &AppHandle, lang: &str) -> Result<(), String> {
     write_config_language_file(&config_file_path(app)?, lang)
 }
 
+/// 保存显示模式（dark / light / system）到 settings.json（托盘/设置页切换的主存储）
+pub fn save_config_display_mode(app: &AppHandle, mode: &str) -> Result<(), String> {
+    let p = settings_path(app)?;
+    let mut settings = fs::read_to_string(&p)
+        .ok()
+        .and_then(|s| serde_json::from_str::<AppSettings>(&s).ok())
+        .unwrap_or_default();
+    settings.display_mode = mode.to_string();
+    if let Some(parent) = p.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("创建配置目录失败: {e}"))?;
+    }
+    let out =
+        serde_json::to_string_pretty(&settings).map_err(|e| format!("序列化失败: {e}"))?;
+    fs::write(p, out).map_err(|e| format!("写入配置失败: {e}"))
+}
+
 /// 读取界面语言：yaml 存在用 yaml，否则回退旧配置 settings.json 的 language，再否则默认中文
 fn read_config_language(app: &AppHandle, fallback: &str) -> String {
     config_file_path(app)
         .ok()
         .and_then(|p| read_config_language_file(&p))
         .unwrap_or_else(|| fallback.to_string())
+}
+
+/// 切换显示模式：写入 settings.json + 刷新托盘勾选 + 通知前端刷新主题
+pub(crate) fn set_display_mode(app: &AppHandle, mode: &str) -> Result<(), String> {
+    let normalized = match mode.trim().to_lowercase().as_str() {
+        "dark" | "light" => mode.trim().to_lowercase(),
+        _ => "system".into(),
+    };
+    let current = load_settings(app.clone())
+        .map(|s| s.display_mode)
+        .unwrap_or_default();
+    if current == normalized {
+        return Ok(());
+    }
+    save_config_display_mode(app, &normalized)?;
+    crate::tray::update_tray_theme_item(app);
+    let _ = app.emit("display-mode-changed", normalized);
+    Ok(())
 }
 
 #[tauri::command]
@@ -2003,6 +2043,7 @@ pub fn run() {
             load_settings,
             save_settings,
             crate::tray::set_language,
+            crate::tray::set_display_mode,
             get_workspace,
             open_workspace,
             get_recent_workspaces,

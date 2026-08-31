@@ -138,6 +138,15 @@ pub fn update_tray_language(app: &AppHandle) {
     {
         let _ = m.set_text(&tray_text(&lang, "语言", "語言", "Language"));
     }
+    // 显示模式子菜单标题
+    if let Some(m) = st
+        .theme_submenu
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+    {
+        let _ = m.set_text(&tray_text(&lang, "显示模式", "顯示模式", "Theme"));
+    }
     let set_checked = |item: &Mutex<Option<tauri::menu::CheckMenuItem<tauri::Wry>>>, active: bool| {
         if let Some(i) = item.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
             let _ = i.set_checked(active);
@@ -149,6 +158,22 @@ pub fn update_tray_language(app: &AppHandle) {
     update_tray_env_item(app);
     update_tray_mock_item(app);
     update_tray_update_item(app);
+}
+
+/// 按当前显示模式刷新托盘「显示模式」子菜单勾选态（模式切换后调用）
+pub fn update_tray_theme_item(app: &AppHandle) {
+    let mode = crate::load_settings(app.clone())
+        .map(|s| s.display_mode)
+        .unwrap_or_else(|_| "system".into());
+    let st = app.state::<TrayState>();
+    let set_checked = |item: &Mutex<Option<tauri::menu::CheckMenuItem<tauri::Wry>>>, active: bool| {
+        if let Some(i) = item.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
+            let _ = i.set_checked(active);
+        }
+    };
+    set_checked(&st.theme_dark_item, mode == "dark");
+    set_checked(&st.theme_light_item, mode == "light");
+    set_checked(&st.theme_system_item, mode != "dark" && mode != "light");
 }
 
 /// 按当前语言刷新「检查更新」菜单项文字（无待提醒版本时显示默认文字）
@@ -173,6 +198,12 @@ pub fn update_tray_update_item(app: &AppHandle) {
         };
         let _ = i.set_text(&text);
     }
+}
+
+/// 托盘菜单：切换显示模式（写入 settings.json + 刷新托盘勾选 + 通知前端）
+#[tauri::command]
+pub(crate) fn set_display_mode(app: AppHandle, mode: String) -> Result<(), String> {
+    crate::set_display_mode(&app, &mode)
 }
 
 /// 切换界面语言：写入 ~/.api-manager/api-manager.config.yaml + 刷新托盘菜单 + 通知前端刷新文案
@@ -267,6 +298,10 @@ pub(crate) fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         lang_zh_item: Mutex::new(None),
         lang_tw_item: Mutex::new(None),
         lang_en_item: Mutex::new(None),
+        theme_submenu: Mutex::new(None),
+        theme_dark_item: Mutex::new(None),
+        theme_light_item: Mutex::new(None),
+        theme_system_item: Mutex::new(None),
         update_item: Mutex::new(None),
         latest_version: Mutex::new(None),
         exiting: AtomicBool::new(false),
@@ -330,6 +365,16 @@ pub(crate) fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let lang_tw = CheckMenuItem::with_id(app, "lang_tw", "繁體中文", true, false, None::<&str>)?;
     let lang_en = CheckMenuItem::with_id(app, "lang_en", "English", true, false, None::<&str>)?;
     let lang_menu = Submenu::with_items(app, "语言", true, &[&lang_zh, &lang_tw, &lang_en])?;
+    // 显示模式切换：单行「显示模式」子菜单，内含深色 / 浅色 / 跟随系统勾选项（与语言切换一致）
+    let theme_dark = CheckMenuItem::with_id(app, "theme_dark", "深色", true, false, None::<&str>)?;
+    let theme_light = CheckMenuItem::with_id(app, "theme_light", "浅色", true, false, None::<&str>)?;
+    let theme_system = CheckMenuItem::with_id(app, "theme_system", "跟随系统", true, false, None::<&str>)?;
+    let theme_menu = Submenu::with_items(
+        app,
+        "显示模式",
+        true,
+        &[&theme_dark, &theme_light, &theme_system],
+    )?;
     // 检查更新（异步访问 GitHub Releases；发现新版本时文字变为「发现新版本 vX.Y.Z」）
     let check_update = IconMenuItem::with_id(
         app,
@@ -356,6 +401,7 @@ pub(crate) fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
             &issue,
             &PredefinedMenuItem::separator(app)?,
             &lang_menu,
+            &theme_menu,
             &PredefinedMenuItem::separator(app)?,
             &quit,
         ],
@@ -371,9 +417,14 @@ pub(crate) fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     *app.state::<TrayState>().lang_zh_item.lock().unwrap() = Some(lang_zh.clone());
     *app.state::<TrayState>().lang_tw_item.lock().unwrap() = Some(lang_tw.clone());
     *app.state::<TrayState>().lang_en_item.lock().unwrap() = Some(lang_en.clone());
+    *app.state::<TrayState>().theme_submenu.lock().unwrap() = Some(theme_menu.clone());
+    *app.state::<TrayState>().theme_dark_item.lock().unwrap() = Some(theme_dark.clone());
+    *app.state::<TrayState>().theme_light_item.lock().unwrap() = Some(theme_light.clone());
+    *app.state::<TrayState>().theme_system_item.lock().unwrap() = Some(theme_system.clone());
     *app.state::<TrayState>().update_item.lock().unwrap() = Some(check_update.clone());
-    // 用当前设置语言 + 工作区环境名刷新托盘文字
+    // 用当前设置语言 + 工作区环境名刷新托盘文字；勾选当前显示模式
     update_tray_language(app.handle());
+    update_tray_theme_item(app.handle());
 
     TrayIconBuilder::with_id("main")
         // 使用项目 logo 生成的 32px 方形图标作为托盘图标（小尺寸显示更清晰）
@@ -430,6 +481,15 @@ pub(crate) fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
             }
             "lang_en" => {
                 let _ = crate::set_language(app.clone(), "en".to_string());
+            }
+            "theme_dark" => {
+                let _ = set_display_mode(app.clone(), "dark".to_string());
+            }
+            "theme_light" => {
+                let _ = set_display_mode(app.clone(), "light".to_string());
+            }
+            "theme_system" => {
+                let _ = set_display_mode(app.clone(), "system".to_string());
             }
             _ => {}
         })

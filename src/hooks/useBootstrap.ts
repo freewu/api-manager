@@ -12,6 +12,7 @@ import { normalizeLang } from "./useSettings";
 export function useBootstrap(opts: {
   displayMode: string; // 来自设置（dark / light / system）
   onLanguageChanged: (lang: "zh" | "zh-tw" | "en") => void;
+  onDisplayModeChanged: (mode: string) => void;
   onUpdateAvailable: (info: UpdateInfo) => void;
   onOpenEnvEditor: () => void;
   onMockChanged: (s: MockStatus) => void;
@@ -70,6 +71,18 @@ export function useBootstrap(opts: {
         const lang = normalizeLang(e.payload);
         setLang(lang);
         opts.onLanguageChanged(lang);
+      });
+    })();
+    return () => unlisten?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 托盘菜单切换显示模式后，前端同步设置并刷新主题
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      unlisten = await listen("display-mode-changed", (e) => {
+        opts.onDisplayModeChanged(String(e.payload));
       });
     })();
     return () => unlisten?.();

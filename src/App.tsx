@@ -98,6 +98,7 @@ export default function App() {
   const boot = useBootstrap({
     displayMode: settings.displayMode,
     onLanguageChanged: (lang) => settingsHook.setSettingsRaw({ ...settings, language: lang }),
+    onDisplayModeChanged: (mode) => settingsHook.setSettingsRaw({ ...settings, displayMode: mode }),
     onUpdateAvailable: () => {},
     onOpenEnvEditor: () => setEnvModal(true),
     onMockChanged: (s) => setMock(s),

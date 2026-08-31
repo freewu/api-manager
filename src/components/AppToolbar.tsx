@@ -162,8 +162,9 @@ export function AppToolbar({
                 <button
                   className="btn mock-copy-btn"
                   onClick={() => {
+                    // 默认复制 /mock-list 接口地址（列出所有 mock 路由）
                     void navigator.clipboard
-                      .writeText(mock.url!)
+                      .writeText(`${mock.url}/mock-list`)
                       .then(() => onToast(t("toolbar.mockAddrCopied")))
                       .catch(() => onToast(t("toolbar.mockAddrCopyFailed")));
                   }}

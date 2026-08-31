@@ -73,12 +73,12 @@ function initMatrixRain(): void {
           continue;
         }
         const idx = d.off + Math.floor(d.y);
-        // 主体字符（绿色）
-        c2d.fillStyle = "#22c55e";
+        // 主体字符（应用主题色）
+        c2d.fillStyle = "#2e59a7";
         c2d.fillText(d.word.charAt(idx % d.word.length), c * FONT_SIZE, py);
-        // 头部字符（亮白绿）
+        // 头部字符（亮主题色）
         const head = d.word.charAt((idx + 1) % d.word.length);
-        c2d.fillStyle = "#d1fae5";
+        c2d.fillStyle = "#7da7e6";
         c2d.fillText(head, c * FONT_SIZE, py + FONT_SIZE);
         d.y += d.speed;
       }
