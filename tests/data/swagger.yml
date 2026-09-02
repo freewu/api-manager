@@ -1,0 +1,509 @@
+openapi: 3.0.0
+info:
+  title: 我的第一个API
+  description: |
+    这是一个简单的API示例文档，展示了用户管理系统的基本功能。
+    包括用户的查询、创建、更新和删除操作。
+  version: 1.0.0
+  contact:
+    name: API 支持团队
+    email: support@example.com
+    url: https://www.example.com/support
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: https://api.example.com/v1
+    description: 生产环境
+  - url: https://staging-api.example.com/v1
+    description: 预发布环境
+  - url: https://dev-api.example.com/v1
+    description: 开发环境
+
+tags:
+  - name: 用户
+    description: 用户管理相关操作
+  - name: 认证
+    description: 认证相关操作
+
+paths:
+  /users:
+    get:
+      tags:
+        - 用户
+      summary: 获取所有用户列表
+      description: 返回系统中的所有用户信息，支持分页和筛选
+      operationId: getUsers
+      parameters:
+        - name: limit
+          in: query
+          description: 返回结果的最大数量
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: 分页偏移量
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+        - name: status
+          in: query
+          description: 按用户状态筛选
+          required: false
+          schema:
+            type: string
+            enum: [active, inactive, banned]
+      responses:
+        '200':
+          description: 成功获取用户列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: 总用户数
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+              example:
+                total: 2
+                users:
+                  - id: 1
+                    username: "john_doe"
+                    email: "john@example.com"
+                    status: "active"
+                    createdAt: "2023-05-01T12:00:00Z"
+                  - id: 2
+                    username: "jane_smith"
+                    email: "jane@example.com"
+                    status: "active"
+                    createdAt: "2023-05-02T14:30:00Z"
+        '400':
+          description: 无效请求
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+      security:
+        - bearerAuth: []
+    
+    post:
+      tags:
+        - 用户
+      summary: 创建新用户
+      description: 在系统中创建一个新用户
+      operationId: createUser
+      requestBody:
+        description: 用户信息
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewUser'
+            example:
+              username: "new_user"
+              email: "new_user@example.com"
+              password: "securePassword123"
+      responses:
+        '201':
+          description: 用户创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              example:
+                id: 3
+                username: "new_user"
+                email: "new_user@example.com"
+                status: "active"
+                createdAt: "2023-05-10T09:15:00Z"
+        '400':
+          description: 无效请求
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 400
+                message: "邮箱格式不正确"
+        '409':
+          description: 资源冲突
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 409
+                message: "用户名已存在"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+      security:
+        - bearerAuth: []
+
+  /users/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        description: 用户ID
+        required: true
+        schema:
+          type: integer
+          format: int64
+    
+    get:
+      tags:
+        - 用户
+      summary: 获取特定用户
+      description: 根据ID获取特定用户的详细信息
+      operationId: getUserById
+      responses:
+        '200':
+          description: 成功获取用户信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+              example:
+                id: 1
+                username: "john_doe"
+                email: "john@example.com"
+                firstName: "John"
+                lastName: "Doe"
+                phone: "+1234567890"
+                status: "active"
+                createdAt: "2023-05-01T12:00:00Z"
+                lastLogin: "2023-05-10T08:30:00Z"
+        '404':
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: "用户不存在"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+      security:
+        - bearerAuth: []
+    
+    put:
+      tags:
+        - 用户
+      summary: 更新用户信息
+      description: 更新特定用户的信息
+      operationId: updateUser
+      requestBody:
+        description: 更新的用户信息
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUser'
+            example:
+              firstName: "Jonathan"
+              lastName: "Doe"
+              phone: "+1987654321"
+      responses:
+        '200':
+          description: 用户信息更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+        '400':
+          description: 无效请求
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+      security:
+        - bearerAuth: []
+    
+    delete:
+      tags:
+        - 用户
+      summary: 删除用户
+      description: 从系统中删除特定用户
+      operationId: deleteUser
+      responses:
+        '204':
+          description: 用户删除成功
+        '404':
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+      security:
+        - bearerAuth: []
+
+  /auth/login:
+    post:
+      tags:
+        - 认证
+      summary: 用户登录
+      description: 用户登录并获取访问令牌
+      operationId: login
+      requestBody:
+        description: 登录凭证
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  description: 用户名
+                password:
+                  type: string
+                  format: password
+                  description: 密码
+              required:
+                - username
+                - password
+            example:
+              username: "john_doe"
+              password: "password123"
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                    description: JWT访问令牌
+                  tokenType:
+                    type: string
+                    description: 令牌类型
+                  expiresIn:
+                    type: integer
+                    description: 令牌过期时间（秒）
+              example:
+                accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                tokenType: "Bearer"
+                expiresIn: 3600
+        '401':
+          description: 登录失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 401
+                message: "用户名或密码错误"
+
+  /auth/register:
+    post:
+      tags:
+        - 认证
+      summary: 用户注册
+      description: 注册新用户并获取访问令牌
+      operationId: register
+      requestBody:
+        description: 注册信息
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewUser'
+      responses:
+        '201':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  accessToken:
+                    type: string
+                    description: JWT访问令牌
+              example:
+                user:
+                  id: 3
+                  username: "new_user"
+                  email: "new_user@example.com"
+                  status: "active"
+                  createdAt: "2023-05-10T09:15:00Z"
+                accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '400':
+          description: 无效请求
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 用户已存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 用户唯一标识
+        username:
+          type: string
+          description: 用户名
+        email:
+          type: string
+          format: email
+          description: 用户邮箱
+        status:
+          type: string
+          enum: [active, inactive, banned]
+          description: 用户状态
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间
+      required:
+        - id
+        - username
+        - email
+        - status
+    
+    UserDetail:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            firstName:
+              type: string
+              description: 名字
+            lastName:
+              type: string
+              description: 姓氏
+            phone:
+              type: string
+              description: 电话号码
+            lastLogin:
+              type: string
+              format: date-time
+              description: 最后登录时间
+    
+    NewUser:
+      type: object
+      properties:
+        username:
+          type: string
+          description: 用户名
+          minLength: 3
+          maxLength: 50
+        email:
+          type: string
+          format: email
+          description: 用户邮箱
+        password:
+          type: string
+          format: password
+          description: 用户密码
+          minLength: 8
+          maxLength: 100
+        firstName:
+          type: string
+          description: 名字
+        lastName:
+          type: string
+          description: 姓氏
+        phone:
+          type: string
+          description: 电话号码
+      required:
+        - username
+        - email
+        - password
+    
+    UpdateUser:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: 用户邮箱
+        firstName:
+          type: string
+          description: 名字
+        lastName:
+          type: string
+          description: 姓氏
+        phone:
+          type: string
+          description: 电话号码
+        password:
+          type: string
+          format: password
+          description: 新密码（如需更改）
+          minLength: 8
+          maxLength: 100
+    
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: 错误代码
+        message:
+          type: string
+          description: 错误消息
+      required:
+        - code
+        - message
+
+  responses:
+    UnauthorizedError:
+      description: 访问令牌丢失或无效
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 401
+            message: "未授权访问"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 使用JWT Bearer Token进行身份验证
+
+security:
+  - bearerAuth: []

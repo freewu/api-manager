@@ -1,0 +1,303 @@
+{
+  "info": {
+    "description": "由 API Manager 导出的 Postman Collection",
+    "name": "API Manager 导出",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "创建用户",
+      "request": {
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"张三\",\n  \"email\": \"zhangsan@example.com\",\n  \"role\": \"user\"\n}"
+        },
+        "header": [
+          {
+            "description": "",
+            "key": "Content-Type",
+            "type": "text",
+            "value": "application/json"
+          }
+        ],
+        "method": "POST",
+        "url": {
+          "host": [
+            ""
+          ],
+          "path": [
+            "api",
+            "users"
+          ],
+          "raw": "/api/users"
+        }
+      }
+    },
+    {
+      "name": "创建用户",
+      "request": {
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"张三\",\n  \"email\": \"zhangsan@example.com\",\n  \"role\": \"user\"\n}"
+        },
+        "header": [
+          {
+            "description": "",
+            "key": "Content-Type",
+            "type": "text",
+            "value": "application/json"
+          }
+        ],
+        "method": "POST",
+        "url": {
+          "host": [
+            ""
+          ],
+          "path": [
+            "api",
+            "users"
+          ],
+          "raw": "/api/users"
+        }
+      }
+    },
+    {
+      "name": "删除用户",
+      "request": {
+        "header": [],
+        "method": "DELETE",
+        "url": {
+          "host": [
+            ""
+          ],
+          "path": [
+            "api",
+            "users",
+            "{id}"
+          ],
+          "raw": "/api/users/{id}"
+        }
+      }
+    },
+    {
+      "name": "获取用户信息",
+      "request": {
+        "header": [],
+        "method": "GET",
+        "url": {
+          "host": [
+            ""
+          ],
+          "path": [
+            "api",
+            "users",
+            "{id}"
+          ],
+          "raw": "/api/users/{id}"
+        }
+      }
+    },
+    {
+      "name": "未命名接口",
+      "request": {
+        "header": [
+          {
+            "description": "",
+            "key": "user-token",
+            "type": "text",
+            "value": "{{user-token}}"
+          }
+        ],
+        "method": "GET",
+        "url": {
+          "host": [
+            ""
+          ],
+          "path": [],
+          "raw": "/"
+        }
+      }
+    },
+    {
+      "name": "获取订单列表",
+      "request": {
+        "header": [],
+        "method": "GET",
+        "url": {
+          "host": [
+            ""
+          ],
+          "path": [
+            "api",
+            "orders"
+          ],
+          "query": [
+            {
+              "description": "页码",
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "description": "每页数量",
+              "key": "pageSize",
+              "value": "10"
+            }
+          ],
+          "raw": "/api/orders"
+        }
+      }
+    },
+    {
+      "item": [
+        {
+          "name": "创建用户",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"张三\",\n  \"email\": \"zhangsan@example.com\",\n  \"role\": \"user\"\n}"
+            },
+            "header": [
+              {
+                "description": "",
+                "key": "Content-Type",
+                "type": "text",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                ""
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "raw": "/api/users"
+            }
+          }
+        },
+        {
+          "name": "创建用户",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"张三\",\n  \"email\": \"zhangsan@example.com\",\n  \"role\": \"user\"\n}"
+            },
+            "header": [
+              {
+                "description": "",
+                "key": "Content-Type",
+                "type": "text",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                ""
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "raw": "/api/users"
+            }
+          }
+        },
+        {
+          "name": "删除用户",
+          "request": {
+            "header": [],
+            "method": "DELETE",
+            "url": {
+              "host": [
+                ""
+              ],
+              "path": [
+                "api",
+                "users",
+                "{id}"
+              ],
+              "raw": "/api/users/{id}"
+            }
+          }
+        },
+        {
+          "name": "获取用户信息",
+          "request": {
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                ""
+              ],
+              "path": [
+                "api",
+                "users",
+                "{id}"
+              ],
+              "raw": "/api/users/{id}"
+            }
+          }
+        }
+      ],
+      "name": "用户管理"
+    },
+    {
+      "item": [
+        {
+          "name": "未命名接口",
+          "request": {
+            "header": [
+              {
+                "description": "",
+                "key": "user-token",
+                "type": "text",
+                "value": "{{user-token}}"
+              }
+            ],
+            "method": "GET",
+            "url": {
+              "host": [
+                ""
+              ],
+              "path": [],
+              "raw": "/"
+            }
+          }
+        },
+        {
+          "name": "获取订单列表",
+          "request": {
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                ""
+              ],
+              "path": [
+                "api",
+                "orders"
+              ],
+              "query": [
+                {
+                  "description": "页码",
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "description": "每页数量",
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ],
+              "raw": "/api/orders"
+            }
+          }
+        }
+      ],
+      "name": "订单管理"
+    }
+  ]
+}

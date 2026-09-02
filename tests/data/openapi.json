@@ -1,0 +1,472 @@
+{
+  "info": {
+    "description": "由 API Manager 导出的 OpenAPI 规范",
+    "title": "演示 API 集合",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.1",
+  "paths": {
+    "/": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "description": "",
+            "in": "header",
+            "name": "user-token",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "未命名接口",
+        "tags": [
+          "API Manager 导出"
+        ]
+      }
+    },
+    "/ (2)": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "description": "",
+            "in": "header",
+            "name": "user-token",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "未命名接口",
+        "tags": [
+          "API Manager 导出/订单管理"
+        ]
+      }
+    },
+    "/ (3)": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "description": "",
+            "in": "header",
+            "name": "user-token",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "未命名接口",
+        "tags": [
+          "订单管理"
+        ]
+      }
+    },
+    "/api/orders": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "description": "",
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "获取订单列表",
+        "tags": [
+          "API Manager 导出"
+        ]
+      }
+    },
+    "/api/orders (2)": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "description": "",
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "获取订单列表",
+        "tags": [
+          "API Manager 导出/订单管理"
+        ]
+      }
+    },
+    "/api/orders (3)": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "description": "",
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "",
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "获取订单列表",
+        "tags": [
+          "订单管理"
+        ]
+      }
+    },
+    "/api/users": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "description": "",
+            "in": "header",
+            "name": "Content-Type",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "zhangsan@example.com",
+                "name": "张三",
+                "role": "user"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "创建用户",
+        "tags": [
+          "API Manager 导出"
+        ]
+      }
+    },
+    "/api/users (2)": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "description": "",
+            "in": "header",
+            "name": "Content-Type",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "zhangsan@example.com",
+                "name": "张三",
+                "role": "user"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "创建用户",
+        "tags": [
+          "API Manager 导出"
+        ]
+      }
+    },
+    "/api/users (3)": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "description": "",
+            "in": "header",
+            "name": "Content-Type",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "zhangsan@example.com",
+                "name": "张三",
+                "role": "user"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "创建用户",
+        "tags": [
+          "API Manager 导出/用户管理"
+        ]
+      }
+    },
+    "/api/users (4)": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "description": "",
+            "in": "header",
+            "name": "Content-Type",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "zhangsan@example.com",
+                "name": "张三",
+                "role": "user"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "创建用户",
+        "tags": [
+          "API Manager 导出/用户管理"
+        ]
+      }
+    },
+    "/api/users (5)": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "description": "",
+            "in": "header",
+            "name": "Content-Type",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "zhangsan@example.com",
+                "name": "张三",
+                "role": "user"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "创建用户",
+        "tags": [
+          "用户管理"
+        ]
+      }
+    },
+    "/api/users (6)": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "description": "",
+            "in": "header",
+            "name": "Content-Type",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "zhangsan@example.com",
+                "name": "张三",
+                "role": "user"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "创建用户",
+        "tags": [
+          "用户管理"
+        ]
+      }
+    },
+    "/api/users/{id}": {
+      "delete": {
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "删除用户",
+        "tags": [
+          "API Manager 导出"
+        ]
+      },
+      "get": {
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "获取用户信息",
+        "tags": [
+          "API Manager 导出/用户管理"
+        ]
+      }
+    },
+    "/api/users/{id} (2)": {
+      "delete": {
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "删除用户",
+        "tags": [
+          "API Manager 导出/用户管理"
+        ]
+      },
+      "get": {
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "获取用户信息",
+        "tags": [
+          "API Manager 导出"
+        ]
+      }
+    },
+    "/api/users/{id} (3)": {
+      "delete": {
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "删除用户",
+        "tags": [
+          "用户管理"
+        ]
+      },
+      "get": {
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Mock 响应（状态码 200）"
+          }
+        },
+        "summary": "获取用户信息",
+        "tags": [
+          "用户管理"
+        ]
+      }
+    }
+  }
+}
