@@ -12,6 +12,8 @@ An API documentation, testing, and Mock tool built with **Tauri 2**, with a Post
 | ![Request history](docs/images/en/history.png) | ![Multi-format import](docs/images/en/import.png) |
 | ![Directories as collections](docs/images/en/examples.png) | ![Demo APIs](docs/images/en/demo.png) |
 | ![Version diff](docs/images/en/version-diff.png) | ![Statistics](docs/images/en/stat.png) |
+| ![Object manager](docs/images/en/object-manager.png) | ![New API](docs/images/en/api-add.png) |
+| ![Data generator](docs/images/en/data-generator.png) | ![Generation logs](docs/images/en/data-generate-log.png) |
 | ![Settings](docs/images/en/setting.png) | |
 
 ## Features
@@ -29,6 +31,10 @@ An API documentation, testing, and Mock tool built with **Tauri 2**, with a Post
 - 🌐 Full support for **path params / Query / Headers / Body** (Body modes: raw / JSON / XML / form / binary file)
 - 🧩 `{param}` path templates and template variables like `{{path.id}}`, `{{query.page}}`
 - 📥 **Postman import**: import an entire Postman Collection with one click; collection-level `variable`s are merged into environment sets automatically
+- 📦 **Object manager**: manage data structures as groups + objects; properties support type, referenced object, Mock value, and description; import from JSON or SQL `CREATE TABLE`; generate code in multiple languages and MySQL DDL in one click
+- 🎲 **Data generation**: batch-generate test data from an object's properties (JSON / SQL / CSV) with a custom table name, record count, and export directory; logs record elapsed time and file size, and support one-click regeneration
+- 🔌 **Multi-protocol APIs**: create APIs as HTTP / WebSocket / Socket.IO / GraphQL, all managed in one workspace
+- ✏️ **Batch add / edit**: Query / Headers / Body (form) tabs support `key: value` batch editing, one per line, preserving enabled state
 
 ## Directory Conventions
 

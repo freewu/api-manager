@@ -12,6 +12,8 @@
 | ![请求历史](docs/images/cn/history.png) | ![多格式导入](docs/images/cn/import.png) |
 | ![目录即集合](docs/images/cn/examples.png) | ![演示接口](docs/images/cn/demo.png) |
 | ![版本对比](docs/images/cn/version-diff.png) | ![统计](docs/images/cn/stat.png) |
+| ![对象管理](docs/images/cn/object-manager.png) | ![新建接口](docs/images/cn/api-add.png) |
+| ![数据生成](docs/images/cn/data-generator.png) | ![生成记录](docs/images/cn/data-generate-log.png) |
 | ![设置](docs/images/cn/setting.png) | |
 
 ## 功能特性
@@ -29,6 +31,10 @@
 - 🌐 **路径参数 / Query / Headers / Body** 完整支持（Body 支持 raw / JSON / XML / 表单 / 二进制文件）
 - 🧩 接口支持 `{参数名}` 路径模板、模板变量 `{{path.id}}`、`{{query.page}}`
 - 📥 **多格式导入**：支持 Postman Collection、OpenAPI (Swagger) 协议、Markdown 接口文档一键导入；Postman 集合级 `variable` 自动合并到环境变量集
+- 📦 **对象管理**：以分组 + 对象的方式管理数据结构；属性支持类型 / 引用对象 / Mock 值 / 描述配置；支持从 JSON 或 SQL 建表语句导入；一键生成多语言代码与 MySQL 建表语句
+- 🎲 **数据生成**：按对象属性批量生成测试数据（JSON / SQL / CSV），自定义表名、记录数与导出目录；生成记录展示耗时与文件大小，可一键重新生成
+- 🔌 **多协议接口**：新建接口支持 HTTP / WebSocket / Socket.IO / GraphQL 四种协议，一套工作区统一管理
+- ✏️ **批量添加编辑**：Query / Headers / Body（表单）页签支持 `key: value` 每行一条的批量编辑，保存后恢复表单（匹配行保留启用状态）
 
 ## 目录结构约定
 
