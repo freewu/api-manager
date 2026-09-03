@@ -434,6 +434,16 @@ export function deleteExample(uuid: string, file: string): Promise<void> {
   return invoke("delete_example", { uuid, file });
 }
 
+/** 重命名示例（改名后文件名（哈希）可能变化），返回新文件名 */
+export function renameExample(uuid: string, file: string, newName: string): Promise<string> {
+  return invoke<string>("rename_example", { uuid, file, newName });
+}
+
+/** 导出示例为 .http 文件（弹系统保存框），取消返回 null，成功返回保存路径 */
+export function exportExampleHttp(uuid: string, file: string): Promise<string | null> {
+  return invoke<string | null>("export_example_http", { uuid, file });
+}
+
 export function mockStart(port: number): Promise<MockStatus> {
   return invoke<MockStatus>("mock_start", { port });
 }

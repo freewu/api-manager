@@ -314,6 +314,44 @@
   color: #e5534b;
   background: rgba(229, 83, 75, 0.12);
 }
+/* 行操作小按钮：重命名 / 导出 .http */
+.examples-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: var(--radius);
+}
+.examples-icon:hover {
+  color: var(--accent);
+  background: rgba(61, 124, 240, 0.12);
+}
+/* 行内重命名输入框（替换名称文本） */
+.examples-rename-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--bg-input);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 3px 8px;
+  outline: none;
+}
+/* 导出成功提示（绿色） */
+.examples-notice {
+  background: rgba(46, 158, 91, 0.12);
+  border: 1px solid rgba(46, 158, 91, 0.35);
+  color: #2e9e5b;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  word-break: break-all;
+  user-select: text;
+}
 .examples-detail {
   border-top: 1px dashed var(--border);
   padding: 10px;

@@ -1,10 +1,10 @@
 //! 请求历史（.history 目录）与请求示例（.examples 目录）
 
-use crate::{unique_path, workspace_root, write_pretty, WorkspaceState};
+use crate::{sanitize_filename, unique_path, workspace_root, write_pretty, WorkspaceState};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use tauri::State;
+use tauri::{AppHandle, State};
 
 // ==================== 请求历史 ====================
 
@@ -491,6 +491,97 @@ pub(crate) fn delete_example(
     let root = workspace_root(&state)?;
     let p = example_path(&root, &uuid, &file)?;
     fs::remove_file(&p).map_err(|e| format!("删除示例失败: {e}"))
+}
+
+/// 重命名示例：更新 name 字段；新名称哈希不同时把文件改名
+pub(crate) fn rename_example_to(
+    root: &Path,
+    uuid: &str,
+    file: &str,
+    new_name: &str,
+) -> Result<String, String> {
+    let new_name = new_name.trim();
+    if new_name.is_empty() {
+        return Err("示例名称不能为空".into());
+    }
+    let mut f = read_example_file(root, uuid, file)?;
+    if f.name == new_name {
+        return Ok(file.to_string());
+    }
+    let new_file = format!("{}.json", example_name_hash(new_name));
+    // 防止覆盖：目标哈希文件已存在且不是当前文件 → 已存在同名示例
+    if new_file != file && example_path(root, uuid, &new_file)?.exists() {
+        return Err("已存在同名示例".into());
+    }
+    f.name = new_name.to_string();
+    write_pretty(&example_path(root, uuid, &new_file)?, &f)?;
+    if new_file != file {
+        fs::remove_file(example_path(root, uuid, file)?).map_err(|e| format!("删除原示例失败: {e}"))?;
+    }
+    Ok(new_file)
+}
+
+#[tauri::command]
+pub(crate) fn rename_example(
+    state: State<'_, WorkspaceState>,
+    uuid: String,
+    file: String,
+    new_name: String,
+) -> Result<String, String> {
+    let root = workspace_root(&state)?;
+    rename_example_to(&root, &uuid, &file, &new_name)
+}
+
+/// 把示例的请求部分转为 .http 文本（VS Code REST Client / JetBrains HTTP Client 兼容）
+fn example_to_http(f: &ExampleFile) -> String {
+    let mut out = String::new();
+    out.push_str(&format!("### {}\n", f.name));
+    out.push_str(&format!("{} {}\n", f.method, f.url));
+    for (k, v) in f.req_headers.iter() {
+        if !k.trim().is_empty() {
+            out.push_str(&format!("{}: {}\n", k, v));
+        }
+    }
+    if let Some(body) = f.req_body.as_deref() {
+        if !body.trim().is_empty() {
+            out.push('\n');
+            out.push_str(body.trim_end());
+            out.push('\n');
+        }
+    }
+    out
+}
+
+/// 导出示例为 .http 文件：弹系统保存框，默认文件名为「示例名.http」；取消返回 None
+#[tauri::command]
+pub(crate) fn export_example_http(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+    uuid: String,
+    file: String,
+) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let root = workspace_root(&state)?;
+    let f = read_example_file(&root, &uuid, &file)?;
+    let base = sanitize_filename(&f.name);
+    let default_name = if base.is_empty() {
+        "示例.http".to_string()
+    } else {
+        format!("{base}.http")
+    };
+    let picked = app
+        .dialog()
+        .file()
+        .set_title("导出示例为 .http 文件")
+        .set_file_name(&default_name)
+        .add_filter("HTTP", &["http"])
+        .blocking_save_file();
+    let Some(fp) = picked else {
+        return Ok(None);
+    };
+    let path = fp.into_path().map_err(|e| e.to_string())?;
+    fs::write(&path, example_to_http(&f)).map_err(|e| format!("写入失败: {e}"))?;
+    Ok(Some(path.to_string_lossy().to_string()))
 }
 
 // ==================== 对象管理命令 ====================

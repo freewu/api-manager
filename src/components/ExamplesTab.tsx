@@ -1,6 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiFile, ExampleFile, ExampleSummary } from "../types";
-import { deleteExample, listExamples, readExample } from "../commands";
+import {
+  deleteExample,
+  exportExampleHttp,
+  listExamples,
+  readExample,
+  renameExample,
+} from "../commands";
 import { highlightJson } from "./Response";
 import { useT } from "../i18n";
 
@@ -117,6 +123,63 @@ export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
     }
   };
 
+  // ---- 重命名示例：行首名称变为输入框，Enter/失焦提交，Esc 取消 ----
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  // 与 renaming 同步的 ref：避免 Enter 提交后紧随的 blur 重复提交
+  const renamingRef = useRef<string | null>(null);
+  const startRename = (sum: ExampleSummary) => {
+    renamingRef.current = sum.file;
+    setRenaming(sum.file);
+    setEditName(sum.name);
+  };
+  const cancelRename = () => {
+    renamingRef.current = null;
+    setRenaming(null);
+  };
+  const commitRename = async () => {
+    const file = renamingRef.current;
+    if (!file) return; // 已提交过 / 已取消
+    renamingRef.current = null;
+    setRenaming(null);
+    const name = editName.trim();
+    if (!name) {
+      setError(t("examples.nameEmpty"));
+      return;
+    }
+    try {
+      const newFile = await renameExample(uuid, file, name);
+      // 展开中的项改名后保持展开：按新文件名重新读取详情
+      if (expanded === file) {
+        try {
+          setDetail(await readExample(uuid, newFile));
+          setExpanded(newFile);
+        } catch {
+          setExpanded(null);
+          setDetail(null);
+        }
+      }
+      await load();
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
+  // ---- 导出为 .http 文件（仅 HTTP 接口；保存框取消时不提示） ----
+  const isHttp = api.protocol === "http";
+  const [exported, setExported] = useState<string | null>(null);
+  const exportHttp = async (sum: ExampleSummary) => {
+    try {
+      const saved = await exportExampleHttp(uuid, sum.file);
+      if (saved) {
+        setExported(saved);
+        window.setTimeout(() => setExported((p) => (p === saved ? null : p)), 6000);
+      }
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
   // 把示例的 Header / Path / Query / Body 应用到当前接口（URL 保持当前接口的占位符形式）
   const apply = (d: ExampleFile) => {
     const kv = (rows: [string, string][]) =>
@@ -152,6 +215,9 @@ export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
       </div>
 
       {error && <div className="error-banner">{error}</div>}
+      {exported && (
+        <div className="examples-notice">{t("examples.exportedTo", { path: exported })}</div>
+      )}
 
       {loading ? (
         <div className="examples-empty">{t("examples.loading")}</div>
@@ -165,10 +231,51 @@ export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
           {list.map((s) => (
             <div key={s.file} className={`examples-item ${expanded === s.file ? "open" : ""}`}>
               <div className="examples-item-head" onClick={() => void toggle(s)}>
-                <span className="examples-item-name" title={s.name}>
-                  {s.name}
-                </span>
+                {renaming === s.file ? (
+                  <input
+                    className="examples-rename-input"
+                    autoFocus
+                    value={editName}
+                    spellCheck={false}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === "Enter") void commitRename();
+                      else if (e.key === "Escape") cancelRename();
+                    }}
+                    onBlur={() => void commitRename()}
+                  />
+                ) : (
+                  <span className="examples-item-name" title={s.name}>
+                    {s.name}
+                  </span>
+                )}
                 <span className="examples-item-time">{fmtTime(s.time)}</span>
+                <button
+                  type="button"
+                  className="examples-icon"
+                  title={t("examples.rename")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startRename(s);
+                  }}
+                >
+                  ✎
+                </button>
+                {isHttp && (
+                  <button
+                    type="button"
+                    className="examples-icon"
+                    title={t("examples.exportHttp")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void exportHttp(s);
+                    }}
+                  >
+                    ⬇
+                  </button>
+                )}
                 <button
                   type="button"
                   className="examples-delete"
