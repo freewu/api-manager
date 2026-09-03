@@ -1589,11 +1589,6 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
               <span className="doc-key">{row.key}</span>
             )}
           </td>
-          <td>
-            <span className={`doc-value${row.keyEditable ? " doc-value-manual" : ""}`}>
-              {row.value || "—"}
-            </span>
-          </td>
           {opts.showType && (
             <td>
               <select
@@ -1676,14 +1671,15 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
   ) => (
     <div className="doc-block">
       <div className="doc-block-title">
+        <span className="doc-hr" />
         <span className={`doc-source ${badgeClass}`}>{title}</span>
-        {headerExtra}
+        <span className="doc-hr" />
+        {headerExtra && <div className="doc-block-extra">{headerExtra}</div>}
       </div>
       <table className="kv-table doc-params-table">
         <thead>
           <tr>
             <th>{T("editor.fieldName")}</th>
-            <th style={{ width: 130 }}>{T("common.value")}</th>
             {opts.showType && <th style={{ width: 108 }}>{T("kv.type")}</th>}
             {opts.showObjectName && <th style={{ width: 120 }}>{T("editor.objectName")}</th>}
             <th>{T("kv.desc")}</th>
@@ -1761,7 +1757,9 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
       {respBlocks.length > 0 && (
         <div className="doc-block doc-block-resp">
           <div className="doc-block-title">
+            <span className="doc-hr" />
             <span className="doc-source doc-source-resp">{T("editor.response")}</span>
+            <span className="doc-hr" />
           </div>
           {respBlocks.map(({ entry, nodes }) => {
             const source = respSource(entry.id);
@@ -1776,7 +1774,6 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
                   <thead>
                     <tr>
                       <th>{T("editor.fieldName")}</th>
-                      <th style={{ width: 130 }}>{T("common.value")}</th>
                       <th style={{ width: 108 }}>{T("kv.type")}</th>
                       <th style={{ width: 120 }}>{T("editor.objectName")}</th>
                       <th>{T("kv.desc")}</th>
@@ -1801,7 +1798,7 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
                       )
                     ) : (
                       <tr>
-                        <td colSpan={6} className="doc-empty">
+                        <td colSpan={4} className="doc-empty">
                           {T("editor.noRespFields")}
                         </td>
                       </tr>
