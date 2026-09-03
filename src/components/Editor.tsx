@@ -1671,7 +1671,6 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
   ) => (
     <div className="doc-block">
       <div className="doc-block-title">
-        <span className="doc-hr" />
         <span className={`doc-source ${badgeClass}`}>{title}</span>
         <span className="doc-hr" />
         {headerExtra && <div className="doc-block-extra">{headerExtra}</div>}
@@ -1757,7 +1756,6 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
       {respBlocks.length > 0 && (
         <div className="doc-block doc-block-resp">
           <div className="doc-block-title">
-            <span className="doc-hr" />
             <span className="doc-source doc-source-resp">{T("editor.response")}</span>
             <span className="doc-hr" />
           </div>
