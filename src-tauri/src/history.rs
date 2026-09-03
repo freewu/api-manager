@@ -552,20 +552,28 @@ fn example_to_http(f: &ExampleFile) -> String {
     out
 }
 
-/// 导出示例为 .http 文件：弹系统保存框，默认文件名为「示例名.http」；取消返回 None
+/// 把所有示例一次性导出为一个 .http 文件：弹系统保存框，默认文件名为「接口名.http」；取消返回 None
 #[tauri::command]
-pub(crate) fn export_example_http(
+pub(crate) fn export_examples_http(
     app: AppHandle,
     state: State<'_, WorkspaceState>,
     uuid: String,
-    file: String,
+    name: String,
 ) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
     let root = workspace_root(&state)?;
-    let f = read_example_file(&root, &uuid, &file)?;
-    let base = sanitize_filename(&f.name);
+    let mut out = String::new();
+    for sum in list_examples_from(&root, &uuid)? {
+        let ex = read_example_file(&root, &uuid, &sum.file)?;
+        out.push_str(&example_to_http(&ex));
+        out.push('\n');
+    }
+    if out.trim().is_empty() {
+        return Err("没有可导出的示例".into());
+    }
+    let base = sanitize_filename(&name);
     let default_name = if base.is_empty() {
-        "示例.http".to_string()
+        "请求示例.http".to_string()
     } else {
         format!("{base}.http")
     };
@@ -580,7 +588,7 @@ pub(crate) fn export_example_http(
         return Ok(None);
     };
     let path = fp.into_path().map_err(|e| e.to_string())?;
-    fs::write(&path, example_to_http(&f)).map_err(|e| format!("写入失败: {e}"))?;
+    fs::write(&path, out).map_err(|e| format!("写入失败: {e}"))?;
     Ok(Some(path.to_string_lossy().to_string()))
 }
 

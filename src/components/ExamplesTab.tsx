@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiFile, ExampleFile, ExampleSummary } from "../types";
 import {
   deleteExample,
-  exportExampleHttp,
+  exportExamplesHttp,
   listExamples,
   readExample,
   renameExample,
@@ -165,18 +165,22 @@ export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
     }
   };
 
-  // ---- 导出为 .http 文件（仅 HTTP 接口；保存框取消时不提示） ----
+  // ---- 一次性导出全部示例为一个 .http 文件（仅 HTTP 接口；保存框取消时不提示） ----
   const isHttp = api.protocol === "http";
   const [exported, setExported] = useState<string | null>(null);
-  const exportHttp = async (sum: ExampleSummary) => {
+  const [exporting, setExporting] = useState(false);
+  const exportAllHttp = async () => {
+    setExporting(true);
     try {
-      const saved = await exportExampleHttp(uuid, sum.file);
+      const saved = await exportExamplesHttp(uuid, api.name);
       if (saved) {
         setExported(saved);
         window.setTimeout(() => setExported((p) => (p === saved ? null : p)), 6000);
       }
     } catch (e) {
       setError(String(e));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -208,6 +212,17 @@ export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
         </span>
         <div className="examples-actions">
           <span className="examples-count">{list.length} {t("examples.count")}</span>
+          {isHttp && list.length > 0 && (
+            <button
+              type="button"
+              className="btn small"
+              title={t("examples.exportAllTip")}
+              onClick={() => void exportAllHttp()}
+              disabled={loading || exporting}
+            >
+              ⬇ {t("examples.exportAll")}
+            </button>
+          )}
           <button type="button" className="btn small" onClick={() => void load()} disabled={loading}>
             🔄 {t("common.refresh")}
           </button>
@@ -263,19 +278,6 @@ export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
                 >
                   ✎
                 </button>
-                {isHttp && (
-                  <button
-                    type="button"
-                    className="examples-icon"
-                    title={t("examples.exportHttp")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void exportHttp(s);
-                    }}
-                  >
-                    ⬇
-                  </button>
-                )}
                 <button
                   type="button"
                   className="examples-delete"

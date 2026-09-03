@@ -439,9 +439,9 @@ export function renameExample(uuid: string, file: string, newName: string): Prom
   return invoke<string>("rename_example", { uuid, file, newName });
 }
 
-/** 导出示例为 .http 文件（弹系统保存框），取消返回 null，成功返回保存路径 */
-export function exportExampleHttp(uuid: string, file: string): Promise<string | null> {
-  return invoke<string | null>("export_example_http", { uuid, file });
+/** 把该接口的所有示例一次性导出为一个 .http 文件（弹系统保存框），取消返回 null，成功返回保存路径 */
+export function exportExamplesHttp(uuid: string, name: string): Promise<string | null> {
+  return invoke<string | null>("export_examples_http", { uuid, name });
 }
 
 export function mockStart(port: number): Promise<MockStatus> {

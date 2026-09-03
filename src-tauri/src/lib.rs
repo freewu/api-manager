@@ -2137,7 +2137,7 @@ pub fn run() {
             crate::history::read_example,
             crate::history::delete_example,
             crate::history::rename_example,
-            crate::history::export_example_http,
+            crate::history::export_examples_http,
             crate::mock::mock_start,
             crate::mock::mock_stop,
             crate::mock::mock_status,
