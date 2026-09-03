@@ -213,6 +213,7 @@ pub(crate) fn import_markdown(
             mock_port: None,
             collapsed: None,
             deprecated: None,
+            selected_api: None,
             dirs: vec![],
             apis: vec![],
         },

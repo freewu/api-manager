@@ -303,6 +303,11 @@ export function setFolderCollapsed(path: string, collapsed: boolean): Promise<vo
   return invoke<void>("set_folder_collapsed", { path, collapsed });
 }
 
+/** 记录工作区最近一次选中的接口（写入根 __info.json 的 selectedApi，相对根目录路径；传 null/空清除） */
+export function setWorkspaceSelectedApi(rel: string | null): Promise<void> {
+  return invoke<void>("set_workspace_selected_api", { rel });
+}
+
 /** 标记 / 取消标记“已废弃”（接口或分组），返回新的废弃状态 */
 export function toggleDeprecated(path: string): Promise<boolean> {
   return invoke<boolean>("toggle_deprecated", { path });

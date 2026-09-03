@@ -158,6 +158,8 @@ export interface InfoJson {
   collapsed?: boolean;
   /** 分组是否已标记废弃 */
   deprecated?: boolean;
+  /** 最近一次选中的接口（相对工作区根目录的路径），重开工作区时默认选中 */
+  selectedApi?: string;
 }
 
 // ---- 全局环境变量 ----

@@ -126,6 +126,9 @@ pub struct InfoJson {
     /// 标记该分组是否已废弃
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deprecated: Option<bool>,
+    /// 最近一次选中的接口（相对工作区根目录的路径），重开工作区时默认选中它
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selected_api: Option<String>,
     /// 子分组顺序（目录名，按显示顺序；不在列表中的排末尾）
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dirs: Vec<String>,
@@ -1594,6 +1597,7 @@ fn create_folder(
         // 按设置「分组默认状态」设置新建分组开合状态（None = 前端按展开处理）
         collapsed,
         deprecated: None,
+        selected_api: None,
         dirs: vec![],
         apis: vec![],
     };
@@ -1955,6 +1959,23 @@ fn set_folder_collapsed(
     write_folder_collapsed(&p, collapsed)
 }
 
+/// 记录工作区最近一次选中的接口：写入根目录 __info.json 的 selectedApi
+/// （相对工作区根目录的路径），重开工作区时前端默认选中该接口；传空清除记录
+#[tauri::command]
+fn set_workspace_selected_api(
+    state: State<'_, WorkspaceState>,
+    rel: Option<String>,
+) -> Result<(), String> {
+    let root = workspace_root(&state)?;
+    let mut info = read_info_file(&root);
+    info.selected_api = if rel.as_deref().map(str::trim).unwrap_or("").is_empty() {
+        None
+    } else {
+        rel
+    };
+    write_pretty(&root.join(INFO_FILE), &info)
+}
+
 /// 标记 / 取消标记“已废弃”：接口写入其 JSON 文件的 deprecated 字段，
 /// 分组写入其目录下 __info.json 的 deprecated 字段。返回新的废弃状态。
 #[tauri::command]
@@ -2096,6 +2117,7 @@ pub fn run() {
             read_info,
             save_info,
             set_folder_collapsed,
+            set_workspace_selected_api,
             reorder_children,
             toggle_deprecated,
             read_envs,
