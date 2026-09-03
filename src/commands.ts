@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { migrateDocParamsToRows } from "./utils/docParams";
 import type {
   ApiFile,
   AppSettings,
@@ -218,7 +219,8 @@ export function readTree(): Promise<TreeNode> {
 }
 
 export function readApi(path: string): Promise<ApiFile> {
-  return invoke<ApiFile>("read_api", { path });
+  // 说明字段统一迁移：docParams 旧说明搬入 KeyValue.description（接口文档 tab 与请求页签共用一行内字段）
+  return invoke<ApiFile>("read_api", { path }).then(migrateDocParamsToRows);
 }
 
 export function saveApi(path: string, data: ApiFile): Promise<string> {

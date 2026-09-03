@@ -69,6 +69,9 @@ function prettyXml(src: string): string {
 
 type Tab = "params" | "path" | "headers" | "body" | "prescript" | "response" | "mock" | "desc" | "doc" | "code" | "examples";
 
+/** 文档页签 Path 变量可选类型（Path 仅支持基本标量类型） */
+const PATH_DOC_TYPES = ["String", "Integer", "Float"];
+
 /** 前置脚本常用代码片段（点击插入到编辑器末尾） */
 const PRESCRIPT_SNIPPETS: { key: string; code: string }[] = [
   {
@@ -617,6 +620,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               rows={api.query}
               onChange={(rows) => set({ query: rows })}
               keyPlaceholder={t("editor.paramName")}
+              showDescription
               allowBatch
             />
             <div className="section-title">
@@ -660,6 +664,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               rows={api.headers}
               onChange={(rows) => set({ headers: rows })}
               keyPlaceholder={t("editor.headerName")}
+              showDescription
               allowBatch
             />
           </div>
@@ -795,6 +800,7 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
                   onChange={(rows) => set({ body: { ...api.body, form: rows } })}
                   keyPlaceholder={t("editor.fieldName")}
                   valuePlaceholder={undefined}
+                  showDescription
                   showFileType
                   allowBatch
                 />
@@ -1152,8 +1158,10 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
 
 /** 接口文档：按 请求Header / Query / Path / Body / 响应 分块（没有值的块不渲染）；
  *  响应分为「请求成功」（从 Mock 响应体 JSON 推导）与「请求失败」（手动添加）两种情况；
- *  字段类型可选 String / Integer / Float / Boolean / List / Object，
- *  List 可再选元素类型，Object 可设置对象名称，下级字段用树状表单表示 */
+ *  说明字段与请求页签共用同一 KeyValue.description（旧 docParams 说明在读取时已迁移）；
+ *  Header 分块无类型列；Path 类型仅 String / Integer / Float；
+ *  字段类型可选 String / Integer / Float / Boolean / List / Object，Object 可绑定对象名，下级字段用树状表单表示；
+ *  Body 可整体绑定对象管理中的对象，按对象属性展开请求体字段（仅文档展示） */
 function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile; set: (p: Partial<ApiFile>) => void; objectsList?: ObjectDef[]; objectsStore?: ObjectStore }) {
   const T = useT();
   /** 正在选择对象名的文档行（source + keys 路径），null = 未打开 */
@@ -1169,12 +1177,102 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
     }
     return { groups, objects: objectsList };
   }, [objectsStore, objectsList]);
+  // 对象查找：按 hash / 名称（对象绑定与 Object 字段的引用展示用）
+  const objByHash = useMemo(() => new Map((objectsList || []).map((o) => [o.hash, o])), [objectsList]);
+  const objByName = useMemo(() => new Map((objectsList || []).map((o) => [o.name, o])), [objectsList]);
+  /** 对象属性 kind / itemKind → 文档字段类型（与 DOC_TYPES 对应） */
+  const kindToType = (k: string): string => {
+    const map: Record<string, string> = {
+      string: "String",
+      number: "Integer",
+      boolean: "Boolean",
+      datetime: "Datetime",
+      date: "Date",
+      time: "Time",
+      object: "Object",
+      list: "List",
+      any: "Any",
+    };
+    return map[k] || "Any";
+  };
+  /** 对象属性 → 树节点（Object / List(object) 属性展开引用对象的属性，seen 防止循环引用） */
+  const objToNodes = (o: ObjectDef, seen: Set<string>): RNode[] =>
+    (o.properties || []).map((p) => {
+      const mock = p.mock || "";
+      if (p.kind === "object") {
+        const ref = p.refHash ? objByHash.get(p.refHash) : undefined;
+        return {
+          key: p.key,
+          value: mock,
+          guess: "Object",
+          objName: ref?.name || "",
+          children:
+            ref && !seen.has(ref.hash) ? objToNodes(ref, new Set(seen).add(ref.hash)) : undefined,
+        };
+      }
+      if (p.kind === "list") {
+        let children: RNode[] | undefined;
+        if (p.itemKind === "object" && p.refHash) {
+          const ref = objByHash.get(p.refHash);
+          if (ref && !seen.has(ref.hash)) {
+            children = objToNodes(ref, new Set(seen).add(ref.hash));
+          }
+        }
+        return {
+          key: p.key,
+          value: mock,
+          guess: "List",
+          guessItem: kindToType(p.itemKind || "string"),
+          children,
+        };
+      }
+      return { key: p.key, value: mock, guess: kindToType(p.kind) };
+    });
+  /** 根据当前 Body 类型给出建议的 Content-Type（header 说明留空时自动提示） */
+  const contentTypeHint = (): string => {
+    if (api.protocol === "websocket" || api.protocol === "socketio") return "";
+    switch (api.body.mode) {
+      case "json":
+        return "application/json";
+      case "xml":
+        return "text/xml";
+      case "form": {
+        const hasFile = (api.body.form || []).some((f) => f.isFile);
+        return hasFile ? "multipart/form-data" : "application/x-www-form-urlencoded";
+      }
+      case "raw":
+        return "text/plain";
+      case "binary":
+        return "application/octet-stream";
+      default:
+        return "";
+    }
+  };
+  // 行内说明：header / query / path / body(form) 的来源行数组；body 在 json/对象绑定模式下返回 null
+  const rowsFor = (source: DocSource): KeyValue[] | null => {
+    if (source === "header") return api.headers || [];
+    if (source === "query") return api.query || [];
+    if (source === "path") return api.params || [];
+    if (source === "body" && api.body.mode === "form") return api.body.form || [];
+    return null;
+  };
+  /** 行的说明被修改时写回对应字段 */
+  const rowsPatch = (source: DocSource, rows: KeyValue[]): Partial<ApiFile> => {
+    if (source === "header") return { headers: rows };
+    if (source === "query") return { query: rows };
+    if (source === "path") return { params: rows };
+    return { body: { ...api.body, form: rows } };
+  };
   // ---- 树节点（由请求配置 / Mock 响应 JSON 推导） ----
   type RNode = {
     key: string;
     value: string;
     guess: string; // 推导类型
     guessItem?: string; // List 推导元素类型
+    /** 所属 KeyValue 行在源数组中的下标（header/query/path/body-form 的行内说明据此定位） */
+    rowIdx?: number;
+    /** Object 节点默认引用的对象名（来自对象定义的属性引用） */
+    objName?: string;
     children?: RNode[];
   };
 
@@ -1273,8 +1371,9 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
 
   const kvNodes = (rows: KeyValue[]): RNode[] =>
     rows
-      .filter((r) => r.key.trim())
-      .map((r) => ({ key: r.key, value: r.value, guess: guessFromText(r.value) }));
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) => r.key.trim())
+      .map(({ r, i }) => ({ key: r.key, value: r.value, guess: guessFromText(r.value), rowIdx: i }));
 
   // ---- docParams 定位（按 source + key 路径） ----
   const getDocAt = (source: DocSource, keys: string[]): DocParam | undefined => {
@@ -1311,6 +1410,28 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
     set({ docParams: next });
   };
 
+  // Body 文档绑定：docParams 中 source=body 且 key 为空的对象引用（仅文档展示用）
+  const bodyBinding = useMemo(
+    () => api.docParams.find((d) => d.source === "body" && d.key === ""),
+    [api.docParams]
+  );
+  const boundBodyObj = bodyBinding && bodyBinding.objectName ? objByName.get(bodyBinding.objectName) : undefined;
+  const bindBodyObject = (name: string) => {
+    const next = api.docParams.filter((d) => !(d.source === "body" && d.key === ""));
+    next.push({
+      source: "body",
+      key: "",
+      type: "Object",
+      description: "",
+      itemType: "",
+      objectName: name,
+      children: [],
+    });
+    set({ docParams: next });
+  };
+  const unbindBodyObject = () =>
+    set({ docParams: api.docParams.filter((d) => !(d.source === "body" && d.key === "")) });
+
   // ---- 分块推导（请求侧来自真实配置，响应侧来自 Mock 体 / 手动条目） ----
   type Block = { source: DocSource; title: string; nodes: RNode[] };
 
@@ -1323,7 +1444,12 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
     const pathNodes = kvNodes(api.params);
     if (pathNodes.length) out.push({ source: "path", title: "Path", nodes: pathNodes });
     let bodyNodes: RNode[] = [];
-    if (api.body.mode === "form") {
+    // Body 已绑定对象：按对象属性展开为请求体字段（仅文档展示）；否则按 form / json 推导
+    const bindEntry = api.docParams.find((d) => d.source === "body" && d.key === "");
+    const bindObj = bindEntry && bindEntry.objectName ? objByName.get(bindEntry.objectName) : undefined;
+    if (bindObj) {
+      bodyNodes = objToNodes(bindObj, new Set([bindObj.hash]));
+    } else if (api.body.mode === "form") {
       bodyNodes = kvNodes(api.body.form);
     } else if (api.body.mode === "json") {
       try {
@@ -1335,7 +1461,7 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
     if (bodyNodes.length) out.push({ source: "body", title: "Body", nodes: bodyNodes });
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api]);
+  }, [api, objByName]);
 
   // 响应页签条目 → 文档块：每个条目从示例体推导字段（docParams 按 resp:<id> 覆盖）
   const respBlocks = useMemo(
@@ -1359,6 +1485,7 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
     keys: string[];
     key: string;
     keyEditable: boolean;
+    rowIdx?: number;
     value: string;
     type: string;
     typeAuto: boolean;
@@ -1372,15 +1499,20 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
     const keys = [...parentKeys, node.key];
     const doc = getDocAt(source, keys);
     const storedType = doc ? normalizeType(doc.type) : "";
+    const kv = rowsFor(source);
+    // 行内说明（header/query/path/body-form）：取 KeyValue.description，旧 docParams 说明仅作回退展示
+    const rowDesc = node.rowIdx != null && kv && kv[node.rowIdx] ? kv[node.rowIdx].description : null;
     return {
       keys,
       key: node.key,
       keyEditable: false,
+      rowIdx: node.rowIdx,
       value: node.value,
       type: storedType || node.guess || "",
       typeAuto: !storedType,
-      objectName: doc?.objectName || node.key,
-      description: doc?.description || "",
+      objectName: doc?.objectName || node.objName || node.key,
+      description:
+        rowDesc !== null ? rowDesc || (doc ? doc.description || "" : "") : doc ? doc.description || "" : "",
       children: (node.children || []).map((c) => derivedView(c, source, keys)),
       removable: false,
     };
@@ -1407,13 +1539,40 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
     updateDocAt(source, keys, { type: v });
   const updateName = (source: DocSource, keys: string[], v: string) =>
     updateDocAt(source, keys, { objectName: v });
-  const updateDesc = (source: DocSource, keys: string[], v: string) =>
-    updateDocAt(source, keys, { description: v });
   const updateKey = (source: DocSource, keys: string[], v: string) =>
     updateDocAt(source, keys, { key: v });
+  /** 清除某键在 docParams 中遗留的旧说明（存在才清，避免凭空创建空条目） */
+  const clearDocDesc = (source: DocSource, keys: string[]) => {
+    if (!api.docParams.length) return;
+    let arr = api.docParams;
+    let cur: DocParam | undefined;
+    for (const k of keys) {
+      cur = arr.find((d) => d.source === source && d.key === k);
+      if (!cur) return;
+      arr = cur.children || [];
+    }
+    if (cur && cur.description) updateDocAt(source, keys, { description: "" });
+  };
+  const updateDesc = (source: DocSource, keys: string[], v: string, rowIdx?: number) => {
+    // 行内说明（header / query / path / body-form）：与请求页签编辑的是同一个 KeyValue.description 字段
+    const kv = rowsFor(source);
+    if (rowIdx != null && kv && kv[rowIdx]) {
+      const next = kv.map((x, i) => (i === rowIdx ? { ...x, description: v } : x));
+      set(rowsPatch(source, next));
+      clearDocDesc(source, keys);
+      return;
+    }
+    updateDocAt(source, keys, { description: v });
+  };
 
-  const renderRow = (row: RowView, depth: number, source: DocSource, showObjectName: boolean) => {
+  const renderRow = (row: RowView, depth: number, source: DocSource, opts: BlockOpts) => {
     const isObject = row.type === "Object";
+    // header 的 Content-Type 行：说明留空时按当前 Body 类型自动提示
+    const isContentType = source === "header" && row.key.trim().toLowerCase() === "content-type";
+    const typeOptions =
+      !row.typeAuto && row.type && !opts.typeOptions.includes(row.type)
+        ? [row.type, ...opts.typeOptions]
+        : opts.typeOptions;
     return (
       <Fragment key={row.keys.join("/")}>
         <tr>
@@ -1435,22 +1594,24 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
               {row.value || "—"}
             </span>
           </td>
-          <td>
-            <select
-              className={`doc-type-select${row.typeAuto ? " doc-type-auto" : ""}`}
-              value={row.type}
-              title={row.typeAuto ? T("editor.typeAutoHint") : T("kv.fileType")}
-              onChange={(e) => updateType(source, row.keys, e.target.value)}
-            >
-              <option value="">{T("editor.auto")}</option>
-              {DOC_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </td>
-          {showObjectName && (
+          {opts.showType && (
+            <td>
+              <select
+                className={`doc-type-select${row.typeAuto ? " doc-type-auto" : ""}`}
+                value={row.type}
+                title={row.typeAuto ? T("editor.typeAutoHint") : T("kv.fileType")}
+                onChange={(e) => updateType(source, row.keys, e.target.value)}
+              >
+                <option value="">{T("editor.auto")}</option>
+                {typeOptions.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </td>
+          )}
+          {opts.showObjectName && (
             <td>
               {isObject &&
                 (pickerStore && objectsList && objectsList.length > 0 ? (
@@ -1488,33 +1649,47 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
           <td>
             <input
               value={row.description}
-              placeholder={T("editor.fieldDesc")}
+              placeholder={
+                isContentType && contentTypeHint() ? contentTypeHint() : T("editor.fieldDesc")
+              }
+              title={isContentType ? T("editor.contentTypeHint") : undefined}
               spellCheck={false}
-              onChange={(e) => updateDesc(source, row.keys, e.target.value)}
+              onChange={(e) => updateDesc(source, row.keys, e.target.value, row.rowIdx)}
             />
           </td>
         </tr>
-        {row.children.map((c) => renderRow(c, depth + 1, source, showObjectName))}
+        {row.children.map((c) => renderRow(c, depth + 1, source, opts))}
       </Fragment>
     );
   };
 
-  const renderBlock = (title: string, badgeClass: string, rows: RowView[], source: DocSource, showObjectName: boolean) => (
+  /** 文档分块列配置：showType=false（header 不需要类型）、typeOptions 限定可选类型、showObjectName */
+  type BlockOpts = { showType: boolean; typeOptions: string[]; showObjectName: boolean };
+
+  const renderBlock = (
+    title: string,
+    badgeClass: string,
+    rows: RowView[],
+    source: DocSource,
+    opts: BlockOpts,
+    headerExtra?: React.ReactNode
+  ) => (
     <div className="doc-block">
       <div className="doc-block-title">
         <span className={`doc-source ${badgeClass}`}>{title}</span>
+        {headerExtra}
       </div>
       <table className="kv-table doc-params-table">
         <thead>
           <tr>
             <th>{T("editor.fieldName")}</th>
             <th style={{ width: 130 }}>{T("common.value")}</th>
-            <th style={{ width: 108 }}>{T("kv.type")}</th>
-            {showObjectName && <th style={{ width: 120 }}>{T("editor.objectName")}</th>}
+            {opts.showType && <th style={{ width: 108 }}>{T("kv.type")}</th>}
+            {opts.showObjectName && <th style={{ width: 120 }}>{T("editor.objectName")}</th>}
             <th>{T("kv.desc")}</th>
           </tr>
         </thead>
-        <tbody>{rows.map((r) => renderRow(r, 0, source, showObjectName))}</tbody>
+        <tbody>{rows.map((r) => renderRow(r, 0, source, opts))}</tbody>
       </table>
     </div>
   );
@@ -1542,15 +1717,47 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
       <div className="section-title">
         {T("tab.doc")} <span className="help">{T("editor.docBlockHint")}</span>
       </div>
-      {blocks.map((b) =>
-        renderBlock(
+      {blocks.map((b) => {
+        const isBody = b.source === "body";
+        return renderBlock(
           b.title,
           badgeFor(b.source),
           b.nodes.map((n) => derivedView(n, b.source, [])),
           b.source,
-          b.source === "body"
-        )
-      )}
+          {
+            showType: b.source !== "header",
+            typeOptions: b.source === "path" ? PATH_DOC_TYPES : DOC_TYPES,
+            showObjectName: isBody,
+          },
+          isBody ? (
+            <>
+              {boundBodyObj && (
+                <>
+                  <span className="doc-body-bound" title={T("editor.bodyBindHint")}>
+                    {T("editor.bindBodyObject")}: {boundBodyObj.displayName || boundBodyObj.name}
+                  </span>
+                  <button
+                    className="btn-sm"
+                    title={T("editor.clearObjectName")}
+                    onClick={unbindBodyObject}
+                  >
+                    ✕
+                  </button>
+                </>
+              )}
+              {pickerStore && objectsList && objectsList.length > 0 ? (
+                <button
+                  className="btn-sm"
+                  title={T("editor.bodyBindHint")}
+                  onClick={() => setObjPick({ source: "body", keys: [] })}
+                >
+                  {boundBodyObj ? T("editor.changeBodyObject") : T("editor.bindBodyObject")}
+                </button>
+              ) : null}
+            </>
+          ) : undefined
+        );
+      })}
       {respBlocks.length > 0 && (
         <div className="doc-block doc-block-resp">
           <div className="doc-block-title">
@@ -1577,9 +1784,21 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
                   </thead>
                   <tbody>
                     {nodes.length > 0 ? (
-                      nodes.map((n) => renderRow(derivedView(n, source, []), 0, source, true))
+                      nodes.map((n) =>
+                        renderRow(derivedView(n, source, []), 0, source, {
+                          showType: true,
+                          typeOptions: DOC_TYPES,
+                          showObjectName: true,
+                        })
+                      )
                     ) : docs.length > 0 ? (
-                      docs.map((d) => renderRow(manualView(d, source, []), 0, source, true))
+                      docs.map((d) =>
+                        renderRow(manualView(d, source, []), 0, source, {
+                          showType: true,
+                          typeOptions: DOC_TYPES,
+                          showObjectName: true,
+                        })
+                      )
                     ) : (
                       <tr>
                         <td colSpan={6} className="doc-empty">
@@ -1600,13 +1819,21 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
           excludeUuid=""
           currentHash={
             (() => {
+              if (objPick.keys.length === 0) {
+                // Body 分块绑定：按 docParams 中的空 key 根条目反查已绑定对象
+                const d = api.docParams.find((x) => x.source === objPick.source && x.key === "");
+                return (objectsList || []).find((o) => o.name === d?.objectName)?.hash || "";
+              }
               const target = getDocAt(objPick.source, objPick.keys);
               return (objectsList || []).find((o) => o.name === target?.objectName)?.hash || "";
             })()
           }
           onPick={(hash) => {
             const o = (objectsList || []).find((x) => x.hash === hash);
-            if (o) updateName(objPick.source, objPick.keys, o.name);
+            if (o) {
+              if (objPick.keys.length === 0 && objPick.source === "body") bindBodyObject(o.name);
+              else updateName(objPick.source, objPick.keys, o.name);
+            }
             setObjPick(null);
           }}
           onClose={() => setObjPick(null)}

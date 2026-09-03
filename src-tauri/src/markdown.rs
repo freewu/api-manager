@@ -142,10 +142,15 @@ fn doc_table(api: &ApiFile, source: &str, rows: &[&KeyValue]) -> String {
         .iter()
         .map(|r| {
             let d = doc_at(api, source, &[r.key.trim()]);
+            let desc = d
+                .as_ref()
+                .map(|d| d.description.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| r.description.trim().to_string());
             vec![
                 r.key.trim().to_string(),
                 d.as_ref().map(|d| d.r#type.trim().to_string()).unwrap_or_default(),
-                d.as_ref().map(|d| d.description.trim().to_string()).unwrap_or_default(),
+                desc,
             ]
         })
         .collect();
@@ -210,12 +215,20 @@ fn pretty_json(raw: &str) -> String {
     }
 }
 
-/// form 表单 → 示例 JSON（值优先取 docParams 说明，否则取表单值）
+/// form 表单 → 示例 JSON（值优先取 docParams 说明，否则取行内说明，再取表单值）
 fn form_sample_json(api: &ApiFile, rows: &[&KeyValue]) -> String {
     let mut root = serde_json::Map::new();
     for r in rows {
         let d = doc_at(api, "body", &[r.key.trim()]);
-        let desc = d.map(|d| d.description.trim().to_string()).unwrap_or_default();
+        let doc_desc = d.map(|d| d.description.trim().to_string()).unwrap_or_default();
+        let row_desc = r.description.trim().to_string();
+        let desc = if !doc_desc.is_empty() {
+            doc_desc
+        } else if !row_desc.is_empty() {
+            row_desc
+        } else {
+            String::new()
+        };
         let val = if !desc.is_empty() { desc } else { r.value.trim().to_string() };
         root.insert(r.key.trim().to_string(), Value::String(val));
     }
