@@ -148,9 +148,9 @@ pub struct CustomMock {
 /// mock.js 内置占位符名（自定义占位符不允许与这些冲突）
 const BUILTIN_MOCK_NAMES: &[&str] = &[
     "cname", "name", "first", "last", "email", "phone", "id", "guid", "integer", "float",
-    "natural", "boolean", "date", "time", "datetime", "now", "url", "domain", "ip",
-    "protocol", "city", "province", "county", "zip", "word", "title", "sentence",
-    "paragraph", "color", "image", "avatar", "string", "character",
+    "natural", "boolean", "date", "time", "datetime", "now", "url", "domain", "ip", "ipv4",
+    "ipv6", "mac", "plate", "bankcard", "isbn", "protocol", "city", "province", "county", "zip",
+    "word", "title", "sentence", "paragraph", "color", "image", "avatar", "string", "character",
 ];
 
 fn mock_dir(root: &Path) -> PathBuf {
@@ -785,6 +785,12 @@ const LAST_NAMES: &[&str] = &[
     "Lee", "Chen", "Wang", "Li", "Zhang", "Liu", "Yang", "Huang", "Zhao", "Wu",
 ];
 const PROTOCOLS: &[&str] = &["http", "https", "ws", "wss", "ftp"];
+/// 车牌省份汉字简称
+const PLATE_PROVS: &[&str] = &[
+    "京", "津", "沪", "渝", "冀", "豫", "云", "辽", "黑", "湘", "皖", "鲁", "新", "苏", "浙", "赣", "鄂", "桂", "甘", "晋", "蒙", "陕", "吉", "闽", "贵", "粤", "青", "藏", "川", "宁", "琼",
+];
+/// 发牌机关字母 / 号牌后五位可用字母（排除 I、O）
+const PLATE_LETTERS: &str = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 fn mock_date_str(t: Option<chrono::DateTime<chrono::Utc>>) -> String {
     let dt = t.unwrap_or_else(|| {
@@ -830,6 +836,103 @@ fn mock_id_card() -> String {
         mock_rand_range(0, 999)
     );
     format!("{}{}", base, mock_rand_range(0, 9))
+}
+
+/// 中国大陆车牌号：蓝牌（含 1 个字母的 5 位）或新能源绿牌（D/F + 5 位数字）
+fn mock_plate() -> String {
+    let prov = mock_pick(PLATE_PROVS);
+    let letter = || {
+        PLATE_LETTERS
+            .as_bytes()[mock_rand_range(0, PLATE_LETTERS.len() as i64 - 1) as usize]
+            as char
+    };
+    let digit = || mock_rand_range(0, 9);
+    let tail = || {
+        if mock_rnd() < 0.4 {
+            format!("{}{}{}{}{}", letter(), digit(), digit(), digit(), digit())
+        } else {
+            format!("{}{}{}{}{}", digit(), digit(), digit(), digit(), digit())
+        }
+    };
+    if mock_rnd() < 0.3 {
+        // 新能源绿牌：D（纯电）/ F（混动）+ 5 位数字
+        let c = if mock_rnd() < 0.5 { "D" } else { "F" };
+        format!("{}{}{}{}", prov, letter(), c, tail())
+    } else {
+        format!("{}{}{}", prov, letter(), tail())
+    }
+}
+
+/// Luhn 校验位：payload 为数字序列，返回使其合法的一位校验数字
+fn luhn_check_digit(payload: &[u8]) -> u8 {
+    let mut sum = 0u64;
+    let mut double = true;
+    for &d in payload.iter().rev() {
+        let mut v = u64::from(d) * if double { 2 } else { 1 };
+        double = !double;
+        if v > 9 {
+            v -= 9;
+        }
+        sum += v;
+    }
+    ((10 - (sum % 10)) % 10) as u8
+}
+
+/// 银行卡号（银联 62 开头，16/19 位，Luhn 校验位合法）
+fn mock_bankcard() -> String {
+    let len = if mock_rnd() < 0.5 { 16 } else { 19 };
+    let mut payload = vec![6u8, 2u8];
+    while payload.len() < len as usize - 1 {
+        payload.push(mock_rand_range(0, 9) as u8);
+    }
+    payload.push(luhn_check_digit(&payload));
+    payload.iter().map(|d| char::from(b'0' + d)).collect()
+}
+
+/// ISBN-13 书号（978/979 前缀，末位 EAN-13 校验）
+fn mock_isbn() -> String {
+    let mut digits: Vec<u8> = Vec::new();
+    if mock_rnd() < 0.5 {
+        digits.extend_from_slice(&[9, 7, 8]);
+    } else {
+        digits.extend_from_slice(&[9, 7, 9]);
+    }
+    while digits.len() < 12 {
+        digits.push(mock_rand_range(0, 9) as u8);
+    }
+    let sum: u64 = digits
+        .iter()
+        .enumerate()
+        .map(|(i, d)| u64::from(*d) * if i % 2 == 0 { 1 } else { 3 })
+        .sum();
+    digits.push(((10 - (sum % 10)) % 10) as u8);
+    digits.iter().map(|d| char::from(b'0' + d)).collect()
+}
+
+fn mock_ipv4() -> String {
+    format!(
+        "{}.{}.{}.{}",
+        mock_rand_range(1, 223),
+        mock_rand_range(0, 255),
+        mock_rand_range(0, 255),
+        mock_rand_range(1, 254)
+    )
+}
+
+fn mock_ipv6() -> String {
+    let mut groups: Vec<String> = Vec::with_capacity(8);
+    for _ in 0..8 {
+        groups.push(format!("{:04x}", mock_rand_range(0, 0xffff)));
+    }
+    groups.join(":")
+}
+
+fn mock_mac() -> String {
+    let mut groups: Vec<String> = Vec::with_capacity(6);
+    for _ in 0..6 {
+        groups.push(format!("{:02x}", mock_rand_range(0, 255)));
+    }
+    groups.join(":")
 }
 
 fn mock_cname() -> String {
@@ -894,13 +997,13 @@ fn builtin_mock_value(name: &str, args: &str) -> Option<String> {
             mock_rand_range(1, 999)
         ),
         "domain" => mock_pick(DOMAINS).to_string(),
-        "ip" => format!(
-            "{}.{}.{}.{}",
-            mock_rand_range(1, 223),
-            mock_rand_range(0, 255),
-            mock_rand_range(0, 255),
-            mock_rand_range(1, 254)
-        ),
+        "ip" => mock_ipv4(),
+        "ipv4" => mock_ipv4(),
+        "ipv6" => mock_ipv6(),
+        "mac" => mock_mac(),
+        "plate" => mock_plate(),
+        "bankcard" => mock_bankcard(),
+        "isbn" => mock_isbn(),
         "protocol" => mock_pick(PROTOCOLS).to_string(),
         "city" => mock_pick(CITIES).to_string(),
         "province" => mock_pick(PROVINCES).to_string(),

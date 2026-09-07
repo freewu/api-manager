@@ -10,9 +10,9 @@ import type { CustomMock } from "../types";
 /** mock.js 内置占位符名（不含 @；自定义占位符不允许与这些冲突） */
 export const BUILTIN_MOCK_NAMES = [
   "cname", "name", "first", "last", "email", "phone", "id", "guid", "integer", "float",
-  "natural", "boolean", "date", "time", "datetime", "now", "url", "domain", "ip",
-  "protocol", "city", "province", "county", "zip", "word", "title", "sentence",
-  "paragraph", "color", "image", "avatar", "string", "character",
+  "natural", "boolean", "date", "time", "datetime", "now", "url", "domain", "ip", "ipv4",
+  "ipv6", "mac", "plate", "bankcard", "isbn", "protocol", "city", "province", "county", "zip",
+  "word", "title", "sentence", "paragraph", "color", "image", "avatar", "string", "character",
 ];
 
 const randInt = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -28,6 +28,11 @@ const LAST_NAMES = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", 
 const WORDS = ["apple", "banana", "cloud", "data", "element", "field", "group", "house", "image", "jacket", "kernel", "light", "model", "node", "object", "pixel", "query", "river", "system", "table", "unit", "value", "window", "yield", "zone", "alpha", "beta", "delta", "gamma", "lambda"];
 const DOMAINS = ["example.com", "test.com", "mail.com", "demo.net", "sample.org", "api.com", "cloud.io", "data.cn"];
 const PROTOCOLS = ["http", "https", "ws", "wss", "ftp"];
+/** 车牌省份汉字简称 */
+const PLATE_PROVS =
+  "京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼".split("");
+/** 发牌机关字母 / 号牌后五位可用字母（排除 I、O） */
+const PLATE_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ".split("");
 
 let seq = 0;
 const nextId = () => `${Date.now().toString(36)}${(seq++ % 1296).toString(36)}${randInt(0, 35).toString(36)}`;
@@ -109,6 +114,59 @@ function timeStr(d?: Date): string {
 function datetimeStr(d?: Date): string {
   const t = d || new Date(randInt(Date.UTC(1970, 0, 1), Date.now()));
   return `${dateStr(t)} ${timeStr(t)}`;
+}
+
+/** 中国大陆车牌号：蓝牌（含 1 个字母的 5 位）或新能源绿牌（D/F + 5 位数字） */
+function plate(): string {
+  const prov = pick(PLATE_PROVS);
+  const city = pick(PLATE_LETTERS);
+  const digit = () => randInt(0, 9);
+  if (Math.random() < 0.3) {
+    const c = Math.random() < 0.5 ? "D" : "F";
+    return `${prov}${city}${c}${digit()}${digit()}${digit()}${digit()}${digit()}`;
+  }
+  if (Math.random() < 0.4) {
+    return `${prov}${city}${pick(PLATE_LETTERS)}${digit()}${digit()}${digit()}${digit()}`;
+  }
+  return `${prov}${city}${digit()}${digit()}${digit()}${digit()}${digit()}`;
+}
+
+/** 银行卡号（银联 62 开头，16/19 位，Luhn 校验位合法） */
+function bankcard(): string {
+  const len = Math.random() < 0.5 ? 16 : 19;
+  let payload = "62";
+  while (payload.length < len - 1) payload += randInt(0, 9);
+  return payload + luhnCheckDigit(payload);
+}
+function luhnCheckDigit(payload: string): number {
+  let sum = 0;
+  let double = true;
+  for (let i = payload.length - 1; i >= 0; i--) {
+    let v = Number(payload[i]) * (double ? 2 : 1);
+    double = !double;
+    if (v > 9) v -= 9;
+    sum += v;
+  }
+  return (10 - (sum % 10)) % 10;
+}
+
+/** ISBN-13 书号（978/979 前缀，末位 EAN-13 校验） */
+function isbn(): string {
+  let p = Math.random() < 0.5 ? "978" : "979";
+  while (p.length < 12) p += randInt(0, 9);
+  let sum = 0;
+  for (let i = 0; i < 12; i++) sum += Number(p[i]) * (i % 2 === 0 ? 1 : 3);
+  return p + ((10 - (sum % 10)) % 10);
+}
+
+function ipv4(): string {
+  return `${randInt(1, 223)}.${randInt(0, 255)}.${randInt(0, 255)}.${randInt(1, 254)}`;
+}
+function ipv6(): string {
+  return Array.from({ length: 8 }, () => randInt(0, 0xffff).toString(16).padStart(4, "0")).join(":");
+}
+function mac(): string {
+  return Array.from({ length: 6 }, () => randInt(0, 255).toString(16).padStart(2, "0")).join(":");
 }
 
 /** 按占位符生成单个值（template 为 mock 值，kind 用于空值回退；customs 为激活的自定义占位符） */
@@ -193,7 +251,18 @@ export function mockValue(template: string, kind: string, customs?: CustomMock[]
     case "domain":
       return pick(DOMAINS);
     case "ip":
-      return `${randInt(1, 223)}.${randInt(0, 255)}.${randInt(0, 255)}.${randInt(1, 254)}`;
+    case "ipv4":
+      return ipv4();
+    case "ipv6":
+      return ipv6();
+    case "mac":
+      return mac();
+    case "plate":
+      return plate();
+    case "bankcard":
+      return bankcard();
+    case "isbn":
+      return isbn();
     case "protocol":
       return pick(PROTOCOLS);
     case "city":

@@ -227,3 +227,49 @@ fn test_custom_mock_rendered_in_body() {
     assert_eq!(v["off"], "@off", "未启用占位符应原样保留");
     let _ = std::fs::remove_dir_all(&d);
 }
+
+#[test]
+fn test_new_builtin_mock_values() {
+    for _ in 0..300 {
+        // 车牌号：7 位（蓝牌）或 8 位（新能源）
+        let plate = builtin_mock_value("plate", "").unwrap();
+        let plate_chars = plate.chars().count();
+        assert!(
+            plate_chars == 7 || plate_chars == 8,
+            "plate 长度异常: {plate}"
+        );
+        assert!(
+            !plate.chars().next().unwrap().is_ascii(),
+            "plate 应以汉字开头: {plate}"
+        );
+
+        // 银行卡号：16/19 位且 Luhn 合法
+        let bc = builtin_mock_value("bankcard", "").unwrap();
+        assert!(bc.len() == 16 || bc.len() == 19, "bankcard 长度异常: {bc}");
+        let sum: u64 = bc
+            .chars()
+            .rev()
+            .enumerate()
+            .map(|(i, c)| {
+                let mut v = c.to_digit(10).unwrap() as u64 * if i % 2 == 1 { 2 } else { 1 };
+                if v > 9 {
+                    v -= 9;
+                }
+                v
+            })
+            .sum();
+        assert_eq!(sum % 10, 0, "bankcard Luhn 校验失败: {bc}");
+
+        // IPv4 / IPv6 / MAC
+        assert_eq!(builtin_mock_value("ipv4", "").unwrap().split('.').count(), 4);
+        assert_eq!(builtin_mock_value("ipv6", "").unwrap().split(':').count(), 8);
+        assert_eq!(builtin_mock_value("mac", "").unwrap().split(':').count(), 6);
+
+        // ISBN-13：978/979 开头、13 位
+        let isbn = builtin_mock_value("isbn", "").unwrap();
+        assert_eq!(isbn.len(), 13, "isbn 长度异常: {isbn}");
+        assert!(isbn.starts_with("978") || isbn.starts_with("979"), "isbn 前缀异常: {isbn}");
+    }
+    // @ip 与 @ipv4 等价（mock.js 兼容）
+    assert_eq!(builtin_mock_value("ip", "").unwrap().split('.').count(), 4);
+}
