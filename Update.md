@@ -1,5 +1,14 @@
 # API Manager 更新记录
 
+## v0.5.7
+
+### 🧪 Mock
+- 内置占位符新增：`@plate` 车牌号、`@bankcard` 银行卡号（Luhn 校验位合法）、`@ipv4`、`@ipv6`、`@mac` MAC 地址、`@isbn` ISBN-13 书号（EAN-13 校验位合法）；数据生成与 Mock 服务/页签测试共用
+- 占位符选择器（MockPicker）同步新增以上快捷项
+
+### 📋 接口文档
+- 分块分隔线的横线颜色改为与分块标题文字一致（Header / Path / Query / Body / 响应各随其色）
+
 ## v0.5.6
 
 ### 📋 接口文档
