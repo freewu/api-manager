@@ -149,7 +149,7 @@ pub struct CustomMock {
 const BUILTIN_MOCK_NAMES: &[&str] = &[
     "cname", "name", "first", "last", "email", "phone", "id", "guid", "integer", "float",
     "natural", "boolean", "date", "time", "datetime", "now", "url", "domain", "ip", "ipv4",
-    "ipv6", "mac", "plate", "bankcard", "isbn", "protocol", "city", "province", "county", "zip",
+    "ipv6", "mac", "plate", "bankcard", "isbn", "ua", "protocol", "city", "province", "county", "zip",
     "word", "title", "sentence", "paragraph", "color", "image", "avatar", "string", "character",
 ];
 
@@ -791,6 +791,22 @@ const PLATE_PROVS: &[&str] = &[
 ];
 /// 发牌机关字母 / 号牌后五位可用字母（排除 I、O）
 const PLATE_LETTERS: &str = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+/// UserAgent 样例池（桌面/移动主流浏览器 + 常见客户端）
+const UA_LIST: &[&str] = &[
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:133.0) Gecko/20100101 Firefox/133.0",
+    "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36",
+    "curl/8.6.0",
+    "PostmanRuntime/7.36.0",
+    "Go-http-client/2.0",
+    "Apache-HttpClient/4.5.14 (Java/17.0.9)",
+];
 
 fn mock_date_str(t: Option<chrono::DateTime<chrono::Utc>>) -> String {
     let dt = t.unwrap_or_else(|| {
@@ -935,6 +951,10 @@ fn mock_mac() -> String {
     groups.join(":")
 }
 
+fn mock_user_agent() -> String {
+    mock_pick(UA_LIST).to_string()
+}
+
 fn mock_cname() -> String {
     let sur = mock_pick(SURNAMES);
     let given = if mock_rnd() < 0.5 {
@@ -1004,6 +1024,7 @@ fn builtin_mock_value(name: &str, args: &str) -> Option<String> {
         "plate" => mock_plate(),
         "bankcard" => mock_bankcard(),
         "isbn" => mock_isbn(),
+        "ua" => mock_user_agent(),
         "protocol" => mock_pick(PROTOCOLS).to_string(),
         "city" => mock_pick(CITIES).to_string(),
         "province" => mock_pick(PROVINCES).to_string(),

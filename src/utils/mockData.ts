@@ -11,7 +11,7 @@ import type { CustomMock } from "../types";
 export const BUILTIN_MOCK_NAMES = [
   "cname", "name", "first", "last", "email", "phone", "id", "guid", "integer", "float",
   "natural", "boolean", "date", "time", "datetime", "now", "url", "domain", "ip", "ipv4",
-  "ipv6", "mac", "plate", "bankcard", "isbn", "protocol", "city", "province", "county", "zip",
+  "ipv6", "mac", "plate", "bankcard", "isbn", "ua", "protocol", "city", "province", "county", "zip",
   "word", "title", "sentence", "paragraph", "color", "image", "avatar", "string", "character",
 ];
 
@@ -33,6 +33,22 @@ const PLATE_PROVS =
   "京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼".split("");
 /** 发牌机关字母 / 号牌后五位可用字母（排除 I、O） */
 const PLATE_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ".split("");
+/** UserAgent 样例池（桌面/移动主流浏览器 + 常见客户端） */
+const UA_LIST = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:133.0) Gecko/20100101 Firefox/133.0",
+  "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36",
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+  "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36",
+  "curl/8.6.0",
+  "PostmanRuntime/7.36.0",
+  "Go-http-client/2.0",
+  "Apache-HttpClient/4.5.14 (Java/17.0.9)",
+];
 
 let seq = 0;
 const nextId = () => `${Date.now().toString(36)}${(seq++ % 1296).toString(36)}${randInt(0, 35).toString(36)}`;
@@ -162,6 +178,9 @@ function isbn(): string {
 function ipv4(): string {
   return `${randInt(1, 223)}.${randInt(0, 255)}.${randInt(0, 255)}.${randInt(1, 254)}`;
 }
+function userAgent(): string {
+  return pick(UA_LIST);
+}
 function ipv6(): string {
   return Array.from({ length: 8 }, () => randInt(0, 0xffff).toString(16).padStart(4, "0")).join(":");
 }
@@ -263,6 +282,8 @@ export function mockValue(template: string, kind: string, customs?: CustomMock[]
       return bankcard();
     case "isbn":
       return isbn();
+    case "ua":
+      return userAgent();
     case "protocol":
       return pick(PROTOCOLS);
     case "city":

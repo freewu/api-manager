@@ -33,6 +33,7 @@ export const MOCK_PLACEHOLDER_GROUPS: {
       { value: "@mac", desc: "MAC 地址" },
       { value: "@protocol", desc: "协议" },
       { value: "@image", desc: "图片 URL" },
+      { value: "@ua", desc: "UserAgent（浏览器/客户端标识）" },
     ],
   },
   {

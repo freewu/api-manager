@@ -273,3 +273,18 @@ fn test_new_builtin_mock_values() {
     // @ip 与 @ipv4 等价（mock.js 兼容）
     assert_eq!(builtin_mock_value("ip", "").unwrap().split('.').count(), 4);
 }
+
+#[test]
+fn test_user_agent_builtin() {
+    let prefixes = [
+        "Mozilla/", "curl/", "PostmanRuntime/", "Go-http-client/", "Apache-HttpClient/",
+    ];
+    for _ in 0..100 {
+        let ua = builtin_mock_value("ua", "").unwrap();
+        assert!(!ua.is_empty(), "ua 不应为空");
+        assert!(
+            prefixes.iter().any(|p| ua.starts_with(p)),
+            "ua 前缀异常: {ua}"
+        );
+    }
+}
