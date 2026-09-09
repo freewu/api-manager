@@ -317,7 +317,7 @@ pub(crate) fn create_demo(
         let dav_desc = "WebDAV 文件夹操作演示，配合测试服务 tests/webdav-server.py 使用。\n\n【启动测试服务】\n1. 无需安装第三方依赖（纯 Python 标准库）\n2. 启动服务：python tests/webdav-server.py\n   - 默认监听 http://127.0.0.1:8081\n   - 自定义端口：python tests/webdav-server.py 9999\n\n【接口说明】\n- WebDAV 接口与 HTTP 编辑体验一致，方法下拉框额外提供 PROPFIND / PROPPATCH / MKCOL / COPY / MOVE / LOCK / UNLOCK / REPORT\n- 不支持 Mock\n\n【测试步骤】\n1. 点击「发送」执行下方方法\n2. 服务端返回对应响应（PROPFIND 返回 multistatus XML 等）";
         let mut dav_propfind = api_file("目录属性 PROPFIND", "PROPFIND", "/dav", dav_desc);
         dav_propfind["protocol"] = serde_json::json!("webdav");
-        dav_propfind["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_propfind["url"] = serde_json::json!("http://127.0.0.1:8081/dav");
         dav_propfind["headers"] = serde_json::json!([
             { "key": "Depth", "value": "1", "enabled": true, "description": "1 = 仅当前集合及其直接子资源" },
             { "key": "Content-Type", "value": "application/xml; charset=utf-8", "enabled": true, "description": "" },
@@ -330,7 +330,7 @@ pub(crate) fn create_demo(
 
         let mut dav_mkcol = api_file("创建集合 MKCOL", "MKCOL", "/dav/demo-dir", "在服务器上创建一个新集合（目录）。\n\n【测试步骤】\n1. 启动 tests/webdav-server.py（默认 http://127.0.0.1:8081）\n2. 点击「发送」，服务器返回 201 Created，随后可用 PROPFIND 看到 demo-dir");
         dav_mkcol["protocol"] = serde_json::json!("webdav");
-        dav_mkcol["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_mkcol["url"] = serde_json::json!("http://127.0.0.1:8081/dav/demo-dir");
         dav_mkcol["responses"] = serde_json::json!([
             { "id": format!("dav-mkcol-{}", uuid::Uuid::new_v4()), "name": "创建成功", "status": 201, "content_type": "text/plain", "body": "Created" }
         ]);
@@ -338,7 +338,7 @@ pub(crate) fn create_demo(
 
         let mut dav_put = api_file("上传文件 PUT", "PUT", "/dav/hello.txt", "将文本内容作为文件上传到集合 /dav/hello.txt。\n\n【测试步骤】\n1. 启动 tests/webdav-server.py（默认 http://127.0.0.1:8081）\n2. 点击「发送」，服务器返回 201 Created，随后可用 GET 下载验证");
         dav_put["protocol"] = serde_json::json!("webdav");
-        dav_put["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_put["url"] = serde_json::json!("http://127.0.0.1:8081/dav/hello.txt");
         dav_put["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "text/plain", "enabled": true, "description": "" }]);
         dav_put["body"] = serde_json::json!({ "mode": "raw", "raw": "hello webdav\n", "form": [] });
         dav_put["responses"] = serde_json::json!([
@@ -348,7 +348,7 @@ pub(crate) fn create_demo(
 
         let mut dav_copy = api_file("复制资源 COPY", "COPY", "/dav/hello.txt", "将 /dav/hello.txt 复制到 /dav/hello-copy.txt（通过 Destination 请求头指定目标）。\n\n【测试步骤】\n1. 先上传 hello.txt（PUT 示例）\n2. 点击「发送」，服务器返回 201 Created，/dav 下出现 hello-copy.txt");
         dav_copy["protocol"] = serde_json::json!("webdav");
-        dav_copy["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_copy["url"] = serde_json::json!("http://127.0.0.1:8081/dav/hello.txt");
         dav_copy["headers"] = serde_json::json!([
             { "key": "Destination", "value": "http://127.0.0.1:8081/dav/hello-copy.txt", "enabled": true, "description": "复制目标地址" },
             { "key": "Overwrite", "value": "T", "enabled": true, "description": "T = 允许覆盖" },
@@ -360,7 +360,7 @@ pub(crate) fn create_demo(
 
         let mut dav_proppatch = api_file("修改属性 PROPPATCH", "PROPPATCH", "/dav/hello.txt", "修改文件的扩展属性（dead properties）。\n\n【测试步骤】\n1. 先上传 hello.txt（PUT 示例）\n2. 点击「发送」，body 通过 <set> 写入 z:category = code-review\n3. 服务器返回 207 multistatus，属性设置成功");
         dav_proppatch["protocol"] = serde_json::json!("webdav");
-        dav_proppatch["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_proppatch["url"] = serde_json::json!("http://127.0.0.1:8081/dav/hello.txt");
         dav_proppatch["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "application/xml; charset=utf-8", "enabled": true, "description": "" }]);
         dav_proppatch["body"] = serde_json::json!({ "mode": "xml", "raw": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<d:propertyupdate xmlns:d=\"DAV:\" xmlns:z=\"urn:z\">\n  <d:set>\n    <d:prop>\n      <z:category>code-review</z:category>\n    </d:prop>\n  </d:set>\n</d:propertyupdate>", "form": [] });
         dav_proppatch["responses"] = serde_json::json!([
@@ -370,7 +370,7 @@ pub(crate) fn create_demo(
 
         let mut dav_move = api_file("移动资源 MOVE", "MOVE", "/dav/hello.txt", "将 /dav/hello.txt 移动到 /dav/hello-moved.txt（Destination 请求头指定新位置，Overwrite 决定是否允许覆盖）。\n\n【测试步骤】\n1. 先上传 hello.txt（PUT 示例）\n2. 点击「发送」，服务器返回 204 No Content，原路径不再存在");
         dav_move["protocol"] = serde_json::json!("webdav");
-        dav_move["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_move["url"] = serde_json::json!("http://127.0.0.1:8081/dav/hello.txt");
         dav_move["headers"] = serde_json::json!([
             { "key": "Destination", "value": "http://127.0.0.1:8081/dav/hello-moved.txt", "enabled": true, "description": "移动目标地址" },
             { "key": "Overwrite", "value": "T", "enabled": true, "description": "T = 允许覆盖" },
@@ -382,7 +382,7 @@ pub(crate) fn create_demo(
 
         let mut dav_lock = api_file("加锁 LOCK", "LOCK", "/dav/hello.txt", "对资源加排它写锁，防止其他客户端同时修改。\n\n【测试步骤】\n1. 先上传 hello.txt（PUT 示例）\n2. 点击「发送」，服务器返回 200 及 lockdiscovery 内容\n3. 请把响应头 Lock-Token（形如 <opaquelocktoken:xxxx>）复制到下面的 UNLOCK 示例中使用");
         dav_lock["protocol"] = serde_json::json!("webdav");
-        dav_lock["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_lock["url"] = serde_json::json!("http://127.0.0.1:8081/dav/hello.txt");
         dav_lock["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "application/xml; charset=utf-8", "enabled": true, "description": "" }]);
         dav_lock["body"] = serde_json::json!({ "mode": "xml", "raw": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<d:lockinfo xmlns:d=\"DAV:\">\n  <d:lockscope><d:exclusive/></d:lockscope>\n  <d:locktype><d:write/></d:locktype>\n  <d:owner><d:href>api-manager-demo</d:href></d:owner>\n</d:lockinfo>", "form": [] });
         dav_lock["responses"] = serde_json::json!([
@@ -392,7 +392,7 @@ pub(crate) fn create_demo(
 
         let mut dav_unlock = api_file("解锁 UNLOCK", "UNLOCK", "/dav/hello.txt", "释放资源的写锁。\n\n【测试步骤】\n1. 先用 LOCK 示例加锁\n2. 把响应头返回的 Lock-Token（含 <> 尖括号）填到下方请求头的 Lock-Token 值中\n3. 点击「发送」，服务器返回 204 No Content");
         dav_unlock["protocol"] = serde_json::json!("webdav");
-        dav_unlock["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_unlock["url"] = serde_json::json!("http://127.0.0.1:8081/dav/hello.txt");
         dav_unlock["headers"] = serde_json::json!([{ "key": "Lock-Token", "value": "<opaquelocktoken:demo-lock-1>", "enabled": true, "description": "LOCK 响应返回的令牌，示例值仅占位" }]);
         dav_unlock["responses"] = serde_json::json!([
             { "id": format!("dav-unlock-{}", uuid::Uuid::new_v4()), "name": "已解锁", "status": 204, "content_type": "text/plain", "body": "" }
@@ -401,7 +401,7 @@ pub(crate) fn create_demo(
 
         let mut dav_report = api_file("查询属性 REPORT", "REPORT", "/dav/hello.txt", "按 RFC 3253 的扩展属性查询；本测试服务简化为与 PROPFIND（Depth 0）等价。\n\n【测试步骤】\n1. 先上传 hello.txt（PUT 示例）\n2. 点击「发送」，返回 207 multistatus 属性列表");
         dav_report["protocol"] = serde_json::json!("webdav");
-        dav_report["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_report["url"] = serde_json::json!("http://127.0.0.1:8081/dav/hello.txt");
         dav_report["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "application/xml; charset=utf-8", "enabled": true, "description": "" }]);
         dav_report["body"] = serde_json::json!({ "mode": "xml", "raw": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<d:expand-property xmlns:d=\"DAV:\">\n  <d:property name=\"displayname\"/>\n  <d:property name=\"resourcetype\"/>\n  <d:property name=\"getcontentlength\"/>\n</d:expand-property>", "form": [] });
         dav_report["responses"] = serde_json::json!([
