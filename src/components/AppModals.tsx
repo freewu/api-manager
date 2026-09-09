@@ -20,7 +20,7 @@ import iconHttp from "../assets/icon-http.png";
 import iconWs from "../assets/icon-websocket.png";
 import iconSocketIo from "../assets/icon-socketio.png";
 import iconGql from "../assets/icon-graphql.png";
-import iconWebdav from "../assets/icon-webdav.png";
+import iconWebdav from "../../asserts/icon/WebDAV.png";
 
 // 弹窗组件按需懒加载：仅在对应弹窗打开时才下载对应 chunk
 const MarkdownModal = lazy(() => import("./MarkdownModal").then((m) => ({ default: m.MarkdownModal })));
@@ -423,6 +423,7 @@ export function AppModals({
       )}
       {modal?.type === "demo" && (
         <Modal
+          className="modal-demo"
           title={t("modal.demoTitle")}
           onClose={() => onCloseDemoModal([])}
           footer={

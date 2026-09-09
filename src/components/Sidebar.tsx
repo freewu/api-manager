@@ -12,7 +12,7 @@ import iconHttp from "../assets/icon-http.png";
 import iconWs from "../assets/icon-websocket.png";
 import iconGql from "../assets/icon-graphql.png";
 import iconSocketIo from "../assets/icon-socketio.png";
-import iconWebdav from "../assets/icon-webdav.png";
+import iconWebdav from "../../asserts/icon/WebDAV.png";
 
 export type AppView = "api" | "history" | "objects" | "genlogs";
 

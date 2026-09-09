@@ -758,6 +758,10 @@
   gap: 10px;
 }
 /* 演示案例弹窗：类型多选（图标行） */
+.modal-demo {
+  width: 660px;
+  max-width: 94vw;
+}
 .demo-types-title {
   margin-top: 14px;
   font-size: 12px;

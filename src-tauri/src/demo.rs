@@ -357,6 +357,57 @@ pub(crate) fn create_demo(
             { "id": format!("dav-copy-{}", uuid::Uuid::new_v4()), "name": "复制成功", "status": 201, "content_type": "text/plain", "body": "Created" }
         ]);
         write("WebDAV", "复制资源 COPY.json", &dav_copy)?;
+
+        let mut dav_proppatch = api_file("修改属性 PROPPATCH", "PROPPATCH", "/dav/hello.txt", "修改文件的扩展属性（dead properties）。\n\n【测试步骤】\n1. 先上传 hello.txt（PUT 示例）\n2. 点击「发送」，body 通过 <set> 写入 z:category = code-review\n3. 服务器返回 207 multistatus，属性设置成功");
+        dav_proppatch["protocol"] = serde_json::json!("webdav");
+        dav_proppatch["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_proppatch["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "application/xml; charset=utf-8", "enabled": true, "description": "" }]);
+        dav_proppatch["body"] = serde_json::json!({ "mode": "xml", "raw": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<d:propertyupdate xmlns:d=\"DAV:\" xmlns:z=\"urn:z\">\n  <d:set>\n    <d:prop>\n      <z:category>code-review</z:category>\n    </d:prop>\n  </d:set>\n</d:propertyupdate>", "form": [] });
+        dav_proppatch["responses"] = serde_json::json!([
+            { "id": format!("dav-proppatch-{}", uuid::Uuid::new_v4()), "name": "属性已设置", "status": 207, "content_type": "application/xml", "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<d:multistatus xmlns:d=\"DAV:\">\n  <d:response>\n    <d:href>/dav/hello.txt</d:href>\n    <d:propstat>\n      <d:prop><d:category/></d:prop>\n      <d:status>HTTP/1.1 200 OK</d:status>\n    </d:propstat>\n  </d:response>\n</d:multistatus>" }
+        ]);
+        write("WebDAV", "修改属性 PROPPATCH.json", &dav_proppatch)?;
+
+        let mut dav_move = api_file("移动资源 MOVE", "MOVE", "/dav/hello.txt", "将 /dav/hello.txt 移动到 /dav/hello-moved.txt（Destination 请求头指定新位置，Overwrite 决定是否允许覆盖）。\n\n【测试步骤】\n1. 先上传 hello.txt（PUT 示例）\n2. 点击「发送」，服务器返回 204 No Content，原路径不再存在");
+        dav_move["protocol"] = serde_json::json!("webdav");
+        dav_move["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_move["headers"] = serde_json::json!([
+            { "key": "Destination", "value": "http://127.0.0.1:8081/dav/hello-moved.txt", "enabled": true, "description": "移动目标地址" },
+            { "key": "Overwrite", "value": "T", "enabled": true, "description": "T = 允许覆盖" },
+        ]);
+        dav_move["responses"] = serde_json::json!([
+            { "id": format!("dav-move-{}", uuid::Uuid::new_v4()), "name": "移动成功", "status": 204, "content_type": "text/plain", "body": "" }
+        ]);
+        write("WebDAV", "移动资源 MOVE.json", &dav_move)?;
+
+        let mut dav_lock = api_file("加锁 LOCK", "LOCK", "/dav/hello.txt", "对资源加排它写锁，防止其他客户端同时修改。\n\n【测试步骤】\n1. 先上传 hello.txt（PUT 示例）\n2. 点击「发送」，服务器返回 200 及 lockdiscovery 内容\n3. 请把响应头 Lock-Token（形如 <opaquelocktoken:xxxx>）复制到下面的 UNLOCK 示例中使用");
+        dav_lock["protocol"] = serde_json::json!("webdav");
+        dav_lock["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_lock["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "application/xml; charset=utf-8", "enabled": true, "description": "" }]);
+        dav_lock["body"] = serde_json::json!({ "mode": "xml", "raw": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<d:lockinfo xmlns:d=\"DAV:\">\n  <d:lockscope><d:exclusive/></d:lockscope>\n  <d:locktype><d:write/></d:locktype>\n  <d:owner><d:href>api-manager-demo</d:href></d:owner>\n</d:lockinfo>", "form": [] });
+        dav_lock["responses"] = serde_json::json!([
+            { "id": format!("dav-lock-{}", uuid::Uuid::new_v4()), "name": "已加锁", "status": 200, "content_type": "application/xml", "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<d:prop xmlns:d=\"DAV:\"><d:lockdiscovery>\n  <d:activelock>\n    <d:locktype><d:write/></d:locktype>\n    <d:lockscope><d:exclusive/></d:lockscope>\n    <d:depth>infinity</d:depth>\n    <d:owner><d:href>api-manager-demo</d:href></d:owner>\n    <d:timeout>Second-3600</d:timeout>\n    <d:locktoken><d:href>opaquelocktoken:demo-lock-1</d:href></d:locktoken>\n  </d:activelock>\n</d:lockdiscovery></d:prop>" }
+        ]);
+        write("WebDAV", "加锁 LOCK.json", &dav_lock)?;
+
+        let mut dav_unlock = api_file("解锁 UNLOCK", "UNLOCK", "/dav/hello.txt", "释放资源的写锁。\n\n【测试步骤】\n1. 先用 LOCK 示例加锁\n2. 把响应头返回的 Lock-Token（含 <> 尖括号）填到下方请求头的 Lock-Token 值中\n3. 点击「发送」，服务器返回 204 No Content");
+        dav_unlock["protocol"] = serde_json::json!("webdav");
+        dav_unlock["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_unlock["headers"] = serde_json::json!([{ "key": "Lock-Token", "value": "<opaquelocktoken:demo-lock-1>", "enabled": true, "description": "LOCK 响应返回的令牌，示例值仅占位" }]);
+        dav_unlock["responses"] = serde_json::json!([
+            { "id": format!("dav-unlock-{}", uuid::Uuid::new_v4()), "name": "已解锁", "status": 204, "content_type": "text/plain", "body": "" }
+        ]);
+        write("WebDAV", "解锁 UNLOCK.json", &dav_unlock)?;
+
+        let mut dav_report = api_file("查询属性 REPORT", "REPORT", "/dav/hello.txt", "按 RFC 3253 的扩展属性查询；本测试服务简化为与 PROPFIND（Depth 0）等价。\n\n【测试步骤】\n1. 先上传 hello.txt（PUT 示例）\n2. 点击「发送」，返回 207 multistatus 属性列表");
+        dav_report["protocol"] = serde_json::json!("webdav");
+        dav_report["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_report["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "application/xml; charset=utf-8", "enabled": true, "description": "" }]);
+        dav_report["body"] = serde_json::json!({ "mode": "xml", "raw": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<d:expand-property xmlns:d=\"DAV:\">\n  <d:property name=\"displayname\"/>\n  <d:property name=\"resourcetype\"/>\n  <d:property name=\"getcontentlength\"/>\n</d:expand-property>", "form": [] });
+        dav_report["responses"] = serde_json::json!([
+            { "id": format!("dav-report-{}", uuid::Uuid::new_v4()), "name": "属性列表", "status": 207, "content_type": "application/xml", "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<d:multistatus xmlns:d=\"DAV:\">\n  <d:response>\n    <d:href>/dav/hello.txt</d:href>\n    <d:propstat>\n      <d:prop>\n        <d:displayname>hello.txt</d:displayname>\n        <d:resourcetype/>\n        <d:getcontentlength>12</d:getcontentlength>\n      </d:prop>\n      <d:status>HTTP/1.1 200 OK</d:status>\n    </d:propstat>\n  </d:response>\n</d:multistatus>" }
+        ]);
+        write("WebDAV", "查询属性 REPORT.json", &dav_report)?;
     }
 
     if has("object") {
