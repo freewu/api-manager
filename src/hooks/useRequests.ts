@@ -308,7 +308,7 @@ export function useRequests(opts: {
       }
       // 发送前执行前置脚本（仅 HTTP）：脚本 global.set 的变量覆盖环境变量，
       // 使 {{变量名}} 绑定（url / query / body / headers）使用脚本计算后的最新值
-      if (api.protocol === "http" && (api.prescript ?? "").trim()) {
+      if ((api.protocol === "http" || api.protocol === "webdav") && (api.prescript ?? "").trim()) {
         try {
           const bodyRaw =
             api.body.mode === "form"

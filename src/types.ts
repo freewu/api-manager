@@ -73,8 +73,8 @@ export interface ApiFile {
   docParams: DocParam[];
   /** 是否已标记废弃 */
   deprecated: boolean;
-  /** 接口协议：http（HTTP 接口）或 websocket（WebSocket 接口） */
-  protocol: "http" | "websocket" | "graphql" | "socketio";
+  /** 接口协议：http / websocket / socketio / graphql / webdav（WebDAV 无 Mock） */
+  protocol: "http" | "websocket" | "graphql" | "socketio" | "webdav";
 }
 
 export type DocSource =
@@ -203,7 +203,7 @@ export interface TreeNode {
   /** 是否已标记废弃（分组无此字段时默认未废弃） */
   deprecated?: boolean;
   /** 接口协议（http / websocket，分组无此字段） */
-  protocol?: "http" | "websocket" | "graphql" | "socketio";
+  protocol?: "http" | "websocket" | "graphql" | "socketio" | "webdav";
   children?: TreeNode[];
 }
 
@@ -554,6 +554,18 @@ export const METHODS = [
   "PATCH",
   "HEAD",
   "OPTIONS",
+] as const;
+
+/** WebDAV 扩展方法（除标准 HTTP 方法外的 WebDAV 专用协议） */
+export const WEBDAV_METHODS = [
+  "PROPFIND",
+  "PROPPATCH",
+  "MKCOL",
+  "COPY",
+  "MOVE",
+  "LOCK",
+  "UNLOCK",
+  "REPORT",
 ] as const;
 
 export const BODY_MODES = ["none", "raw", "json", "xml", "form", "binary"] as const;

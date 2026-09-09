@@ -1522,9 +1522,11 @@ fn create_api(
     let data = ApiFile {
         uuid: uuid::Uuid::new_v4().to_string(),
         name: display_name,
-        // GraphQL 接口固定使用 POST
+        // GraphQL 接口固定使用 POST；WebDAV 接口默认 PROPFIND（方法下拉框可切换）
         method: if protocol.as_deref() == Some("graphql") {
             "POST".into()
+        } else if protocol.as_deref() == Some("webdav") {
+            "PROPFIND".into()
         } else {
             "GET".into()
         },
@@ -1559,6 +1561,7 @@ fn create_api(
             Some("websocket") => "websocket".into(),
             Some("socketio") => "socketio".into(),
             Some("graphql") => "graphql".into(),
+            Some("webdav") => "webdav".into(),
             _ => "http".into(),
         },
     };    write_pretty(&file_path, &data)?;

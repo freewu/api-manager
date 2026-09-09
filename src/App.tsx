@@ -62,6 +62,16 @@ const ApiDocModal = lazy(() =>
   import("./components/ApiDocModal").then((m) => ({ default: m.ApiDocModal }))
 );
 
+/** 空目录演示案例可选类型（http/websocket/socketio/graphql/webdav/object） */
+const ALL_DEMO_KINDS: Record<string, boolean> = {
+  http: true,
+  websocket: true,
+  socketio: true,
+  graphql: true,
+  webdav: true,
+  object: true,
+};
+
 export default function App() {
   const t = useT();
 
@@ -188,8 +198,9 @@ export default function App() {
     setModalProtocol,
     infoForm,
     setInfoForm,
-    demoCreate,
-    setDemoCreate,
+    demoTypes,
+    setDemoTypes,
+    toggleDemoKind,
     versionModal,
     setVersionModal,
     statsNode,
@@ -293,7 +304,7 @@ export default function App() {
         setWorkspace(w);
         if (!(await hasWorkspaceInfo())) {
           // 新的工作目录（没有 __info.json）：询问是否生成演示案例
-          setDemoCreate(true);
+          setDemoTypes(ALL_DEMO_KINDS);
           setModal({ type: "demo", parent: w });
         } else {
           await loadAll(w);
@@ -315,7 +326,7 @@ export default function App() {
       setResponse(null);
       if (!(await hasWorkspaceInfo())) {
         // 新的工作目录（没有 __info.json）：询问是否生成演示案例
-        setDemoCreate(true);
+        setDemoTypes(ALL_DEMO_KINDS);
         setModal({ type: "demo", parent: w });
       } else {
         await loadAll(w);
@@ -352,21 +363,21 @@ export default function App() {
     [finishOpenWorkspace, showToast, t]
   );
 
-  /** 新工作目录（无 __info.json）询问后的收尾：按参数生成演示案例并加载 */
+  /** 新工作目录（无 __info.json）询问后的收尾：按勾选类型生成演示案例并加载 */
   const closeDemoModal = useCallback(
-    async (create: boolean) => {
+    async (types: string[]) => {
       const w = modal?.parent || workspace;
       setModal(null);
       if (w) {
-        if (create) {
+        if (types.length > 0) {
           try {
-            await createDemo();
+            await createDemo(types);
             showToast(t("toast.demoCreated"));
           } catch (e) {
             showToast(t("toast.demoFailed", { err: String(e) }));
           }
         } else {
-          // 不生成演示案例：写一份最小 __info.json，标记工作区已初始化，避免下次再询问
+          // 未勾选任何类型：写一份最小 __info.json，标记工作区已初始化，避免下次再询问
           try {
             await saveInfo(w, {
               name: t("app.defaultWsName"),
@@ -379,7 +390,7 @@ export default function App() {
           }
         }
         await loadAll(w);
-        if (create) {
+        if (types.length > 0) {
           // 对象示例由后端直接写入 .object/，这里刷新对象列表，否则对象页看不到 demo 对象
           try {
             await objects.refresh();
@@ -387,7 +398,7 @@ export default function App() {
             /* noop */
           }
         }
-        if (!create) showToast(t("toast.opened", { ws: workspace ?? modal?.parent ?? "" }));
+        if (types.length === 0) showToast(t("toast.opened", { ws: workspace ?? modal?.parent ?? "" }));
       }
     },
     [modal?.parent, workspace, loadAll, objects.refresh, showToast, t]
@@ -762,7 +773,7 @@ export default function App() {
             modalText={modalText}
             modalProtocol={modalProtocol}
             infoForm={infoForm}
-            demoCreate={demoCreate}
+            demoTypes={demoTypes}
             workspace={workspace}
             onCloseNotify={() => setNotify(null)}
             onEmptyMenuAction={(action) => {
@@ -791,13 +802,13 @@ export default function App() {
             onModalTextChange={setModalText}
             onModalProtocolChange={setModalProtocol}
             onInfoFormChange={setInfoForm}
-            onDemoCreateChange={setDemoCreate}
+            onToggleDemoKind={(kind, enabled) => toggleDemoKind(kind, enabled)}
             onDoNewApi={() => void doNewApi()}
             onDoNewFolder={() => void doNewFolder()}
             onDoRename={() => void doRename()}
             onDoDelete={() => void doDelete()}
             onDoSaveInfo={() => void doSaveInfo()}
-            onCloseDemoModal={(create) => void closeDemoModal(create)}
+            onCloseDemoModal={(types) => void closeDemoModal(types)}
           />
 
           <CurlImportModal

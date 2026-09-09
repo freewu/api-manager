@@ -51,9 +51,21 @@ export function useModals(opts: {
 
   const [modal, setModal] = useState<ModalState | null>(null);
   const [modalText, setModalText] = useState("");
-  const [modalProtocol, setModalProtocol] = useState<"http" | "websocket" | "graphql" | "socketio">("http");
+  const [modalProtocol, setModalProtocol] = useState<
+    "http" | "websocket" | "graphql" | "socketio" | "webdav"
+  >("http");
   const [infoForm, setInfoForm] = useState<InfoForm>(emptyInfoForm());
-  const [demoCreate, setDemoCreate] = useState(true);
+  /** 空目录演示案例生成类型勾选（http/websocket/socketio/graphql/webdav/object，默认全部勾选） */
+  const [demoTypes, setDemoTypes] = useState<Record<string, boolean>>({
+    http: true,
+    websocket: true,
+    socketio: true,
+    graphql: true,
+    webdav: true,
+    object: true,
+  });
+  const toggleDemoKind = (kind: string, enabled: boolean) =>
+    setDemoTypes((prev) => ({ ...prev, [kind]: enabled }));
   const [versionModal, setVersionModal] = useState<{ api: ApiFile; versions: VersionInfo[] } | null>(null);
   const [statsNode, setStatsNode] = useState<TreeNode | null>(null);
   const [mdView, setMdView] = useState<{ node: TreeNode; doc: MarkdownDoc } | null>(null);
@@ -320,8 +332,9 @@ export function useModals(opts: {
     setModalProtocol,
     infoForm,
     setInfoForm,
-    demoCreate,
-    setDemoCreate,
+    demoTypes,
+    setDemoTypes,
+    toggleDemoKind,
     versionModal,
     setVersionModal,
     statsNode,

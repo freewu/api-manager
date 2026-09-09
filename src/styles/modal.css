@@ -754,8 +754,55 @@
 }
 .protocol-radios {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
+}
+/* 演示案例弹窗：类型多选（图标行） */
+.demo-types-title {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.demo-types {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+.demo-type-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+  user-select: none;
+}
+.demo-type-row:hover {
+  border-color: var(--border-light);
+  background: var(--bg-hover);
+}
+.demo-type-row input {
+  accent-color: var(--accent);
+}
+.demo-type-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex: none;
+}
+.demo-type-icon-obj {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+}
+.demo-type-name {
+  font-size: 12px;
+  color: var(--text);
 }
 .protocol-radio {
   display: flex;

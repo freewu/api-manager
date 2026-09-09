@@ -12,6 +12,7 @@ import iconHttp from "../assets/icon-http.png";
 import iconWs from "../assets/icon-websocket.png";
 import iconGql from "../assets/icon-graphql.png";
 import iconSocketIo from "../assets/icon-socketio.png";
+import iconWebdav from "../assets/icon-webdav.png";
 
 export type AppView = "api" | "history" | "objects" | "genlogs";
 
@@ -397,6 +398,8 @@ function NodeRow({
             <img className="node-type-icon" src={iconSocketIo} alt="Socket.IO" />
           ) : node.protocol === "graphql" ? (
             <img className="node-type-icon" src={iconGql} alt="GraphQL" />
+          ) : node.protocol === "webdav" ? (
+            <img className="node-type-icon" src={iconWebdav} alt="WebDAV" />
           ) : (
             <img className="node-type-icon" src={iconHttp} alt="HTTP" />
           )}

@@ -20,6 +20,7 @@ import iconHttp from "../assets/icon-http.png";
 import iconWs from "../assets/icon-websocket.png";
 import iconSocketIo from "../assets/icon-socketio.png";
 import iconGql from "../assets/icon-graphql.png";
+import iconWebdav from "../assets/icon-webdav.png";
 
 // 弹窗组件按需懒加载：仅在对应弹窗打开时才下载对应 chunk
 const MarkdownModal = lazy(() => import("./MarkdownModal").then((m) => ({ default: m.MarkdownModal })));
@@ -73,9 +74,9 @@ interface AppModalsProps {
   activeEnv: Environment | undefined;
   modal: ModalState | null;
   modalText: string;
-  modalProtocol: "http" | "websocket" | "graphql" | "socketio";
+  modalProtocol: "http" | "websocket" | "graphql" | "socketio" | "webdav";
   infoForm: InfoForm;
-  demoCreate: boolean;
+  demoTypes: Record<string, boolean>;
   workspace: string | null;
   onCloseNotify: () => void;
   onEmptyMenuAction: (action: "newApi" | "newFolder") => void;
@@ -96,15 +97,15 @@ interface AppModalsProps {
   onSaveEnvValues: (variables: EnvVariable[]) => void;
   onCloseModal: () => void;
   onModalTextChange: (v: string) => void;
-  onModalProtocolChange: (v: "http" | "websocket" | "graphql" | "socketio") => void;
+  onModalProtocolChange: (v: "http" | "websocket" | "graphql" | "socketio" | "webdav") => void;
   onInfoFormChange: (f: InfoForm) => void;
-  onDemoCreateChange: (v: boolean) => void;
+  onToggleDemoKind: (kind: string, enabled: boolean) => void;
   onDoNewApi: () => void;
   onDoNewFolder: () => void;
   onDoRename: () => void;
   onDoDelete: () => void;
   onDoSaveInfo: () => void;
-  onCloseDemoModal: (create: boolean) => void;
+  onCloseDemoModal: (types: string[]) => void;
 }
 
 export function AppModals({
@@ -133,7 +134,7 @@ export function AppModals({
   modalText,
   modalProtocol,
   infoForm,
-  demoCreate,
+  demoTypes,
   workspace,
   onCloseNotify,
   onEmptyMenuAction,
@@ -156,7 +157,7 @@ export function AppModals({
   onModalTextChange,
   onModalProtocolChange,
   onInfoFormChange,
-  onDemoCreateChange,
+  onToggleDemoKind,
   onDoNewApi,
   onDoNewFolder,
   onDoRename,
@@ -165,6 +166,16 @@ export function AppModals({
   onCloseDemoModal,
 }: AppModalsProps) {
   const t = useT();
+  /** 空目录演示案例的类型清单（复选框，默认全部勾选，勾选的才会生成） */
+  const demoKinds = [
+    { kind: "http", label: t("editor.httpType"), icon: iconHttp },
+    { kind: "websocket", label: t("editor.wsType"), icon: iconWs },
+    { kind: "socketio", label: t("editor.socketIoType"), icon: iconSocketIo },
+    { kind: "graphql", label: t("editor.graphqlType"), icon: iconGql },
+    { kind: "webdav", label: t("editor.webdavType"), icon: iconWebdav },
+    { kind: "object", label: t("modal.demoObject"), icon: null },
+  ] as const;
+  const checkedDemoKinds = demoKinds.filter((k) => demoTypes[k.kind]).map((k) => k.kind);
   return (
     <Suspense fallback={null}>
       {toast && <div className="toast">{toast}</div>}
@@ -313,6 +324,7 @@ export function AppModals({
                   { value: "websocket", label: t("editor.wsType"), icon: iconWs },
                   { value: "socketio", label: t("editor.socketIoType"), icon: iconSocketIo },
                   { value: "graphql", label: t("editor.graphqlType"), icon: iconGql },
+                  { value: "webdav", label: t("editor.webdavType"), icon: iconWebdav },
                 ] as const
               ).map((o) => (
                 <label
@@ -325,7 +337,7 @@ export function AppModals({
                     name="api-protocol"
                     checked={modalProtocol === o.value}
                     onChange={() =>
-                      onModalProtocolChange(o.value as "http" | "websocket" | "graphql" | "socketio")
+                      onModalProtocolChange(o.value as "http" | "websocket" | "graphql" | "socketio" | "webdav")
                     }
                   />
                   <img className="protocol-radio-icon" src={o.icon} alt="" />
@@ -412,13 +424,13 @@ export function AppModals({
       {modal?.type === "demo" && (
         <Modal
           title={t("modal.demoTitle")}
-          onClose={() => onCloseDemoModal(false)}
+          onClose={() => onCloseDemoModal([])}
           footer={
             <>
-              <button className="btn" onClick={() => onCloseDemoModal(false)}>
+              <button className="btn" onClick={() => onCloseDemoModal([])}>
                 {t("modal.demoSkip")}
               </button>
-              <button className="btn primary" onClick={() => onCloseDemoModal(demoCreate)}>
+              <button className="btn primary" onClick={() => onCloseDemoModal(checkedDemoKinds)}>
                 {t("common.confirm")}
               </button>
             </>
@@ -427,14 +439,29 @@ export function AppModals({
           <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.7 }}>
             {t("modal.demoDesc")}
           </div>
-          <label className="demo-check">
-            <input
-              type="checkbox"
-              checked={demoCreate}
-              onChange={(e) => onDemoCreateChange(e.target.checked)}
-            />
-            {t("modal.demoLabel")}
-          </label>
+          <div className="demo-types-title">{t("modal.demoPick")}</div>
+          <div className="demo-types">
+            {demoKinds.map((k) => (
+              <label key={k.kind} className="demo-type-row">
+                <input
+                  type="checkbox"
+                  checked={!!demoTypes[k.kind]}
+                  onChange={(e) => onToggleDemoKind(k.kind, e.target.checked)}
+                />
+                {k.icon ? (
+                  <img className="demo-type-icon" src={k.icon} alt="" />
+                ) : (
+                  <span className="demo-type-icon demo-type-icon-obj" aria-hidden="true">
+                    🗂
+                  </span>
+                )}
+                <span className="demo-type-name">{k.label}</span>
+              </label>
+            ))}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 8 }}>
+            {t("modal.demoPickHint")}
+          </div>
         </Modal>
       )}
       {modal?.type === "info" && modal.target && (

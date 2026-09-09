@@ -4,8 +4,13 @@ use super::*;
 
 /// 在空工作区中生成演示案例（示例分组 + 接口 + 环境变量）
 #[tauri::command]
-pub(crate) fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String> {
+pub(crate) fn create_demo(
+    state: State<'_, WorkspaceState>,
+    types: Option<Vec<String>>,
+) -> Result<(), String> {
     let root = workspace_root(&state)?;
+    // 勾选类型（http / websocket / socketio / graphql / webdav / object），未传时默认全部生成
+    let has = |kind: &str| types.as_ref().map_or(true, |list| list.iter().any(|s| s == kind));
     // 不判断工作区是否为空：演示案例直接生成（同名文件会被覆盖）
     let api_file = |name: &str, method: &str, path: &str, description: &str| {
         serde_json::json!({
@@ -68,6 +73,7 @@ pub(crate) fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String
         ]
     }))?;
 
+    if has("http") {
     // 用户管理分组
     write("用户管理", INFO_FILE, &serde_json::json!({ "name": "用户管理", "description": "用户相关接口" }))?;
     let mut create_user = api_file("创建用户", "POST", "/api/users", "创建一个新用户");
@@ -202,6 +208,9 @@ pub(crate) fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String
     options_orders["mock"] = serde_json::json!({ "enabled": true, "status": 204, "headers": [{ "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS", "enabled": true }], "delay": 0, "body": "" });
     write("订单管理", "订单接口预检.json", &options_orders)?;
 
+    }
+
+    if has("websocket") {
     // WebSocket 分组（与 tests/websocket-server.py 一一对应）：仅保留一个回显示例，
     // 服务器会回传该连接获取到的 query / header 参数供核对
     write("WebSocket", INFO_FILE, &serde_json::json!({ "name": "WebSocket", "description": "WebSocket 接口示例（与 tests/websocket-server.py 一一对应）" }))?;
@@ -217,6 +226,9 @@ pub(crate) fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String
     ]);
     write("WebSocket", "WebSocket 回显.json", &ws_echo)?;
 
+    }
+
+    if has("graphql") {
     // GraphQL 分组（与 tests/graphql-server.py 一一对应）：仅支持 POST + JSON body，不支持 Mock
     write("GraphQL", INFO_FILE, &serde_json::json!({ "name": "GraphQL", "description": "GraphQL 接口示例（与 tests/graphql-server.py 一一对应）" }))?;
 
@@ -275,6 +287,9 @@ pub(crate) fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String
     ]);
     write("GraphQL", "查询订单.json", &gql_order)?;
 
+    }
+
+    if has("socketio") {
     // Socket.IO 分组（与 tests/socketio-server.py 一一对应）：实时消息交互，展示与 WebSocket 一致
     write("Socket.IO", INFO_FILE, &serde_json::json!({ "name": "Socket.IO", "description": "Socket.IO 接口示例（与 tests/socketio-server.py 一一对应）" }))?;
     let sio_desc = "Socket.IO 实时消息接口演示，配合测试服务 tests/socketio-server.py 使用。\n\n【启动测试服务】\n1. 安装依赖：pip install python-socketio simple-websocket\n2. 启动服务：python tests/socketio-server.py\n   - 默认监听 http://127.0.0.1:8090\n   - 自定义端口：python tests/socketio-server.py 9999\n\n【接口说明】\n- Socket.IO 连接地址为 http://127.0.0.1:8090（不提供 ws/wss 切换，由库内部协商传输方式）\n- 消息事件名固定为 message：发送的消息会原样回显，并附带本次连接的 query 参数\n- 浏览器端不可自定义请求头，Header 页签中的配置不会发送\n\n【测试步骤】\n1. 点击「发送」建立连接，连接成功后会先收到一条欢迎消息（type: welcome）\n2. 在消息输入框输入任意内容并发送\n3. 服务器回传消息内容及本次连接的 query 参数，例如：\n{\"type\":\"message\",\"query\":{\"token\":\"dev-token-123456\"},\"message\":\"hello\"}";
@@ -292,6 +307,59 @@ pub(crate) fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String
     sio_broadcast["responses"] = serde_json::json!([]);
     write("Socket.IO", "广播通知.json", &sio_broadcast)?;
 
+    }
+
+    // WebDAV 分组（与 tests/webdav-server.py 一一对应）：编辑体验与 HTTP 一致，
+    // 仅方法下拉框额外提供 WebDAV 协议（PROPFIND / PROPPATCH / MKCOL / COPY / MOVE / LOCK / UNLOCK / REPORT），不支持 Mock
+    if has("webdav") {
+        write("WebDAV", INFO_FILE, &serde_json::json!({ "name": "WebDAV", "description": "WebDAV 接口示例（与 tests/webdav-server.py 一一对应，无 Mock）" }))?;
+
+        let dav_desc = "WebDAV 文件夹操作演示，配合测试服务 tests/webdav-server.py 使用。\n\n【启动测试服务】\n1. 无需安装第三方依赖（纯 Python 标准库）\n2. 启动服务：python tests/webdav-server.py\n   - 默认监听 http://127.0.0.1:8081\n   - 自定义端口：python tests/webdav-server.py 9999\n\n【接口说明】\n- WebDAV 接口与 HTTP 编辑体验一致，方法下拉框额外提供 PROPFIND / PROPPATCH / MKCOL / COPY / MOVE / LOCK / UNLOCK / REPORT\n- 不支持 Mock\n\n【测试步骤】\n1. 点击「发送」执行下方方法\n2. 服务端返回对应响应（PROPFIND 返回 multistatus XML 等）";
+        let mut dav_propfind = api_file("目录属性 PROPFIND", "PROPFIND", "/dav", dav_desc);
+        dav_propfind["protocol"] = serde_json::json!("webdav");
+        dav_propfind["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_propfind["headers"] = serde_json::json!([
+            { "key": "Depth", "value": "1", "enabled": true, "description": "1 = 仅当前集合及其直接子资源" },
+            { "key": "Content-Type", "value": "application/xml; charset=utf-8", "enabled": true, "description": "" },
+        ]);
+        dav_propfind["body"] = serde_json::json!({ "mode": "xml", "raw": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<d:propfind xmlns:d=\"DAV:\">\n  <d:prop>\n    <d:displayname/>\n    <d:resourcetype/>\n    <d:getcontentlength/>\n    <d:getlastmodified/>\n  </d:prop>\n</d:propfind>", "form": [] });
+        dav_propfind["responses"] = serde_json::json!([
+            { "id": format!("dav-propfind-{}", uuid::Uuid::new_v4()), "name": "属性列表", "status": 207, "content_type": "application/xml", "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<d:multistatus xmlns:d=\"DAV:\">\n  <d:response>\n    <d:href>/dav/</d:href>\n    <d:propstat>\n      <d:prop>\n        <d:displayname>dav</d:displayname>\n        <d:resourcetype><d:collection/></d:resourcetype>\n      </d:prop>\n      <d:status>HTTP/1.1 200 OK</d:status>\n    </d:propstat>\n  </d:response>\n</d:multistatus>" }
+        ]);
+        write("WebDAV", "目录属性 PROPFIND.json", &dav_propfind)?;
+
+        let mut dav_mkcol = api_file("创建集合 MKCOL", "MKCOL", "/dav/demo-dir", "在服务器上创建一个新集合（目录）。\n\n【测试步骤】\n1. 启动 tests/webdav-server.py（默认 http://127.0.0.1:8081）\n2. 点击「发送」，服务器返回 201 Created，随后可用 PROPFIND 看到 demo-dir");
+        dav_mkcol["protocol"] = serde_json::json!("webdav");
+        dav_mkcol["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_mkcol["responses"] = serde_json::json!([
+            { "id": format!("dav-mkcol-{}", uuid::Uuid::new_v4()), "name": "创建成功", "status": 201, "content_type": "text/plain", "body": "Created" }
+        ]);
+        write("WebDAV", "创建集合 MKCOL.json", &dav_mkcol)?;
+
+        let mut dav_put = api_file("上传文件 PUT", "PUT", "/dav/hello.txt", "将文本内容作为文件上传到集合 /dav/hello.txt。\n\n【测试步骤】\n1. 启动 tests/webdav-server.py（默认 http://127.0.0.1:8081）\n2. 点击「发送」，服务器返回 201 Created，随后可用 GET 下载验证");
+        dav_put["protocol"] = serde_json::json!("webdav");
+        dav_put["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_put["headers"] = serde_json::json!([{ "key": "Content-Type", "value": "text/plain", "enabled": true, "description": "" }]);
+        dav_put["body"] = serde_json::json!({ "mode": "raw", "raw": "hello webdav\n", "form": [] });
+        dav_put["responses"] = serde_json::json!([
+            { "id": format!("dav-put-{}", uuid::Uuid::new_v4()), "name": "上传成功", "status": 201, "content_type": "text/plain", "body": "Created" }
+        ]);
+        write("WebDAV", "上传文件 PUT.json", &dav_put)?;
+
+        let mut dav_copy = api_file("复制资源 COPY", "COPY", "/dav/hello.txt", "将 /dav/hello.txt 复制到 /dav/hello-copy.txt（通过 Destination 请求头指定目标）。\n\n【测试步骤】\n1. 先上传 hello.txt（PUT 示例）\n2. 点击「发送」，服务器返回 201 Created，/dav 下出现 hello-copy.txt");
+        dav_copy["protocol"] = serde_json::json!("webdav");
+        dav_copy["url"] = serde_json::json!("http://127.0.0.1:8081");
+        dav_copy["headers"] = serde_json::json!([
+            { "key": "Destination", "value": "http://127.0.0.1:8081/dav/hello-copy.txt", "enabled": true, "description": "复制目标地址" },
+            { "key": "Overwrite", "value": "T", "enabled": true, "description": "T = 允许覆盖" },
+        ]);
+        dav_copy["responses"] = serde_json::json!([
+            { "id": format!("dav-copy-{}", uuid::Uuid::new_v4()), "name": "复制成功", "status": 201, "content_type": "text/plain", "body": "Created" }
+        ]);
+        write("WebDAV", "复制资源 COPY.json", &dav_copy)?;
+    }
+
+    if has("object") {
     // 对象示例：工作区 .object/ 下生成「用户管理 / 订单管理」分组与几个对象，
     // 与上面的接口演示呼应（属性含 mock 示例值，可配合数据生成体验）
     let now = chrono::Local::now().timestamp();
@@ -365,6 +433,8 @@ pub(crate) fn create_demo(state: State<'_, WorkspaceState>) -> Result<(), String
         },
         None,
     );
+
+    }
 
     Ok(())
 }
