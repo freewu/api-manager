@@ -10,62 +10,10 @@ import ObjectRefPicker from "./ObjectRefPicker";
 import MockPicker from "./MockPicker";
 import { Modal } from "./Modal";
 import { renderMockBody } from "../utils/mockData";
+import { prettyXml } from "../utils/format";
 
 // 代码生成页签：highlight.js 体积较大，按需懒加载（首次打开「代码」页签时才下载）
 const CodeTab = lazy(() => import("./CodeTab").then((m) => ({ default: m.CodeTab })));
-
-/** 简易 XML 格式化：按标签层级缩进（支持注释 / CDATA / 声明 / 自闭合标签） */
-function prettyXml(src: string): string {
-  const re =
-    /<!--[\s\S]*?-->|<![CDATA\[[\s\S]*?\]\]>|<\?[\s\S]*?\?>|<!DOCTYPE[\s\S]*?(?:\[[\s\S]*?\]\s*)?>|<\/?[^>]*>/g;
-  const tokens: string[] = [];
-  let last = 0;
-  for (const m of src.matchAll(re)) {
-    if (m.index !== undefined && m.index > last) tokens.push(src.slice(last, m.index));
-    tokens.push(m[0]);
-    last = (m.index ?? 0) + m[0].length;
-  }
-  if (last < src.length) tokens.push(src.slice(last));
-
-  const out: string[] = [];
-  const stack: string[] = [];
-  let depth = 0;
-  const indent = () => "  ".repeat(depth);
-
-  for (const tok of tokens) {
-    if (!tok.startsWith("<")) {
-      const s = tok.trim();
-      if (s) out.push(indent() + s);
-      continue;
-    }
-    if (
-      tok.startsWith("<!--") ||
-      tok.startsWith("<![CDATA[") ||
-      tok.startsWith("<?") ||
-      tok.startsWith("<!DOCTYPE")
-    ) {
-      out.push(indent() + tok.trim());
-      continue;
-    }
-    if (tok.startsWith("</")) {
-      const name = tok.slice(2, -1).trim().split(/\s/)[0];
-      if (stack.pop() !== name) throw new Error("mismatched tag");
-      depth = Math.max(0, depth - 1);
-      out.push(indent() + tok);
-      continue;
-    }
-    const selfClose = /\/\s*>$/.test(tok);
-    if (selfClose) {
-      out.push(indent() + tok);
-    } else {
-      out.push(indent() + tok);
-      stack.push(tok.slice(1).trim().split(/[\s/>]/)[0]);
-      depth++;
-    }
-  }
-  if (stack.length) throw new Error("unclosed tag");
-  return out.join("\n");
-}
 
 type Tab = "params" | "path" | "headers" | "body" | "prescript" | "response" | "mock" | "desc" | "doc" | "code" | "examples";
 

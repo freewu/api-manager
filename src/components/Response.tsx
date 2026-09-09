@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { HttpResult } from "../types";
 import { useT } from "../i18n";
+import { prettyHtml, prettyXml } from "../utils/format";
 
 interface Props {
   result: HttpResult | null;
@@ -144,35 +145,59 @@ export function Response({ result, sending, onSaveExample, hideStatus }: Props) 
     return view === "auto" ? detectView(result.body, contentType) : view;
   }, [result, view, contentType]);
 
-  const bodyEl = useMemo(() => {
+  // 实际视图下用于展示的文本：html / xml / json 先做格式化（缩进排版），格式化失败时回退原文
+  const formattedText = useMemo(() => {
     if (!result) return null;
+    const raw = result.body;
+    switch (actualView) {
+      case "json":
+        return prettyJson(raw);
+      case "html":
+        try {
+          return prettyHtml(raw);
+        } catch {
+          return raw;
+        }
+      case "xml":
+        try {
+          return prettyXml(raw);
+        } catch {
+          return raw;
+        }
+      default:
+        return raw;
+    }
+  }, [result, actualView]);
+
+  const bodyEl = useMemo(() => {
+    if (!result || formattedText === null) return null;
     switch (actualView) {
       case "raw":
       case "text":
-        return <div className="json-view raw-view">{result.body || ""}</div>;
+        return <div className="json-view raw-view">{formattedText}</div>;
       case "html":
       case "xml":
         return (
           <div
             className="json-view"
-            dangerouslySetInnerHTML={{ __html: highlightMarkup(result.body) }}
+            dangerouslySetInnerHTML={{ __html: highlightMarkup(formattedText) }}
           />
         );
       case "json":
         return (
           <div
             className="json-view"
-            dangerouslySetInnerHTML={{ __html: highlightJson(prettyJson(result.body)) }}
+            dangerouslySetInnerHTML={{ __html: highlightJson(formattedText) }}
           />
         );
-      case "auto":
+      default:
         return null;
     }
-  }, [result, actualView]);
+  }, [result, actualView, formattedText]);
 
   const handleCopy = async () => {
     if (!result) return;
-    const text = actualView === "json" ? prettyJson(result.body) : result.body;
+    const text = formattedText ?? result.body;
     const ok = await copyText(text);
     if (ok) {
       setCopied(true);
@@ -305,13 +330,13 @@ export function Response({ result, sending, onSaveExample, hideStatus }: Props) 
                 className={`resp-tab ${tab === "body" ? "active" : ""}`}
                 onClick={() => setTab("body")}
               >
-                Body
+                Response
               </div>
               <div
                 className={`resp-tab ${tab === "headers" ? "active" : ""}`}
                 onClick={() => setTab("headers")}
               >
-                Headers ({result.headers.length})
+                Response Headers ({result.headers.length})
               </div>
             </div>
             {tab === "body" && (
