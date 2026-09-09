@@ -1,5 +1,20 @@
 # API Manager 更新记录
 
+## v0.6.0
+
+### 🌐 WebDAV
+- 新增 **WebDAV** 接口类型：除标准 HTTP 方法外支持 `PROPFIND` / `PROPPATCH` / `MKCOL` / `COPY` / `MOVE` / `LOCK` / `UNLOCK` / `REPORT` 专用方法（WebDAV 无 Mock）
+- WebDAV 图标统一接入 asserts/icon 图标族
+- 演示案例新增 WebDAV 分组：补齐全部专用方法与上传前置步骤（PROPFIND → MKCOL → COPY → PUT，PROPPATCH / MOVE / LOCK / UNLOCK / REPORT 全流程），演示接口 url 用完整资源地址，避免请求落到根路径返回 404
+- 空目录「新增演示案例」弹窗加宽，可按**类型勾选生成**演示分组
+
+### 🔗 接口地址
+- URL 栏输入 / 粘贴以当前环境 baseUrl 开头的完整地址时，自动把 baseUrl 之后的部分存为接口 path（url 留空），发送时用「环境 baseUrl + path」拼请求地址，切换环境地址自动跟随
+- 新建接口 / 重命名接口弹窗新增 **path 输入**：可直接编辑接口 `.json` 的 path 字段（自动补全开头 `/`），不必再靠 URL 栏拼资源路径
+
+### 🧪 Mock
+- 内置占位符新增 `@ua`（UserAgent）
+
 ## v0.5.7
 
 ### 🧪 Mock
