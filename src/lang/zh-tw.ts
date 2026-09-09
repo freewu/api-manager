@@ -467,6 +467,7 @@ export const TW: Record<string, string> = {
   "editor.statusCode": "狀態碼",
   "editor.typeAutoHint": "留空自動根據示例值推導類型",
   "editor.urlTitle": "請求地址（支持 {{環境變量}} 佔位符）",
+  "editor.pathTitle": "資源路徑（.json 裡 path 欄位）：url 留空時用「環境 baseUrl + path」拼成請求位址；這裡不是 Path 參數頁籤",
   "editor.varName": "變量名",
   "envModal.addTip": "新增環境變量集",
   "envModal.copySuffix": "副本",

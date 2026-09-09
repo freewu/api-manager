@@ -486,6 +486,7 @@ export const ZH: Record<string, string> = {
   "editor.statusCode": "状态码",
   "editor.typeAutoHint": "留空自动根据示例值推导类型",
   "editor.urlTitle": "请求地址（支持 {{环境变量}} 占位符）",
+  "editor.pathTitle": "资源路径（.json 里 path 字段）：url 留空时用「环境 baseUrl + path」拼成请求地址；这里不是 Path 参数页签",
   "editor.varName": "变量名",
   "envModal.addTip": "新增环境变量集",
   "envModal.copySuffix": "副本",

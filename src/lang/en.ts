@@ -478,6 +478,7 @@ export const EN: Record<string, string> = {
   "editor.statusCode": "Status Code",
   "editor.typeAutoHint": "Leave empty to infer the type from the sample value",
   "editor.urlTitle": "Request URL (supports {{env var}} placeholders)",
+  "editor.pathTitle": "Resource path (path field in .json): when URL is left empty the request uses env baseUrl + path. This is not the Path-parameter tab",
   "editor.varName": "Variable name",
   "envModal.addTip": "Add environment variable set",
   "envModal.copySuffix": "Copy",
