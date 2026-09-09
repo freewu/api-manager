@@ -493,18 +493,8 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
           <span className="url-scheme">{isWs ? "WS" : isSocketIo ? "SIO" : "URL"}</span>
           <input
             className="url-input"
-            value={api.url}
-            placeholder={
-              api.url === "" && !isRealtime && baseUrl
-                ? baseUrl
-                : isWs
-                ? t("editor.wsUrlPlaceholder")
-                : isSocketIo
-                ? t("editor.socketIoUrlPlaceholder")
-                : isGraphql
-                ? "http://localhost:8080/graphql"
-                : "https://api.example.com/v1/users"
-            }
+            value={effectiveUrl}
+            placeholder={isWs ? t("editor.wsUrlPlaceholder") : isSocketIo ? t("editor.socketIoUrlPlaceholder") : "https://api.example.com/v1/users"}
             title={t("editor.urlTitle")}
             onChange={(e) => {
               const v = e.target.value;
@@ -513,41 +503,13 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
               // URL 完全等于 bluefrog 时触发彩蛋
               if (v.trim() === "bluefrog") triggerEgg();
               if (!v) {
-                // 清空 = 仅清空 url；path 由右侧独立输入框编辑（保持不变）
-                onChange({ ...api, url: "" });
+                // 支持清空为空的 URL
+                onChange({ ...api, url: "", path: "" });
+              } else if (!isRealtime && v.startsWith(baseUrl) && baseUrl) {
+                onChange({ ...api, url: "", path: v.slice(baseUrl.length) || "/" });
               } else {
-                onChange({ ...api, url: v });
+                onChange({ ...api, url: v, path: api.path });
               }
-            }}
-            onBlur={() => {
-              // 失焦时若 url 恰以当前环境 baseUrl 开头 → 拆成「环境 baseUrl + 资源路径(path)」，方便切换到其它环境
-              if (!isRealtime && baseUrl && api.url.startsWith(baseUrl)) {
-                let rest = api.url.slice(baseUrl.length);
-                if (!rest.startsWith("/")) rest = "/" + rest;
-                onChange({ ...api, url: "", path: rest || "/" });
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !sending) {
-                if (!effectiveUrl.trim()) setUrlError(true);
-                onSend();
-              }
-            }}
-            spellCheck={false}
-          />
-          <span className="url-sep" />
-          <span className="url-scheme url-path-label">path</span>
-          <input
-            className="url-input url-path-input"
-            value={api.path || ""}
-            placeholder={isGraphql ? "/graphql" : "/v1/users"}
-            title={t("editor.pathTitle")}
-            onChange={(e) => {
-              if (urlError) setUrlError(false);
-              // 资源路径：与 .json 文件里的 path 字段一致；url 为空时用它拼 baseUrl 作为请求地址
-              let v = e.target.value.trim();
-              if (v && !v.startsWith("/")) v = "/" + v;
-              onChange({ ...api, path: v });
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !sending) {

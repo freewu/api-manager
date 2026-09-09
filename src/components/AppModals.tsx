@@ -74,6 +74,7 @@ interface AppModalsProps {
   activeEnv: Environment | undefined;
   modal: ModalState | null;
   modalText: string;
+  modalPath: string;
   modalProtocol: "http" | "websocket" | "graphql" | "socketio" | "webdav";
   infoForm: InfoForm;
   demoTypes: Record<string, boolean>;
@@ -97,6 +98,7 @@ interface AppModalsProps {
   onSaveEnvValues: (variables: EnvVariable[]) => void;
   onCloseModal: () => void;
   onModalTextChange: (v: string) => void;
+  onModalPathChange: (v: string) => void;
   onModalProtocolChange: (v: "http" | "websocket" | "graphql" | "socketio" | "webdav") => void;
   onInfoFormChange: (f: InfoForm) => void;
   onToggleDemoKind: (kind: string, enabled: boolean) => void;
@@ -132,6 +134,7 @@ export function AppModals({
   activeEnv,
   modal,
   modalText,
+  modalPath,
   modalProtocol,
   infoForm,
   demoTypes,
@@ -155,6 +158,7 @@ export function AppModals({
   onSaveEnvValues,
   onCloseModal,
   onModalTextChange,
+  onModalPathChange,
   onModalProtocolChange,
   onInfoFormChange,
   onToggleDemoKind,
@@ -346,6 +350,16 @@ export function AppModals({
               ))}
             </div>
           </div>
+          <label>
+            {t("modal.apiPath")}
+            <input
+              value={modalPath}
+              onChange={(e) => onModalPathChange(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && onDoNewApi()}
+              placeholder={modalProtocol === "graphql" ? "/graphql" : "/v1/users"}
+            />
+          </label>
+          <div className="modal-tip">{t("modal.pathTip")}</div>
         </Modal>
       )}
 
@@ -397,6 +411,20 @@ export function AppModals({
               onKeyDown={(e) => e.key === "Enter" && onDoRename()}
             />
           </label>
+          {modal.target.kind === "api" && (
+            <>
+              <label>
+                {t("modal.apiPath")}
+                <input
+                  value={modalPath}
+                  onChange={(e) => onModalPathChange(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && onDoRename()}
+                  placeholder="/v1/users"
+                />
+              </label>
+              <div className="modal-tip">{t("modal.pathTip")}</div>
+            </>
+          )}
         </Modal>
       )}
 

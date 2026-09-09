@@ -22,6 +22,12 @@ import { ApiFile, AppSettings, TreeNode, VersionInfo } from "../types";
 import { InfoForm, ModalState, emptyInfoForm } from "../components/AppModals";
 import { parseCurl } from "../utils/curl";
 
+/** 资源路径规范化：去首尾空格并保证以 / 开头（空串保持空，表示不覆盖默认） */
+const normalizePath = (p: string): string => {
+  const v = (p || "").trim();
+  return v && !v.startsWith("/") ? "/" + v : v;
+};
+
 /**
  * 弹窗操作：新建接口/分组/重命名/删除/分组信息、版本管理、
  * Markdown / apiDoc 预览、导出弹窗。
@@ -51,6 +57,10 @@ export function useModals(opts: {
 
   const [modal, setModal] = useState<ModalState | null>(null);
   const [modalText, setModalText] = useState("");
+  /** 弹窗中的 path 输入（新建接口 / 重命名接口时编辑 .json 里的 path 字段） */
+  const [modalPath, setModalPath] = useState("");
+  /** 打开弹窗时记录的原始 path，用于确认时判断是否有改动 */
+  const [modalPathInit, setModalPathInit] = useState("");
   const [modalProtocol, setModalProtocol] = useState<
     "http" | "websocket" | "graphql" | "socketio" | "webdav"
   >("http");
@@ -82,8 +92,30 @@ export function useModals(opts: {
 
   const openModal = (type: ModalState["type"], parent = "", target?: TreeNode) => {
     setModalText(target?.name || (type === "newApi" ? t("app.unnamedApi") : type === "newFolder" ? t("app.newFolder") : ""));
+    setModalPath("");
+    setModalPathInit("");
     setModalProtocol("http");
     setModal({ type, parent, target });
+  };
+
+  /** 打开「重命名」弹窗：重命名接口时额外预填 .json 里的 path，可一并修改 */
+  const openRenameModal = async (node: TreeNode) => {
+    setModalText(node.name || "");
+    setModalPath("");
+    setModalPathInit("");
+    setModalProtocol("http");
+    if (node.kind === "api") {
+      try {
+        const api = await readApi(node.path);
+        const init = api.path || "";
+        setModalPath(init);
+        setModalPathInit(init);
+      } catch (e) {
+        onToast(t("toast.readInfoFailed", { err: String(e) }));
+        return;
+      }
+    }
+    setModal({ type: "rename", parent: "", target: node });
   };
 
   const openInfoModal = async (target: TreeNode) => {
@@ -108,14 +140,22 @@ export function useModals(opts: {
       setModal(null);
       await reloadTree();
       const data = await readApi(path);
+      let changed = false;
+      // 弹窗里填写了 path → 写入 .json（留空则使用协议默认：HTTP/WS/Socket.IO/WebDAV=/，GraphQL=/graphql）
+      const wantPath = normalizePath(modalPath);
+      if (wantPath) {
+        data.path = wantPath;
+        changed = true;
+      }
       // 设置开启「默认 Header」时，新接口自动附带默认请求头并落盘
       if (settings.enableDefaultHeaders) {
         const defaults = (settings.defaultHeaders || []).filter((h) => h.key.trim());
         if (defaults.length > 0) {
           data.headers = [...defaults.map((h) => ({ ...h })), ...data.headers];
-          await saveApi(path, data);
+          changed = true;
         }
       }
+      if (changed) await saveApi(path, data);
       onApiReplaced(data, path);
       void reloadMockIfRunning(true);
       onToast(t("toast.createdApi", { name }));
@@ -185,10 +225,22 @@ export function useModals(opts: {
     if (!modal?.target) return;
     const name = modalText.trim();
     if (!name) return;
+    const oldPath = modal.target.path;
     try {
-      await renameEntry(modal.target.path, name);
+      // 接口重命名：若弹窗里改了 path（与打开时不同），先写回原 .json（文件改名在下方执行）
+      if (modal.target.kind === "api" && modalPath !== modalPathInit) {
+        const api = await readApi(oldPath);
+        api.path = normalizePath(modalPath);
+        await saveApi(oldPath, api);
+      }
+      const newPath = await renameEntry(oldPath, name);
       setModal(null);
       await reloadTree();
+      // 正在编辑中的接口被重命名 → 用新文件路径重新加载并刷新编辑区
+      if (modal.target.kind === "api" && selectedPath === oldPath) {
+        const data = await readApi(newPath);
+        onApiReplaced(data, newPath);
+      }
       onToast(t("toast.renamed"));
     } catch (e) {
       onToast(t("toast.renameFailed", { err: String(e) }));
@@ -328,6 +380,8 @@ export function useModals(opts: {
     setModal,
     modalText,
     setModalText,
+    modalPath,
+    setModalPath,
     modalProtocol,
     setModalProtocol,
     infoForm,
@@ -353,6 +407,7 @@ export function useModals(opts: {
     settingsOpen,
     setSettingsOpen,
     openModal,
+    openRenameModal,
     openInfoModal,
     doNewApi,
     doNewFolder,

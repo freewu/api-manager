@@ -76,6 +76,12 @@
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
   animation: modal-in 0.16s ease;
 }
+.modal-tip {
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: -2px 0 4px;
+}
 .modal-wide {
   width: 980px;
 }

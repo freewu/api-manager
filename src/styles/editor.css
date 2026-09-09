@@ -90,21 +90,6 @@
   font-family: var(--font-mono);
   font-size: 11px;
 }
-/* URL / path 双输入：path 即 .json 顶层字段（url 为空时用 baseUrl + path 拼请求地址） */
-.url-sep {
-  flex: none;
-  width: 1px;
-  height: 16px;
-  background: var(--border);
-}
-.url-path-label {
-  flex: none;
-  opacity: 0.75;
-}
-.url-path-input {
-  flex: 0 1 220px;
-  min-width: 90px;
-}
 
 .send-btn {
   background: var(--accent);

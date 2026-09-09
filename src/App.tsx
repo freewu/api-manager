@@ -194,6 +194,8 @@ export default function App() {
     setModal,
     modalText,
     setModalText,
+    modalPath,
+    setModalPath,
     modalProtocol,
     setModalProtocol,
     infoForm,
@@ -219,6 +221,7 @@ export default function App() {
     settingsOpen,
     setSettingsOpen,
     openModal,
+    openRenameModal,
     openInfoModal,
     doNewApi,
     doNewFolder,
@@ -600,7 +603,7 @@ export default function App() {
               onSelect={selectNode}
               onNewApi={(parent) => openModal("newApi", parent)}
               onNewFolder={(parent) => openModal("newFolder", parent)}
-              onRename={(node) => openModal("rename", "", node)}
+              onRename={(node) => void openRenameModal(node)}
               onCopy={handleCopy}
               onDelete={(node) => openModal("delete", "", node)}
               onToggleDeprecated={(node) => void handleToggleDeprecated(node)}
@@ -771,6 +774,7 @@ export default function App() {
             activeEnv={activeEnv}
             modal={modal}
             modalText={modalText}
+            modalPath={modalPath}
             modalProtocol={modalProtocol}
             infoForm={infoForm}
             demoTypes={demoTypes}
@@ -800,6 +804,7 @@ export default function App() {
             onSaveEnvValues={handleSaveEnvValues}
             onCloseModal={() => setModal(null)}
             onModalTextChange={setModalText}
+            onModalPathChange={setModalPath}
             onModalProtocolChange={setModalProtocol}
             onInfoFormChange={setInfoForm}
             onToggleDemoKind={(kind, enabled) => toggleDemoKind(kind, enabled)}

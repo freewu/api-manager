@@ -280,8 +280,8 @@ export function reorderChildren(parent: string, paths: string[]): Promise<void> 
   return invoke<void>("reorder_children", { parent, paths });
 }
 
-export function renameEntry(path: string, newName: string): Promise<void> {
-  return invoke<void>("rename_entry", { path, newName });
+export function renameEntry(path: string, newName: string): Promise<string> {
+  return invoke<string>("rename_entry", { path, newName });
 }
 
 export function deleteEntry(path: string): Promise<void> {

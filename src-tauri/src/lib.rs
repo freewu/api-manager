@@ -1652,7 +1652,7 @@ fn rename_entry(
     state: State<'_, WorkspaceState>,
     path: String,
     new_name: String,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let root = workspace_root(&state)?;
     let old = PathBuf::from(&path);
     ensure_inside_workspace(&root, &old)?;
@@ -1709,7 +1709,7 @@ fn rename_entry(
             }
         }
     }
-    Ok(())
+    Ok(new_path.to_string_lossy().into_owned())
 }
 
 #[tauri::command]
