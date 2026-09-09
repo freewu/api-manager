@@ -25,6 +25,7 @@ interface Stats {
   wsApis: number;
   socketIoApis: number;
   graphqlApis: number;
+  webdavApis: number;
   totalFolders: number;
   deprecatedApis: number;
   deprecatedFolders: number;
@@ -42,8 +43,9 @@ function computeStats(node: TreeNode): Stats {
   let wsApis = 0;
   let socketIoApis = 0;
   let graphqlApis = 0;
+  let webdavApis = 0;
 
-  // 单次遍历：累计方法分布（仅 HTTP/GraphQL 外的实时与 GraphQL 单独计数）、mock 与废弃接口数（有副作用，只调用一次）
+  // 单次遍历：按协议分类计数；方法分布仅统计 HTTP / WebDAV（实时与 GraphQL 单独计数、不计入方法分布）；mock 与废弃接口数（有副作用，只调用一次）
   // 分组被废弃时，其下所有接口一并计为废弃
   const countApis = (n: TreeNode, parentDeprecated = false): number => {
     if (n.kind === "api") {
@@ -55,6 +57,10 @@ function computeStats(node: TreeNode): Stats {
         socketIoApis++;
       } else if (n.protocol === "graphql") {
         graphqlApis++;
+      } else if (n.protocol === "webdav") {
+        webdavApis++;
+        const m = (n.method || "GET").toUpperCase();
+        methods.set(m, (methods.get(m) || 0) + 1);
       } else {
         httpApis++;
         const m = (n.method || "GET").toUpperCase();
@@ -99,6 +105,7 @@ function computeStats(node: TreeNode): Stats {
     wsApis,
     socketIoApis,
     graphqlApis,
+    webdavApis,
     totalFolders,
     deprecatedApis,
     deprecatedFolders,
@@ -184,6 +191,10 @@ export function StatsModal({ node, onClose }: Props) {
         <div className="stats-card">
           <div className="stats-card-num">{stats.graphqlApis}</div>
           <div className="stats-card-label">{t("stats.graphqlApis")}</div>
+        </div>
+        <div className="stats-card">
+          <div className="stats-card-num">{stats.webdavApis}</div>
+          <div className="stats-card-label">{t("stats.webdavApis")}</div>
         </div>
         <div className="stats-card">
           <div className="stats-card-num">{stats.totalFolders}</div>
