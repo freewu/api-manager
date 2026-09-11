@@ -17,6 +17,8 @@ import { ObjectDef, ObjectImportResult, ObjectStore } from "../types";
 interface RightPaneProps {
   view: AppView;
   api: ApiFile | null;
+  /** 右侧接口面包屑：工作区名称 / …/ 分组名称 / 接口名称 */
+  breadcrumb?: string[];
   historyDetail: HistoryDetailType | null;
   historyDetailLoading: boolean;
   /** Diff 比对视图（非 null 时优先展示） */
@@ -74,6 +76,7 @@ interface RightPaneProps {
 export function RightPane({
   view,
   api,
+  breadcrumb,
   historyDetail,
   historyDetailLoading,
   historyDiff,
@@ -174,6 +177,7 @@ export function RightPane({
           <ApiWorkspace
             api={api}
             baseUrl={baseUrl}
+            breadcrumb={breadcrumb}
             currentVersion={currentVersion}
             exampleVersion={exampleVersion}
             enableVersion={enableVersion}

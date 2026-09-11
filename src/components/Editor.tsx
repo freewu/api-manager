@@ -17,6 +17,9 @@ const CodeTab = lazy(() => import("./CodeTab").then((m) => ({ default: m.CodeTab
 
 type Tab = "params" | "path" | "headers" | "body" | "prescript" | "response" | "mock" | "desc" | "doc" | "code" | "examples";
 
+/** 面包屑最多直接展示的层级数，超出时折叠中间层级为 … */
+const BREADCRUMB_MAX = 5;
+
 /** 文档页签 Path 变量可选类型（Path 仅支持基本标量类型） */
 const PATH_DOC_TYPES = ["String", "Integer", "Float"];
 
@@ -67,6 +70,8 @@ const PRESCRIPT_SNIPPETS: { key: string; code: string }[] = [
 interface Props {
   api: ApiFile;
   baseUrl: string;
+  /** 面包屑导航：工作区名称 / …/ 分组名称 / 接口名称（未传时不展示） */
+  breadcrumb?: string[];
   onChange: (api: ApiFile) => void;
   onSend: () => void;
   onSaveVersion: () => void;
@@ -95,7 +100,7 @@ interface Props {
   objectsStore?: ObjectStore;
 }
 
-export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, enableMock = true, codegenLang = "bash", onTabChange, onEnvChanged, currentVersion = 0, exampleVersion = 0, objectsList, objectsStore }: Props) {
+export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersion, enableVersion, sending, style, onCommit, enableCodegen = true, enableMock = true, codegenLang = "bash", onTabChange, onEnvChanged, currentVersion = 0, exampleVersion = 0, objectsList, objectsStore }: Props) {
   const t = useT();
   /** 是否 WebSocket 接口 */
   const isWs = api.protocol === "websocket";
@@ -155,6 +160,13 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
     eggTimerRef.current = window.setTimeout(() => setEgg(false), 3200);
   };
   const effectiveUrl = api.url || (api.path ? baseUrl + api.path : "");
+
+  /** 面包屑展示项：层级过深时折叠中间层级为 …（保留工作区 + 最近三级） */
+  const crumbs = useMemo(() => {
+    if (!breadcrumb || breadcrumb.length === 0) return [] as string[];
+    if (breadcrumb.length <= BREADCRUMB_MAX) return breadcrumb;
+    return [breadcrumb[0], "…", ...breadcrumb.slice(-3)];
+  }, [breadcrumb]);
 
   // 示例数量：接口切换或保存示例成功（exampleVersion 变化）时拉取；ExamplesTab 每次加载后也会回报最新数量
   useEffect(() => {
@@ -391,6 +403,20 @@ export function Editor({ api, baseUrl, onChange, onSend, onSaveVersion, enableVe
             </span>
           ))}
           <div className="egg-text">🎉 Bluefrog 🎉</div>
+        </div>
+      )}
+      {crumbs.length > 0 && (
+        <div className="editor-crumbs" title={breadcrumb?.join(" / ")}>
+          {crumbs.map((c, i) => (
+            <Fragment key={i}>
+              {i > 0 && <span className="crumb-sep">/</span>}
+              <span
+                className={`crumb${i === crumbs.length - 1 ? " current" : ""}${c === "…" ? " ellipsis" : ""}`}
+              >
+                {c}
+              </span>
+            </Fragment>
+          ))}
         </div>
       )}
       <div className="editor-head">

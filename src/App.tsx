@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import {
   createDemo,
   getWorkspace,
@@ -61,6 +61,17 @@ const Landing = lazy(() => import("./components/Landing").then((m) => ({ default
 const ApiDocModal = lazy(() =>
   import("./components/ApiDocModal").then((m) => ({ default: m.ApiDocModal }))
 );
+
+/** 收集工作区根到目标路径途经的分组名称（不含接口自身，用于右侧面包屑） */
+function collectGroupNames(node: TreeNode, targetPath: string, chain: string[]): string[] | null {
+  if (node.path === targetPath) return chain;
+  for (const child of node.children || []) {
+    const next = child.kind === "folder" ? [...chain, child.name] : chain;
+    const found = collectGroupNames(child, targetPath, next);
+    if (found) return found;
+  }
+  return null;
+}
 
 /** 空目录演示案例可选类型（http/websocket/socketio/graphql/webdav/object） */
 const ALL_DEMO_KINDS: Record<string, boolean> = {
@@ -240,6 +251,15 @@ export default function App() {
 
   // ---------- 请求（HTTP / WebSocket） ----------
   const baseUrl = rootInfo.baseUrl || "";
+  /** 右侧接口信息页面包屑：工作区名称 / …/ 分组名称 / 接口名称 */
+  const apiBreadcrumb = useMemo(() => {
+    if (!api || !tree || !selectedPath) return undefined;
+    const groups = collectGroupNames(tree, selectedPath, []) || [];
+    const wsName =
+      rootInfo.name ||
+      (workspace ? workspace.split(/[\\/]/).filter(Boolean).pop() || workspace : "");
+    return wsName ? [wsName, ...groups, api.name] : [...groups, api.name];
+  }, [api, tree, selectedPath, rootInfo.name, workspace]);
   const req = useRequests({ api, envs, baseUrl, onToast: showToast, onEnvChanged: () => void readEnv().then(hydrateEnvs), t });
   const {
     response,
@@ -673,6 +693,7 @@ export default function App() {
             <RightPane
               view={view}
               api={api}
+              breadcrumb={apiBreadcrumb}
               historyDetail={history.detail}
               historyDetailLoading={history.detailLoading}
               historyDiff={history.diffPair}

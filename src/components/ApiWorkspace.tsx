@@ -6,6 +6,8 @@ import { WsResponse } from "./WsResponse";
 interface Props {
   api: ApiFile;
   baseUrl: string;
+  /** 右侧接口面包屑：工作区名称 / …/ 分组名称 / 接口名称 */
+  breadcrumb?: string[];
   currentVersion?: number;
   /** 示例保存版本号：保存示例成功后自增，用于刷新「示例」角标 */
   exampleVersion?: number;
@@ -48,6 +50,7 @@ interface Props {
 export function ApiWorkspace({
   api,
   baseUrl,
+  breadcrumb,
   currentVersion = 0,
   exampleVersion = 0,
   enableVersion,
@@ -82,6 +85,7 @@ export function ApiWorkspace({
       style={{ height: hideResponse ? "100%" : `${editorRatio * 100}%` }}
       api={api}
       baseUrl={baseUrl}
+      breadcrumb={breadcrumb}
       currentVersion={currentVersion}
       exampleVersion={exampleVersion}
       onChange={onChange}
