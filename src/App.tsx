@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createDemo,
   getWorkspace,
@@ -10,11 +10,14 @@ import {
   readApi,
   readApiVersion,
   readEnv,
+  readInfo,
   saveApi,
   saveApiVersion,
+  saveFavorites,
   saveInfo,
   reorderChildren,
   toggleDeprecated,
+  toggleFavorite,
 } from "./commands";
 import { ObjectDef, TreeNode } from "./types";
 import { AppModals } from "./components/AppModals";
@@ -550,6 +553,67 @@ export default function App() {
     }
   };
 
+  /** 收藏列表：按根 __info.json 的 favorites 顺序把 uuid 映射为树中的接口节点（失效 uuid 自动忽略） */
+  const favoriteNodes = useMemo(() => {
+    const byUuid = new Map<string, TreeNode>();
+    const walk = (n: TreeNode) => {
+      if (n.kind === "api" && n.uuid) byUuid.set(n.uuid, n);
+      n.children?.forEach(walk);
+    };
+    if (tree) walk(tree);
+    return (rootInfo.favorites || [])
+      .map((u) => byUuid.get(u))
+      .filter((n): n is TreeNode => !!n);
+  }, [tree, rootInfo.favorites]);
+
+  /** 收藏 / 取消收藏接口（旧接口文件未持久化 uuid 时先补写，保证收藏可稳定关联） */
+  const handleToggleFavorite = async (node: TreeNode) => {
+    if (node.kind !== "api" || !workspace) return;
+    try {
+      let uuid = node.uuid;
+      if (!uuid) {
+        const data = await readApi(node.path);
+        const nextUuid = data.uuid || crypto.randomUUID();
+        uuid = nextUuid;
+        if (!data.uuid) {
+          await saveApi(node.path, { ...data, uuid: nextUuid });
+          if (selectedPath === node.path) setApi((prev) => (prev ? { ...prev, uuid: nextUuid } : prev));
+        }
+      }
+      const now = await toggleFavorite(uuid);
+      setRootInfo(await readInfo(workspace));
+      await reloadTree();
+      showToast(now ? t("toast.favorited") : t("toast.unfavorited"));
+    } catch (e) {
+      showToast(t("toast.favoriteFailed", { err: String(e) }));
+    }
+  };
+
+  /** 收藏列表拖动排序：持久化新顺序 */
+  const handleReorderFavorites = async (uuids: string[]) => {
+    if (!workspace) return;
+    try {
+      const saved = await saveFavorites(uuids);
+      setRootInfo((prev) => ({ ...prev, favorites: saved }));
+      showToast(t("toast.reordered"));
+    } catch (e) {
+      showToast(t("toast.reorderFailed", { err: String(e) }));
+    }
+  };
+
+  /** 进入收藏视图时默认选中第一个收藏项（每次进入仅自动选中一次） */
+  const favAutoRef = useRef(false);
+  useEffect(() => {
+    if (view !== "favorites") {
+      favAutoRef.current = false;
+      return;
+    }
+    if (favAutoRef.current || favoriteNodes.length === 0) return;
+    favAutoRef.current = true;
+    if (selectedPath && favoriteNodes.some((n) => n.path === selectedPath)) return;
+    void selectNode(favoriteNodes[0]);
+  }, [view, favoriteNodes, selectedPath, selectNode]);
+
   // 标记 / 取消标记"已废弃"（接口或分组），成功后在左侧树与当前编辑的接口上即时生效
   const handleToggleDeprecated = async (node: TreeNode) => {
     try {
@@ -632,6 +696,9 @@ export default function App() {
               onStats={setStatsNode}
               onOpenSettings={() => setSettingsOpen(true)}
               onOpenGenLogs={() => setView(view === "genlogs" ? "api" : "genlogs")}
+              favorites={favoriteNodes}
+              onReorderFavorites={(uuids) => void handleReorderFavorites(uuids)}
+              onToggleFavorite={(node) => void handleToggleFavorite(node)}
               genLogsRecords={genLogs.records}
               genLogsLoading={genLogs.loading}
               genLogsSelected={genLogs.selectedId}

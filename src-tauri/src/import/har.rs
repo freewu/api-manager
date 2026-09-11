@@ -56,6 +56,7 @@ pub(crate) fn import_har_file(root: &Path, file: &Path) -> Result<OpenApiImportR
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -98,6 +99,7 @@ pub(crate) fn import_har_file(root: &Path, file: &Path) -> Result<OpenApiImportR
                     selected_api: None,
                     dirs: vec![],
                     apis: vec![],
+                    favorites: vec![],
                 },
             )?;
         }

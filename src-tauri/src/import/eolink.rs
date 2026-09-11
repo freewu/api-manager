@@ -64,6 +64,7 @@ pub(crate) fn import_eolink_file(root: &Path, file: &Path) -> Result<OpenApiImpo
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -113,6 +114,7 @@ fn eolink_group_to_apis(dir: &Path, group: &Value,
                 selected_api: None,
                 dirs: vec![],
                 apis: vec![],
+                favorites: vec![],
             },
         )?;
     }

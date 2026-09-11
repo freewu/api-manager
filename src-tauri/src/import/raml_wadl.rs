@@ -57,6 +57,7 @@ pub(crate) fn import_raml_file(root: &Path, file: &Path) -> Result<OpenApiImport
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -304,6 +305,7 @@ pub(crate) fn import_wadl_file(root: &Path, file: &Path) -> Result<OpenApiImport
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;

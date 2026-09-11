@@ -45,6 +45,7 @@ pub(crate) fn import_insomnia_file(root: &Path, file: &Path) -> Result<OpenApiIm
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -119,6 +120,7 @@ fn insomnia_node_to_apis(dir: &Path, node: &Value, coll_env: &Value,
                 selected_api: None,
                 dirs: vec![],
                 apis: vec![],
+                favorites: vec![],
             },
         )?;
     }

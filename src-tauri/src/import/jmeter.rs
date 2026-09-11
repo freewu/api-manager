@@ -71,6 +71,7 @@ pub(crate) fn import_jmeter_file(root: &Path, file: &Path) -> Result<OpenApiImpo
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -189,6 +190,7 @@ fn jmeter_walk_hash_tree(
                                 selected_api: None,
                                 dirs: vec![],
                                 apis: vec![],
+                                favorites: vec![],
                             },
                         )?;
                     }

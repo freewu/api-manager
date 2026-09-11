@@ -67,6 +67,7 @@ pub(crate) fn import_openapi_file(root: &Path, file: &Path) -> Result<OpenApiImp
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
 
@@ -129,6 +130,7 @@ pub(crate) fn import_openapi_file(root: &Path, file: &Path) -> Result<OpenApiImp
                                 selected_api: None,
                                 dirs: vec![],
                                 apis: vec![],
+                                favorites: vec![],
                             },
                         );
                         // 追加到父分组 __info.json 的 dirs（导入顺序即显示顺序）

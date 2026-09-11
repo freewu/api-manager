@@ -72,6 +72,7 @@ fn mk_group_dir(parent: &Path, name: &str, desc: &str) -> Result<PathBuf, String
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     // 追加到父分组 __info.json 的 dirs（导入顺序即显示顺序）
@@ -141,6 +142,7 @@ fn import_apidog_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -314,6 +316,7 @@ fn import_bruno_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, S
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -487,6 +490,7 @@ fn import_apizza_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -731,6 +735,7 @@ fn import_nei_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, Str
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     // datatypes 索引
@@ -960,6 +965,7 @@ fn import_doclever_files(root: &Path, file: &Path) -> Result<OpenApiImportResult
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -1102,6 +1108,7 @@ fn import_io_docs_files(root: &Path, file: &Path) -> Result<OpenApiImportResult,
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -1221,6 +1228,7 @@ fn import_easydoc_files(root: &Path, file: &Path) -> Result<OpenApiImportResult,
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut cat_dirs: HashMap<i64, PathBuf> = HashMap::new();
@@ -1380,6 +1388,7 @@ fn import_docway_files(root: &Path, file: &Path) -> Result<OpenApiImportResult, 
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -1510,6 +1519,7 @@ fn import_hoppscotch_files(root: &Path, file: &Path) -> Result<OpenApiImportResu
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -1651,6 +1661,7 @@ fn import_metersphere_files(root: &Path, file: &Path) -> Result<OpenApiImportRes
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     // nodeTree → id → dir
@@ -2137,6 +2148,7 @@ pub(crate) fn import_apidoc_files(
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     // 分组
@@ -2173,6 +2185,7 @@ pub(crate) fn import_apidoc_files(
                         selected_api: None,
                         dirs: vec![],
                         apis: vec![],
+                        favorites: vec![],
                     },
                 )?;
             }

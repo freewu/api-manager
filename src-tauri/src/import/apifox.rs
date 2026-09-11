@@ -50,6 +50,7 @@ pub(crate) fn import_apifox_file(root: &Path, file: &Path) -> Result<OpenApiImpo
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -143,6 +144,7 @@ fn import_apifox_items_arr(dir: &Path, items: &[Value], stats: &mut ImportStats)
                         selected_api: None,
                         dirs: vec![],
                         apis: vec![],
+                        favorites: vec![],
                     },
                 )?;
             }
@@ -337,6 +339,7 @@ pub(crate) fn import_apipost_file(root: &Path, file: &Path) -> Result<OpenApiImp
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     // target_id → 节点索引
@@ -406,6 +409,7 @@ fn import_apipost_node(
                         selected_api: None,
                         dirs: vec![],
                         apis: vec![],
+                        favorites: vec![],
                     },
                 )?;
             }

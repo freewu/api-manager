@@ -216,6 +216,7 @@ pub(crate) fn import_markdown(
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;

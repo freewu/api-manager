@@ -314,6 +314,16 @@ export function setWorkspaceSelectedApi(rel: string | null): Promise<void> {
   return invoke<void>("set_workspace_selected_api", { rel });
 }
 
+/** 覆盖保存收藏列表（写入根 __info.json 的 favorites，用于拖动排序），返回去重后的 uuid 列表 */
+export function saveFavorites(uuids: string[]): Promise<string[]> {
+  return invoke<string[]>("save_favorites", { uuids });
+}
+
+/** 收藏 / 取消收藏指定接口，返回操作后是否已收藏 */
+export function toggleFavorite(uuid: string): Promise<boolean> {
+  return invoke<boolean>("toggle_favorite", { uuid });
+}
+
 /** 标记 / 取消标记“已废弃”（接口或分组），返回新的废弃状态 */
 export function toggleDeprecated(path: string): Promise<boolean> {
   return invoke<boolean>("toggle_deprecated", { path });

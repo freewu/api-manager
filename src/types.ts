@@ -160,6 +160,8 @@ export interface InfoJson {
   deprecated?: boolean;
   /** 最近一次选中的接口（相对工作区根目录的路径），重开工作区时默认选中 */
   selectedApi?: string;
+  /** 收藏的接口 uuid 列表（按显示顺序，保存在工作区根目录 __info.json） */
+  favorites?: string[];
 }
 
 // ---- 全局环境变量 ----
@@ -204,6 +206,8 @@ export interface TreeNode {
   deprecated?: boolean;
   /** 接口协议（http / websocket，分组无此字段） */
   protocol?: "http" | "websocket" | "graphql" | "socketio" | "webdav";
+  /** 接口 uuid（仅接口节点有，用于收藏等按 uuid 关联的场景） */
+  uuid?: string;
   children?: TreeNode[];
 }
 

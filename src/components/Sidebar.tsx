@@ -7,6 +7,7 @@ import { ObjectImportResult, ObjectStore, ObjectUsageItem } from "../types";
 import { FormatIcon } from "./FormatSelect";
 import { useT } from "../i18n";
 import { GenLogsList } from "./GenLogsList";
+import { FavoritesList } from "./FavoritesList";
 import { GenLogItem } from "../commands";
 import iconHttp from "../assets/icon-http.png";
 import iconWs from "../assets/icon-websocket.png";
@@ -14,7 +15,7 @@ import iconGql from "../assets/icon-graphql.png";
 import iconSocketIo from "../assets/icon-socketio.png";
 import iconWebdav from "../../asserts/icon/WebDAV.png";
 
-export type AppView = "api" | "history" | "objects" | "genlogs";
+export type AppView = "api" | "history" | "objects" | "genlogs" | "favorites";
 
 interface Props {
   width?: number;
@@ -37,6 +38,12 @@ interface Props {
   onViewMarkdown?: (node: TreeNode) => void;
   onViewApiDoc?: (node: TreeNode) => void;
   onOpenSettings?: () => void;
+  /** 收藏的接口节点（按收藏顺序，展示在收藏视图，支持拖动排序） */
+  favorites: TreeNode[];
+  /** 收藏列表拖动排序：回传新顺序的 uuid 列表 */
+  onReorderFavorites: (uuids: string[]) => void;
+  /** 收藏 / 取消收藏接口 */
+  onToggleFavorite: (node: TreeNode) => void;
   /** 打开数据生成记录管理 */
   onOpenGenLogs?: () => void;
   onImportPostman?: () => void;
@@ -517,6 +524,12 @@ function NodeRow({
 export function Sidebar(props: Props) {
   const t = useT();
   const { tree, loading, genLogsRecords, genLogsLoading, genLogsSelected, onGenLogsSelect, onGenLogsReload, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, onOpenGenLogs, view, onSwitchView, onImportPostman, onImportCurl, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onImportApiDoc, onImportExtra, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
+  const { favorites, onReorderFavorites, onToggleFavorite } = props;
+  /** 已收藏接口 uuid 集合（右键菜单显示收藏/取消收藏用） */
+  const favoriteUuids = useMemo(
+    () => new Set(favorites.map((n) => n.uuid).filter((u): u is string => !!u)),
+    [favorites]
+  );
   const [importMenu, setImportMenu] = useState(false);
   /** 对象管理：底部导入（建表语句 / 建表文件） */
   const [objImportMenu, setObjImportMenu] = useState(false);
@@ -835,6 +848,21 @@ export function Sidebar(props: Props) {
               </svg>
             </button>
           </div>
+        ) : view === "favorites" ? (
+          <div className="history-side-header">
+            <span className="history-side-title">⭐ {t("sidebar.favorites")}</span>
+            <span className="history-side-count">{favorites.length}</span>
+            <button
+              className="icon-btn"
+              onClick={() => onSwitchView("api")}
+              title={t("history.back")}
+              aria-label={t("history.back")}
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0 4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z" />
+              </svg>
+            </button>
+          </div>
         ) : (
           <div className="history-side-header">
             <span className="history-side-title">{t("history.title")}</span>
@@ -960,6 +988,16 @@ export function Sidebar(props: Props) {
           onReload={onGenLogsReload}
         />
       )}
+      {view === "favorites" && (
+        <FavoritesList
+          items={favorites}
+          selectedPath={props.selectedPath}
+          onSelect={props.onSelect}
+          onReorder={onReorderFavorites}
+          onContextMenu={openMenu}
+          onUnfavorite={onToggleFavorite}
+        />
+      )}
       {view === "history" && (
         <HistoryList
           records={props.historyRecords}
@@ -1043,6 +1081,16 @@ export function Sidebar(props: Props) {
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
             <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
+          </svg>
+        </button>
+        <button
+          className={`icon-btn ${view === "favorites" ? "active" : ""}`}
+          onClick={() => onSwitchView(view === "favorites" ? "api" : "favorites")}
+          title={view === "favorites" ? t("history.back") : t("sidebar.favorites")}
+          aria-label={t("sidebar.favorites")}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+            <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
           </svg>
         </button>
         <button className="icon-btn" onClick={onOpenSettings} title={t("sidebar.settings")} aria-label={t("sidebar.settings")}>
@@ -1504,6 +1552,16 @@ export function Sidebar(props: Props) {
                 }}
               >
                 ✎ {t("sidebar.rename")}
+              </button>
+              <button
+                onClick={() => {
+                  onToggleFavorite(menu.node);
+                  setMenu(null);
+                }}
+              >
+                {menu.node.uuid && favoriteUuids.has(menu.node.uuid)
+                  ? `★ ${t("sidebar.removeFavorite")}`
+                  : `☆ ${t("sidebar.addFavorite")}`}
               </button>
               {enableVersion && (
                 <button

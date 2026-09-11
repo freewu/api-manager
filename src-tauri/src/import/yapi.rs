@@ -45,6 +45,7 @@ pub(crate) fn import_yapi_file(root: &Path, file: &Path) -> Result<OpenApiImport
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let mut count = 0usize;
@@ -103,6 +104,7 @@ fn yapi_node_to_apis(dir: &Path, node: &Value, stats: &mut ImportStats) -> Resul
                 selected_api: None,
                 dirs: vec![],
                 apis: vec![],
+                favorites: vec![],
             },
         )?;
     }

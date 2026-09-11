@@ -54,6 +54,7 @@ pub(crate) fn import_postman_file(root: &Path, file: &Path) -> Result<PostmanImp
             selected_api: None,
             dirs: vec![],
             apis: vec![],
+            favorites: vec![],
         },
     )?;
     let items = json
@@ -218,6 +219,7 @@ fn import_postman_items(
                     selected_api: None,
                     dirs: vec![],
                     apis: vec![],
+                    favorites: vec![],
                 },
             )?;
             import_postman_items(&sub_dir, sub, stats, failed, duplicated)?;

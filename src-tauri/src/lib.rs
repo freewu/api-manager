@@ -129,6 +129,9 @@ pub struct InfoJson {
     /// 最近一次选中的接口（相对工作区根目录的路径），重开工作区时默认选中它
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub selected_api: Option<String>,
+    /// 收藏的接口 uuid 列表（按显示顺序，仅保存在工作区根目录 __info.json）
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub favorites: Vec<String>,
     /// 子分组顺序（目录名，按显示顺序；不在列表中的排末尾）
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dirs: Vec<String>,
@@ -453,6 +456,9 @@ pub struct TreeNode {
     /// 接口协议：http / websocket（分组无此字段）
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protocol: Option<String>,
+    /// 接口 uuid（仅接口节点有，用于收藏等按 uuid 关联的场景）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uuid: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub children: Option<Vec<TreeNode>>,
 }
@@ -681,6 +687,7 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
         collapsed: info.collapsed,
         deprecated: info.deprecated,
         protocol: None,
+        uuid: None,
         api_count: Some(api_count),
         children: Some(children),
     })
@@ -697,6 +704,7 @@ fn build_api_node(path: &Path) -> TreeNode {
     let mut mock_enabled = None;
     let mut deprecated = None;
     let mut protocol = None;
+    let mut uuid = None;
 
     if let Ok(content) = fs::read_to_string(path) {
         if let Ok(v) = serde_json::from_str::<Value>(&content) {
@@ -713,6 +721,12 @@ fn build_api_node(path: &Path) -> TreeNode {
                 .and_then(|e| e.as_bool());
             deprecated = v.get("deprecated").and_then(|d| d.as_bool());
             protocol = v.get("protocol").and_then(|x| x.as_str()).map(String::from);
+            uuid = v
+                .get("uuid")
+                .and_then(|x| x.as_str())
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(String::from);
         }
     }
 
@@ -727,6 +741,7 @@ fn build_api_node(path: &Path) -> TreeNode {
         collapsed: None,
         deprecated,
         protocol,
+        uuid,
         api_count: None,
         children: None,
     }
@@ -1603,6 +1618,7 @@ fn create_folder(
         selected_api: None,
         dirs: vec![],
         apis: vec![],
+        favorites: vec![],
     };
     write_pretty(&dir_path.join(INFO_FILE), &info)?;
     // 记录到父目录 __info.json 的 dirs 顺序列表（新建分组排在最后）
@@ -1723,6 +1739,8 @@ fn delete_entry(state: State<'_, WorkspaceState>, path: String) -> Result<(), St
         .file_name()
         .map(|s| s.to_string_lossy().to_string())
         .unwrap_or_default();
+    // 删除前先收集其中接口的 uuid，用于清理根 __info.json 的收藏列表
+    let removed_uuids = collect_api_uuids(&target);
     let res = if is_dir {
         fs::remove_dir_all(&target).map_err(|e| format!("删除失败: {e}"))
     } else {
@@ -1731,6 +1749,8 @@ fn delete_entry(state: State<'_, WorkspaceState>, path: String) -> Result<(), St
     res?;
     // 从父目录 __info.json 顺序列表中移除
     info_remove_child(parent, &name, is_dir);
+    // 清理收藏：删除接口 / 分组时，把其中接口的 uuid 从根 __info.json 的 favorites 移除
+    remove_favorites(&root, &removed_uuids);
     Ok(())
 }
 
@@ -1979,6 +1999,113 @@ fn set_workspace_selected_api(
     write_pretty(&root.join(INFO_FILE), &info)
 }
 
+// ==================== 收藏 ====================
+
+/// 读取接口主文件中的 uuid（旧文件可能没有，返回 None）
+fn read_api_uuid(path: &Path) -> Option<String> {
+    let content = fs::read_to_string(path).ok()?;
+    let v: Value = serde_json::from_str(&content).ok()?;
+    v.get("uuid")
+        .and_then(|x| x.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+}
+
+/// 收集目录（或单个接口文件）下所有接口的 uuid，用于删除时清理收藏
+fn collect_api_uuids(target: &Path) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    if target.is_dir() {
+        let mut stack: Vec<PathBuf> = vec![target.to_path_buf()];
+        while let Some(dir) = stack.pop() {
+            let Ok(entries) = fs::read_dir(&dir) else { continue };
+            for entry in entries.flatten() {
+                let p = entry.path();
+                let fname = entry.file_name().to_string_lossy().to_string();
+                if fname.starts_with('.') {
+                    continue;
+                }
+                if p.is_dir() {
+                    stack.push(p);
+                    continue;
+                }
+                if p.extension().map(|e| e == "json").unwrap_or(false) {
+                    if let Some(u) = read_api_uuid(&p) {
+                        if !out.contains(&u) {
+                            out.push(u);
+                        }
+                    }
+                }
+            }
+        }
+    } else if let Some(u) = read_api_uuid(target) {
+        out.push(u);
+    }
+    out
+}
+
+/// 从工作区根 __info.json 的 favorites 中移除指定 uuid（删除接口 / 分组时调用）
+fn remove_favorites(root: &Path, uuids: &[String]) {
+    if uuids.is_empty() {
+        return;
+    }
+    let mut info = read_info_file(root);
+    let before = info.favorites.len();
+    info.favorites.retain(|u| !uuids.iter().any(|x| x == u));
+    if info.favorites.len() != before {
+        let _ = write_pretty(&root.join(INFO_FILE), &info);
+    }
+}
+
+/// 校验并去重 uuid 列表（保持顺序）
+fn sanitize_favorites(uuids: Vec<String>) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for u in uuids {
+        let u = u.trim().to_string();
+        if valid_uuid(&u) && !out.contains(&u) {
+            out.push(u);
+        }
+    }
+    out
+}
+
+/// 覆盖保存收藏列表（用于拖动排序 / 批量更新），返回去重后的列表
+#[tauri::command]
+fn save_favorites(
+    state: State<'_, WorkspaceState>,
+    uuids: Vec<String>,
+) -> Result<Vec<String>, String> {
+    let root = workspace_root(&state)?;
+    let list = sanitize_favorites(uuids);
+    let mut info = read_info_file(&root);
+    info.favorites = list.clone();
+    write_pretty(&root.join(INFO_FILE), &info)?;
+    Ok(list)
+}
+
+/// 收藏 / 取消收藏指定接口，返回操作后是否已收藏
+#[tauri::command]
+fn toggle_favorite(
+    state: State<'_, WorkspaceState>,
+    uuid: String,
+) -> Result<bool, String> {
+    let root = workspace_root(&state)?;
+    let uuid = uuid.trim().to_string();
+    if !valid_uuid(&uuid) {
+        return Err("无效的接口 uuid".into());
+    }
+    let mut info = read_info_file(&root);
+    let now = if info.favorites.iter().any(|u| u == &uuid) {
+        info.favorites.retain(|u| u != &uuid);
+        false
+    } else {
+        info.favorites.push(uuid);
+        true
+    };
+    write_pretty(&root.join(INFO_FILE), &info)?;
+    Ok(now)
+}
+
 /// 标记 / 取消标记“已废弃”：接口写入其 JSON 文件的 deprecated 字段，
 /// 分组写入其目录下 __info.json 的 deprecated 字段。返回新的废弃状态。
 #[tauri::command]
@@ -2123,6 +2250,8 @@ pub fn run() {
             set_workspace_selected_api,
             reorder_children,
             toggle_deprecated,
+            save_favorites,
+            toggle_favorite,
             read_envs,
             save_envs,
             crate::tray::update_tray_env,
