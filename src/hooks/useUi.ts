@@ -1,5 +1,27 @@
 import { useCallback, useRef, useState } from "react";
 
+/** 顶栏高度（与 styles/layout.css 的 .toolbar 保持一致），用于把「窗体高度」换算到内容区 */
+const TOOLBAR_H = 46;
+/** 响应面板默认占窗体高度的比例（2/5） */
+const RESPONSE_WINDOW_RATIO = 0.4;
+/** 内容区高度不可用时的兜底编辑器占比（响应约占内容区 2/5） */
+const FALLBACK_EDITOR_RATIO = 0.6;
+/** 旧版默认占比（响应偏高），未自定义过的用户迁移到新默认 */
+const LEGACY_EDITOR_RATIO = 0.45;
+
+/**
+ * 计算编辑器默认占比：使响应面板默认高度等于窗体高度的 2/5。
+ * 编辑器 / 响应在「窗体 - 顶栏」的内容区分栏，故：
+ *   (1 - ratio) * (winH - TOOLBAR_H) = winH * 0.4
+ */
+function defaultEditorRatio(): number {
+  const winH = typeof window === "undefined" ? 0 : window.innerHeight;
+  const contentH = winH - TOOLBAR_H;
+  if (contentH <= 160) return FALLBACK_EDITOR_RATIO;
+  const ratio = 1 - (winH * RESPONSE_WINDOW_RATIO) / contentH;
+  return Math.min(0.8, Math.max(0.2, ratio));
+}
+
 /**
  * 界面状态：toast 提示、左右分栏宽度、编辑器/响应上下分栏比例、
  * 空白区域右键菜单。
@@ -52,7 +74,10 @@ export function useUi() {
   // ---------- 编辑器 / 响应上下分栏比例 ----------
   const [editorRatio, setEditorRatio] = useState(() => {
     const saved = Number(localStorage.getItem("editor-ratio"));
-    return saved >= 0.2 && saved <= 0.8 ? saved : 0.45;
+    // 0.45 为旧版默认值（响应面板偏高）：未自定义过的用户迁移到新默认
+    return saved >= 0.2 && saved <= 0.8 && saved !== LEGACY_EDITOR_RATIO
+      ? saved
+      : defaultEditorRatio();
   });
   const editorRatioRef = useRef(editorRatio);
 
@@ -94,9 +119,10 @@ export function useUi() {
   }, []);
 
   const resetEditorRatio = useCallback(() => {
-    setEditorRatio(0.45);
-    editorRatioRef.current = 0.45;
-    localStorage.setItem("editor-ratio", "0.45");
+    const ratio = defaultEditorRatio();
+    setEditorRatio(ratio);
+    editorRatioRef.current = ratio;
+    localStorage.setItem("editor-ratio", String(ratio));
   }, []);
 
   // ---------- 空白区域右键菜单 ----------
