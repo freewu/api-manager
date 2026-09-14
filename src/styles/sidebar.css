@@ -115,9 +115,16 @@
   flex-shrink: 0;
   transition: color 0.15s;
 }
+.search-adv-toggle svg {
+  transition: transform 0.18s ease;
+}
 .search-adv-toggle:hover,
 .search-adv-toggle.on {
   color: var(--accent);
+}
+/* 展开时箭头朝上（向下 / 向上图标） */
+.search-adv-toggle.on svg {
+  transform: rotate(180deg);
 }
 
 /* 高级搜索面板：按 Method 多选过滤 */
