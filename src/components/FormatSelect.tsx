@@ -14,6 +14,7 @@ const FORMAT_ICON_FILES: Record<string, string> = {
   apifox: "apifox.png",
   apipost: "apipost.png",
   docsify: "docsify.svg",
+  mkdocs: "mkdocs.png",
   markdown: "markdown.png",
   html: "html.png",
   raml: "raml.png",

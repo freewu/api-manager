@@ -10,6 +10,8 @@
   min-height: 0;
   overflow: hidden;
   padding: 0 14px 12px;
+  display: flex;
+  flex-direction: column;
 }
 .export-modal .modal-foot {
   flex-shrink: 0;
@@ -19,6 +21,14 @@
   align-items: center;
   gap: 10px;
   padding: 10px 4px 2px;
+  flex-shrink: 0;
+}
+/* 导出弹窗内容：格式行 + 列表头固定，接口树单独滚动 */
+.export-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 .export-format-label {
   font-size: 13px;
@@ -116,6 +126,7 @@
   justify-content: space-between;
   padding: 8px 14px 4px;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 .export-all {
   display: flex;
@@ -142,6 +153,7 @@
 }
 .export-tree {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 6px 4px 10px;
 }
@@ -190,6 +202,17 @@
 .export-row-icon {
   font-size: 13px;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+}
+.export-row-icon .node-type-icon {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  display: block;
 }
 .export-row-name {
   font-size: 13px;

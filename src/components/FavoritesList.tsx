@@ -1,11 +1,7 @@
 import { useState } from "react";
 import { TreeNode } from "../types";
 import { useT } from "../i18n";
-import iconHttp from "../assets/icon-http.png";
-import iconWs from "../assets/icon-websocket.png";
-import iconGql from "../assets/icon-graphql.png";
-import iconSocketIo from "../assets/icon-socketio.png";
-import iconWebdav from "../../asserts/icon/WebDAV.png";
+import { NodeTypeIcon } from "./NodeTypeIcon";
 
 interface Props {
   /** 已收藏接口节点（已按收藏顺序排好） */
@@ -102,17 +98,7 @@ export function FavoritesList({ items, selectedPath, onSelect, onReorder, onCont
           >
             <span className="caret" />
             <span className="node-icon">
-              {node.protocol === "websocket" ? (
-                <img className="node-type-icon" src={iconWs} alt="WS" />
-              ) : node.protocol === "socketio" ? (
-                <img className="node-type-icon" src={iconSocketIo} alt="Socket.IO" />
-              ) : node.protocol === "graphql" ? (
-                <img className="node-type-icon" src={iconGql} alt="GraphQL" />
-              ) : node.protocol === "webdav" ? (
-                <img className="node-type-icon" src={iconWebdav} alt="WebDAV" />
-              ) : (
-                <img className="node-type-icon" src={iconHttp} alt="HTTP" />
-              )}
+              <NodeTypeIcon protocol={node.protocol} />
             </span>
             <span className="node-name">{node.name}</span>
             {node.endpoint && (

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Modal } from "./Modal";
 import { FormatSelect } from "./FormatSelect";
+import { NodeTypeIcon } from "./NodeTypeIcon";
 import { AppSettings, TreeNode } from "../types";
 import { ExportFormat } from "../commands";
 import { useT } from "../i18n";
@@ -168,7 +169,7 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
             onClick={(e) => e.stopPropagation()}
           />
           <span className={`export-row-icon ${isFolder ? "folder" : ""}`}>
-            {isFolder ? "📁" : "🌐"}
+            {isFolder ? "📁" : <NodeTypeIcon protocol={node.protocol} />}
           </span>
           <span className={`export-row-name${isDeprecated ? " deprecated" : ""}`}>
             {node.name}
