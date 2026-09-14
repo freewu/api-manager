@@ -1,5 +1,21 @@
 # API Manager 更新记录
 
+## v0.6.2
+
+### 📤 导出
+- 导出新增 **MkDocs** 格式：选中接口 / 分组后生成 `mkdocs.yml` + `docs/` 站点目录（分组递归生成导航，接口每页一篇，`pip install mkdocs && mkdocs serve` 即可本地预览），并接入官方 MkDocs 图标
+
+### 🔍 高级搜索
+- 图标改为可展开 / 收起的上下箭头
+- 支持按 **WebDAV** 接口类型过滤，Method 列表补充 `PROPFIND` / `PROPPATCH` / `MKCOL` / `COPY` / `MOVE` / `LOCK` / `UNLOCK` / `REPORT`
+
+### 📊 接口编辑区
+- 右侧响应面板默认高度调整为窗体高度的 **2/5**
+
+### 🐞 修复
+- 导出弹窗接口树无法滚动（列表过长被裁剪）
+- 导出弹窗接口图标改为按协议显示类型图标（HTTP / WebSocket / Socket.IO / GraphQL / WebDAV）
+
 ## v0.6.1
 
 ### ⭐ 接口收藏
