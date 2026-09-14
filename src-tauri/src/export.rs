@@ -15,6 +15,7 @@ mod docsify;
 mod eolink;
 mod insomnia;
 mod jmeter;
+mod mkdocs;
 mod openapi;
 mod postman;
 mod raml;
@@ -28,6 +29,7 @@ pub use self::docsify::{docsify_files, markdown_single_file};
 pub use self::eolink::to_eolink;
 pub use self::insomnia::to_insomnia;
 pub use self::jmeter::to_jmeter;
+pub use self::mkdocs::mkdocs_files;
 pub use self::openapi::to_openapi;
 pub use self::postman::to_postman;
 pub use self::raml::to_raml;
@@ -423,6 +425,27 @@ pub(crate) fn export_selection(
             };
             let dir = dir.into_path().map_err(|e| e.to_string())?;
             let files = docsify_files(&apis);
+            for (rel, content) in &files {
+                let target = dir.join(rel);
+                if let Some(parent) = target.parent() {
+                    fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {e}"))?;
+                }
+                fs::write(&target, content).map_err(|e| format!("写入失败: {e}"))?;
+            }
+            Ok(Some(dir.to_string_lossy().to_string()))
+        }
+        "mkdocs" => {
+            let picked = app
+                .dialog()
+                .file()
+                .set_title("选择 MkDocs 站点目录")
+                .blocking_pick_folder();
+            let Some(dir) = picked else {
+                return Ok(None);
+            };
+            let dir = dir.into_path().map_err(|e| e.to_string())?;
+            let site_name = read_info_file(&root).name.unwrap_or_default();
+            let files = mkdocs_files(&site_name, &apis);
             for (rel, content) in &files {
                 let target = dir.join(rel);
                 if let Some(parent) = target.parent() {

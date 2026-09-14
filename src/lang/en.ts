@@ -545,6 +545,7 @@ export const EN: Record<string, string> = {
   "export.apis": "APIs",
   "export.busy": "Exporting…",
   "export.docsify": "Docsify docs (.md directory)",
+  "export.mkdocs": "MkDocs site (.md directory + mkdocs.yml)",
   "export.apifox": "Apifox project (.json)",
   "export.apipost": "Apipost project (.json)",
   "export.raml": "RAML document (.raml)",

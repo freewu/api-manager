@@ -534,6 +534,7 @@ export const TW: Record<string, string> = {
   "export.apis": "個接口",
   "export.busy": "導出中…",
   "export.docsify": "Docsify 文檔（.md 目錄）",
+  "export.mkdocs": "MkDocs 站點（.md 目錄 + mkdocs.yml）",
   "export.apifox": "Apifox 項目（.json）",
   "export.apipost": "Apipost 項目（.json）",
   "export.raml": "RAML 文檔（.raml）",

@@ -65,6 +65,7 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
           { value: "metersphere", label: t("export.metersphere") },
           { value: "rap2-project", label: t("export.rap2-project") },
           { value: "docsify", label: t("export.docsify") },
+          { value: "mkdocs", label: t("export.mkdocs") },
           { value: "markdown", label: t("export.markdown") },
           { value: "html", label: t("export.html") },
         ] as { value: ExportFormat; label: string }[]

@@ -358,7 +358,7 @@ export function useModals(opts: {
     try {
       const saved = await exportSelection(paths, format, settings.htmlNav);
       if (!saved) return; // 用户取消
-      const kind = format === "docsify" ? t("export.kindDir") : t("export.kindFile");
+      const kind = format === "docsify" || format === "mkdocs" ? t("export.kindDir") : t("export.kindFile");
       onToast(t("toast.exported", { kind, path: saved }));
       setExportOpen(false);
       setExportPreselect(undefined);

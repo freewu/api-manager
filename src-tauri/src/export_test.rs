@@ -243,3 +243,60 @@
         assert_eq!(v["paths"]["/api/users"]["post"]["summary"], "创建用户");
         assert_eq!(v["paths"]["/api/users (2)"]["post"]["summary"], "创建用户(2)");
     }
+
+    /// MkDocs 站点：mkdocs.yml（site_name + nav）+ docs/index.md + docs/<分组>/<接口>.md
+    #[test]
+    fn mkdocs_files_ok() {
+        let apis = vec![
+            (vec![("用户 管理".to_string(), false)], sample()),
+            (vec![("用户 管理".to_string(), false)], sample()), // 同名接口 → 加序号
+            (vec![], sample()),                                 // 根级接口
+        ];
+        let files = mkdocs_files("测试站点", &apis);
+        let names: Vec<String> = files
+            .iter()
+            .map(|(p, _)| p.to_string_lossy().replace('\\', "/"))
+            .collect();
+        assert!(names.contains(&"mkdocs.yml".to_string()), "names: {names:?}");
+        assert!(names.contains(&"docs/index.md".to_string()));
+        // 分组目录名去空格，接口文件名保留原样，重名加序号
+        assert!(names.contains(&"docs/用户管理/创建用户.md".to_string()));
+        assert!(names.contains(&"docs/用户管理/创建用户(2).md".to_string()));
+        assert!(names.contains(&"docs/创建用户.md".to_string()));
+
+        // mkdocs.yml：站点名 + 首页 + 分组嵌套 nav（相对 docs 路径、/ 分隔）
+        let yml = files
+            .iter()
+            .find(|(p, _)| p.to_string_lossy() == "mkdocs.yml")
+            .unwrap()
+            .1
+            .clone();
+        assert!(yml.contains("site_name: \"测试站点\""), "yml: {yml}");
+        assert!(yml.contains("nav:\n"), "yml: {yml}");
+        assert!(yml.contains("- \"首页\": index.md"), "yml: {yml}");
+        assert!(yml.contains("- \"用户 管理\":"), "yml: {yml}");
+        assert!(
+            yml.contains("- \"创建用户\": \"用户管理/创建用户.md\""),
+            "yml: {yml}"
+        );
+
+        // 接口页：分组标题 + 接口标题
+        let api_md = files
+            .iter()
+            .find(|(p, _)| p.to_string_lossy().replace('\\', "/") == "docs/用户管理/创建用户.md")
+            .unwrap()
+            .1
+            .clone();
+        assert!(api_md.contains("# 用户 管理"), "api md: {api_md}");
+        assert!(api_md.contains("## 创建用户"), "api md: {api_md}");
+
+        // 首页：站点名 + 目录链接
+        let index = files
+            .iter()
+            .find(|(p, _)| p.to_string_lossy().replace('\\', "/") == "docs/index.md")
+            .unwrap()
+            .1
+            .clone();
+        assert!(index.starts_with("# 测试站点"), "index: {index}");
+        assert!(index.contains("[创建用户](用户管理/创建用户.md)"), "index: {index}");
+    }

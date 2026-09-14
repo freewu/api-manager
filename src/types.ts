@@ -224,6 +224,7 @@ export type ExportFormat =
   | "postman"
   | "openapi"
   | "docsify"
+  | "mkdocs"
   | "markdown"
   | "html"
   | "apifox"
@@ -366,6 +367,7 @@ export const defaultSettings = (): AppSettings => ({
     apifox: true,
     apipost: true,
     docsify: true,
+    mkdocs: true,
     markdown: true,
     html: true,
     raml: false,

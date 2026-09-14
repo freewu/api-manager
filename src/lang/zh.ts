@@ -553,6 +553,7 @@ export const ZH: Record<string, string> = {
   "export.apis": "个接口",
   "export.busy": "导出中…",
   "export.docsify": "Docsify 文档（.md 目录）",
+  "export.mkdocs": "MkDocs 站点（.md 目录 + mkdocs.yml）",
   "export.apifox": "Apifox 项目（.json）",
   "export.apipost": "Apipost 项目（.json）",
   "export.raml": "RAML 文档（.raml）",

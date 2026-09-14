@@ -67,6 +67,7 @@ const EXPORT_FORMATS: { value: ExportFormat; labelKey: string }[] = [
   { value: "postman", labelKey: "export.postman" },
   { value: "openapi", labelKey: "export.openapi" },
   { value: "docsify", labelKey: "export.docsify" },
+  { value: "mkdocs", labelKey: "export.mkdocs" },
   { value: "markdown", labelKey: "export.markdown" },
   { value: "html", labelKey: "export.html" },
   { value: "apifox", labelKey: "export.apifox" },
