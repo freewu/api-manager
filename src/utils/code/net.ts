@@ -243,12 +243,19 @@ ${pack}
 
 const sock = dgram.createSocket("udp4");
 
+const timer = setTimeout(() => {
+  console.log("接收超时（无响应）");
+  sock.close();
+}, ${r.timeoutMs});
+
 sock.on("message", (msg${ts ? ": Buffer" : ""}, peer) => {
+  clearTimeout(timer);
   console.log(\`来自 \${peer.address}:\${peer.port} 收到 \${msg.length} 字节: \${msg.toString("hex").toUpperCase()}\`);
   const data = msg;${unpack ? "\n" + indent(unpack, "  ") : ""}
   sock.close();
 });
 sock.on("error", (err${ts ? ": Error" : ""}) => {
+  clearTimeout(timer);
   console.error(err.message);
   sock.close();
 });
@@ -257,8 +264,7 @@ sock.send(PACKET, ${r.port}, "${r.host}", (err) => {
   if (err) console.error(err.message);
   else console.log(\`发送 \${PACKET.length} 字节: \${PACKET.toString("hex").toUpperCase()}\`);
 });
-
-setTimeout(() => sock.close(), ${r.timeoutMs});`;
+`;
   }
   return `${header(r)}
 ${head}
@@ -268,16 +274,16 @@ const PORT = ${r.port};
 const TIMEOUT = ${r.timeoutMs};
 ${pack}
 
-const chunks${ts ? ": Buffer[]" : ""} = [];
 const client = net.createConnection({ host: HOST, port: PORT }, () => {
   client.write(PACKET);
   console.log(\`发送 \${PACKET.length} 字节: \${PACKET.toString("hex").toUpperCase()}\`);
 });
 client.setTimeout(TIMEOUT);
-client.on("data", (chunk${ts ? ": Buffer" : ""}) => chunks.push(chunk));
-client.on("end", () => {
-  const data = Buffer.concat(chunks);
+// 收到首批数据即按完整响应解析（与其它语言的单次 recv 语义一致，无需等服务端断开）
+client.on("data", (chunk${ts ? ": Buffer" : ""}) => {
+  const data = chunk;
   console.log(\`收到 \${data.length} 字节: \${data.toString("hex").toUpperCase()}\`);${unpack ? "\n" + indent(unpack, "  ") : ""}
+  client.end();
 });
 client.on("timeout", () => {
   console.log("接收超时（无响应）");
@@ -388,7 +394,13 @@ ${indent(pack, "        ")}
 
             InputStream in = socket.getInputStream();
             byte[] buf = new byte[65535];
-            int n = in.read(buf);
+            int n;
+            try {
+                n = in.read(buf);
+            } catch (java.net.SocketTimeoutException e) {
+                System.out.println("接收超时（无响应）");
+                return;
+            }
             if (n <= 0) {
                 System.out.println("连接已关闭（无响应）");
                 return;
@@ -780,10 +792,12 @@ my $sock = IO::Socket::INET->new(
 ) or die "连接失败: $!\\n";
 
 $sock->send($PACKET);
-print "发送 " . length($PACKET) . " 字节\\n";
+printf "发送 %d 字节: %s\\n", length($PACKET), uc unpack("H*", $PACKET);
 
 my $data = "";
-if ($sock->recv($data, 65535, 0)) {
+# recv 返回的是对端地址（TCP 已连接时为空串），不能用真假值判断是否成功
+my $from = $sock->recv($data, 65535, 0);
+if (defined($from) && length($data) > 0) {
     printf "收到 %d 字节: %s\\n", length($data), uc unpack("H*", $data);${unpack ? "\n" + indent(unpack, "    ") : ""}
 } else {
     print "接收超时（无响应）\\n";
@@ -792,13 +806,23 @@ close($sock);`;
 }
 
 function genLua(r: NetReq, api: ApiFile): string {
-  const factory = r.protocol === "udp" ? "udp" : "tcp";
+  // luasocket：TCP 用 connect，UDP 没有 connect 方法，需用 setpeername 指定对端
+  const open =
+    r.protocol === "udp"
+      ? `local sock = assert(socket.udp())
+sock:settimeout(${r.timeoutMs / 1000})
+assert(sock:setpeername("${r.host}", ${r.port}))`
+      : `local sock = assert(socket.tcp())
+sock:settimeout(${r.timeoutMs / 1000})
+assert(sock:connect("${r.host}", ${r.port}))`;
   const pack = packSec("lua", api, `local PACKET = hex2bin("${r.hexPlain}")`);
   const unpack = unpackSec("lua", api);
+  // luasocket 的 receive 在出错（含超时）时会额外返回 partial（已收到的部分数据）
   const recv =
     r.protocol === "udp"
-      ? `local data, err = sock:receive(65535)`
-      : `local data, err = sock:receive("*a")`;
+      ? `local data, err, partial = sock:receive(65535)`
+      : `-- TCP：读到对端关闭为止；对端保持连接时超时，用已收到的部分数据作为响应
+local data, err, partial = sock:receive("*a")`;
   return `${header(r, "--")}
 -- 需要安装 luasocket（luarocks install luasocket）
 local socket = require("socket")
@@ -810,14 +834,13 @@ local function hex2bin(h)
 end
 
 ${pack}
-local sock = assert(socket.${factory}())
-sock:settimeout(${r.timeoutMs / 1000})
-assert(sock:connect("${r.host}", ${r.port}))
+${open}
 assert(sock:send(PACKET))
 print(string.format("发送 %d 字节", #PACKET))
 
 ${recv}
-if data then
+if not data then data = partial or "" end
+if #data > 0 then
   print(string.format("收到 %d 字节: %s", #data, (data:gsub(".", function(c)
     return string.format("%02X", string.byte(c))
   end))))${unpack ? "\n" + indent(unpack, "  ") : ""}
