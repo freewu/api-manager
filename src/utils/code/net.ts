@@ -125,6 +125,12 @@ export function generateNetCode(lang: CodeLang, api: ApiFile, lib?: string): str
       return genSwift(r, api);
     case "objectivec":
       return genObjectiveC(r, api);
+    case "julia":
+      return genJulia(r, api);
+    case "kotlin":
+      return genKotlin(r, api);
+    case "erlang":
+      return genErlang(r, api);
     default:
       return `${header(r, "//")}\n// ${lang}：暂未内置 ${r.protocol.toUpperCase()} 客户端代码生成`;
   }
@@ -821,6 +827,88 @@ end
 sock:close()`;
 }
 
+/** Kotlin（java.net.Socket / DatagramSocket，JVM 标准库，无第三方依赖） */
+function genKotlin(r: NetReq, api: ApiFile): string {
+  const udp = r.protocol === "udp";
+  const pack = packSec("kotlin", api, `val PACKET: ByteArray = hex2bytes("${r.hexPlain}")`);
+  const unpack = unpackSec("kotlin", api);
+  const imports = udp
+    ? [
+        "import java.net.DatagramPacket",
+        "import java.net.DatagramSocket",
+        "import java.net.InetAddress",
+      ]
+    : ["import java.net.Socket"];
+  const helpers = [
+    `fun hex2bytes(hex: String): ByteArray {
+    if (hex.isEmpty()) return ByteArray(0)
+    return ByteArray(hex.length / 2) {
+        ((Character.digit(hex[it * 2], 16) shl 4) + Character.digit(hex[it * 2 + 1], 16)).toByte()
+    }
+}`,
+    ...(pack.includes("beBytes(")
+      ? [
+          `fun beBytes(value: Long, size: Int): ByteArray {
+    return ByteArray(size) { ((value shr (8 * (size - 1 - it))) and 0xFF).toByte() }
+}`,
+        ]
+      : []),
+    `fun bytesToHex(data: ByteArray): String {
+    return data.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
+}`,
+  ].join("\n\n");
+  const setup = udp
+    ? `DatagramSocket().use { socket ->
+    socket.soTimeout = TIMEOUT
+    val addr = InetAddress.getByName(HOST)
+    socket.send(DatagramPacket(PACKET, PACKET.size, addr, PORT))
+    println("发送 " + PACKET.size + " 字节: " + bytesToHex(PACKET))
+
+    val buf = ByteArray(65535)
+    val resp = DatagramPacket(buf, buf.size)
+    try {
+        socket.receive(resp)
+        val data = buf.copyOfRange(0, resp.length)
+        println("收到 " + data.size + " 字节: " + bytesToHex(data))${unpack ? "\n" + indent(unpack, "        ") : ""}
+    } catch (e: java.net.SocketTimeoutException) {
+        println("接收超时（无响应）")
+    }
+}`
+    : `Socket(HOST, PORT).use { socket ->
+    socket.soTimeout = TIMEOUT
+    val out = socket.getOutputStream()
+    out.write(PACKET)
+    out.flush()
+    println("发送 " + PACKET.size + " 字节: " + bytesToHex(PACKET))
+
+    val buf = ByteArray(65535)
+    val n = try {
+        socket.getInputStream().read(buf)
+    } catch (e: java.net.SocketTimeoutException) {
+        -1
+    }
+    if (n <= 0) {
+        println("接收超时（无响应）")
+    } else {
+        val data = buf.copyOfRange(0, n)
+        println("收到 " + data.size + " 字节: " + bytesToHex(data))${unpack ? "\n" + indent(unpack, "        ") : ""}
+    }
+}`;
+  return `${header(r)}
+${imports.join("\n")}
+
+const val HOST = "${r.host}"
+const val PORT = ${r.port}
+const val TIMEOUT = ${r.timeoutMs}
+
+${helpers}
+
+fun main() {
+${indent(pack, "    ")}
+${indent(setup, "    ")}
+}`;
+}
+
 /** Swift（POSIX socket + Foundation，Darwin / Linux 通用） */
 function genSwift(r: NetReq, api: ApiFile): string {
   const udp = r.protocol === "udp";
@@ -1232,4 +1320,114 @@ ${helpers}
 
 ${pack}
 ${setup}`;
+}
+
+/** Julia（Sockets 标准库；bytes2hex 分隔符参数需 Julia 1.7+） */
+function genJulia(r: NetReq, api: ApiFile): string {
+  const udp = r.protocol === "udp";
+  const pack = packSec("julia", api, `PACKET = hex2bytes("${r.hexPlain}")`);
+  const unpack = unpackSec("julia", api);
+  const helpers = [
+    `hex_str(bytes) = join([uppercase(string(b, base = 16, pad = 2)) for b in bytes], " ")`,
+    ...(pack.includes("be_bytes(")
+      ? [
+          `function be_bytes(value::Integer, size::Integer)
+    return UInt8[UInt8((value >> (8 * (size - i))) & 0xFF) for i in 1:size]
+end`,
+        ]
+      : []),
+  ].join("\n\n");
+  const setup = udp
+    ? `sock = UDPSocket()
+@async begin
+    sleep(TIMEOUT)
+    try
+        close(sock)
+    catch
+    end
+end
+try
+    send(sock, HOST, PORT, PACKET)
+    println("发送 ", length(PACKET), " 字节: ", hex_str(PACKET))
+    data = first(recv(sock))
+    println("收到 ", length(data), " 字节: ", hex_str(data))${unpack ? "\n" + indent(unpack, "    ") : ""}
+catch e
+    println("接收超时或连接已关闭（无响应）: ", e)
+end`
+    : `sock = connect(HOST, PORT)
+@async begin
+    sleep(TIMEOUT)
+    try
+        close(sock)
+    catch
+    end
+end
+try
+    write(sock, PACKET)
+    println("发送 ", length(PACKET), " 字节: ", hex_str(PACKET))
+    data = readavailable(sock)
+    println("收到 ", length(data), " 字节: ", hex_str(data))${unpack ? "\n" + indent(unpack, "    ") : ""}
+catch e
+    println("接收超时或连接已关闭（无响应）: ", e)
+end`;
+  return `${header(r, "#")}
+
+using Sockets
+
+const HOST = "${r.host}"
+const PORT = ${r.port}
+const TIMEOUT = ${r.timeoutMs / 1000}
+
+${helpers}
+
+${pack}
+${setup}`;
+}
+
+/** Erlang（gen_tcp / gen_udp；binary:encode_hex/1 需 OTP 24+） */
+function genErlang(r: NetReq, api: ApiFile): string {
+  const udp = r.protocol === "udp";
+  const bits = (r.hexPlain.match(/.{1,2}/g) || []).map((h) => "16#" + h).join(", ");
+  const pack = packSec("erlang", api, `PACKET = <<${bits}>>,`);
+  const unpack = unpackSec("erlang", api);
+  const dataVar = unpack ? "Data" : "_Data";
+  const recv = udp
+    ? `    case gen_udp:recv(Socket, 0, ?TIMEOUT) of
+        {ok, {Addr, Port, ${dataVar}}} ->
+            io:format("来自 ~s:~p~n", [inet:ntoa(Addr), Port]),
+            io:format("收到 ~p 字节: ~s~n", [byte_size(${dataVar}), binary:encode_hex(${dataVar})]),${unpack ? "\n" + indent(unpack, "            ") : ""}
+            ok;
+        {error, Reason} ->
+            io:format("接收超时（无响应）: ~p~n", [Reason])
+    end,
+    gen_udp:close(Socket),
+    ok.`
+    : `    case gen_tcp:recv(Socket, 0, ?TIMEOUT) of
+        {ok, ${dataVar}} ->
+            io:format("收到 ~p 字节: ~s~n", [byte_size(${dataVar}), binary:encode_hex(${dataVar})]),${unpack ? "\n" + indent(unpack, "            ") : ""}
+            ok;
+        {error, Reason} ->
+            io:format("接收超时（无响应）: ~p~n", [Reason])
+    end,
+    gen_tcp:close(Socket),
+    ok.`;
+  const open = udp
+    ? `    {ok, Socket} = gen_udp:open(0, [binary, {active, false}]),
+    ok = gen_udp:send(Socket, ?HOST, ?PORT, PACKET),`
+    : `    {ok, Socket} = gen_tcp:connect(?HOST, ?PORT, [binary, {packet, raw}, {active, false}], ?TIMEOUT),
+    ok = gen_tcp:send(Socket, PACKET),`;
+  return `${header(r, "%%")}
+%% 编译运行：erlc net_client.erl && erl -noshell -s net_client main -s init stop
+-module(net_client).
+-export([main/0]).
+
+-define(HOST, "${r.host}").
+-define(PORT, ${r.port}).
+-define(TIMEOUT, ${r.timeoutMs}).
+
+main() ->
+${indent(pack, "    ")}
+${open}
+    io:format("发送 ~p 字节: ~s~n", [byte_size(PACKET), binary:encode_hex(PACKET)]),
+${recv}`;
 }

@@ -443,6 +443,22 @@ const powershellOps: NetPackOps = {
   note: (text) => `# ${text}`,
 };
 
+/** Kotlin（java.net.Socket / DatagramSocket，无第三方依赖） */
+const kotlinOps: NetPackOps = {
+  comment: "//",
+  dataVar: "data",
+  ref: (n) => n,
+  defBytes: (n, hex) => `val ${n}: ByteArray = hex2bytes("${hex}")`,
+  defLen: (n, e, w) => `val ${n}: ByteArray = beBytes((${e}).toLong(), ${w})`,
+  defInt: (n, e) => `val ${n}: Int = ${e}`,
+  defPacket: (parts) => `val PACKET: ByteArray = ${parts.join(" + ")}`,
+  defSlice: (n, a, b) => `val ${n}: ByteArray = data.copyOfRange(${a}, ${b})`,
+  toInt: (e, w) => beToInt(e, w, (i) => `(${idx(e, i)}.toInt() and 0xFF)`),
+  len: (e) => `${e}.size`,
+  log: (label, e) => `println("${label} = " + ${e}.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) })`,
+  note: (text) => `// ${text}`,
+};
+
 /** Swift（POSIX socket + Foundation，Darwin / Linux 均可编译） */
 const swiftOps: NetPackOps = {
   comment: "//",
@@ -514,6 +530,40 @@ const rOps: NetPackOps = {
   note: (text) => `# ${text}`,
 };
 
+/** Julia（Sockets 标准库） */
+const juliaOps: NetPackOps = {
+  comment: "#",
+  dataVar: "data",
+  ref: (n) => n,
+  defBytes: (n, hex) => `${n} = hex2bytes("${hex}")`,
+  defLen: (n, e, w) => `${n} = be_bytes(${e}, ${w})`,
+  defInt: (n, e) => `${n} = ${e}`,
+  defPacket: (parts) => `PACKET = vcat(${parts.join(", ")})`,
+  defSlice: (n, a, b) => `${n} = data[(${a} + 1):(${b})]`,
+  toInt: (e, w) => beToInt(e, w, (i) => `Int(${idx(e, i)})`),
+  len: (e) => `length(${e})`,
+  log: (label, e) => `println("${label} = ", hex_str(${e}))`,
+  note: (text) => `# ${text}`,
+};
+
+/** Erlang：变量首字母必须大写，语句以逗号分隔（模板最后补一个 ok 收尾） */
+const ev = (n: string) => (n ? n.charAt(0).toUpperCase() + n.slice(1) : n);
+const erlangOps: NetPackOps = {
+  comment: "%%",
+  dataVar: "Data",
+  ref: ev,
+  defBytes: (n, hex) =>
+    `${ev(n)} = <<${(hex.match(/../g) || []).map((h) => `16#${h}`).join(", ")}>>,`,
+  defLen: (n, e, w) => `${ev(n)} = <<(${e}):${w * 8}>>,`,
+  defInt: (n, e) => `${ev(n)} = ${e},`,
+  defPacket: (parts) => `PACKET = <<${parts.map((p) => `${p}/binary`).join(", ")}>>,`,
+  defSlice: (n, a, b) => `${ev(n)} = binary:part(Data, ${a}, (${b}) - (${a})),`,
+  toInt: (e) => `binary:decode_unsigned(${e})`,
+  len: (e) => `byte_size(${e})`,
+  log: (label, e) => `io:format("${label} = ~s~n", [binary:encode_hex(${e})]),`,
+  note: (text) => `%% ${text}`,
+};
+
 /** 语言 → 原语（与 net.ts 支持的语言保持一致） */
 export const NET_PACK_OPS: Partial<Record<CodeLang, NetPackOps>> = {
   bash: bashOps,
@@ -532,10 +582,13 @@ export const NET_PACK_OPS: Partial<Record<CodeLang, NetPackOps>> = {
   perl: perlOps,
   lua: luaOps,
   powershell: powershellOps,
+  kotlin: kotlinOps,
   swift: swiftOps,
   objectivec: objectivecOps,
   delphi: delphiOps,
   r: rOps,
+  julia: juliaOps,
+  erlang: erlangOps,
 };
 
 /** 生成封包代码（未定义封包字段或语言不支持时返回空串） */
