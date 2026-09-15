@@ -33,7 +33,7 @@
 - 📥 **多格式导入**：支持 Postman Collection、OpenAPI (Swagger) 协议、Markdown 接口文档一键导入；Postman 集合级 `variable` 自动合并到环境变量集
 - 📦 **对象管理**：以分组 + 对象的方式管理数据结构；属性支持类型 / 引用对象 / Mock 值 / 描述配置；支持从 JSON 或 SQL 建表语句导入；一键生成多语言代码与 MySQL 建表语句
 - 🎲 **数据生成**：按对象属性批量生成测试数据（JSON / SQL / CSV），自定义表名、记录数与导出目录；生成记录展示耗时与文件大小，可一键重新生成
-- 🔌 **多协议接口**：新建接口支持 HTTP / WebSocket / Socket.IO / GraphQL 四种协议，一套工作区统一管理
+- 🔌 **多协议接口**：新建接口支持 HTTP / WebSocket / Socket.IO / GraphQL / WebDAV / MCP / TCP / UDP 多种协议，一套工作区统一管理
 - ✏️ **批量添加编辑**：Query / Headers / Body（表单）页签支持 `key: value` 每行一条的批量编辑，保存后恢复表单（匹配行保留启用状态）
 
 ## 目录结构约定

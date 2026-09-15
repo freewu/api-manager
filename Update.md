@@ -1,5 +1,22 @@
 # API Manager 更新记录
 
+## v0.8.0
+
+### 🔗 MCP 接口
+- 新增 **MCP**（Model Context Protocol）接口类型：基于 **JSON-RPC 2.0 over Streamable HTTP**，方法固定 `POST`、路径默认 `/mcp`，请求体固定 JSON（JSON-RPC 报文），不支持 Query / Path / Mock 页签
+- 新建 MCP 接口时预置 `Content-Type: application/json` 与 `Accept: application/json, text/event-stream` 请求头，请求体预填 `initialize` 报文
+- MCP 图标接入 `asserts/icon` 图标族，侧栏、新建弹窗、导出弹窗按协议展示
+- 侧栏**高级搜索**支持按 MCP 接口类型过滤；**统计弹窗**区分 MCP 接口，并支持点击 MCP 卡片查看其请求方法分布
+- 演示案例新增 **MCP 分组**（initialize / tools-list / tools-call / ping / resources-list），配套开箱即用的测试服务 `tests/mcp-server.py`（纯 Python 标准库，默认监听 `127.0.0.1:8091/mcp`）
+
+### 🧬 TCP / UDP 生成代码
+- 「生成代码」按**封包 / 解包字段定义**生成编解码代码，覆盖 22 种语言（含 Bash / Python / C / C++ / Java / C# / JavaScript / TypeScript / Go / PHP / Ruby / Rust / Perl / Lua / PowerShell / Kotlin / Swift / Objective-C / Delphi / R / Julia / Erlang），支持固定值 / 变量 / 不定长变量与大小端转换
+- 补齐早前缺失的语言实现，并修正 JavaScript / TypeScript 等 5 处实测发现的收发逻辑问题
+
+### 📊 统计与侧栏
+- 统计弹窗宽度 560px → 760px（最大 94vw），下级列表名称列同步加宽
+- 饼图改为**点击 HTTP / WebDAV / MCP 卡片后**展示该类型的请求方法分布（再次点击取消），未选中时展示操作提示
+
 ## v0.7.0
 
 ### 🔌 TCP / UDP 接口

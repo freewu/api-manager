@@ -33,7 +33,7 @@ An API documentation, testing, and Mock tool built with **Tauri 2**, with a Post
 - 📥 **Postman import**: import an entire Postman Collection with one click; collection-level `variable`s are merged into environment sets automatically
 - 📦 **Object manager**: manage data structures as groups + objects; properties support type, referenced object, Mock value, and description; import from JSON or SQL `CREATE TABLE`; generate code in multiple languages and MySQL DDL in one click
 - 🎲 **Data generation**: batch-generate test data from an object's properties (JSON / SQL / CSV) with a custom table name, record count, and export directory; logs record elapsed time and file size, and support one-click regeneration
-- 🔌 **Multi-protocol APIs**: create APIs as HTTP / WebSocket / Socket.IO / GraphQL, all managed in one workspace
+- 🔌 **Multi-protocol APIs**: create APIs as HTTP / WebSocket / Socket.IO / GraphQL / WebDAV / MCP / TCP / UDP, all managed in one workspace
 - ✏️ **Batch add / edit**: Query / Headers / Body (form) tabs support `key: value` batch editing, one per line, preserving enabled state
 
 ## Directory Conventions
