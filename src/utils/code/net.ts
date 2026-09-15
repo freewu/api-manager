@@ -1,11 +1,12 @@
 /**
- * TCP / UDP 代码生成：根据「封包」字段定义生成各语言的收发示例。
+ * TCP / UDP 代码生成：根据「封包 / 解包」字段定义生成各语言的编解码与收发示例。
  * 与 HTTP / WebSocket 代码生成保持同样的 CodeLang 语言列表。
  */
 import { ApiFile } from "../../types";
 import { PacketError, buildPacket, bytesToText } from "../packet";
 import { t } from "../../i18n";
 import { CodeLang, CodeLibOption } from "./shared";
+import { packCode, unpackCode } from "./netpack";
 
 /** 各语言 TCP / UDP 客户端库选项（无选项的语言不显示库下拉框） */
 export const NET_CODE_LIBS: Partial<Record<CodeLang, CodeLibOption[]>> = {
@@ -56,6 +57,13 @@ export function buildNetReq(api: ApiFile): NetReq {
 const hexArray = (r: NetReq) =>
   (r.hexPlain.match(/.{1,2}/g) || []).map((h) => "0x" + h).join(", ");
 
+/** 代码块缩进 */
+const indent = (code: string, pad: string) =>
+  code
+    .split("\n")
+    .map((line) => (line ? pad + line : line))
+    .join("\n");
+
 function header(r: NetReq, comment = "//"): string {
   const lines = [
     `${comment} ${r.protocol.toUpperCase()} ${r.host}:${r.port}（超时 ${r.timeoutMs} ms）`,
@@ -66,152 +74,177 @@ function header(r: NetReq, comment = "//"): string {
   return lines.join("\n");
 }
 
+/** 封包代码：未定义封包字段时退化为按配置的报文 hex 直接构造 PACKET */
+function packSec(lang: CodeLang, api: ApiFile, fallback: string): string {
+  return packCode(lang, api) || fallback;
+}
+
+/** 解包代码：未定义解包字段时返回空串 */
+function unpackSec(lang: CodeLang, api: ApiFile): string {
+  return unpackCode(lang, api);
+}
+
 export function generateNetCode(lang: CodeLang, api: ApiFile, lib?: string): string {
   const r = buildNetReq(api);
   switch (lang) {
     case "curl":
     case "bash":
-      return genBash(r, lib);
+      return genBash(r, api, lib);
     case "python":
-      return lib === "scapy" ? genPythonScapy(r) : genPython(r);
+      return lib === "scapy" ? genPythonScapy(r, api) : genPython(r, api);
     case "javascript":
     case "typescript":
-      return genNode(r, lang === "typescript");
+      return genNode(r, api, lang === "typescript");
     case "go":
-      return genGo(r);
+      return genGo(r, api);
     case "java":
-      return genJava(r);
+      return genJava(r, api);
     case "c":
-      return genC(r);
+      return genC(r, api);
     case "cpp":
-      return genCpp(r);
+      return genCpp(r, api);
     case "csharp":
-      return genCsharp(r);
+      return genCsharp(r, api);
     case "rust":
-      return genRust(r);
+      return genRust(r, api);
     case "php":
-      return genPhp(r);
+      return genPhp(r, api);
     case "ruby":
-      return genRuby(r);
+      return genRuby(r, api);
     case "powershell":
-      return genPowerShell(r);
+      return genPowerShell(r, api);
     case "perl":
-      return genPerl(r);
+      return genPerl(r, api);
     case "lua":
-      return genLua(r);
+      return genLua(r, api);
     default:
       return `${header(r, "//")}\n// ${lang}：暂未内置 ${r.protocol.toUpperCase()} 客户端代码生成`;
   }
 }
 
-function genBash(r: NetReq, lib?: string): string {
-  const hexEsc = (r.hexPlain.match(/.{1,2}/g) || []).map((h) => `\\x${h}`).join("");
+function genBash(r: NetReq, api: ApiFile, lib?: string): string {
   const udpFlag = r.protocol === "udp" ? " -u" : "";
-  const payload = r.hexPlain || "";
-  if (lib === "socat") {
-    return `${header(r, "#")}
-# 需要安装 socat
-printf '${hexEsc}' | socat - ${r.protocol.toUpperCase()}:${r.host}:${r.port} | xxd -p`;
-  }
+  const timeout = Math.ceil(r.timeoutMs / 1000);
+  const pack = packSec("bash", api, `PACKET="${r.hexPlain}"`);
+  const unpack = unpackSec("bash", api);
   if (lib === "python") {
     return `${header(r, "#")}
 # 无需额外依赖，直接用 Python 收发
 python3 - <<'PY'
-import socket
-proto = socket.SOCK_${r.protocol === "udp" ? "DGRAM" : "STREAM"}
-s = socket.socket(socket.AF_INET, proto)
-s.settimeout(${r.timeoutMs / 1000})
-s.connect(("${r.host}", ${r.port}))
-s.send(${r.protocol === "udp" ? "" : "all"}(bytes.fromhex("${payload}")))
-try:
-    data = s.recv(65535)
-    print(f"收到 {len(data)} 字节: {data.hex(' ').upper()}")
-except socket.timeout:
-    print("接收超时（无响应）")
-finally:
-    s.close()
+${pythonBody(r, api)}
 PY`;
+  }
+  const pipe =
+    lib === "socat"
+      ? `socat - ${r.protocol.toUpperCase()}:${r.host}:${r.port}`
+      : `nc${udpFlag} -w ${timeout} ${r.host} ${r.port}`;
+  if (!unpack) {
+    return `${header(r, "#")}
+# 需要安装 netcat（macOS 自带，Debian/Ubuntu: apt install netcat-openbsd）
+${pack}
+printf '%s' "$PACKET" | xxd -r -p | ${pipe} | xxd -p`;
   }
   return `${header(r, "#")}
 # 需要安装 netcat（macOS 自带，Debian/Ubuntu: apt install netcat-openbsd）
-printf '${hexEsc}' | nc${udpFlag} -w ${Math.ceil(r.timeoutMs / 1000)} ${r.host} ${r.port} | xxd -p`;
+${pack}
+data=$(printf '%s' "$PACKET" | xxd -r -p | ${pipe} | xxd -p | tr -d '\\n')
+if [ -z "$data" ]; then
+  echo "接收超时（无响应）"
+else
+  echo "收到 $(( \${#data} / 2 )) 字节: \${data^^}"
+${unpack}
+fi`;
 }
 
-function genPython(r: NetReq): string {
+/** Python 收发主体（bash 的 Python 内联脚本也复用这段） */
+function pythonBody(r: NetReq, api: ApiFile): string {
   const kind = r.protocol === "udp" ? "SOCK_DGRAM" : "SOCK_STREAM";
   const send = r.protocol === "udp" ? "send" : "sendall";
+  const pack = packSec("python", api, `PACKET = bytes.fromhex("${r.hexPlain}")`);
+  const unpack = unpackSec("python", api);
   const recv =
-    r.protocol === "udp"
-      ? 'data, peer = s.recvfrom(65535)\n    print(f"来自 {peer}")'
-      : 'data = s.recv(65535)';
-  return `${header(r, "#")}
-import socket
+    r.protocol === "udp" ? `data, peer = s.recvfrom(65535)\n    print(f"来自 {peer}")` : "data = s.recv(65535)";
+  return `import socket
 
 HOST = "${r.host}"
 PORT = ${r.port}
 TIMEOUT = ${r.timeoutMs / 1000}
-PAYLOAD = bytes.fromhex("${r.hexPlain}")
+${pack}
 
 s = socket.socket(socket.AF_INET, socket.${kind})
 s.settimeout(TIMEOUT)
 s.connect((HOST, PORT))
-s.${send}(PAYLOAD)
-print(f"发送 {len(PAYLOAD)} 字节: {PAYLOAD.hex(' ').upper()}")
+s.${send}(PACKET)
+print(f"发送 {len(PACKET)} 字节: {PACKET.hex(' ').upper()}")
 try:
     ${recv}
     print(f"收到 {len(data)} 字节: {data.hex(' ').upper()}")
+${unpack ? indent(unpack, "    ") : ""}
 except socket.timeout:
     print("接收超时（无响应）")
 finally:
     s.close()`;
 }
 
-function genPythonScapy(r: NetReq): string {
+function genPython(r: NetReq, api: ApiFile): string {
+  return `${header(r, "#")}
+${pythonBody(r, api)}`;
+}
+
+function genPythonScapy(r: NetReq, api: ApiFile): string {
+  const pack = packSec("python", api, `PACKET = bytes.fromhex("${r.hexPlain}")`);
+  const unpack = unpackSec("python", api);
   if (r.protocol === "udp") {
     return `${header(r, "#")}
 # pip install scapy（需要管理员/root 权限）
 from scapy.all import IP, UDP, Raw, sr1
 
-payload = bytes.fromhex("${r.hexPlain}")
-resp = sr1(IP(dst="${r.host}") / UDP(dport=${r.port}) / Raw(payload), timeout=${r.timeoutMs / 1000})
-print(resp.summary() if resp else "接收超时（无响应）")
-if resp and resp.haslayer(Raw):
-    print(bytes(resp[Raw]).hex(" ").upper())`;
+${pack}
+resp = sr1(IP(dst="${r.host}") / UDP(dport=${r.port}) / Raw(PACKET), timeout=${r.timeoutMs / 1000})
+if resp is None:
+    print("接收超时（无响应）")
+else:
+    print(resp.summary())
+    if resp.haslayer(Raw):
+        data = bytes(resp[Raw])
+        print(f"收到 {len(data)} 字节: {data.hex(' ').upper()}")
+${unpack ? indent(unpack, "        ") : ""}`;
   }
   return `${header(r, "#")}
 # Scapy 不提供 TCP 客户端会话（需自行完成三次握手），此处用标准库 socket 收发
-import socket
-
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.settimeout(${r.timeoutMs / 1000})
-s.connect(("${r.host}", ${r.port}))
-s.sendall(bytes.fromhex("${r.hexPlain}"))
-data = s.recv(65535)
-print(f"收到 {len(data)} 字节: {data.hex(' ').upper()}")
-s.close()`;
+${pythonBody(r, api)}`;
 }
 
-function genNode(r: NetReq, ts: boolean): string {
+function genNode(r: NetReq, api: ApiFile, ts: boolean): string {
   const head = ts ? `import * as net from "node:net";` : `const net = require("node:net");`;
+  const pack = packSec(
+    "javascript",
+    api,
+    `const PACKET = Buffer.from("${r.hexPlain}", "hex");`,
+  );
+  const unpack = unpackSec("javascript", api);
   if (r.protocol === "udp") {
     return `${header(r)}
 ${ts ? 'import * as dgram from "node:dgram";' : 'const dgram = require("node:dgram");'}
 
-const PAYLOAD = Buffer.from("${r.hexPlain}", "hex");
+${pack}
+
 const sock = dgram.createSocket("udp4");
 
-sock.on("message", (msg, peer) => {
+sock.on("message", (msg${ts ? ": Buffer" : ""}, peer) => {
   console.log(\`来自 \${peer.address}:\${peer.port} 收到 \${msg.length} 字节: \${msg.toString("hex").toUpperCase()}\`);
+  const data = msg;
+${unpack ? indent(unpack, "  ") : ""}
   sock.close();
 });
-sock.on("error", (err)${ts ? ": Error" : ""} => {
+sock.on("error", (err${ts ? ": Error" : ""}) => {
   console.error(err.message);
   sock.close();
 });
 
-sock.send(PAYLOAD, ${r.port}, "${r.host}", (err) => {
+sock.send(PACKET, ${r.port}, "${r.host}", (err) => {
   if (err) console.error(err.message);
-  else console.log(\`发送 \${PAYLOAD.length} 字节: \${PAYLOAD.toString("hex").toUpperCase()}\`);
+  else console.log(\`发送 \${PACKET.length} 字节: \${PACKET.toString("hex").toUpperCase()}\`);
 });
 
 setTimeout(() => sock.close(), ${r.timeoutMs});`;
@@ -222,18 +255,19 @@ ${head}
 const HOST = "${r.host}";
 const PORT = ${r.port};
 const TIMEOUT = ${r.timeoutMs};
-const PAYLOAD = Buffer.from("${r.hexPlain}", "hex");
+${pack}
 
 const chunks${ts ? ": Buffer[]" : ""} = [];
 const client = net.createConnection({ host: HOST, port: PORT }, () => {
-  client.write(PAYLOAD);
-  console.log(\`发送 \${PAYLOAD.length} 字节: \${PAYLOAD.toString("hex").toUpperCase()}\`);
+  client.write(PACKET);
+  console.log(\`发送 \${PACKET.length} 字节: \${PACKET.toString("hex").toUpperCase()}\`);
 });
 client.setTimeout(TIMEOUT);
 client.on("data", (chunk${ts ? ": Buffer" : ""}) => chunks.push(chunk));
 client.on("end", () => {
   const data = Buffer.concat(chunks);
   console.log(\`收到 \${data.length} 字节: \${data.toString("hex").toUpperCase()}\`);
+${unpack ? indent(unpack, "  ") : ""}
 });
 client.on("timeout", () => {
   console.log("接收超时（无响应）");
@@ -242,29 +276,31 @@ client.on("timeout", () => {
 client.on("error", (err${ts ? ": Error" : ""}) => console.error(err.message));`;
 }
 
-function genGo(r: NetReq): string {
+function genGo(r: NetReq, api: ApiFile): string {
   const net_ = r.protocol === "udp" ? "udp" : "tcp";
+  const code = packCode("go", api);
+  const pack = code || `PACKET := []byte{${hexArray(r)}}`;
+  const unpack = unpackSec("go", api);
+  const imports = ["\t\"fmt\"", "\t\"net\"", "\t\"time\"", ...(code ? ["\t\"bytes\""] : [])].sort();
   return `${header(r)}
 package main
 
 import (
-	"fmt"
-	"net"
-	"time"
+${imports.join("\n")}
 )
 
 func main() {
-	payload := []byte{${hexArray(r)}}
+${indent(pack, "\t")}
 	conn, err := net.DialTimeout("${net_}", "${r.host}:${r.port}", ${r.timeoutMs}*time.Millisecond)
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
 
-	if _, err := conn.Write(payload); err != nil {
+	if _, err := conn.Write(PACKET); err != nil {
 		panic(err)
 	}
-	fmt.Printf("发送 %d 字节: % X\\n", len(payload), payload)
+	fmt.Printf("发送 %d 字节: % X\\n", len(PACKET), PACKET)
 
 	conn.SetReadDeadline(time.Now().Add(${r.timeoutMs} * time.Millisecond))
 	buf := make([]byte, 65535)
@@ -274,34 +310,21 @@ func main() {
 		return
 	}
 	fmt.Printf("收到 %d 字节: % X\\n", n, buf[:n])
+${unpack ? `\tdata := buf[:n]\n${indent(unpack, "\t")}` : ""}
 }`;
 }
 
-function genJava(r: NetReq): string {
-  if (r.protocol === "udp") {
-    return `${header(r)}
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-
-public class NetClient {
-    public static void main(String[] args) throws Exception {
-        byte[] payload = new byte[] { ${hexArray(r)} };
-        try (DatagramSocket socket = new DatagramSocket()) {
-            socket.setSoTimeout(${r.timeoutMs});
-            InetAddress addr = InetAddress.getByName("${r.host}");
-            socket.send(new DatagramPacket(payload, payload.length, addr, ${r.port}));
-            System.out.printf("发送 %d 字节%n", payload.length);
-
-            byte[] buf = new byte[65535];
-            DatagramPacket resp = new DatagramPacket(buf, buf.length);
-            try {
-                socket.receive(resp);
-                System.out.printf("收到 %d 字节: %s%n", resp.getLength(), toHex(buf, resp.getLength()));
-            } catch (java.net.SocketTimeoutException e) {
-                System.out.println("接收超时（无响应）");
-            }
-        }
+function genJava(r: NetReq, api: ApiFile): string {
+  const pack = packSec("java", api, `byte[] PACKET = new byte[] { ${hexArray(r)} };`);
+  const unpack = unpackSec("java", api);
+  const helpers = `
+    private static byte[] concat(byte[]... parts) {
+        int len = 0;
+        for (byte[] p : parts) len += p.length;
+        byte[] out = new byte[len];
+        int off = 0;
+        for (byte[] p : parts) { System.arraycopy(p, 0, out, off, p.length); off += p.length; }
+        return out;
     }
 
     private static String toHex(byte[] data, int len) {
@@ -310,6 +333,34 @@ public class NetClient {
         return sb.toString().trim();
     }
 }`;
+  if (r.protocol === "udp") {
+    return `${header(r)}
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+
+public class NetClient {
+    public static void main(String[] args) throws Exception {
+${indent(pack, "        ")}
+        try (DatagramSocket socket = new DatagramSocket()) {
+            socket.setSoTimeout(${r.timeoutMs});
+            InetAddress addr = InetAddress.getByName("${r.host}");
+            socket.send(new DatagramPacket(PACKET, PACKET.length, addr, ${r.port}));
+            System.out.printf("发送 %d 字节%n", PACKET.length);
+
+            byte[] buf = new byte[65535];
+            DatagramPacket resp = new DatagramPacket(buf, buf.length);
+            try {
+                socket.receive(resp);
+                byte[] data = java.util.Arrays.copyOf(buf, resp.getLength());
+                System.out.printf("收到 %d 字节: %s%n", data.length, toHex(data, data.length));
+${unpack ? indent(unpack, "                ") : ""}
+            } catch (java.net.SocketTimeoutException e) {
+                System.out.println("接收超时（无响应）");
+            }
+        }
+    }
+${helpers}`;
   }
   return `${header(r)}
 import java.io.InputStream;
@@ -318,13 +369,13 @@ import java.net.Socket;
 
 public class NetClient {
     public static void main(String[] args) throws Exception {
-        byte[] payload = new byte[] { ${hexArray(r)} };
+${indent(pack, "        ")}
         try (Socket socket = new Socket("${r.host}", ${r.port})) {
             socket.setSoTimeout(${r.timeoutMs});
             OutputStream out = socket.getOutputStream();
-            out.write(payload);
+            out.write(PACKET);
             out.flush();
-            System.out.printf("发送 %d 字节%n", payload.length);
+            System.out.printf("发送 %d 字节%n", PACKET.length);
 
             InputStream in = socket.getInputStream();
             byte[] buf = new byte[65535];
@@ -333,16 +384,23 @@ public class NetClient {
                 System.out.println("连接已关闭（无响应）");
                 return;
             }
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < n; i++) sb.append(String.format("%02X ", buf[i]));
-            System.out.printf("收到 %d 字节: %s%n", n, sb.toString().trim());
+            byte[] data = java.util.Arrays.copyOf(buf, n);
+            System.out.printf("收到 %d 字节: %s%n", data.length, toHex(data, data.length));
+${unpack ? indent(unpack, "            ") : ""}
         }
     }
-}`;
+${helpers}`;
 }
 
-function genC(r: NetReq): string {
+function genC(r: NetReq, api: ApiFile): string {
   const udp = r.protocol === "udp";
+  const pack = packSec(
+    "c",
+    api,
+    `unsigned char PACKET[] = { ${hexArray(r)} };\nsize_t PACKET_LEN = sizeof(PACKET);`,
+  );
+  const unpack = unpackSec("c", api);
+  const decode = unpack ? `\n    const unsigned char *data = buf;\n${indent(unpack, "    ")}` : "";
   return `${header(r)}
 #include <arpa/inet.h>
 #include <stdio.h>
@@ -351,8 +409,7 @@ function genC(r: NetReq): string {
 #include <unistd.h>
 
 int main(void) {
-    unsigned char payload[] = { ${hexArray(r)} };
-    size_t payload_len = sizeof(payload);
+${indent(pack, "    ")}
 
     int fd = socket(AF_INET, ${udp ? "SOCK_DGRAM" : "SOCK_STREAM"}, 0);
     if (fd < 0) { perror("socket"); return 1; }
@@ -367,12 +424,12 @@ int main(void) {
     inet_pton(AF_INET, "${r.host}", &addr.sin_addr);
 
 ${udp
-      ? `    if (sendto(fd, payload, payload_len, 0, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+      ? `    if (sendto(fd, PACKET, PACKET_LEN, 0, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("sendto");
         close(fd);
         return 1;
     }
-    printf("发送 %zu 字节\\n", payload_len);
+    printf("发送 %zu 字节\\n", PACKET_LEN);
 
     unsigned char buf[65535];
     socklen_t addr_len = sizeof(addr);
@@ -386,27 +443,33 @@ ${udp
         close(fd);
         return 1;
     }
-    if (send(fd, payload, payload_len, 0) < 0) {
+    if (send(fd, PACKET, PACKET_LEN, 0) < 0) {
         perror("send");
         close(fd);
         return 1;
     }
-    printf("发送 %zu 字节\\n", payload_len);
+    printf("发送 %zu 字节\\n", PACKET_LEN);
 
     unsigned char buf[65535];
     ssize_t n = recv(fd, buf, sizeof(buf), 0);
     if (n <= 0) { perror("recv（可能超时）"); close(fd); return 1; }
     printf("收到 %zd 字节:", n);
     for (ssize_t i = 0; i < n; i++) printf(" %02X", buf[i]);
-    printf("\\n");`}
+    printf("\\n");`}${decode}
 
     close(fd);
     return 0;
 }`;
 }
 
-function genCpp(r: NetReq): string {
+function genCpp(r: NetReq, api: ApiFile): string {
   const udp = r.protocol === "udp";
+  const pack = packSec(
+    "cpp",
+    api,
+    `std::vector<unsigned char> PACKET = { ${hexArray(r)} };`,
+  );
+  const unpack = unpackSec("cpp", api);
   return `${header(r)}
 #include <arpa/inet.h>
 #include <cstring>
@@ -417,7 +480,7 @@ function genCpp(r: NetReq): string {
 #include <vector>
 
 int main() {
-    std::vector<unsigned char> payload = { ${hexArray(r)} };
+${indent(pack, "    ")}
 
     int fd = ::socket(AF_INET, ${udp ? "SOCK_DGRAM" : "SOCK_STREAM"}, 0);
     if (fd < 0) { std::perror("socket"); return 1; }
@@ -433,16 +496,16 @@ int main() {
     ::inet_pton(AF_INET, "${r.host}", &addr.sin_addr);
 
 ${udp
-      ? `    ::sendto(fd, payload.data(), payload.size(), 0, reinterpret_cast<sockaddr *>(&addr), sizeof(addr));
-    std::cout << "发送 " << payload.size() << " 字节" << std::endl;
+      ? `    ::sendto(fd, PACKET.data(), PACKET.size(), 0, reinterpret_cast<sockaddr *>(&addr), sizeof(addr));
+    std::cout << "发送 " << PACKET.size() << " 字节" << std::endl;
 
     std::vector<unsigned char> buf(65535);
     socklen_t addrLen = sizeof(addr);
     auto n = ::recvfrom(fd, buf.data(), buf.size(), 0, reinterpret_cast<sockaddr *>(&addr), &addrLen);
     if (n < 0) { std::perror("recvfrom（可能超时）"); return 1; }`
       : `    if (::connect(fd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0) { std::perror("connect"); return 1; }
-    ::send(fd, payload.data(), payload.size(), 0);
-    std::cout << "发送 " << payload.size() << " 字节" << std::endl;
+    ::send(fd, PACKET.data(), PACKET.size(), 0);
+    std::cout << "发送 " << PACKET.size() << " 字节" << std::endl;
 
     std::vector<unsigned char> buf(65535);
     auto n = ::recv(fd, buf.data(), buf.size(), 0);
@@ -454,30 +517,34 @@ ${udp
                   << static_cast<int>(buf[i]);
     }
     std::cout << std::dec << std::endl;
+${unpack ? `    std::vector<unsigned char> data(buf.begin(), buf.begin() + n);\n${indent(unpack, "    ")}` : ""}
     ::close(fd);
     return 0;
 }`;
 }
 
-function genCsharp(r: NetReq): string {
+function genCsharp(r: NetReq, api: ApiFile): string {
+  const pack = packSec("csharp", api, `byte[] PACKET = new byte[] { ${hexArray(r)} };`);
+  const unpack = unpackSec("csharp", api);
   if (r.protocol === "udp") {
     return `${header(r)}
 using System;
 using System.Net;
 using System.Net.Sockets;
 
-var payload = new byte[] { ${hexArray(r)} };
+${pack}
 using var client = new UdpClient();
 client.Client.ReceiveTimeout = ${r.timeoutMs};
 client.Connect("${r.host}", ${r.port});
-client.Send(payload, payload.Length);
-Console.WriteLine($"发送 {payload.Length} 字节");
+client.Send(PACKET, PACKET.Length);
+Console.WriteLine($"发送 {PACKET.Length} 字节");
 
 try
 {
     IPEndPoint remote = new IPEndPoint(IPAddress.Any, 0);
-    byte[] resp = client.Receive(ref remote);
-    Console.WriteLine($"收到 {resp.Length} 字节: {Convert.ToHexString(resp)}");
+    byte[] data = client.Receive(ref remote);
+    Console.WriteLine($"收到 {data.Length} 字节: {Convert.ToHexString(data)}");
+${unpack ? indent(unpack, "    ") : ""}
 }
 catch (SocketException)
 {
@@ -488,13 +555,13 @@ catch (SocketException)
 using System;
 using System.Net.Sockets;
 
-var payload = new byte[] { ${hexArray(r)} };
+${pack}
 using var client = new TcpClient();
 client.Connect("${r.host}", ${r.port});
 client.ReceiveTimeout = ${r.timeoutMs};
 var stream = client.GetStream();
-stream.Write(payload, 0, payload.Length);
-Console.WriteLine($"发送 {payload.Length} 字节");
+stream.Write(PACKET, 0, PACKET.Length);
+Console.WriteLine($"发送 {PACKET.Length} 字节");
 
 byte[] buf = new byte[65535];
 int n;
@@ -507,45 +574,54 @@ catch (System.IO.IOException)
     Console.WriteLine("接收超时（无响应）");
     return;
 }
-Console.WriteLine(n > 0
-    ? $"收到 {n} 字节: {Convert.ToHexString(buf, 0, n)}"
-    : "连接已关闭（无响应）");`;
+if (n <= 0)
+{
+    Console.WriteLine("连接已关闭（无响应）");
+    return;
+}
+byte[] data = buf[..n];
+Console.WriteLine($"收到 {data.Length} 字节: {Convert.ToHexString(data)}");
+${unpack}`;
 }
 
-function genRust(r: NetReq): string {
+function genRust(r: NetReq, api: ApiFile): string {
   const udp = r.protocol === "udp";
+  const pack = packSec("rust", api, `let PACKET: &[u8] = &[${hexArray(r)}];`);
+  const unpack = unpackSec("rust", api);
   return `${header(r)}
 use std::io::{Read, Write};
-use std::net::{${udp ? "UdpSocket" : "TcpStream"}};
+use std::net::${udp ? "UdpSocket" : "TcpStream"};
 use std::time::Duration;
 
 fn main() -> std::io::Result<()> {
-    let payload: &[u8] = &[${hexArray(r)}];
+${indent(pack, "    ")}
 ${udp
       ? `    let socket = UdpSocket::bind("0.0.0.0:0")?;
     socket.set_read_timeout(Some(Duration::from_millis(${r.timeoutMs})))?;
     socket.connect("${r.host}:${r.port}")?;
-    socket.send(payload)?;
-    println!("发送 {} 字节", payload.len());
+    socket.send(PACKET)?;
+    println!("发送 {} 字节", PACKET.len());
 
     let mut buf = [0u8; 65535];
     match socket.recv(&mut buf) {
         Ok(n) => {
             let hex: Vec<String> = buf[..n].iter().map(|b| format!("{:02X}", b)).collect();
             println!("收到 {} 字节: {}", n, hex.join(" "));
+${unpack ? `            let data = &buf[..n];\n${indent(unpack, "            ")}` : ""}
         }
         Err(e) => println!("接收超时（无响应）: {e}"),
     }`
       : `    let mut stream = TcpStream::connect("${r.host}:${r.port}")?;
     stream.set_read_timeout(Some(Duration::from_millis(${r.timeoutMs})))?;
-    stream.write_all(payload)?;
-    println!("发送 {} 字节", payload.len());
+    stream.write_all(PACKET)?;
+    println!("发送 {} 字节", PACKET.len());
 
     let mut buf = [0u8; 65535];
     match stream.read(&mut buf) {
         Ok(n) if n > 0 => {
             let hex: Vec<String> = buf[..n].iter().map(|b| format!("{:02X}", b)).collect();
             println!("收到 {} 字节: {}", n, hex.join(" "));
+${unpack ? `            let data = &buf[..n];\n${indent(unpack, "            ")}` : ""}
         }
         Ok(_) => println!("连接已关闭（无响应）"),
         Err(e) => println!("接收超时（无响应）: {e}"),
@@ -554,11 +630,13 @@ ${udp
 }`;
 }
 
-function genPhp(r: NetReq): string {
+function genPhp(r: NetReq, api: ApiFile): string {
   const scheme = r.protocol === "udp" ? "udp" : "tcp";
-  return `${header(r)}
-<?php
-$payload = hex2bin("${r.hexPlain}");
+  const pack = packSec("php", api, `$PACKET = hex2bin("${r.hexPlain}");`);
+  const unpack = unpackSec("php", api);
+  return `<?php
+${header(r)}
+${pack}
 
 $errno = 0;
 $errstr = "";
@@ -567,28 +645,31 @@ if (!$fp) {
     exit("连接失败: $errstr ($errno)\\n");
 }
 stream_set_timeout($fp, ${Math.floor(r.timeoutMs / 1000)});
-fwrite($fp, $payload);
-echo "发送 " . strlen($payload) . " 字节\\n";
+fwrite($fp, $PACKET);
+echo "发送 " . strlen($PACKET) . " 字节\\n";
 
 $data = fread($fp, 65535);
 if ($data === false || $data === "") {
     echo "接收超时（无响应）\\n";
 } else {
     echo "收到 " . strlen($data) . " 字节: " . strtoupper(bin2hex($data)) . "\\n";
+${unpack ? indent(unpack, "    ") : ""}
 }
 fclose($fp);`;
 }
 
-function genRuby(r: NetReq): string {
+function genRuby(r: NetReq, api: ApiFile): string {
+  const pack = packSec("ruby", api, `PACKET = ["${r.hexPlain}"].pack("H*")`);
+  const unpack = unpackSec("ruby", api);
   if (r.protocol === "udp") {
     return `${header(r, "#")}
 require "socket"
 
-payload = ["${r.hexPlain}"].pack("H*")
+${pack}
 sock = UDPSocket.new
 sock.connect("${r.host}", ${r.port})
-sock.send(payload, 0)
-puts "发送 #{payload.bytesize} 字节"
+sock.send(PACKET, 0)
+puts "发送 #{PACKET.bytesize} 字节"
 
 begin
   data, peer = sock.recvfrom_nonblock(65535, exception: false)
@@ -599,6 +680,7 @@ begin
   if data
     puts "来自 #{peer[3]}:#{peer[1]}"
     puts "收到 #{data.bytesize} 字节: #{data.unpack1('H*').upcase}"
+${unpack ? indent(unpack, "    ") : ""}
   else
     puts "接收超时（无响应）"
   end
@@ -609,35 +691,42 @@ end`;
   return `${header(r, "#")}
 require "socket"
 
-payload = ["${r.hexPlain}"].pack("H*")
+${pack}
 sock = TCPSocket.new("${r.host}", ${r.port})
-sock.write(payload)
-puts "发送 #{payload.bytesize} 字节"
+sock.write(PACKET)
+puts "发送 #{PACKET.bytesize} 字节"
 
 if IO.select([sock], nil, nil, ${r.timeoutMs / 1000})
   data = sock.readpartial(65535)
   puts "收到 #{data.bytesize} 字节: #{data.unpack1('H*').upcase}"
+${unpack ? indent(unpack, "  ") : ""}
 else
   puts "接收超时（无响应）"
 end
 sock.close`;
 }
 
-function genPowerShell(r: NetReq): string {
-  const bytes = (r.hexPlain.match(/.{1,2}/g) || []).map((h) => "0x" + h).join(", ");
+function genPowerShell(r: NetReq, api: ApiFile): string {
+  const pack = packSec(
+    "powershell",
+    api,
+    `$PACKET = [byte[]]@(${(r.hexPlain.match(/.{1,2}/g) || []).map((h) => "0x" + h).join(", ")})`,
+  );
+  const unpack = unpackSec("powershell", api);
   if (r.protocol === "udp") {
     return `${header(r, "#")}
-$payload = [byte[]]@(${bytes})
+${pack}
 $client = New-Object System.Net.Sockets.UdpClient
 $client.Client.ReceiveTimeout = ${r.timeoutMs}
 $client.Connect("${r.host}", ${r.port})
-$null = $client.Send($payload, $payload.Length)
-Write-Host "发送 $($payload.Length) 字节"
+$null = $client.Send($PACKET, $PACKET.Length)
+Write-Host "发送 $($PACKET.Length) 字节"
 
 try {
     $remote = New-Object System.Net.IPEndPoint([System.Net.IPAddress]::Any, 0)
-    $resp = $client.Receive([ref]$remote)
-    Write-Host "收到 $($resp.Length) 字节: $([BitConverter]::ToString($resp).Replace('-', ''))"
+    $data = $client.Receive([ref]$remote)
+    Write-Host "收到 $($data.Length) 字节: $([BitConverter]::ToString($data).Replace('-', ''))"
+${unpack ? indent(unpack, "    ") : ""}
 } catch [System.Net.Sockets.SocketException] {
     Write-Host "接收超时（无响应）"
 } finally {
@@ -645,19 +734,21 @@ try {
 }`;
   }
   return `${header(r, "#")}
-$payload = [byte[]]@(${bytes})
+${pack}
 $client = New-Object System.Net.Sockets.TcpClient
 $client.Connect("${r.host}", ${r.port})
 $client.ReceiveTimeout = ${r.timeoutMs}
 $stream = $client.GetStream()
-$stream.Write($payload, 0, $payload.Length)
-Write-Host "发送 $($payload.Length) 字节"
+$stream.Write($PACKET, 0, $PACKET.Length)
+Write-Host "发送 $($PACKET.Length) 字节"
 
 $buffer = New-Object byte[] 65535
 try {
     $n = $stream.Read($buffer, 0, $buffer.Length)
     if ($n -gt 0) {
-        Write-Host "收到 $n 字节: $([BitConverter]::ToString($buffer, 0, $n).Replace('-', ''))"
+        $data = $buffer[0..($n - 1)]
+        Write-Host "收到 $n 字节: $([BitConverter]::ToString($data).Replace('-', ''))"
+${unpack ? indent(unpack, "        ") : ""}
     } else {
         Write-Host "连接已关闭（无响应）"
     }
@@ -669,14 +760,16 @@ try {
 }`;
 }
 
-function genPerl(r: NetReq): string {
+function genPerl(r: NetReq, api: ApiFile): string {
   const proto = r.protocol === "udp" ? "udp" : "tcp";
+  const pack = packSec("perl", api, `my $PACKET = pack("H*", "${r.hexPlain}");`);
+  const unpack = unpackSec("perl", api);
   return `${header(r, "#")}
 use strict;
 use warnings;
 use IO::Socket::INET;
 
-my $payload = pack("H*", "${r.hexPlain}");
+${pack}
 my $sock = IO::Socket::INET->new(
     PeerAddr => "${r.host}",
     PeerPort => ${r.port},
@@ -684,21 +777,23 @@ my $sock = IO::Socket::INET->new(
     Timeout  => ${r.timeoutMs / 1000},
 ) or die "连接失败: $!\\n";
 
-$sock->send($payload);
-print "发送 " . length($payload) . " 字节\\n";
+$sock->send($PACKET);
+print "发送 " . length($PACKET) . " 字节\\n";
 
 my $data = "";
 if ($sock->recv($data, 65535, 0)) {
     printf "收到 %d 字节: %s\\n", length($data), uc unpack("H*", $data);
+${unpack ? indent(unpack, "    ") : ""}
 } else {
     print "接收超时（无响应）\\n";
 }
 close($sock);`;
 }
 
-function genLua(r: NetReq): string {
+function genLua(r: NetReq, api: ApiFile): string {
   const factory = r.protocol === "udp" ? "udp" : "tcp";
-  const send = r.protocol === "udp" ? "send" : "send";
+  const pack = packSec("lua", api, `local PACKET = hex2bin("${r.hexPlain}")`);
+  const unpack = unpackSec("lua", api);
   const recv =
     r.protocol === "udp"
       ? `local data, err = sock:receive(65535)`
@@ -707,21 +802,25 @@ function genLua(r: NetReq): string {
 -- 需要安装 luasocket（luarocks install luasocket）
 local socket = require("socket")
 
-local payload = ("${r.hexPlain}"):gsub("%x%x", function(h)
-  return string.char(tonumber(h, 16))
-end)
+local function hex2bin(h)
+  return (h:gsub("%x%x", function(c)
+    return string.char(tonumber(c, 16))
+  end))
+end
 
+${pack}
 local sock = assert(socket.${factory}())
 sock:settimeout(${r.timeoutMs / 1000})
 assert(sock:connect("${r.host}", ${r.port}))
-assert(sock:${send}(payload))
-print(string.format("发送 %d 字节", #payload))
+assert(sock:send(PACKET))
+print(string.format("发送 %d 字节", #PACKET))
 
 ${recv}
 if data then
   print(string.format("收到 %d 字节: %s", #data, (data:gsub(".", function(c)
     return string.format("%02X", string.byte(c))
   end))))
+${unpack ? indent(unpack, "  ") : ""}
 else
   print("接收超时（无响应）: " .. tostring(err))
 end
