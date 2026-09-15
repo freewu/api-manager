@@ -9,7 +9,7 @@ pub(crate) fn create_demo(
     types: Option<Vec<String>>,
 ) -> Result<(), String> {
     let root = workspace_root(&state)?;
-    // 勾选类型（http / websocket / socketio / graphql / webdav / object），未传时默认全部生成
+    // 勾选类型（http / websocket / socketio / graphql / webdav / mcp / tcp / udp / object），未传时默认全部生成
     let has = |kind: &str| types.as_ref().map_or(true, |list| list.iter().any(|s| s == kind));
     // 不判断工作区是否为空：演示案例直接生成（同名文件会被覆盖）
     let api_file = |name: &str, method: &str, path: &str, description: &str| {
@@ -408,6 +408,131 @@ pub(crate) fn create_demo(
             { "id": format!("dav-report-{}", uuid::Uuid::new_v4()), "name": "属性列表", "status": 207, "content_type": "application/xml", "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<d:multistatus xmlns:d=\"DAV:\">\n  <d:response>\n    <d:href>/dav/hello.txt</d:href>\n    <d:propstat>\n      <d:prop>\n        <d:displayname>hello.txt</d:displayname>\n        <d:resourcetype/>\n        <d:getcontentlength>12</d:getcontentlength>\n      </d:prop>\n      <d:status>HTTP/1.1 200 OK</d:status>\n    </d:propstat>\n  </d:response>\n</d:multistatus>" }
         ]);
         write("WebDAV", "查询属性 REPORT.json", &dav_report)?;
+    }
+
+    // MCP 分组（与 tests/mcp-server.py 一一对应）：JSON-RPC 2.0 over Streamable HTTP，
+    // 固定 POST /mcp，编辑体验与 HTTP 一致，不支持 Mock
+    if has("mcp") {
+        write("MCP", INFO_FILE, &serde_json::json!({ "name": "MCP", "description": "MCP 接口示例（JSON-RPC 2.0 over Streamable HTTP，与 tests/mcp-server.py 一一对应，无 Mock）" }))?;
+
+        let mcp_desc = r#"MCP（Model Context Protocol）接口演示，配合测试服务 tests/mcp-server.py 使用。
+
+【启动测试服务】
+1. 无需安装第三方依赖（纯 Python 标准库）
+2. 启动服务：python tests/mcp-server.py
+   - 默认监听 http://127.0.0.1:8091/mcp
+   - 自定义端口：python tests/mcp-server.py 9999
+
+【接口说明】
+- MCP 基于 JSON-RPC 2.0 over Streamable HTTP：固定 POST /mcp，请求体为 JSON-RPC 报文
+- 请求头需声明 Content-Type: application/json 与 Accept: application/json, text/event-stream
+- 编辑体验与 HTTP 接口一致，不支持 Mock
+
+【测试步骤】
+1. 点击「发送」执行下方 JSON-RPC 请求
+2. 服务端返回对应 JSON-RPC 响应（result 或 error）"#;
+        // 所有 MCP 用例共用的请求头
+        let mcp_headers = serde_json::json!([
+            { "key": "Content-Type", "value": "application/json", "enabled": true, "description": "" },
+            { "key": "Accept", "value": "application/json, text/event-stream", "enabled": true, "description": "Streamable HTTP 要求同时接受 JSON 与 SSE" },
+        ]);
+
+        let mut mcp_init = api_file("初始化 initialize", "POST", "/mcp", mcp_desc);
+        mcp_init["protocol"] = serde_json::json!("mcp");
+        mcp_init["url"] = serde_json::json!("http://127.0.0.1:8091/mcp");
+        mcp_init["headers"] = mcp_headers.clone();
+        mcp_init["body"] = serde_json::json!({
+            "mode": "json",
+            "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"initialize\",\n  \"params\": {\n    \"protocolVersion\": \"2025-06-18\",\n    \"capabilities\": {},\n    \"clientInfo\": { \"name\": \"api-manager\", \"version\": \"1.0.0\" }\n  }\n}",
+            "form": [],
+            "binaryPath": ""
+        });
+        mcp_init["responses"] = serde_json::json!([
+            { "id": format!("mcp-init-{}", uuid::Uuid::new_v4()), "name": "初始化成功", "status": 200, "content_type": "application/json", "body": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"result\": {\n    \"protocolVersion\": \"2025-06-18\",\n    \"capabilities\": {\n      \"tools\": { \"listChanged\": false },\n      \"resources\": { \"subscribe\": false, \"listChanged\": false },\n      \"prompts\": { \"listChanged\": false }\n    },\n    \"serverInfo\": { \"name\": \"api-manager-mcp-demo\", \"version\": \"1.0.0\" }\n  }\n}" }
+        ]);
+        mcp_init["docParams"] = serde_json::json!([
+            d("body", "jsonrpc", "String", "JSON-RPC 版本，固定 2.0", vec![]),
+            d("body", "id", "Integer", "请求 ID，响应会原样返回", vec![]),
+            d("body", "method", "String", "固定 initialize", vec![]),
+            d("body", "params", "Object", "初始化参数", vec![
+                d("body", "protocolVersion", "String", "客户端期望的 MCP 协议版本", vec![]),
+                d("body", "capabilities", "Object", "客户端能力声明", vec![]),
+                d("body", "clientInfo", "Object", "客户端名称与版本", vec![]),
+            ]),
+            d("resp_success", "result", "Object", "服务端返回的协议版本、能力与服务器信息", vec![]),
+        ]);
+        write("MCP", "初始化 initialize.json", &mcp_init)?;
+
+        let mut mcp_tools = api_file("列出工具 tools/list", "POST", "/mcp", "列出服务端提供的全部工具（tools/list）。\n\n【测试步骤】\n1. 启动 tests/mcp-server.py（默认 http://127.0.0.1:8091/mcp）\n2. 点击「发送」，返回 tools 数组（echo / add / get_time）");
+        mcp_tools["protocol"] = serde_json::json!("mcp");
+        mcp_tools["url"] = serde_json::json!("http://127.0.0.1:8091/mcp");
+        mcp_tools["headers"] = mcp_headers.clone();
+        mcp_tools["body"] = serde_json::json!({
+            "mode": "json",
+            "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 2,\n  \"method\": \"tools/list\",\n  \"params\": {}\n}",
+            "form": [],
+            "binaryPath": ""
+        });
+        mcp_tools["responses"] = serde_json::json!([
+            { "id": format!("mcp-tools-{}", uuid::Uuid::new_v4()), "name": "工具列表", "status": 200, "content_type": "application/json", "body": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 2,\n  \"result\": {\n    \"tools\": [\n      { \"name\": \"echo\", \"description\": \"回显输入文本\", \"inputSchema\": { \"type\": \"object\", \"properties\": { \"text\": { \"type\": \"string\" } }, \"required\": [\"text\"] } },\n      { \"name\": \"add\", \"description\": \"计算两数之和\", \"inputSchema\": { \"type\": \"object\", \"properties\": { \"a\": { \"type\": \"number\" }, \"b\": { \"type\": \"number\" } }, \"required\": [\"a\", \"b\"] } },\n      { \"name\": \"get_time\", \"description\": \"返回服务器当前时间\", \"inputSchema\": { \"type\": \"object\", \"properties\": {} } }\n    ]\n  }\n}" }
+        ]);
+        write("MCP", "列出工具 tools-list.json", &mcp_tools)?;
+
+        let mut mcp_call = api_file("调用工具 tools/call", "POST", "/mcp", "调用服务端的 echo 工具（tools/call）。\n\n【测试步骤】\n1. 启动 tests/mcp-server.py（默认 http://127.0.0.1:8091/mcp）\n2. 点击「发送」，返回 content 数组（type: text）\n3. 可把 params.name 改为 add、arguments 改为 { \"a\": 1, \"b\": 2 } 体验其他工具");
+        mcp_call["protocol"] = serde_json::json!("mcp");
+        mcp_call["url"] = serde_json::json!("http://127.0.0.1:8091/mcp");
+        mcp_call["headers"] = mcp_headers.clone();
+        mcp_call["body"] = serde_json::json!({
+            "mode": "json",
+            "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 3,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"echo\",\n    \"arguments\": { \"text\": \"hello mcp\" }\n  }\n}",
+            "form": [],
+            "binaryPath": ""
+        });
+        mcp_call["responses"] = serde_json::json!([
+            { "id": format!("mcp-call-{}", uuid::Uuid::new_v4()), "name": "调用成功", "status": 200, "content_type": "application/json", "body": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 3,\n  \"result\": {\n    \"content\": [ { \"type\": \"text\", \"text\": \"hello mcp\" } ],\n    \"isError\": false\n  }\n}" }
+        ]);
+        mcp_call["docParams"] = serde_json::json!([
+            d("body", "method", "String", "固定 tools/call", vec![]),
+            d("body", "params", "Object", "工具调用参数", vec![
+                d("body", "name", "String", "工具名（echo / add / get_time）", vec![]),
+                d("body", "arguments", "Object", "工具入参，需符合该工具的 inputSchema", vec![]),
+            ]),
+            d("resp_success", "result", "Object", "调用结果", vec![
+                d("resp_success", "content", "List", "内容块数组", vec![]),
+                d("resp_success", "isError", "Boolean", "是否为工具执行错误", vec![]),
+            ]),
+        ]);
+        write("MCP", "调用工具 tools-call.json", &mcp_call)?;
+
+        let mut mcp_ping = api_file("心跳 ping", "POST", "/mcp", "MCP 心跳检测。\n\n【测试步骤】\n1. 启动 tests/mcp-server.py（默认 http://127.0.0.1:8091/mcp）\n2. 点击「发送」，返回空 result 对象，表示连接正常");
+        mcp_ping["protocol"] = serde_json::json!("mcp");
+        mcp_ping["url"] = serde_json::json!("http://127.0.0.1:8091/mcp");
+        mcp_ping["headers"] = mcp_headers.clone();
+        mcp_ping["body"] = serde_json::json!({
+            "mode": "json",
+            "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 4,\n  \"method\": \"ping\"\n}",
+            "form": [],
+            "binaryPath": ""
+        });
+        mcp_ping["responses"] = serde_json::json!([
+            { "id": format!("mcp-ping-{}", uuid::Uuid::new_v4()), "name": "pong", "status": 200, "content_type": "application/json", "body": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 4,\n  \"result\": {}\n}" }
+        ]);
+        write("MCP", "心跳 ping.json", &mcp_ping)?;
+
+        let mut mcp_res = api_file("列出资源 resources/list", "POST", "/mcp", "列出服务端提供的资源（resources/list）。\n\n【测试步骤】\n1. 启动 tests/mcp-server.py（默认 http://127.0.0.1:8091/mcp）\n2. 点击「发送」，返回 resources 数组（demo://hello 等）");
+        mcp_res["protocol"] = serde_json::json!("mcp");
+        mcp_res["url"] = serde_json::json!("http://127.0.0.1:8091/mcp");
+        mcp_res["headers"] = mcp_headers.clone();
+        mcp_res["body"] = serde_json::json!({
+            "mode": "json",
+            "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 5,\n  \"method\": \"resources/list\",\n  \"params\": {}\n}",
+            "form": [],
+            "binaryPath": ""
+        });
+        mcp_res["responses"] = serde_json::json!([
+            { "id": format!("mcp-res-{}", uuid::Uuid::new_v4()), "name": "资源列表", "status": 200, "content_type": "application/json", "body": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 5,\n  \"result\": {\n    \"resources\": [ { \"uri\": \"demo://hello\", \"name\": \"hello\", \"mimeType\": \"text/plain\" } ]\n  }\n}" }
+        ]);
+        write("MCP", "列出资源 resources-list.json", &mcp_res)?;
     }
 
     if has("tcp") {

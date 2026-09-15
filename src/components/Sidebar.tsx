@@ -151,6 +151,7 @@ const PROTOCOL_OPTIONS = [
   { id: "socketio", label: "Socket.IO" },
   { id: "graphql", label: "GraphQL" },
   { id: "webdav", label: "WebDAV" },
+  { id: "mcp", label: "MCP" },
   { id: "tcp", label: "TCP" },
   { id: "udp", label: "UDP" },
 ] as const;

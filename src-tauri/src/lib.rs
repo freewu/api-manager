@@ -251,7 +251,7 @@ pub struct ApiFile {
     /// 是否已标记废弃
     #[serde(default)]
     pub deprecated: bool,
-    /// 接口协议：http / websocket / socketio / graphql / webdav / tcp / udp
+    /// 接口协议：http / websocket / socketio / graphql / webdav / mcp / tcp / udp
     #[serde(default = "default_protocol")]
     pub protocol: String,
     /// 封包字段定义（TCP / UDP 接口使用）
@@ -332,6 +332,18 @@ pub struct NetResult {
 pub(crate) fn default_protocol() -> String {
     "http".to_string()
 }
+
+/// MCP 新建接口时预置的 initialize 请求体（JSON-RPC 2.0 over Streamable HTTP）
+const MCP_INIT_BODY: &str = r#"{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-06-18",
+    "capabilities": {},
+    "clientInfo": { "name": "api-manager", "version": "1.0.0" }
+  }
+}"#;
 
 /// 把子项追加到父目录 __info.json 的顺序列表（新建时调用）
 pub(crate) fn info_append_child(dir: &Path, name: &str, is_dir: bool) {
@@ -1627,8 +1639,9 @@ fn create_api(
     let data = ApiFile {
         uuid: uuid::Uuid::new_v4().to_string(),
         name: display_name,
-        // GraphQL 接口固定使用 POST；WebDAV 接口默认 PROPFIND（方法下拉框可切换）
-        method: if protocol.as_deref() == Some("graphql") {
+        // GraphQL 固定 POST + /graphql；MCP（JSON-RPC 2.0 over Streamable HTTP）固定 POST + /mcp；
+        // WebDAV 接口默认 PROPFIND（方法下拉框可切换）
+        method: if matches!(protocol.as_deref(), Some("graphql") | Some("mcp")) {
             "POST".into()
         } else if protocol.as_deref() == Some("webdav") {
             "PROPFIND".into()
@@ -1637,12 +1650,34 @@ fn create_api(
         },
         path: if protocol.as_deref() == Some("graphql") {
             "/graphql".into()
+        } else if protocol.as_deref() == Some("mcp") {
+            "/mcp".into()
         } else {
             "/".into()
         },
         url: String::new(),
         description: String::new(),
-        headers: vec![],
+        // MCP 预置 JSON-RPC 必需请求头（Accept 同时声明 JSON 与 SSE，兼容 Streamable HTTP 传输）
+        headers: if protocol.as_deref() == Some("mcp") {
+            vec![
+                KeyValue {
+                    key: "Content-Type".into(),
+                    value: "application/json".into(),
+                    enabled: true,
+                    description: String::new(),
+                    is_file: false,
+                },
+                KeyValue {
+                    key: "Accept".into(),
+                    value: "application/json, text/event-stream".into(),
+                    enabled: true,
+                    description: String::new(),
+                    is_file: false,
+                },
+            ]
+        } else {
+            vec![]
+        },
         query: vec![],
         params: vec![],
         body: if protocol.as_deref() == Some("graphql") {
@@ -1650,6 +1685,14 @@ fn create_api(
             BodyData {
                 mode: "json".into(),
                 raw: String::new(),
+                form: vec![],
+                binary_path: String::new(),
+            }
+        } else if protocol.as_deref() == Some("mcp") {
+            // MCP 固定 JSON body，预置 initialize 请求（JSON-RPC 2.0）
+            BodyData {
+                mode: "json".into(),
+                raw: MCP_INIT_BODY.into(),
                 form: vec![],
                 binary_path: String::new(),
             }
@@ -1667,6 +1710,7 @@ fn create_api(
             Some("socketio") => "socketio".into(),
             Some("graphql") => "graphql".into(),
             Some("webdav") => "webdav".into(),
+            Some("mcp") => "mcp".into(),
             Some("tcp") => "tcp".into(),
             Some("udp") => "udp".into(),
             _ => "http".into(),

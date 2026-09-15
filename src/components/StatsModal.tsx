@@ -35,6 +35,7 @@ interface Stats {
   socketIoApis: number;
   graphqlApis: number;
   webdavApis: number;
+  mcpApis: number;
   tcpApis: number;
   udpApis: number;
   totalFolders: number;
@@ -45,12 +46,15 @@ interface Stats {
   httpMethods: [string, number][];
   /** WebDAV 接口方法分布 */
   webdavMethods: [string, number][];
+  /** MCP 接口方法分布 */
+  mcpMethods: [string, number][];
   items: { name: string; kind: string; apis: number }[];
 }
 
 function computeStats(node: TreeNode): Stats {
   const httpMethodsMap = new Map<string, number>();
   const webdavMethodsMap = new Map<string, number>();
+  const mcpMethodsMap = new Map<string, number>();
   let mockEnabled = 0;
   let deprecatedApis = 0;
   let deprecatedFolders = 0;
@@ -59,6 +63,7 @@ function computeStats(node: TreeNode): Stats {
   let socketIoApis = 0;
   let graphqlApis = 0;
   let webdavApis = 0;
+  let mcpApis = 0;
   let tcpApis = 0;
   let udpApis = 0;
 
@@ -78,6 +83,10 @@ function computeStats(node: TreeNode): Stats {
         webdavApis++;
         const m = (n.method || "GET").toUpperCase();
         webdavMethodsMap.set(m, (webdavMethodsMap.get(m) || 0) + 1);
+      } else if (n.protocol === "mcp") {
+        mcpApis++;
+        const m = (n.method || "POST").toUpperCase();
+        mcpMethodsMap.set(m, (mcpMethodsMap.get(m) || 0) + 1);
       } else if (n.protocol === "tcp") {
         tcpApis++;
       } else if (n.protocol === "udp") {
@@ -127,6 +136,7 @@ function computeStats(node: TreeNode): Stats {
     socketIoApis,
     graphqlApis,
     webdavApis,
+    mcpApis,
     tcpApis,
     udpApis,
     totalFolders,
@@ -135,6 +145,7 @@ function computeStats(node: TreeNode): Stats {
     mockEnabled,
     httpMethods: byCount(httpMethodsMap),
     webdavMethods: byCount(webdavMethodsMap),
+    mcpMethods: byCount(mcpMethodsMap),
     items,
   };
 }
@@ -188,8 +199,8 @@ function Donut({ data }: { data: [string, number][] }) {
   );
 }
 
-/** 可点击查看方法分布的协议（仅 HTTP / WebDAV 有方法概念） */
-type MethodProto = "http" | "webdav";
+/** 可点击查看方法分布的协议（HTTP / WebDAV / MCP 有方法概念） */
+type MethodProto = "http" | "webdav" | "mcp";
 
 export function StatsModal({ node, onClose }: Props) {
   const t = useT();
@@ -199,8 +210,14 @@ export function StatsModal({ node, onClose }: Props) {
   const [methodProto, setMethodProto] = useState<MethodProto | null>(null);
 
   const methods =
-    methodProto === "http" ? stats.httpMethods : methodProto === "webdav" ? stats.webdavMethods : [];
-  const protoName = methodProto === "webdav" ? "WebDAV" : "HTTP";
+    methodProto === "http"
+      ? stats.httpMethods
+      : methodProto === "webdav"
+        ? stats.webdavMethods
+        : methodProto === "mcp"
+          ? stats.mcpMethods
+          : [];
+  const protoName = methodProto === "webdav" ? "WebDAV" : methodProto === "mcp" ? "MCP" : "HTTP";
 
   const card = (
     key: string,
@@ -238,6 +255,7 @@ export function StatsModal({ node, onClose }: Props) {
         {card("socketio", stats.socketIoApis, t("stats.socketioApis"))}
         {card("graphql", stats.graphqlApis, t("stats.graphqlApis"))}
         {card("webdav", stats.webdavApis, t("stats.webdavApis"), { select: "webdav" })}
+        {card("mcp", stats.mcpApis, t("stats.mcpApis"), { select: "mcp" })}
         {card("tcp", stats.tcpApis, t("stats.tcpApis"))}
         {card("udp", stats.udpApis, t("stats.udpApis"))}
         {card("folders", stats.totalFolders, t("stats.totalFolders"))}

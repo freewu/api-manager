@@ -52,10 +52,10 @@ export function hasWorkspaceInfo(): Promise<boolean> {
 }
 
 /**
- * 演示类型：http / websocket / socketio / graphql / webdav / object
+ * 演示类型：http / websocket / socketio / graphql / webdav / mcp / object
  * 空目录首次打开时，按勾选生成对应演示案例（默认全部勾选）
  */
-export type DemoKind = "http" | "websocket" | "socketio" | "graphql" | "webdav" | "object";
+export type DemoKind = "http" | "websocket" | "socketio" | "graphql" | "webdav" | "mcp" | "object";
 
 export function createDemo(types: string[] = []): Promise<void> {
   return invoke<void>("create_demo", { types });
@@ -271,7 +271,7 @@ export function setLanguage(lang: "zh" | "zh-tw" | "en"): Promise<void> {
 export function createApi(
   dir: string,
   name: string,
-  protocol: "http" | "websocket" | "graphql" | "socketio" | "webdav" | "tcp" | "udp" = "http"
+  protocol: "http" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp" = "http"
 ): Promise<string> {
   return invoke<string>("create_api", { dir, name, protocol });
 }

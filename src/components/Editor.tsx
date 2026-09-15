@@ -114,6 +114,8 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
   const isWebdav = api.protocol === "webdav";
   /** WebDAV：标准 HTTP 方法 + WebDAV 专用方法 */
   const methodOptions = isWebdav ? [...METHODS, ...WEBDAV_METHODS] : METHODS;
+  /** 是否 MCP 接口（JSON-RPC 2.0 over Streamable HTTP，编辑体验与 HTTP 一致；不支持 Mock） */
+  const isMcp = api.protocol === "mcp";
   // WebSocket 消息格式：文本 / json / xml / binary（复用 body.mode，text 映射为 raw）
   const WS_MODES = ["raw", "json", "xml", "binary"] as const;
   const wsMode: BodyData["mode"] = (WS_MODES as readonly string[]).includes(api.body.mode)
@@ -293,7 +295,7 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
   // 设置中全局关闭 Mock 时，若当前停留在 Mock 页签则切回 Query；
   // WebSocket 无 Path / Mock 页签，若停留在这两个页签则切回 Query
   useEffect(() => {
-    if ((!enableMock || isRealtime || isGraphql || isWebdav) && tab === "mock") {
+    if ((!enableMock || isRealtime || isGraphql || isWebdav || isMcp) && tab === "mock") {
       setTab("params");
       onTabChange?.("params");
     }
@@ -302,7 +304,7 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
       onTabChange?.("params");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enableMock, isRealtime, isGraphql, isWebdav, tab]);
+  }, [enableMock, isRealtime, isGraphql, isWebdav, isMcp, tab]);
 
   // URL / 路径中的 {xx} 占位符实时同步到 Path 页签（新增或删除）；
   // {{xx}} 是全局环境变量（双大括号），不会被当作路径参数
@@ -446,6 +448,7 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
           <select
             className="method-select"
             value={api.method}
+            title={isMcp ? t("editor.mcpMethodTip") : undefined}
             onChange={(e) => {
               const v = e.target.value;
               set({ method: v });
@@ -568,7 +571,7 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
           {t("editor.responseTab")}
           {(api.responses?.length ?? 0) > 0 && <span className="count">{api.responses.length}</span>}
         </div>
-        {enableMock && !isRealtime && !isGraphql && !isWebdav && (
+        {enableMock && !isRealtime && !isGraphql && !isWebdav && !isMcp && (
           <div className={`tab ${tab === "mock" ? "active" : ""}`} onClick={() => switchTab("mock")}>
             Mock{api.mock.enabled && <span className="count">●</span>}
           </div>
@@ -768,6 +771,7 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
                 ))
               )}
             </div>
+            {isMcp && <div className="tab-hint-bar">{t("editor.mcpBodyHint")}</div>}
             {!isGraphql && api.body.mode === "none" && (
               <div style={{ color: "var(--text-faint)", fontSize: 12 }}>{t("editor.noBody")}</div>
             )}

@@ -21,6 +21,7 @@ import iconWs from "../assets/icon-websocket.png";
 import iconSocketIo from "../assets/icon-socketio.png";
 import iconGql from "../assets/icon-graphql.png";
 import iconWebdav from "../../asserts/icon/WebDAV.png";
+import iconMcp from "../../asserts/icon/mcp.png";
 import iconTcp from "../../asserts/icon/TCP.png";
 import iconUdp from "../../asserts/icon/UDP.png";
 
@@ -77,7 +78,7 @@ interface AppModalsProps {
   modal: ModalState | null;
   modalText: string;
   modalPath: string;
-  modalProtocol: "http" | "websocket" | "graphql" | "socketio" | "webdav" | "tcp" | "udp";
+  modalProtocol: "http" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp";
   infoForm: InfoForm;
   demoTypes: Record<string, boolean>;
   workspace: string | null;
@@ -101,7 +102,7 @@ interface AppModalsProps {
   onCloseModal: () => void;
   onModalTextChange: (v: string) => void;
   onModalPathChange: (v: string) => void;
-  onModalProtocolChange: (v: "http" | "websocket" | "graphql" | "socketio" | "webdav" | "tcp" | "udp") => void;
+  onModalProtocolChange: (v: "http" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp") => void;
   onInfoFormChange: (f: InfoForm) => void;
   onToggleDemoKind: (kind: string, enabled: boolean) => void;
   onDoNewApi: () => void;
@@ -179,6 +180,7 @@ export function AppModals({
     { kind: "socketio", label: t("editor.socketIoType"), icon: iconSocketIo },
     { kind: "graphql", label: t("editor.graphqlType"), icon: iconGql },
     { kind: "webdav", label: t("editor.webdavType"), icon: iconWebdav },
+    { kind: "mcp", label: t("editor.mcpType"), icon: iconMcp },
     { kind: "tcp", label: t("editor.tcpType"), icon: iconTcp },
     { kind: "udp", label: t("editor.udpType"), icon: iconUdp },
     { kind: "object", label: t("modal.demoObject"), icon: null },
@@ -333,6 +335,7 @@ export function AppModals({
                   { value: "socketio", label: t("editor.socketIoType"), icon: iconSocketIo },
                   { value: "graphql", label: t("editor.graphqlType"), icon: iconGql },
                   { value: "webdav", label: t("editor.webdavType"), icon: iconWebdav },
+                  { value: "mcp", label: t("editor.mcpType"), icon: iconMcp },
                   { value: "tcp", label: t("editor.tcpType"), icon: iconTcp },
                   { value: "udp", label: t("editor.udpType"), icon: iconUdp },
                 ] as const
@@ -348,7 +351,7 @@ export function AppModals({
                     checked={modalProtocol === o.value}
                     onChange={() =>
                       onModalProtocolChange(
-                        o.value as "http" | "websocket" | "graphql" | "socketio" | "webdav" | "tcp" | "udp"
+                        o.value as "http" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp"
                       )
                     }
                   />
@@ -368,7 +371,7 @@ export function AppModals({
                   value={modalPath}
                   onChange={(e) => onModalPathChange(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && onDoNewApi()}
-                  placeholder={modalProtocol === "graphql" ? "/graphql" : "/v1/users"}
+                  placeholder={modalProtocol === "graphql" ? "/graphql" : modalProtocol === "mcp" ? "/mcp" : "/v1/users"}
                 />
               </label>
               <div className="modal-tip">{t("modal.pathTip")}</div>
