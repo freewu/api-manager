@@ -17,7 +17,7 @@ import {
   type ExportFormat,
   type MarkdownDoc,
 } from "../commands";
-import { buildApiDocComment } from "../utils/apidoc";
+import { buildApiDocComment, buildGroupApiDocComment } from "../utils/apidoc";
 import { ApiFile, AppSettings, TreeNode, VersionInfo, isNetProtocol } from "../types";
 import { InfoForm, ModalState, emptyInfoForm } from "../components/AppModals";
 import { parseCurl } from "../utils/curl";
@@ -330,9 +330,17 @@ export function useModals(opts: {
     }
   };
 
-  /** 查看接口 apiDoc 注释（可一键复制） */
+  /** 查看接口 / 分组的 apiDoc 注释（可一键复制） */
   const handleViewApiDoc = async (node: TreeNode) => {
     try {
+      // 分组：输出 @apiDefine 定义块，并列出其下接口
+      if (node.kind === "folder") {
+        setApiDocView({
+          node,
+          text: buildGroupApiDocComment(node.name, node.description || "", node.children || []),
+        });
+        return;
+      }
       const api = await readApi(node.path);
       const groupPath = node.path.split(/[\\/]/).slice(0, -1).join("/");
       setApiDocView({ node, text: buildApiDocComment(api, groupPath) });

@@ -1518,6 +1518,16 @@ export function Sidebar(props: Props) {
                   📝 {t("sidebar.viewMarkdown")}
                 </button>
               )}
+              {onViewApiDoc && (
+                <button
+                  onClick={() => {
+                    onViewApiDoc(menu.node);
+                    setMenu(null);
+                  }}
+                >
+                  📄 {t("sidebar.viewApiDoc")}
+                </button>
+              )}
               <button
                 onClick={() => {
                   onCopy(menu.node);

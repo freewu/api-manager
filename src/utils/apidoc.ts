@@ -1,4 +1,4 @@
-import { isNetProtocol, type ApiFile, type DocParam, type DocSource, type KeyValue } from "../types";
+import { isNetProtocol, type ApiFile, type DocParam, type DocSource, type KeyValue, type TreeNode } from "../types";
 import { KIND_LABELS } from "./packet";
 import { t } from "../i18n";
 
@@ -160,6 +160,46 @@ export function buildApiDocComment(api: ApiFile, groupPath: string): string {
     const bodyLines = r.body.split("\n");
     for (const bl of bodyLines) {
       lines.push(` * ${bl}`);
+    }
+  }
+  lines.push(" */");
+  return lines.join("\n");
+}
+
+/** 分组下接口的引用行：TCP/UDP 与 WebSocket 展示协议 + 地址，其余展示方法 + 路径 */
+function nodeRef(n: TreeNode): string {
+  const proto = (n.protocol || "http").toUpperCase();
+  if (isNetProtocol(n.protocol) || n.protocol === "websocket" || n.protocol === "socketio") {
+    return `${proto} ${n.endpoint || ""}`.trim();
+  }
+  return `${(n.method || "GET").toUpperCase()} ${n.endpoint || ""}`.trim();
+}
+
+/** 生成分组（目录）的 apiDoc 注释：@apiDefine 定义分组 + 列出其下接口 */
+export function buildGroupApiDocComment(
+  name: string,
+  description: string,
+  children: TreeNode[] = [],
+): string {
+  const title = name.trim() || "默认分组";
+  // @apiDefine 的名称不能带空白字符
+  const defineName = title.replace(/\s+/g, "");
+  const lines: string[] = ["/**"];
+  lines.push(` * @apiDefine ${defineName}${title === defineName ? "" : ` ${fmtDesc(title)}`}`);
+  const desc = description.trim();
+  if (desc) {
+    lines.push(" *");
+    for (const l of desc.split("\n")) {
+      lines.push(` * ${l.trim()}`);
+    }
+  }
+  const apis = children.filter((c) => c.kind !== "folder");
+  if (apis.length > 0) {
+    lines.push(" *");
+    lines.push(` * 包含接口（${apis.length}）：`);
+    for (const c of apis) {
+      const ref = nodeRef(c);
+      lines.push(` *   - ${c.name}${ref ? `：${ref}` : ""}`);
     }
   }
   lines.push(" */");
