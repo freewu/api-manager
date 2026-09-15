@@ -32,6 +32,44 @@
     }
 
     #[test]
+    fn net_export_formats_only_docs() {
+        // 只允许文档类格式导出 TCP / UDP 接口
+        for f in ["html", "markdown", "mkdocs", "docsify"] {
+            assert!(supports_net_export(f), "{f} 应支持报文接口");
+        }
+        for f in ["postman", "openapi", "yapi", "insomnia", "jmeter", "rap2-project"] {
+            assert!(!supports_net_export(f), "{f} 不应支持报文接口");
+        }
+    }
+
+    #[test]
+    fn filter_apis_drops_net_for_other_formats() {
+        let mut tcp = sample();
+        tcp.name = "报文接口".into();
+        tcp.protocol = "tcp".into();
+        let mut udp = sample();
+        udp.name = "UDP 接口".into();
+        udp.protocol = "udp".into();
+        let apis = vec![
+            (vec![("g".to_string(), false)], sample()),
+            (vec![("g".to_string(), false)], tcp),
+            (vec![("g".to_string(), false)], udp),
+        ];
+
+        // 文档类格式：全部保留
+        for f in ["html", "markdown", "mkdocs", "docsify"] {
+            assert_eq!(filter_apis_for_format(apis.clone(), f).len(), 3, "{f}");
+        }
+        // 其他格式：只保留非报文接口
+        let kept = filter_apis_for_format(apis.clone(), "postman");
+        assert_eq!(kept.len(), 1, "应只剩 HTTP 接口");
+        assert_eq!(kept[0].1.protocol, "http");
+        // 全是报文接口时过滤为空（由调用方给出提示）
+        let only_net = apis[1..].to_vec();
+        assert!(filter_apis_for_format(only_net, "openapi").is_empty());
+    }
+
+    #[test]
     fn postman_shape() {
         let apis = vec![(vec![("用户管理".to_string(), false)], sample())];
         let v = to_postman(&apis);

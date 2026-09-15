@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Modal } from "./Modal";
 import { FormatSelect } from "./FormatSelect";
 import { NodeTypeIcon } from "./NodeTypeIcon";
-import { AppSettings, TreeNode } from "../types";
+import { AppSettings, TreeNode, isNetProtocol, supportsNetExport } from "../types";
 import { ExportFormat } from "../commands";
 import { useT } from "../i18n";
 
@@ -95,20 +95,62 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
       setFormat(formatOptions[0].value);
     }
   }, [formatOptions, format]);
+  /** 当前格式是否支持 TCP / UDP 接口（仅 HTML / Markdown / MkDocs / Docsify） */
+  const netOk = supportsNetExport(format);
+  /**
+   * 不可勾选的节点路径：非文档类格式下的 TCP / UDP 接口，
+   * 以及只包含报文接口（与空分组）的分组——它们导出后没有任何内容。
+   */
+  const disabledPaths = useMemo(() => {
+    const s = new Set<string>();
+    if (netOk || !tree) return s;
+    // 返回该子树是否存在可导出（非报文）接口，顺带标记不可导出的节点
+    const walk = (node: TreeNode): boolean => {
+      if (node.kind === "api") {
+        if (isNetProtocol(node.protocol)) {
+          s.add(node.path);
+          return false;
+        }
+        return true;
+      }
+      let any = false;
+      for (const c of node.children || []) {
+        if (walk(c)) any = true;
+      }
+      if (!any) s.add(node.path);
+      return any;
+    };
+    walk(tree);
+    return s;
+  }, [tree, netOk]);
+  // 切换格式后，把已选中但已不可选的接口/分组移除
+  useEffect(() => {
+    if (disabledPaths.size === 0) return;
+    setSelected((prev) => {
+      const next = new Set([...prev].filter((p) => !disabledPaths.has(p)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [disabledPaths]);
   const [busy, setBusy] = useState(false);
   // 折叠状态：默认全部展开，点击箭头折叠/展开分组
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
 
   const allPaths = useMemo(() => (tree ? subtreePaths(tree) : []), [tree]);
+  /** 可勾选的路径（排除不支持当前格式的 TCP / UDP 接口） */
+  const selectablePaths = useMemo(
+    () => allPaths.filter((p) => !disabledPaths.has(p)),
+    [allPaths, disabledPaths]
+  );
 
-  const allSelected = allPaths.length > 0 && allPaths.every((p) => selected.has(p));
+  const allSelected = selectablePaths.length > 0 && selectablePaths.every((p) => selected.has(p));
 
   const toggleNode = (node: TreeNode, on: boolean) => {
     setSelected((prev) => {
       const next = new Set(prev);
       for (const p of subtreePaths(node)) {
-        if (on) next.add(p);
-        else next.delete(p);
+        if (on) {
+          if (!disabledPaths.has(p)) next.add(p);
+        } else next.delete(p);
       }
       return next;
     });
@@ -121,7 +163,7 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
         for (const p of allPaths) next.delete(p);
         return next;
       }
-      return new Set(allPaths);
+      return new Set(selectablePaths);
     });
   };
 
@@ -141,12 +183,18 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
     const isCollapsed = collapsed.has(node.path);
     // 分组废弃会继承到其下所有接口/子分组（与侧栏行为一致）
     const isDeprecated = node.deprecated === true || inheritedDep === true;
+    // 非文档类格式不支持 TCP / UDP 接口：接口（及只含报文接口的分组）置灰不可选
+    const locked = disabledPaths.has(node.path);
     return (
       <div key={node.path}>
         <div
-          className={`export-row${isDeprecated ? " deprecated" : ""}`}
+          className={`export-row${isDeprecated ? " deprecated" : ""}${locked ? " export-row-locked" : ""}`}
           style={{ paddingLeft: 8 + depth * 20 }}
-          onClick={() => toggleNode(node, !checked)}
+          title={locked ? t("export.netUnsupported") : undefined}
+          onClick={() => {
+            if (locked) return;
+            toggleNode(node, !checked);
+          }}
         >
           {isFolder ? (
             <button
@@ -164,7 +212,8 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
           )}
           <input
             type="checkbox"
-            checked={checked}
+            checked={locked ? false : checked}
+            disabled={locked}
             onChange={(e) => toggleNode(node, e.target.checked)}
             onClick={(e) => e.stopPropagation()}
           />
@@ -176,6 +225,11 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
             {!isFolder && node.method && <em className="export-row-method">{node.method}</em>}
           </span>
           {isDeprecated && <span className="export-dep-badge">{t("sidebar.deprecated")}</span>}
+          {locked && (
+            <span className="export-lock-badge" title={t("export.netUnsupported")}>
+              🔒
+            </span>
+          )}
           {isFolder && (
             <span className="export-row-count">
               {node.apiCount != null ? `${node.apiCount} ${t("export.apis")}` : ""}
@@ -238,6 +292,7 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
           {t("common.clear")}
         </button>
       </div>
+      {!netOk && disabledPaths.size > 0 && <div className="export-net-tip">🔒 {t("export.netHint")}</div>}
       <div className="export-tree">{tree ? renderNode(tree, 0) : <div className="doc-empty">{t("export.noData")}</div>}</div>
       </div>
     </Modal>

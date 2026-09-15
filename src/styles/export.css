@@ -234,6 +234,31 @@
   flex-shrink: 0;
 }
 
+/* 当前导出格式不支持 TCP / UDP 接口：接口与只含报文接口的分组置灰不可选 */
+.export-row.export-row-locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.export-row.export-row-locked:hover {
+  background: none;
+}
+.export-lock-badge {
+  flex-shrink: 0;
+  margin-left: 6px;
+  font-size: 11px;
+  line-height: 1;
+}
+.export-net-tip {
+  margin: 6px 8px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text-dim);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
 /* 导出列表中已废弃的接口/分组：斜体 + 红色删除线 + 角标 */
 .export-row.deprecated {
   opacity: 0.82;

@@ -36,6 +36,29 @@ pub use self::raml::to_raml;
 pub use self::wadl::to_wadl;
 pub use self::yapi::to_yapi;
 
+/// 支持导出 TCP / UDP 接口的格式：仅文档类（HTML / Markdown / MkDocs / Docsify）
+/// 其余格式（Postman / OpenAPI / YApi …）没有报文概念，导出时自动跳过报文接口。
+pub const NET_EXPORT_FORMATS: [&str; 4] = ["html", "markdown", "mkdocs", "docsify"];
+
+/// 该导出格式是否支持 TCP / UDP 接口
+pub fn supports_net_export(format: &str) -> bool {
+    NET_EXPORT_FORMATS.contains(&format)
+}
+
+/// 按格式过滤接口：不支持报文导出的格式去掉 TCP / UDP 接口（导出弹窗已置灰，
+/// 这里兼容勾选整个分组的情况，避免导出无意义的报文接口）
+pub fn filter_apis_for_format(
+    apis: Vec<(Vec<(String, bool)>, ApiFile)>,
+    format: &str,
+) -> Vec<(Vec<(String, bool)>, ApiFile)> {
+    if supports_net_export(format) {
+        return apis;
+    }
+    apis.into_iter()
+        .filter(|(_, a)| !matches!(a.protocol.as_str(), "tcp" | "udp"))
+        .collect()
+}
+
 /// 收集选中路径下的全部接口。
 /// 返回 (分组路径段, ApiFile)：分组路径段为各层分组的显示名称（不含工作区根）。
 pub fn collect_apis(root: &Path, paths: &[String]) -> Result<Vec<(Vec<(String, bool)>, ApiFile)>, String> {
@@ -189,9 +212,13 @@ pub(crate) fn export_selection(
 ) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
     let root = workspace_root(&state)?;
-    let apis = collect_apis(&root, &paths)?;
+    let apis = filter_apis_for_format(collect_apis(&root, &paths)?, &format);
     if apis.is_empty() {
-        return Err("所选内容中没有接口".into());
+        return Err(if supports_net_export(&format) {
+            "所选内容中没有接口".into()
+        } else {
+            "所选内容中没有可导出的接口：TCP / UDP 接口只能导出为 HTML / Markdown / MkDocs / Docsify 文档".into()
+        });
     }
     match format.as_str() {
         "postman" => {

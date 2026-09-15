@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Modal } from "./Modal";
+import { CopyBtn } from "./CopyBtn";
 import { useT } from "../i18n";
 
 interface Props {
@@ -36,6 +37,7 @@ export function MarkdownModal({ name, html, md, onSave, onClose }: Props) {
           <button className="btn" onClick={() => setTab(tab === "preview" ? "source" : "preview")}>
             {tab === "preview" ? t("markdown.viewSource") : t("markdown.preview")}
           </button>
+          <CopyBtn text={md} title={t("markdown.copySource")} />
           <button className="btn" disabled={!!busy} onClick={() => void save("md")}>
             {busy === "md" ? t("markdown.saving") : "💾 " + t("markdown.saveMd")}
           </button>

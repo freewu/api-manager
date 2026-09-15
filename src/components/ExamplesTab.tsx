@@ -16,6 +16,7 @@ import {
   renameExample,
 } from "../commands";
 import { highlightJson } from "./Response";
+import { CopyBtn } from "./CopyBtn";
 import { useT } from "../i18n";
 
 interface Props {
@@ -126,6 +127,9 @@ function NetExampleDetail({
           <span className="examples-detail-meta">
             {reqBytes.length > 0 ? `${reqBytes.length} ${t("net.byte")}` : ""}
           </span>
+          {reqBytes.length > 0 && (
+            <CopyBtn className="copy-inline" text={detail.reqBody || ""} title={t("net.copyPreviewTip")} />
+          )}
         </div>
         {reqBytes.length === 0 ? (
           <div className="examples-empty">{t("examples.netNoPacket")}</div>
@@ -144,6 +148,9 @@ function NetExampleDetail({
               ? t("examples.failed")
               : `${detail.timeMs} ms · ${detail.size} ${t("net.byte")}`}
           </span>
+          {!detail.error && respBytes.length > 0 && (
+            <CopyBtn className="copy-inline" text={detail.respBody || ""} title={t("net.copyPreviewTip")} />
+          )}
         </div>
         {detail.error ? (
           <div className="error-banner">{detail.error}</div>

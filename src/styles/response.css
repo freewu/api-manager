@@ -378,6 +378,9 @@
   gap: 6px;
 }
 .examples-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 11.5px;
   font-weight: 600;
   color: var(--text-faint);

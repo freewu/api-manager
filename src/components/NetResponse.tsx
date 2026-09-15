@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { NetResult, PacketField } from "../types";
 import { bytesToText, hexToBytes, parsePacket } from "../utils/packet";
 import { PacketViewTable } from "./PacketViewTable";
+import { CopyBtn } from "./CopyBtn";
 import { useT } from "../i18n";
 
 interface Props {
@@ -155,9 +156,15 @@ export function NetResponse({ result, sending, fields, onSaveExample }: Props) {
 
         {tab === "raw" && (
           <div className="net-raw">
-            <div className="section-title">{t("net.sentBytes")}</div>
+            <div className="section-title">
+              {t("net.sentBytes")}
+              <CopyBtn className="copy-inline" text={result.sentHex} title={t("net.copyPreviewTip")} />
+            </div>
             <code className="packet-hex">{result.sentHex || t("net.previewEmpty")}</code>
-            <div className="section-title">{t("net.recvBytes")}</div>
+            <div className="section-title">
+              {t("net.recvBytes")}
+              <CopyBtn className="copy-inline" text={result.hex} title={t("net.copyPreviewTip")} />
+            </div>
             <code className="packet-hex">{result.hex || t("net.previewEmpty")}</code>
             {text && (
               <>

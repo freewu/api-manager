@@ -345,6 +345,17 @@ export type ImportFormat =
   | "rap2"
   | "curl";
 
+/**
+ * 支持导出 TCP / UDP 接口的格式：仅文档类（HTML / Markdown / MkDocs / Docsify），
+ * 其余格式（Postman / OpenAPI / YApi …）没有报文概念，导出时这些接口置灰不可选。
+ */
+export const NET_EXPORT_FORMATS: ExportFormat[] = ["html", "markdown", "mkdocs", "docsify"];
+
+/** 当前导出格式是否支持 TCP / UDP 接口 */
+export function supportsNetExport(format: ExportFormat): boolean {
+  return NET_EXPORT_FORMATS.includes(format);
+}
+
 /** 导入格式中必选（不可关闭）的类型 */
 export const REQUIRED_IMPORT_FORMATS: ImportFormat[] = ["postman", "openapi"];
 

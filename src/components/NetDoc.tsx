@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ApiFile, PacketField, emptyNet } from "../types";
 import { KIND_LABELS, buildPacket, displayValue, lengthFieldIndex } from "../utils/packet";
+import { CopyBtn } from "./CopyBtn";
 import { useT } from "../i18n";
 
 interface Props {
@@ -154,7 +155,10 @@ export function NetDoc({ api }: Props) {
         ) : (
           fieldTable(pack, true)
         )}
-        <div className="section-title net-doc-sub">{t("net.docSample")}</div>
+        <div className="section-title net-doc-sub">
+          {t("net.docSample")}
+          <CopyBtn className="copy-inline" text={packet.hex} title={t("net.copyPreviewTip")} />
+        </div>
         <code className="packet-hex">{packet.hex || t("net.previewEmpty")}</code>
       </div>
 

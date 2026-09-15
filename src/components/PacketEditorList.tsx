@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { PacketField, PacketFieldKind, emptyPacketField } from "../types";
 import { KIND_LABELS, buildPacket } from "../utils/packet";
+import { CopyBtn } from "./CopyBtn";
 import { useT } from "../i18n";
 
 const KINDS: PacketFieldKind[] = ["fixed", "var", "varlen"];
@@ -182,6 +183,7 @@ export function PacketEditorList({ fields, onChange }: Props) {
       <div className="packet-preview">
         <div className="section-title">
           {t("net.preview")} <span className="help">{t("net.previewSize", { n: packet.bytes.length })}</span>
+          <CopyBtn className="copy-inline" text={packet.hex} title={t("net.copyPreviewTip")} />
         </div>
         <code className="packet-hex">{packet.hex || t("net.previewEmpty")}</code>
       </div>
