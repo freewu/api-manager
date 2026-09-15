@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { TreeNode } from "../types";
 import { Modal } from "./Modal";
 import { useT } from "../i18n";
@@ -16,6 +16,15 @@ const METHOD_COLORS: Record<string, string> = {
   DELETE: "#e05561",
   HEAD: "#5bc0de",
   OPTIONS: "#8895a7",
+  // WebDAV 专用方法
+  PROPFIND: "#7d6cf0",
+  PROPPATCH: "#c264d8",
+  MKCOL: "#37b26c",
+  COPY: "#3fa9c9",
+  MOVE: "#e08b3a",
+  LOCK: "#e05561",
+  UNLOCK: "#a0a8b8",
+  REPORT: "#5f7fbf",
 };
 const FALLBACK_COLORS = ["#4f8ef7", "#37b26c", "#f0a63a", "#9a6cf0", "#e05561", "#5bc0de", "#8895a7"];
 
@@ -32,12 +41,16 @@ interface Stats {
   deprecatedApis: number;
   deprecatedFolders: number;
   mockEnabled: number;
-  methods: [string, number][];
+  /** HTTP 接口方法分布 */
+  httpMethods: [string, number][];
+  /** WebDAV 接口方法分布 */
+  webdavMethods: [string, number][];
   items: { name: string; kind: string; apis: number }[];
 }
 
 function computeStats(node: TreeNode): Stats {
-  const methods = new Map<string, number>();
+  const httpMethodsMap = new Map<string, number>();
+  const webdavMethodsMap = new Map<string, number>();
   let mockEnabled = 0;
   let deprecatedApis = 0;
   let deprecatedFolders = 0;
@@ -49,7 +62,7 @@ function computeStats(node: TreeNode): Stats {
   let tcpApis = 0;
   let udpApis = 0;
 
-  // 单次遍历：按协议分类计数；方法分布仅统计 HTTP / WebDAV（实时与 GraphQL 单独计数、不计入方法分布）；mock 与废弃接口数（有副作用，只调用一次）
+  // 单次遍历：按协议分类计数；方法分布分别统计 HTTP / WebDAV（实时与 GraphQL 单独计数、不计入方法分布）；mock 与废弃接口数（有副作用，只调用一次）
   // 分组被废弃时，其下所有接口一并计为废弃
   const countApis = (n: TreeNode, parentDeprecated = false): number => {
     if (n.kind === "api") {
@@ -64,7 +77,7 @@ function computeStats(node: TreeNode): Stats {
       } else if (n.protocol === "webdav") {
         webdavApis++;
         const m = (n.method || "GET").toUpperCase();
-        methods.set(m, (methods.get(m) || 0) + 1);
+        webdavMethodsMap.set(m, (webdavMethodsMap.get(m) || 0) + 1);
       } else if (n.protocol === "tcp") {
         tcpApis++;
       } else if (n.protocol === "udp") {
@@ -72,7 +85,7 @@ function computeStats(node: TreeNode): Stats {
       } else {
         httpApis++;
         const m = (n.method || "GET").toUpperCase();
-        methods.set(m, (methods.get(m) || 0) + 1);
+        httpMethodsMap.set(m, (httpMethodsMap.get(m) || 0) + 1);
       }
       return 1;
     }
@@ -106,7 +119,7 @@ function computeStats(node: TreeNode): Stats {
     apis: countChildApis(c),
   }));
 
-  const methodList = [...methods.entries()].sort((a, b) => b[1] - a[1]);
+  const byCount = (m: Map<string, number>) => [...m.entries()].sort((a, b) => b[1] - a[1]);
   return {
     totalApis,
     httpApis,
@@ -120,7 +133,8 @@ function computeStats(node: TreeNode): Stats {
     deprecatedApis,
     deprecatedFolders,
     mockEnabled,
-    methods: methodList,
+    httpMethods: byCount(httpMethodsMap),
+    webdavMethods: byCount(webdavMethodsMap),
     items,
   };
 }
@@ -174,91 +188,101 @@ function Donut({ data }: { data: [string, number][] }) {
   );
 }
 
+/** 可点击查看方法分布的协议（仅 HTTP / WebDAV 有方法概念） */
+type MethodProto = "http" | "webdav";
+
 export function StatsModal({ node, onClose }: Props) {
   const t = useT();
   const stats = useMemo(() => computeStats(node), [node]);
   const maxApis = Math.max(1, ...stats.items.map((i) => i.apis));
+  // null = 未选择协议，此时不展示饼图
+  const [methodProto, setMethodProto] = useState<MethodProto | null>(null);
+
+  const methods =
+    methodProto === "http" ? stats.httpMethods : methodProto === "webdav" ? stats.webdavMethods : [];
+  const protoName = methodProto === "webdav" ? "WebDAV" : "HTTP";
+
+  const card = (
+    key: string,
+    num: number,
+    label: string,
+    opts: { deprecated?: boolean; select?: MethodProto } = {},
+  ) => (
+    <div
+      key={key}
+      className={[
+        "stats-card",
+        opts.select ? "selectable" : "",
+        opts.select && opts.select === methodProto ? "active" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      onClick={
+        opts.select
+          ? () => setMethodProto((cur) => (cur === opts.select ? null : opts.select!))
+          : undefined
+      }
+      title={opts.select ? t("stats.selectTip") : undefined}
+    >
+      <div className={`stats-card-num${opts.deprecated ? " deprecated" : ""}`}>{num}</div>
+      <div className="stats-card-label">{label}</div>
+    </div>
+  );
 
   return (
     <Modal title={`📊 ${t("stats.title")} - ${node.name}`} onClose={onClose} className="stats-modal">
       <div className="stats-cards">
-        <div className="stats-card">
-          <div className="stats-card-num">{stats.totalApis}</div>
-          <div className="stats-card-label">{t("stats.totalApis")}</div>
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-num">{stats.httpApis}</div>
-          <div className="stats-card-label">{t("stats.httpApis")}</div>
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-num">{stats.wsApis}</div>
-          <div className="stats-card-label">{t("stats.wsApis")}</div>
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-num">{stats.socketIoApis}</div>
-          <div className="stats-card-label">{t("stats.socketioApis")}</div>
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-num">{stats.graphqlApis}</div>
-          <div className="stats-card-label">{t("stats.graphqlApis")}</div>
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-num">{stats.webdavApis}</div>
-          <div className="stats-card-label">{t("stats.webdavApis")}</div>
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-num">{stats.tcpApis}</div>
-          <div className="stats-card-label">{t("stats.tcpApis")}</div>
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-num">{stats.udpApis}</div>
-          <div className="stats-card-label">{t("stats.udpApis")}</div>
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-num">{stats.totalFolders}</div>
-          <div className="stats-card-label">{t("stats.totalFolders")}</div>
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-num">{stats.mockEnabled}</div>
-          <div className="stats-card-label">{t("stats.mockEnabled")}</div>
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-num deprecated">{stats.deprecatedApis}</div>
-          <div className="stats-card-label">{t("stats.deprecatedApis")}</div>
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-num deprecated">{stats.deprecatedFolders}</div>
-          <div className="stats-card-label">{t("stats.deprecatedFolders")}</div>
-        </div>
+        {card("total", stats.totalApis, t("stats.totalApis"))}
+        {card("http", stats.httpApis, t("stats.httpApis"), { select: "http" })}
+        {card("ws", stats.wsApis, t("stats.wsApis"))}
+        {card("socketio", stats.socketIoApis, t("stats.socketioApis"))}
+        {card("graphql", stats.graphqlApis, t("stats.graphqlApis"))}
+        {card("webdav", stats.webdavApis, t("stats.webdavApis"), { select: "webdav" })}
+        {card("tcp", stats.tcpApis, t("stats.tcpApis"))}
+        {card("udp", stats.udpApis, t("stats.udpApis"))}
+        {card("folders", stats.totalFolders, t("stats.totalFolders"))}
+        {card("mock", stats.mockEnabled, t("stats.mockEnabled"))}
+        {card("deprecatedApis", stats.deprecatedApis, t("stats.deprecatedApis"), { deprecated: true })}
+        {card("deprecatedFolders", stats.deprecatedFolders, t("stats.deprecatedFolders"), {
+          deprecated: true,
+        })}
       </div>
 
       <div className="stats-body">
         <div className="stats-panel">
-          <div className="stats-panel-title">{t("stats.methods")}</div>
-          {(stats.wsApis + stats.socketIoApis + stats.graphqlApis) > 0 && (
-            <div className="stats-ws-note">{t("stats.wsExcluded")}</div>
-          )}
-          {stats.methods.length === 0 ? (
-            <div className="stats-empty">{t("stats.noApis")}</div>
+          <div className="stats-panel-title">
+            {methodProto ? `${t("stats.methods")} · ${protoName}` : t("stats.methods")}
+          </div>
+          {methodProto === null ? (
+            <div className="stats-empty">{t("stats.methodsHint")}</div>
           ) : (
-            <div className="stats-method-row">
-              <Donut data={stats.methods} />
-              <div className="stats-legend">
-                {stats.methods.map(([m, c], i) => (
-                  <div key={m} className="stats-legend-item">
-                    <span
-                      className="stats-dot"
-                      style={{
-                        background:
-                          METHOD_COLORS[m] || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
-                      }}
-                    />
-                    <span className="stats-legend-method">{m}</span>
-                    <span className="stats-legend-count">{c}</span>
+            <>
+              {stats.wsApis + stats.socketIoApis + stats.graphqlApis > 0 && (
+                <div className="stats-ws-note">{t("stats.wsExcluded")}</div>
+              )}
+              {methods.length === 0 ? (
+                <div className="stats-empty">{t("stats.noApis")}</div>
+              ) : (
+                <div className="stats-method-row">
+                  <Donut data={methods} />
+                  <div className="stats-legend">
+                    {methods.map(([m, c], i) => (
+                      <div key={m} className="stats-legend-item">
+                        <span
+                          className="stats-dot"
+                          style={{
+                            background:
+                              METHOD_COLORS[m] || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+                          }}
+                        />
+                        <span className="stats-legend-method">{m}</span>
+                        <span className="stats-legend-count">{c}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 

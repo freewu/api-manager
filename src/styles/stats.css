@@ -1,7 +1,7 @@
 /* ============ 统计弹窗 ============ */
 .stats-modal {
-  width: 560px;
-  max-width: 92vw;
+  width: 760px;
+  max-width: 94vw;
 }
 .stats-cards {
   display: flex;
@@ -17,6 +17,20 @@
   border-radius: var(--radius);
   background: var(--bg-input);
   text-align: center;
+}
+.stats-card.selectable {
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+.stats-card.selectable:hover {
+  border-color: var(--accent);
+}
+.stats-card.active {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 .stats-card-num {
   font-size: 22px;
@@ -116,7 +130,7 @@
   font-size: 12px;
 }
 .stats-bar-name {
-  width: 90px;
+  width: 120px;
   flex-shrink: 0;
   overflow: hidden;
   text-overflow: ellipsis;
