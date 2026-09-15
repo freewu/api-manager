@@ -443,6 +443,77 @@ const powershellOps: NetPackOps = {
   note: (text) => `# ${text}`,
 };
 
+/** Swift（POSIX socket + Foundation，Darwin / Linux 均可编译） */
+const swiftOps: NetPackOps = {
+  comment: "//",
+  dataVar: "data",
+  ref: (n) => n,
+  defBytes: (n, hex) => `let ${n}: [UInt8] = hex2bytes("${hex}")`,
+  defLen: (n, e, w) => `let ${n}: [UInt8] = beBytes(UInt64(${e}), ${w})`,
+  defInt: (n, e) => `let ${n}: Int = ${e}`,
+  defPacket: (parts) => `let PACKET: [UInt8] = [${parts.join(", ")}].flatMap { $0 }`,
+  defSlice: (n, a, b) => `let ${n}: [UInt8] = Array(data[${a}..<${b}])`,
+  toInt: (e, w) => beToInt(e, w, (i) => `Int(${idx(e, i)})`),
+  len: (e) => `${e}.count`,
+  log: (label, e) =>
+    `print("${label} = " + ${e}.map { String(format: "%02X", $0) }.joined(separator: " "))`,
+  note: (text) => `// ${text}`,
+};
+
+/** Objective-C（BSD socket + Foundation，NSData 承载字节） */
+const objectivecOps: NetPackOps = {
+  comment: "//",
+  dataVar: "data",
+  ref: (n) => n,
+  defBytes: (n, hex) => `NSData *${n} = HexToData(@"${hex}");`,
+  defLen: (n, e, w) => `NSData *${n} = BeData((unsigned long long)(${e}), ${w});`,
+  defInt: (n, e) => `NSUInteger ${n} = (NSUInteger)(${e});`,
+  defPacket: (parts) =>
+    [
+      "NSMutableData *PACKET = [NSMutableData data];",
+      ...parts.map((p) => `[PACKET appendData:${p}];`),
+    ].join("\n"),
+  defSlice: (n, a, b) =>
+    `NSData *${n} = [data subdataWithRange:NSMakeRange(${a}, (${b}) - (${a}))];`,
+  toInt: (e) => `(NSUInteger)DataToInt(${e})`,
+  len: (e) => `${e}.length`,
+  log: (label, e) => `NSLog(@"${label} = %@", DataToHex(${e}));`,
+  note: (text) => `// ${text}`,
+};
+
+/** Delphi（Indy 10：TIdTCPClient / TIdUDPClient，需 Delphi 10.3+ 的内联变量声明） */
+const delphiOps: NetPackOps = {
+  comment: "//",
+  dataVar: "Data",
+  ref: (n) => n,
+  defBytes: (n, hex) => `var ${n} := HexToBytes('${hex}');`,
+  defLen: (n, e, w) => `var ${n} := BeBytes(${e}, ${w});`,
+  defInt: (n, e) => `var ${n}: Integer := ${e};`,
+  defPacket: (parts) => `var PACKET := CombineBytes([${parts.join(", ")}]);`,
+  defSlice: (n, a, b) => `var ${n} := Copy(Data, (${a}) + 1, (${b}) - (${a}));`,
+  toInt: (e) => `BytesToInt(${e})`,
+  len: (e) => `Length(${e})`,
+  log: (label, e) => `WriteLn('${label} = ' + BytesToHex(${e}));`,
+  note: (text) => `// ${text}`,
+};
+
+/** R（基础包 socketConnection；UDP 借助 netcat） */
+const rOps: NetPackOps = {
+  comment: "#",
+  dataVar: "data",
+  ref: (n) => n,
+  defBytes: (n, hex) => `${n} <- hex2raw("${hex}")`,
+  defLen: (n, e, w) => `${n} <- be_raw(${e}, ${w})`,
+  defInt: (n, e) => `${n} <- ${e}`,
+  defPacket: (parts) => `PACKET <- do.call(c, list(${parts.join(", ")}))`,
+  defSlice: (n, a, b) => `${n} <- data[seq_len((${b}) - (${a})) + (${a})]`,
+  toInt: (e) => `sum(as.integer(${e}) * 256^(length(${e}) - seq_along(${e})))`,
+  len: (e) => `length(${e})`,
+  log: (label, e) =>
+    `cat("${label} =", paste(sprintf("%02X", as.integer(${e})), collapse = " "), "\\n")`,
+  note: (text) => `# ${text}`,
+};
+
 /** 语言 → 原语（与 net.ts 支持的语言保持一致） */
 export const NET_PACK_OPS: Partial<Record<CodeLang, NetPackOps>> = {
   bash: bashOps,
@@ -461,6 +532,10 @@ export const NET_PACK_OPS: Partial<Record<CodeLang, NetPackOps>> = {
   perl: perlOps,
   lua: luaOps,
   powershell: powershellOps,
+  swift: swiftOps,
+  objectivec: objectivecOps,
+  delphi: delphiOps,
+  r: rOps,
 };
 
 /** 生成封包代码（未定义封包字段或语言不支持时返回空串） */

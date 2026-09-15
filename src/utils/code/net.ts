@@ -117,6 +117,14 @@ export function generateNetCode(lang: CodeLang, api: ApiFile, lib?: string): str
       return genPerl(r, api);
     case "lua":
       return genLua(r, api);
+    case "r":
+      return genR(r, api);
+    case "delphi":
+      return genDelphi(r, api);
+    case "swift":
+      return genSwift(r, api);
+    case "objectivec":
+      return genObjectiveC(r, api);
     default:
       return `${header(r, "//")}\n// ${lang}：暂未内置 ${r.protocol.toUpperCase()} 客户端代码生成`;
   }
@@ -178,8 +186,7 @@ s.${send}(PACKET)
 print(f"发送 {len(PACKET)} 字节: {PACKET.hex(' ').upper()}")
 try:
     ${recv}
-    print(f"收到 {len(data)} 字节: {data.hex(' ').upper()}")
-${unpack ? indent(unpack, "    ") : ""}
+    print(f"收到 {len(data)} 字节: {data.hex(' ').upper()}")${unpack ? "\n" + indent(unpack, "    ") : ""}
 except socket.timeout:
     print("接收超时（无响应）")
 finally:
@@ -207,8 +214,7 @@ else:
     print(resp.summary())
     if resp.haslayer(Raw):
         data = bytes(resp[Raw])
-        print(f"收到 {len(data)} 字节: {data.hex(' ').upper()}")
-${unpack ? indent(unpack, "        ") : ""}`;
+        print(f"收到 {len(data)} 字节: {data.hex(' ').upper()}")${unpack ? "\n" + indent(unpack, "        ") : ""}`;
   }
   return `${header(r, "#")}
 # Scapy 不提供 TCP 客户端会话（需自行完成三次握手），此处用标准库 socket 收发
@@ -233,8 +239,7 @@ const sock = dgram.createSocket("udp4");
 
 sock.on("message", (msg${ts ? ": Buffer" : ""}, peer) => {
   console.log(\`来自 \${peer.address}:\${peer.port} 收到 \${msg.length} 字节: \${msg.toString("hex").toUpperCase()}\`);
-  const data = msg;
-${unpack ? indent(unpack, "  ") : ""}
+  const data = msg;${unpack ? "\n" + indent(unpack, "  ") : ""}
   sock.close();
 });
 sock.on("error", (err${ts ? ": Error" : ""}) => {
@@ -266,8 +271,7 @@ client.setTimeout(TIMEOUT);
 client.on("data", (chunk${ts ? ": Buffer" : ""}) => chunks.push(chunk));
 client.on("end", () => {
   const data = Buffer.concat(chunks);
-  console.log(\`收到 \${data.length} 字节: \${data.toString("hex").toUpperCase()}\`);
-${unpack ? indent(unpack, "  ") : ""}
+  console.log(\`收到 \${data.length} 字节: \${data.toString("hex").toUpperCase()}\`);${unpack ? "\n" + indent(unpack, "  ") : ""}
 });
 client.on("timeout", () => {
   console.log("接收超时（无响应）");
@@ -353,8 +357,7 @@ ${indent(pack, "        ")}
             try {
                 socket.receive(resp);
                 byte[] data = java.util.Arrays.copyOf(buf, resp.getLength());
-                System.out.printf("收到 %d 字节: %s%n", data.length, toHex(data, data.length));
-${unpack ? indent(unpack, "                ") : ""}
+                System.out.printf("收到 %d 字节: %s%n", data.length, toHex(data, data.length));${unpack ? "\n" + indent(unpack, "                ") : ""}
             } catch (java.net.SocketTimeoutException e) {
                 System.out.println("接收超时（无响应）");
             }
@@ -385,8 +388,7 @@ ${indent(pack, "        ")}
                 return;
             }
             byte[] data = java.util.Arrays.copyOf(buf, n);
-            System.out.printf("收到 %d 字节: %s%n", data.length, toHex(data, data.length));
-${unpack ? indent(unpack, "            ") : ""}
+            System.out.printf("收到 %d 字节: %s%n", data.length, toHex(data, data.length));${unpack ? "\n" + indent(unpack, "            ") : ""}
         }
     }
 ${helpers}`;
@@ -543,8 +545,7 @@ try
 {
     IPEndPoint remote = new IPEndPoint(IPAddress.Any, 0);
     byte[] data = client.Receive(ref remote);
-    Console.WriteLine($"收到 {data.Length} 字节: {Convert.ToHexString(data)}");
-${unpack ? indent(unpack, "    ") : ""}
+    Console.WriteLine($"收到 {data.Length} 字节: {Convert.ToHexString(data)}");${unpack ? "\n" + indent(unpack, "    ") : ""}
 }
 catch (SocketException)
 {
@@ -652,8 +653,7 @@ $data = fread($fp, 65535);
 if ($data === false || $data === "") {
     echo "接收超时（无响应）\\n";
 } else {
-    echo "收到 " . strlen($data) . " 字节: " . strtoupper(bin2hex($data)) . "\\n";
-${unpack ? indent(unpack, "    ") : ""}
+    echo "收到 " . strlen($data) . " 字节: " . strtoupper(bin2hex($data)) . "\\n";${unpack ? "\n" + indent(unpack, "    ") : ""}
 }
 fclose($fp);`;
 }
@@ -679,8 +679,7 @@ begin
   end
   if data
     puts "来自 #{peer[3]}:#{peer[1]}"
-    puts "收到 #{data.bytesize} 字节: #{data.unpack1('H*').upcase}"
-${unpack ? indent(unpack, "    ") : ""}
+    puts "收到 #{data.bytesize} 字节: #{data.unpack1('H*').upcase}"${unpack ? "\n" + indent(unpack, "    ") : ""}
   else
     puts "接收超时（无响应）"
   end
@@ -698,8 +697,7 @@ puts "发送 #{PACKET.bytesize} 字节"
 
 if IO.select([sock], nil, nil, ${r.timeoutMs / 1000})
   data = sock.readpartial(65535)
-  puts "收到 #{data.bytesize} 字节: #{data.unpack1('H*').upcase}"
-${unpack ? indent(unpack, "  ") : ""}
+  puts "收到 #{data.bytesize} 字节: #{data.unpack1('H*').upcase}"${unpack ? "\n" + indent(unpack, "  ") : ""}
 else
   puts "接收超时（无响应）"
 end
@@ -725,8 +723,7 @@ Write-Host "发送 $($PACKET.Length) 字节"
 try {
     $remote = New-Object System.Net.IPEndPoint([System.Net.IPAddress]::Any, 0)
     $data = $client.Receive([ref]$remote)
-    Write-Host "收到 $($data.Length) 字节: $([BitConverter]::ToString($data).Replace('-', ''))"
-${unpack ? indent(unpack, "    ") : ""}
+    Write-Host "收到 $($data.Length) 字节: $([BitConverter]::ToString($data).Replace('-', ''))"${unpack ? "\n" + indent(unpack, "    ") : ""}
 } catch [System.Net.Sockets.SocketException] {
     Write-Host "接收超时（无响应）"
 } finally {
@@ -747,8 +744,7 @@ try {
     $n = $stream.Read($buffer, 0, $buffer.Length)
     if ($n -gt 0) {
         $data = $buffer[0..($n - 1)]
-        Write-Host "收到 $n 字节: $([BitConverter]::ToString($data).Replace('-', ''))"
-${unpack ? indent(unpack, "        ") : ""}
+        Write-Host "收到 $n 字节: $([BitConverter]::ToString($data).Replace('-', ''))"${unpack ? "\n" + indent(unpack, "        ") : ""}
     } else {
         Write-Host "连接已关闭（无响应）"
     }
@@ -782,8 +778,7 @@ print "发送 " . length($PACKET) . " 字节\\n";
 
 my $data = "";
 if ($sock->recv($data, 65535, 0)) {
-    printf "收到 %d 字节: %s\\n", length($data), uc unpack("H*", $data);
-${unpack ? indent(unpack, "    ") : ""}
+    printf "收到 %d 字节: %s\\n", length($data), uc unpack("H*", $data);${unpack ? "\n" + indent(unpack, "    ") : ""}
 } else {
     print "接收超时（无响应）\\n";
 }
@@ -819,10 +814,422 @@ ${recv}
 if data then
   print(string.format("收到 %d 字节: %s", #data, (data:gsub(".", function(c)
     return string.format("%02X", string.byte(c))
-  end))))
-${unpack ? indent(unpack, "  ") : ""}
+  end))))${unpack ? "\n" + indent(unpack, "  ") : ""}
 else
   print("接收超时（无响应）: " .. tostring(err))
 end
 sock:close()`;
+}
+
+/** Swift（POSIX socket + Foundation，Darwin / Linux 通用） */
+function genSwift(r: NetReq, api: ApiFile): string {
+  const udp = r.protocol === "udp";
+  const pack = packSec("swift", api, `let PACKET: [UInt8] = hex2bytes("${r.hexPlain}")`);
+  const unpack = unpackSec("swift", api);
+  const helpers = [
+    `func hex2bytes(_ hex: String) -> [UInt8] {
+    var out = [UInt8]()
+    var idx = hex.startIndex
+    while idx < hex.endIndex {
+        let next = hex.index(idx, offsetBy: 2)
+        out.append(UInt8(hex[idx..<next], radix: 16) ?? 0)
+        idx = next
+    }
+    return out
+}`,
+    ...(pack.includes("beBytes(")
+      ? [
+          `func beBytes(_ value: UInt64, _ size: Int) -> [UInt8] {
+    return (0..<size).map { UInt8((value >> (8 * (size - 1 - $0))) & 0xFF) }
+}`,
+        ]
+      : []),
+    `func hexString(_ data: [UInt8]) -> String {
+    return data.map { String(format: "%02X", $0) }.joined(separator: " ")
+}`,
+    `func makeAddr() -> sockaddr_in {
+    var addr = sockaddr_in()
+    addr.sin_family = sa_family_t(AF_INET)
+    addr.sin_port = PORT.bigEndian
+    inet_pton(AF_INET, HOST, &addr.sin_addr)
+    return addr
+}`,
+    `func setTimeout(_ fd: Int32) {
+    var tv = timeval()
+    tv.tv_sec = TIMEOUT_MS / 1000
+    tv.tv_usec = Int32((TIMEOUT_MS % 1000) * 1000)
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+}`,
+  ].join("\n\n");
+  const setup = udp
+    ? `let fd = socket(AF_INET, SOCK_DGRAM, 0)
+if fd < 0 { fatalError("socket 创建失败") }
+setTimeout(fd)
+
+var addr = makeAddr()
+let sent = withUnsafePointer(to: &addr) {
+    $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+        sendto(fd, PACKET, PACKET.count, 0, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+    }
+}
+if sent < 0 { fatalError("发送失败") }
+print("发送 " + String(PACKET.count) + " 字节: " + hexString(PACKET))
+
+var buf = [UInt8](repeating: 0, count: 65535)
+var peer = makeAddr()
+let n = withUnsafeMutablePointer(to: &peer) {
+    $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+        recvfrom(fd, &buf, buf.count, 0, $0, nil)
+    }
+}
+if n <= 0 {
+    print("接收超时（无响应）")
+} else {
+    let data = Array(buf[0..<n])
+    print("收到 " + String(data.count) + " 字节: " + hexString(data))${unpack ? "\n" + indent(unpack, "    ") : ""}
+}
+close(fd)`
+    : `let fd = socket(AF_INET, SOCK_STREAM, 0)
+if fd < 0 { fatalError("socket 创建失败") }
+setTimeout(fd)
+
+var addr = makeAddr()
+let rc = withUnsafePointer(to: &addr) {
+    $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+        connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+    }
+}
+if rc != 0 { fatalError("连接失败") }
+
+if send(fd, PACKET, PACKET.count, 0) < 0 { fatalError("发送失败") }
+print("发送 " + String(PACKET.count) + " 字节: " + hexString(PACKET))
+
+var buf = [UInt8](repeating: 0, count: 65535)
+let n = recv(fd, &buf, buf.count, 0)
+if n <= 0 {
+    print("接收超时（无响应）")
+} else {
+    let data = Array(buf[0..<n])
+    print("收到 " + String(data.count) + " 字节: " + hexString(data))${unpack ? "\n" + indent(unpack, "    ") : ""}
+}
+close(fd)`;
+  return `${header(r)}
+#if canImport(Darwin)
+import Darwin
+#else
+import Glibc
+#endif
+import Foundation
+
+let HOST = "${r.host}"
+let PORT: UInt16 = ${r.port}
+let TIMEOUT_MS = ${r.timeoutMs}
+
+${helpers}
+
+${pack}
+${setup}`;
+}
+
+/** Objective-C（BSD socket + Foundation，NSData 承载字节） */
+function genObjectiveC(r: NetReq, api: ApiFile): string {
+  const udp = r.protocol === "udp";
+  const pack = packSec("objectivec", api, `NSData *PACKET = HexToData(@"${r.hexPlain}");`);
+  const unpack = unpackSec("objectivec", api);
+  const helpers = [
+    `static NSData *HexToData(NSString *hex) {
+    NSMutableData *data = [NSMutableData data];
+    for (NSUInteger i = 0; i + 1 < hex.length; i += 2) {
+        unsigned int value = 0;
+        [[NSScanner scannerWithString:[hex substringWithRange:NSMakeRange(i, 2)]] scanHexInt:&value];
+        uint8_t byte = (uint8_t)value;
+        [data appendBytes:&byte length:1];
+    }
+    return data;
+}`,
+    ...(pack.includes("BeData(")
+      ? [
+          `static NSData *BeData(unsigned long long value, NSUInteger size) {
+    NSMutableData *data = [NSMutableData dataWithCapacity:size];
+    for (NSUInteger i = 0; i < size; i++) {
+        uint8_t byte = (uint8_t)((value >> (8 * (size - 1 - i))) & 0xFF);
+        [data appendBytes:&byte length:1];
+    }
+    return data;
+}`,
+        ]
+      : []),
+    `static NSUInteger DataToInt(NSData *data) {
+    const uint8_t *bytes = (const uint8_t *)data.bytes;
+    NSUInteger value = 0;
+    for (NSUInteger i = 0; i < data.length; i++) value = (value << 8) | bytes[i];
+    return value;
+}`,
+    `static NSString *DataToHex(NSData *data) {
+    const uint8_t *bytes = (const uint8_t *)data.bytes;
+    NSMutableString *out = [NSMutableString string];
+    for (NSUInteger i = 0; i < data.length; i++) {
+        if (i > 0) [out appendString:@" "];
+        [out appendFormat:@"%02X", bytes[i]];
+    }
+    return out;
+}`,
+  ].join("\n\n");
+  const setup = udp
+    ? `int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) { perror("socket"); return 1; }
+
+    struct timeval tv = { .tv_sec = ${Math.floor(r.timeoutMs / 1000)}, .tv_usec = ${(r.timeoutMs % 1000) * 1000} };
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(${r.port});
+    inet_pton(AF_INET, "${r.host}", &addr.sin_addr);
+
+    if (sendto(fd, PACKET.bytes, PACKET.length, 0, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        perror("sendto");
+        return 1;
+    }
+    NSLog(@"发送 %lu 字节: %@", (unsigned long)PACKET.length, DataToHex(PACKET));
+
+    uint8_t buf[65535];
+    socklen_t addrLen = sizeof(addr);
+    ssize_t n = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *)&addr, &addrLen);
+    if (n <= 0) {
+        NSLog(@"接收超时（无响应）");
+    } else {
+        NSData *data = [NSData dataWithBytes:buf length:(NSUInteger)n];
+        NSLog(@"收到 %lu 字节: %@", (unsigned long)data.length, DataToHex(data));${unpack ? "\n" + indent(unpack, "        ") : ""}
+    }
+    close(fd);`
+    : `int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) { perror("socket"); return 1; }
+
+    struct timeval tv = { .tv_sec = ${Math.floor(r.timeoutMs / 1000)}, .tv_usec = ${(r.timeoutMs % 1000) * 1000} };
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(${r.port});
+    inet_pton(AF_INET, "${r.host}", &addr.sin_addr);
+
+    if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        perror("connect");
+        return 1;
+    }
+    if (send(fd, PACKET.bytes, PACKET.length, 0) < 0) {
+        perror("send");
+        return 1;
+    }
+    NSLog(@"发送 %lu 字节: %@", (unsigned long)PACKET.length, DataToHex(PACKET));
+
+    uint8_t buf[65535];
+    ssize_t n = recv(fd, buf, sizeof(buf), 0);
+    if (n <= 0) {
+        NSLog(@"接收超时（无响应）");
+    } else {
+        NSData *data = [NSData dataWithBytes:buf length:(NSUInteger)n];
+        NSLog(@"收到 %lu 字节: %@", (unsigned long)data.length, DataToHex(data));${unpack ? "\n" + indent(unpack, "        ") : ""}
+    }
+    close(fd);`;
+  return `${header(r)}
+#import <arpa/inet.h>
+#import <Foundation/Foundation.h>
+#import <sys/socket.h>
+#import <unistd.h>
+
+${helpers}
+
+int main(void) {
+    @autoreleasepool {
+${indent(pack, "        ")}
+
+        ${setup.replace(/\n/g, "\n    ")}
+    }
+    return 0;
+}`;
+}
+
+/** Delphi（Indy 10：TIdTCPClient / TIdUDPClient；需要 Delphi 10.3+ 的内联变量声明） */
+function genDelphi(r: NetReq, api: ApiFile): string {
+  const udp = r.protocol === "udp";
+  const pack = packSec("delphi", api, `var PACKET := HexToBytes('${r.hexPlain}');`);
+  const unpack = unpackSec("delphi", api);
+  const helpers = [
+    `function HexToBytes(const Hex: string): TIdBytes;
+var
+  I: Integer;
+begin
+  SetLength(Result, Length(Hex) div 2);
+  for I := 0 to Length(Result) - 1 do
+    Result[I] := StrToInt('$' + Copy(Hex, I * 2 + 1, 2));
+end;`,
+    ...(pack.includes("BeBytes(")
+      ? [
+          `function BeBytes(Value: Int64; Size: Integer): TIdBytes;
+var
+  I: Integer;
+begin
+  SetLength(Result, Size);
+  for I := 0 to Size - 1 do
+    Result[I] := Byte((Value shr (8 * (Size - 1 - I))) and $FF);
+end;`,
+        ]
+      : []),
+    ...(unpack.includes("BytesToInt(")
+      ? [
+          `function BytesToInt(const Data: TIdBytes): Int64;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 0 to High(Data) do
+    Result := (Result shl 8) or Data[I];
+end;`,
+        ]
+      : []),
+    `function CombineBytes(const Parts: array of TIdBytes): TIdBytes;
+var
+  I, J, Offset: Integer;
+begin
+  SetLength(Result, 0);
+  Offset := 0;
+  for I := 0 to High(Parts) do
+  begin
+    SetLength(Result, Offset + Length(Parts[I]));
+    for J := 0 to High(Parts[I]) do
+      Result[Offset + J] := Parts[I][J];
+    Inc(Offset, Length(Parts[I]));
+  end;
+end;`,
+    `function BytesToHex(const Data: TIdBytes): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 0 to High(Data) do
+  begin
+    if I > 0 then Result := Result + ' ';
+    Result := Result + IntToHex(Data[I], 2);
+  end;
+end;`,
+  ].join("\n\n");
+  const setup = udp
+    ? `Client := TIdUDPClient.Create(nil);
+  try
+    Client.Host := '${r.host}';
+    Client.Port := ${r.port};
+    Client.ReceiveTimeout := ${r.timeoutMs};
+    Client.Send(PACKET);
+    WriteLn('发送 ', Length(PACKET), ' 字节: ', BytesToHex(PACKET));
+    SetLength(Data, 65535);
+    var n := Client.ReceiveBuffer(Data);
+    if n < 0 then n := 0;
+    SetLength(Data, n);
+    if Length(Data) > 0 then
+    begin
+      WriteLn('收到 ', Length(Data), ' 字节: ', BytesToHex(Data));${unpack ? "\n" + indent(unpack, "      ") : ""}
+    end
+    else
+      WriteLn('接收超时（无响应）');
+  finally
+    Client.Free;
+  end;`
+    : `Client := TIdTCPClient.Create(nil);
+  try
+    Client.Host := '${r.host}';
+    Client.Port := ${r.port};
+    Client.ConnectTimeout := ${r.timeoutMs};
+    Client.ReadTimeout := ${r.timeoutMs};
+    Client.Connect;
+    Client.IOHandler.Write(PACKET);
+    WriteLn('发送 ', Length(PACKET), ' 字节: ', BytesToHex(PACKET));
+    if Client.IOHandler.CheckForDataOnSource(${r.timeoutMs}) then
+    begin
+      SetLength(Data, Client.IOHandler.InputBuffer.Size);
+      Client.IOHandler.ReadBytes(Data, Length(Data), False);
+      WriteLn('收到 ', Length(Data), ' 字节: ', BytesToHex(Data));${unpack ? "\n" + indent(unpack, "      ") : ""}
+    end
+    else
+      WriteLn('接收超时（无响应）');
+  finally
+    Client.Disconnect;
+    Client.Free;
+  end;`;
+  const uses = udp ? "  System.SysUtils,\n  IdGlobal,\n  IdUDPClient" : "  System.SysUtils,\n  IdGlobal,\n  IdTCPClient";
+  return `${header(r)}
+{ 需要 Delphi 10.3+（内联变量声明）；网络库使用 Indy 10（官方自带） }
+program NetClient;
+
+{$APPTYPE CONSOLE}
+
+uses
+${uses};
+
+${helpers}
+
+var
+  Client: ${udp ? "TIdUDPClient" : "TIdTCPClient"};
+  Data: TIdBytes;
+
+begin
+  ${pack}
+  ${setup}
+end.`;
+}
+
+/** R（基础包 socketConnection；UDP 借助 netcat 收发） */
+function genR(r: NetReq, api: ApiFile): string {
+  const udp = r.protocol === "udp";
+  const pack = packSec("r", api, `PACKET <- hex2raw("${r.hexPlain}")`);
+  const unpack = unpackSec("r", api);
+  const helpers = [
+    `hex2raw <- function(hex) {
+  if (nchar(hex) == 0) return(raw(0))
+  as.raw(strtoi(substring(hex, seq(1, nchar(hex), 2), seq(2, nchar(hex), 2)), 16L))
+}`,
+    ...(pack.includes("be_raw(")
+      ? [
+          `be_raw <- function(value, size) {
+  as.raw(bitwAnd(bitwShiftR(as.integer(value), 8 * (size - seq_len(size))), 255))
+}`,
+        ]
+      : []),
+  ].join("\n\n");
+  const setup = udp
+    ? `# R 基础包不支持 UDP，这里借助 netcat（nc -u）收发
+in_file <- tempfile()
+out_file <- tempfile()
+writeBin(PACKET, in_file)
+system2("nc", c("-u", "-w", "${Math.ceil(r.timeoutMs / 1000)}", HOST, as.character(PORT)), stdin = in_file, stdout = out_file)
+data <- readBin(out_file, "raw", n = 65535)
+if (length(data) > 0) {
+  cat("收到", length(data), "字节:", paste(sprintf("%02X", as.integer(data)), collapse = " "), "\\n")${unpack ? "\n" + indent(unpack, "  ") : ""}
+} else {
+  cat("接收超时（无响应）\\n")
+}
+unlink(c(in_file, out_file))`
+    : `con <- socketConnection(HOST, PORT, open = "a+b", blocking = TRUE, timeout = TIMEOUT)
+writeBin(PACKET, con)
+cat("发送", length(PACKET), "字节\\n")
+if (socketSelect(list(con), FALSE, TIMEOUT)) {
+  data <- readBin(con, "raw", n = 65535)
+  cat("收到", length(data), "字节:", paste(sprintf("%02X", as.integer(data)), collapse = " "), "\\n")${unpack ? "\n" + indent(unpack, "  ") : ""}
+} else {
+  cat("接收超时（无响应）\\n")
+}
+close(con)`;
+  return `${header(r, "#")}
+
+HOST <- "${r.host}"
+PORT <- ${r.port}
+TIMEOUT <- ${r.timeoutMs / 1000}
+
+${helpers}
+
+${pack}
+${setup}`;
 }
