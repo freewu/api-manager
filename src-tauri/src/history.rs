@@ -1,6 +1,9 @@
 //! 请求历史（.history 目录）与请求示例（.examples 目录）
 
-use crate::{sanitize_filename, unique_path, workspace_root, write_pretty, WorkspaceState};
+use crate::{
+    sanitize_filename, unique_path, workspace_root, write_pretty, NetConfig, PacketField,
+    WorkspaceState,
+};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -363,6 +366,18 @@ pub struct ExampleFile {
     pub size: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// TCP / UDP 示例：协议（tcp / udp），HTTP 示例为空
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
+    /// TCP / UDP 示例：连接配置（保存时的目标地址）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub net: Option<NetConfig>,
+    /// TCP / UDP 示例：封包字段定义（保存时的定义，用于还原请求报文）
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pack: Vec<PacketField>,
+    /// TCP / UDP 示例：解包字段定义（保存时的定义，用于解析响应报文）
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub unpack: Vec<PacketField>,
 }
 
 /// 示例列表摘要（不含请求/响应全文）

@@ -104,8 +104,6 @@ export function ApiWorkspace({
       enableCodegen={enableCodegen}
       codegenLang={codegenLang}
       onTabChange={onTabChange}
-      objectsList={objectsList}
-      objectsStore={objectsStore}
     />
   ) : (
     <Editor

@@ -280,3 +280,124 @@
         assert_eq!(data.children[0].key, "name");
         assert_eq!(data.children[0].description, "姓名");
     }
+
+    #[test]
+    fn render_net_packet_roundtrip() {
+        // TCP / UDP：文档用「报文结构」（封包 / 解包）代替 HTTP 参数，且导出→导入自洽
+        let api = ApiFile {
+            pack: vec![
+                PacketField {
+                    key: "magic".into(),
+                    kind: "fixed".into(),
+                    bytes: 4,
+                    value: "AM01".into(),
+                    description: "魔数".into(),
+                    len_from: None,
+                },
+                PacketField {
+                    key: "len".into(),
+                    kind: "var".into(),
+                    bytes: 1,
+                    value: String::new(),
+                    description: "长度".into(),
+                    len_from: None,
+                },
+                PacketField {
+                    key: "payload".into(),
+                    kind: "varlen".into(),
+                    bytes: 0,
+                    value: "hello".into(),
+                    description: "内容".into(),
+                    len_from: Some(1),
+                },
+            ],
+            unpack: vec![PacketField {
+                key: "cmd".into(),
+                kind: "var".into(),
+                bytes: 1,
+                value: String::new(),
+                description: "命令字".into(),
+                len_from: None,
+            }],
+            net: Some(NetConfig {
+                host: "127.0.0.1".into(),
+                port: 9100,
+                timeout_ms: 5000,
+            }),
+            uuid: "n1".into(),
+            name: "TCP 回显".into(),
+            method: String::new(),
+            path: "/".into(),
+            url: String::new(),
+            description: "TCP 回显测试".into(),
+            headers: vec![],
+            query: vec![],
+            params: vec![],
+            body: BodyData::default(),
+            mock: MockConfig::default(),
+            prescript: String::new(),
+            examples: vec![],
+            responses: vec![],
+            doc_params: vec![],
+            deprecated: false,
+            protocol: "tcp".into(),
+        };
+        let md = render(&api, "TCP", false);
+        assert!(md.contains("> TCP 127.0.0.1:9100"), "{md}");
+        assert!(md.contains("## 报文结构"), "{md}");
+        assert!(md.contains("### 封包"), "{md}");
+        assert!(md.contains("### 解包"), "{md}");
+        assert!(md.contains("- 超时: 5000 ms"), "{md}");
+        assert!(md.contains("| magic | 固定值 | 4 | AM01 | 魔数 |"), "{md}");
+        assert!(md.contains("| payload | 不定长变量 | 取自 2 len | hello | 内容 |"), "{md}");
+        // 不再输出 HTTP 专用小节
+        assert!(!md.contains("## header"), "{md}");
+        assert!(!md.contains("## 请求参数"), "{md}");
+        assert!(!md.contains("## 响应参数"), "{md}");
+
+        // 回读自洽
+        let parsed = parse(&md).expect("parse ok");
+        assert_eq!(parsed.group, "TCP");
+        let a = &parsed.apis[0];
+        assert_eq!(a.protocol, "tcp");
+        assert_eq!(a.method, "");
+        assert!(a.headers.is_empty() && a.params.is_empty() && a.responses.is_empty());
+        let net = a.net.clone().expect("net 配置还原");
+        assert_eq!(net.host, "127.0.0.1");
+        assert_eq!(net.port, 9100);
+        assert_eq!(net.timeout_ms, 5000);
+        assert_eq!(a.pack.len(), 3);
+        assert_eq!(a.pack[0].bytes, 4);
+        assert_eq!(a.pack[1].kind, "var");
+        assert_eq!(a.pack[2].kind, "varlen");
+        assert_eq!(a.pack[2].len_from, Some(1));
+        assert_eq!(a.unpack.len(), 1);
+        assert_eq!(a.unpack[0].key, "cmd");
+    }
+
+    #[test]
+    fn render_udp_without_pack() {
+        // UDP 未定义封包字段：只输出连接信息，不产生 HTTP 小节
+        let mut api = sample_api();
+        api.protocol = "udp".into();
+        api.method = String::new();
+        api.path = "/".into();
+        api.url = String::new();
+        api.headers.clear();
+        api.query.clear();
+        api.params.clear();
+        api.body = BodyData::default();
+        api.responses.clear();
+        api.net = Some(NetConfig {
+            host: "192.168.1.10".into(),
+            port: 9101,
+            timeout_ms: 3000,
+        });
+        let md = render(&api, "", false);
+        assert!(md.contains("> UDP 192.168.1.10:9101"), "{md}");
+        assert!(md.contains("- 目标地址: 192.168.1.10:9101"), "{md}");
+        assert!(!md.contains("### 封包"), "{md}");
+        let parsed = parse(&md).expect("parse ok");
+        assert_eq!(parsed.apis[0].protocol, "udp");
+        assert_eq!(parsed.apis[0].net.as_ref().unwrap().port, 9101);
+    }

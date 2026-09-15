@@ -199,3 +199,67 @@ select.packet-input {
 .net-raw .section-title {
   margin: 0;
 }
+
+/* ---------- 接口文档（报文结构） ---------- */
+.net-doc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+.net-doc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.net-doc-head .section-title {
+  margin: 0;
+}
+.net-doc-head .help {
+  flex: 1;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.net-doc-conn {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  padding: 9px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.net-doc-kv {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.net-doc-kv .label {
+  color: var(--text-faint);
+}
+.net-doc-kv b {
+  color: var(--text);
+  font-weight: 600;
+}
+.net-doc-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.net-doc-block:last-child {
+  border-bottom: none;
+}
+.net-doc-block .section-title {
+  margin: 0;
+}
+.net-doc-sub {
+  margin-top: 2px !important;
+  font-size: 12px;
+}
+.muted {
+  color: var(--text-faint);
+}

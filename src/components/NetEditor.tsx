@@ -1,8 +1,9 @@
 import { Fragment, lazy, Suspense, useEffect, useState } from "react";
-import { ApiFile, ObjectDef, ObjectStore, emptyNet } from "../types";
+import { ApiFile, emptyNet } from "../types";
 import { PacketEditorList } from "./PacketEditorList";
-import { DescEditor, DocParamsEditor } from "./Editor";
+import { DescEditor } from "./Editor";
 import { ExamplesTab } from "./ExamplesTab";
+import { NetDoc } from "./NetDoc";
 import { useT } from "../i18n";
 
 // 代码生成页签懒加载（与 Editor 一致）
@@ -29,10 +30,6 @@ interface Props {
   onSaveVersion: () => void;
   onCommit?: () => void;
   onTabChange?: (t: string) => void;
-  /** 已定义对象列表（文档页签 Object 类型可引用） */
-  objectsList?: ObjectDef[];
-  /** 完整对象仓库（含分组），文档页签 Object 类型弹窗选择对象用 */
-  objectsStore?: ObjectStore;
 }
 
 /**
@@ -54,11 +51,11 @@ export function NetEditor({
   onSaveVersion,
   onCommit,
   onTabChange,
-  objectsList,
-  objectsStore,
 }: Props) {
   const t = useT();
   const [tab, setTab] = useState<Tab>("pack");
+  /** 示例数量：示例页签加载后回报，用于页签角标 */
+  const [exampleCount, setExampleCount] = useState(0);
 
   const set = (p: Partial<ApiFile>) => onChange({ ...api, ...p });
   const net = api.net || emptyNet();
@@ -184,6 +181,7 @@ export function NetEditor({
         )}
         <div className={`tab ${tab === "examples" ? "active" : ""}`} onClick={() => switchTab("examples")}>
           {t("tab.examples")}
+          {exampleCount > 0 && <span className="count">{exampleCount}</span>}
         </div>
       </div>
 
@@ -197,15 +195,20 @@ export function NetEditor({
         {tab === "desc" && (
           <DescEditor value={api.description} onChange={(v) => set({ description: v })} onCommit={onCommit} />
         )}
-        {tab === "doc" && (
-          <DocParamsEditor api={api} set={set} objectsList={objectsList} objectsStore={objectsStore} />
-        )}
+        {tab === "doc" && <NetDoc api={api} />}
         {tab === "code" && enableCodegen && (
           <Suspense fallback={<div className="tab-loading">{t("examples.loading")}</div>}>
             <CodeTab api={api} baseUrl={baseUrl} defaultLang={codegenLang} />
           </Suspense>
         )}
-        {tab === "examples" && <ExamplesTab uuid={api.uuid} api={api} onChange={onChange} />}
+        {tab === "examples" && (
+          <ExamplesTab
+            uuid={api.uuid}
+            api={api}
+            onChange={onChange}
+            onCountChange={setExampleCount}
+          />
+        )}
       </div>
     </div>
   );

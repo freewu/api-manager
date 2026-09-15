@@ -1925,6 +1925,10 @@ let v = export::to_yapi(&apis);
             time_ms: 8,
             size: 64,
             error: None,
+            protocol: None,
+            net: None,
+            pack: vec![],
+            unpack: vec![],
         };
 
         // 名称哈希稳定：同名两次保存得到相同文件名（覆盖）

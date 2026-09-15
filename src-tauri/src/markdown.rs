@@ -1,7 +1,7 @@
 //! 接口文档 Markdown：导出（render）、HTML 预览（md_to_html）、导入回读（parse）。
 //! 导出与导入格式自洽，保证「查看 Markdown → 保存 → 再导入」能完整还原接口。
 
-use crate::{ApiFile, BodyData, DocParam, KeyValue, MockConfig};
+use crate::{ApiFile, BodyData, DocParam, KeyValue, MockConfig, NetConfig, PacketField};
 use serde::Serialize;
 use serde_json::Value;
 use std::fmt::Write as _;
@@ -38,8 +38,18 @@ pub fn render(api: &ApiFile, group: &str, group_deprecated: bool) -> String {
     // > Method url（url 为空时回退到 path，保证导出文档不丢 URL）
     let url = api.url.trim();
     let url = if url.is_empty() { api.path.trim() } else { url };
+    // TCP / UDP：没有 HTTP 方法与路径，引用行标注协议与 ip:port
+    let is_net = matches!(api.protocol.as_str(), "tcp" | "udp");
+    let net_addr = net_addr(api);
     // WebSocket 没有 method，直接标注为 WebSocket，避免在文档里显示虚假的 HTTP 方法
-    let bline = if api.protocol == "websocket" {
+    let bline = if is_net {
+        let proto = api.protocol.to_uppercase();
+        if net_addr.is_empty() {
+            format!("> {proto}")
+        } else {
+            format!("> {proto} {net_addr}")
+        }
+    } else if api.protocol == "websocket" {
         if url.is_empty() {
             "> WebSocket".to_string()
         } else {
@@ -63,6 +73,23 @@ pub fn render(api: &ApiFile, group: &str, group_deprecated: bool) -> String {
             let _ = writeln!(s, "{}", l.trim());
         }
         let _ = writeln!(s);
+    }
+
+    // TCP / UDP：用「报文结构」（封包 / 解包字段）代替 HTTP 的 header / 请求参数 / 响应参数
+    if is_net {
+        let _ = writeln!(s, "## 报文结构\n");
+        let _ = writeln!(s, "- 协议: {}", api.protocol.to_uppercase());
+        if !net_addr.is_empty() {
+            let _ = writeln!(s, "- 目标地址: {net_addr}");
+        }
+        let timeout = api.net.as_ref().map(|n| n.timeout_ms).unwrap_or(0);
+        if timeout > 0 {
+            let _ = writeln!(s, "- 超时: {timeout} ms");
+        }
+        let _ = writeln!(s);
+        render_packet_section(&mut s, "封包", &api.pack);
+        render_packet_section(&mut s, "解包", &api.unpack);
+        return s;
     }
 
     // ## header：Key: Value 行
@@ -134,6 +161,55 @@ pub fn render(api: &ApiFile, group: &str, group_deprecated: bool) -> String {
     }
 
     s
+}
+
+/// TCP / UDP 目标地址（ip:port）；未配置时返回空串
+fn net_addr(api: &ApiFile) -> String {
+    match api.net.as_ref() {
+        Some(n) if !n.host.trim().is_empty() && n.port > 0 => format!("{}:{}", n.host.trim(), n.port),
+        Some(n) if !n.host.trim().is_empty() => n.host.trim().to_string(),
+        _ => String::new(),
+    }
+}
+
+/// 报文字段类型 → 文档中的中文标签
+fn kind_label(kind: &str) -> &'static str {
+    match kind {
+        "varlen" => "不定长变量",
+        "var" => "变量",
+        _ => "固定值",
+    }
+}
+
+/// 封包 / 解包字段表（字段 | 类型 | 位数 | 值 | 描述）
+fn render_packet_section(s: &mut String, title: &str, fields: &[PacketField]) {
+    if fields.is_empty() {
+        return;
+    }
+    let _ = writeln!(s, "### {title}\n");
+    let rows: Vec<Vec<String>> = fields
+        .iter()
+        .enumerate()
+        .map(|(i, f)| {
+            // 不定长变量的「位数」列写长度来源（序号 + 字段名），便于回读时还原 lenFrom
+            let bytes = if f.kind == "varlen" {
+                let from = f.len_from.unwrap_or_else(|| i.saturating_sub(1));
+                let kname = fields.get(from).map(|x| x.key.clone()).unwrap_or_default();
+                format!("取自 {} {kname}", from + 1)
+            } else {
+                f.bytes.to_string()
+            };
+            vec![
+                f.key.clone(),
+                kind_label(&f.kind).to_string(),
+                bytes,
+                f.value.clone(),
+                f.description.clone(),
+            ]
+        })
+        .collect();
+    s.push_str(&md_table(&["字段", "类型", "位数", "值", "描述"], &rows));
+    let _ = writeln!(s);
 }
 
 /// path / query / body-form 请求参数表：字段 | 类型 | 描述（类型/说明来自 docParams 覆盖）
@@ -829,7 +905,7 @@ pub fn parse(md: &str) -> Result<ParsedMarkdown, String> {
 fn is_section_name(t: &str) -> bool {
     matches!(
         t,
-        "基本信息" | "请求 Header" | "Query" | "Path" | "Body" | "响应" | "Mock" | "header" | "请求参数" | "响应参数"
+        "基本信息" | "请求 Header" | "Query" | "Path" | "Body" | "响应" | "Mock" | "header" | "请求参数" | "响应参数" | "报文结构"
     )
 }
 
@@ -889,6 +965,8 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
     let mut method: Option<String> = None;
     let mut protocol = "http".to_string();
     let mut url = String::new();
+    // 引用行 `> TCP ip:port` 解析出的目标地址
+    let mut net_target = String::new();
     let mut desc_lines: Vec<String> = Vec::new();
     let mut section = String::new();
     let mut subsection = String::new();
@@ -942,20 +1020,28 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
         if line.trim_start().starts_with('>') {
             let t = line.trim_start().trim_start_matches('>').trim();
             if !t.is_empty() {
-                // WebSocket 标注：> WebSocket url（还原 protocol，method 置空）
-                let ws_rest = ["WebSocket", "websocket", "WEBSOCKET"]
-                    .iter()
-                    .find_map(|p| t.strip_prefix(p))
-                    .map(|r| r.trim().to_string());
-                if let Some(ws_rest) = ws_rest {
-                    protocol = "websocket".to_string();
+                // TCP / UDP 标注：> TCP 127.0.0.1:9100（还原 protocol 与 net 配置）
+                let head = t.split_whitespace().next().unwrap_or("").to_uppercase();
+                if head == "TCP" || head == "UDP" {
+                    protocol = head.to_lowercase();
                     method = Some(String::new());
-                    url = ws_rest;
-                } else if let Some((m, u)) = parse_method_url(t) {
-                    method = Some(m);
-                    url = u;
+                    net_target = t[head.len()..].trim().to_string();
                 } else {
-                    desc_lines.push(t.to_string());
+                    // WebSocket 标注：> WebSocket url（还原 protocol，method 置空）
+                    let ws_rest = ["WebSocket", "websocket", "WEBSOCKET"]
+                        .iter()
+                        .find_map(|p| t.strip_prefix(p))
+                        .map(|r| r.trim().to_string());
+                    if let Some(ws_rest) = ws_rest {
+                        protocol = "websocket".to_string();
+                        method = Some(String::new());
+                        url = ws_rest;
+                    } else if let Some((m, u)) = parse_method_url(t) {
+                        method = Some(m);
+                        url = u;
+                    } else {
+                        desc_lines.push(t.to_string());
+                    }
                 }
             }
             continue;
@@ -993,6 +1079,20 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
         deprecated: false,
         protocol,
     };
+
+    // TCP / UDP：从 `> TCP ip:port` 还原连接配置（方法/路径为空，地址存 net）
+    if api.protocol == "tcp" || api.protocol == "udp" {
+        let (host, port) = split_net_addr(&net_target);
+        let default_port = if api.protocol == "udp" { 9101 } else { 9100 };
+        api.method = String::new();
+        api.url = String::new();
+        api.path = "/".to_string();
+        api.net = Some(NetConfig {
+            host: if host.is_empty() { "127.0.0.1".to_string() } else { host },
+            port: if port > 0 { port } else { default_port },
+            timeout_ms: 3000,
+        });
+    }
 
     for (sec, sub, text) in &sections {
         let sec = sec.as_str();
@@ -1075,6 +1175,44 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
                     }
                     parse_doc_section(&mut api, &format!("resp:{}", entry.id), text);
                     api.responses.push(entry);
+                }
+            },
+            "报文结构" => match sub.as_str() {
+                "封包" => api.pack = parse_packet_fields(text),
+                "解包" => api.unpack = parse_packet_fields(text),
+                // 无子标题时是连接信息（- 协议 / - 目标地址 / - 超时）
+                _ => {
+                    for line in text.lines() {
+                        let t = line.trim();
+                        let mut net = api.net.clone().unwrap_or_default();
+                        if let Some(v) = t.strip_prefix("- 协议:") {
+                            let v = v.trim().to_lowercase();
+                            if v == "tcp" || v == "udp" {
+                                api.protocol = v;
+                            } else {
+                                continue;
+                            }
+                        } else if let Some(v) = t.strip_prefix("- 目标地址:") {
+                            let (host, port) = split_net_addr(v.trim());
+                            if !host.is_empty() {
+                                net.host = host;
+                            }
+                            if port > 0 {
+                                net.port = port;
+                            }
+                        } else if let Some(v) = t.strip_prefix("- 超时:") {
+                            let ms = v.trim().trim_end_matches("ms").trim().parse::<u64>().unwrap_or(0);
+                            if ms > 0 {
+                                net.timeout_ms = ms;
+                            }
+                        } else {
+                            continue;
+                        }
+                        if net.timeout_ms == 0 {
+                            net.timeout_ms = 3000;
+                        }
+                        api.net = Some(net);
+                    }
                 }
             },
             "请求 Header" | "Query" | "Path" | "Body" => {
@@ -1296,6 +1434,93 @@ fn parse_table_rows(text: &str) -> Vec<TableRow> {
         out.push(TableRow { key, col1, ty, desc });
     }
     out
+}
+
+/// 拆分 ip:port（兼容 IPv6 的 [::1]:9100 写法）；无端口时端口为 0
+fn split_net_addr(raw: &str) -> (String, u16) {
+    let t = raw.trim();
+    if t.is_empty() {
+        return (String::new(), 0);
+    }
+    if let Some(end) = t.rfind(']') {
+        if let Some(rest) = t[end + 1..].strip_prefix(':') {
+            return (t[..=end].to_string(), rest.trim().parse::<u16>().unwrap_or(0));
+        }
+        return (t.to_string(), 0);
+    }
+    match t.rsplit_once(':') {
+        Some((h, p)) if !p.trim().is_empty() && p.trim().chars().all(|c| c.is_ascii_digit()) => {
+            (h.trim().to_string(), p.trim().parse::<u16>().unwrap_or(0))
+        }
+        _ => (t.to_string(), 0),
+    }
+}
+
+/// 解析封包 / 解包字段表（字段 | 类型 | 位数 | 值 | 描述）
+fn parse_packet_fields(text: &str) -> Vec<PacketField> {
+    let mut raw: Vec<Vec<String>> = Vec::new();
+    for line in text.lines() {
+        let t = line.trim();
+        if !t.starts_with('|') || is_table_sep(t) {
+            continue;
+        }
+        raw.push(split_cells(t));
+    }
+    if raw.is_empty() {
+        return vec![];
+    }
+    let header = raw[0].clone();
+    let col = |name: &str| header.iter().position(|h| h.contains(name));
+    let kind_col = col("类型");
+    let bytes_col = col("位数");
+    let value_col = col("值");
+    let desc_col = col("描述").or_else(|| col("说明"));
+    let mut rows: Vec<(PacketField, String)> = Vec::new();
+    for row in raw.iter().skip(1) {
+        let key = row.first().cloned().unwrap_or_default().trim().to_string();
+        if key.is_empty() {
+            continue;
+        }
+        let kind_raw = kind_col.and_then(|c| row.get(c)).cloned().unwrap_or_default();
+        let kind = if kind_raw.contains("不定长") {
+            "varlen"
+        } else if kind_raw.contains("固定") {
+            "fixed"
+        } else {
+            "var"
+        };
+        let bytes_raw = bytes_col.and_then(|c| row.get(c)).cloned().unwrap_or_default();
+        rows.push((
+            PacketField {
+                key,
+                kind: kind.to_string(),
+                bytes: bytes_raw.trim().parse::<u32>().unwrap_or(0),
+                value: value_col.and_then(|c| row.get(c)).cloned().unwrap_or_default(),
+                description: desc_col.and_then(|c| row.get(c)).cloned().unwrap_or_default(),
+                len_from: None,
+            },
+            bytes_raw,
+        ));
+    }
+    // 不定长变量：从「位数」列（形如「取自 3 len」）还原长度来源（0 基下标）
+    let total = rows.len();
+    rows.into_iter()
+        .map(|(mut f, bytes_raw)| {
+            if f.kind == "varlen" {
+                let from = bytes_raw.find("取自").and_then(|p| {
+                    let rest = bytes_raw[p + "取自".len()..].trim_start();
+                    let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+                    digits.parse::<usize>().ok()
+                });
+                if let Some(n) = from {
+                    if n >= 1 && n <= total {
+                        f.len_from = Some(n - 1);
+                    }
+                }
+            }
+            f
+        })
+        .collect()
 }
 
 /// 从「名称（HTTP 200）」中拆出名称与状态码（兼容无状态码的名称）

@@ -1,5 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import { ApiFile, ExampleFile, ExampleSummary } from "../types";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ApiFile, ExampleFile, ExampleSummary, isNetProtocol } from "../types";
+import {
+  bytesToHex,
+  encodeValue,
+  hexToBytes,
+  parsePacket,
+  type PacketFieldResult,
+} from "../utils/packet";
+import { PacketViewTable } from "./PacketViewTable";
 import {
   deleteExample,
   exportExamplesHttp,
@@ -62,6 +70,94 @@ function BodyView({ text }: { text: string }) {
     }
   }
   return <pre className="examples-body examples-pre">{text}</pre>;
+}
+
+/** 解析出的字节 → 可直接回填的字段值：能原样编码回相同字节时用文本，否则用 0x… */
+function bytesToFieldValue(r: PacketFieldResult): string {
+  const hex = r.hex.replace(/ /g, "");
+  if (!hex) return "";
+  if (r.text.trim() && bytesToHex(encodeValue(r.text)).replace(/ /g, "") === hex) return r.text;
+  return "0x" + hex;
+}
+
+/**
+ * TCP / UDP 示例详情：与 HTTP 示例不同，不展示 Header / Path / Query / Body，
+ * 而是展示「请求报文（按封包定义）」与「响应报文（按解包定义）」的报文字节与字段解析。
+ */
+function NetExampleDetail({
+  detail,
+  api,
+  onApply,
+}: {
+  detail: ExampleFile;
+  api: ApiFile;
+  onApply: () => void;
+}) {
+  const t = useT();
+  // 优先使用示例保存时的字段定义，缺失时回退到当前接口的定义
+  const pack = detail.pack?.length ? detail.pack : api.pack || [];
+  const unpack = detail.unpack?.length ? detail.unpack : api.unpack || [];
+  const reqBytes = useMemo(() => hexToBytes(detail.reqBody || ""), [detail.reqBody]);
+  const respBytes = useMemo(() => hexToBytes(detail.respBody || ""), [detail.respBody]);
+  const reqRows = useMemo(
+    () => (pack.length && reqBytes.length ? parsePacket(pack, reqBytes) : []),
+    [pack, reqBytes]
+  );
+  const respRows = useMemo(
+    () => (unpack.length && respBytes.length ? parsePacket(unpack, respBytes) : []),
+    [unpack, respBytes]
+  );
+  return (
+    <div className="examples-detail">
+      <div className="examples-request-line">
+        <b>{(detail.protocol || detail.method || "").toUpperCase()}</b> {detail.url}
+        <button
+          type="button"
+          className="btn small primary examples-apply"
+          title={t("examples.netApplyTip")}
+          onClick={onApply}
+        >
+          ⬇ {t("examples.apply")}
+        </button>
+      </div>
+      <div className="examples-section">
+        <div className="examples-detail-title">
+          {t("examples.netReqPacket")}{" "}
+          <span className="examples-detail-meta">
+            {reqBytes.length > 0 ? `${reqBytes.length} ${t("net.byte")}` : ""}
+          </span>
+        </div>
+        {reqBytes.length === 0 ? (
+          <div className="examples-empty">{t("examples.netNoPacket")}</div>
+        ) : (
+          <>
+            <code className="packet-hex">{detail.reqBody}</code>
+            {reqRows.length > 0 && <PacketViewTable fields={pack} rows={reqRows} />}
+          </>
+        )}
+      </div>
+      <div className="examples-section">
+        <div className="examples-detail-title">
+          {t("examples.netRespPacket")}{" "}
+          <span className="examples-detail-meta">
+            {detail.error
+              ? t("examples.failed")
+              : `${detail.timeMs} ms · ${detail.size} ${t("net.byte")}`}
+          </span>
+        </div>
+        {detail.error ? (
+          <div className="error-banner">{detail.error}</div>
+        ) : respBytes.length === 0 ? (
+          <div className="examples-empty">{t("net.noResponse")}</div>
+        ) : (
+          <>
+            <code className="packet-hex">{detail.respBody}</code>
+            {respRows.length > 0 && <PacketViewTable fields={unpack} rows={respRows} />}
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
@@ -167,6 +263,8 @@ export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
 
   // ---- 一次性导出全部示例为一个 .http 文件（仅 HTTP 接口；保存框取消时不提示） ----
   const isHttp = api.protocol === "http";
+  /** TCP / UDP 接口（示例详情展示报文字节与字段解析） */
+  const isNet = isNetProtocol(api.protocol);
   const [exported, setExported] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const exportAllHttp = async () => {
@@ -185,6 +283,7 @@ export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
   };
 
   // 把示例的 Header / Path / Query / Body 应用到当前接口（URL 保持当前接口的占位符形式）
+  // 把示例的 Header / Path / Query / Body 应用到当前接口（URL 保持当前接口的占位符形式）
   const apply = (d: ExampleFile) => {
     const kv = (rows: [string, string][]) =>
       rows.map(([key, value]) => ({ key, value, enabled: true, description: "" }));
@@ -200,6 +299,24 @@ export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
       params: kv(d.reqPath),
       query: kv(d.reqQuery),
       body,
+    });
+  };
+
+  /** TCP / UDP：把示例报文的封包字段值应用回当前接口（按保存时的封包定义解析字节） */
+  const applyNet = (d: ExampleFile) => {
+    const defs = d.pack?.length ? d.pack : api.pack || [];
+    const bytes = hexToBytes(d.reqBody || "");
+    if (!defs.length || !bytes.length) return;
+    const rows = parsePacket(defs, bytes);
+    onChange({
+      ...api,
+      pack: (api.pack || []).map((f, i) => {
+        // 字段名一致才回填，避免保存后字段顺序变化导致值错位
+        const r = rows[i];
+        if (!r || (defs[i]?.key || "") !== (f.key || "")) return f;
+        const value = bytesToFieldValue(r);
+        return value ? { ...f, value } : f;
+      }),
     });
   };
 
@@ -290,7 +407,10 @@ export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
                   🗑
                 </button>
               </div>
-              {expanded === s.file && detail && (
+              {expanded === s.file && detail && isNet && (
+                <NetExampleDetail detail={detail} api={api} onApply={() => applyNet(detail)} />
+              )}
+              {expanded === s.file && detail && !isNet && (
                 <div className="examples-detail">
                   <div className="examples-request-line">
                     <b>{detail.method}</b> {detail.url}

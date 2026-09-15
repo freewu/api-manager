@@ -1,4 +1,6 @@
 import { isNetProtocol, type ApiFile, type DocParam, type DocSource, type KeyValue } from "../types";
+import { KIND_LABELS } from "./packet";
+import { t } from "../i18n";
 
 /** 按 source+key 查找文档补充说明 */
 function findDoc(docs: DocParam[], source: DocSource, key: string): DocParam | undefined {
@@ -102,6 +104,28 @@ export function buildApiDocComment(api: ApiFile, groupPath: string): string {
   }
   if (api.description.trim()) {
     lines.push(` * @apiDescription ${fmtDesc(api.description)}`);
+  }
+  // TCP / UDP：用报文结构（封包 / 解包字段）代替 HTTP 参数与响应示例
+  if (isNet) {
+    for (const [title, fields] of [
+      [t("net.docPackTitle"), api.pack || []],
+      [t("net.docUnpackTitle"), api.unpack || []],
+    ] as const) {
+      if (fields.length === 0) continue;
+      lines.push(" *");
+      lines.push(` * 【${title}】`);
+      for (const f of fields) {
+        const bytes =
+          f.kind === "varlen"
+            ? t("net.docVarlenLen", { from: f.lenFrom != null ? f.lenFrom + 1 : "—" })
+            : `${f.bytes}B`;
+        const value = f.kind === "varlen" ? "" : ` = ${f.value}`;
+        const desc = f.description ? ` ${fmtDesc(f.description)}` : "";
+        lines.push(` *   ${f.key} (${t(KIND_LABELS[f.kind])} ${bytes})${value}${desc}`);
+      }
+    }
+    lines.push(" */");
+    return lines.join("\n");
   }
   // 路径参数
   fieldLines(api, "path", api.params, "apiParam", lines);

@@ -550,6 +550,11 @@ export function useRequests(opts: {
           timeMs: netResult.timeMs,
           size: netResult.size,
           error: netResult.error,
+          // 保存时的连接配置与封包/解包定义，示例页签按此还原报文结构
+          protocol: api.protocol === "udp" ? "udp" : "tcp",
+          net: { ...net },
+          pack: snap.pack || [],
+          unpack: snap.unpack || [],
         });
       } else if (isWs) {
         // 实时（WebSocket/Socket.IO）：保存最近一次发送的消息与收到的回显
