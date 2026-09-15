@@ -972,6 +972,9 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
     }
 
     let mut api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: String::new(),
         name: name.clone(),
         method: method.clone().unwrap_or_else(|| "GET".to_string()),

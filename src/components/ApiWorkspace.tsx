@@ -1,5 +1,7 @@
-import { ApiFile, HttpResult, ObjectDef, ObjectStore, WsLogEntry } from "../types";
+import { ApiFile, HttpResult, NetResult, ObjectDef, ObjectStore, WsLogEntry } from "../types";
 import { Editor } from "./Editor";
+import { NetEditor } from "./NetEditor";
+import { NetResponse } from "./NetResponse";
 import { Response } from "./Response";
 import { WsResponse } from "./WsResponse";
 
@@ -20,6 +22,8 @@ interface Props {
   hideResponse: boolean;
   editorRatio: number;
   response: HttpResult | null;
+  /** TCP / UDP 最近一次收发结果 */
+  netResult?: NetResult | null;
   onChange: (a: ApiFile) => void;
   onSend: () => void;
   onSaveExample: (name: string) => void;
@@ -42,9 +46,10 @@ interface Props {
 }
 
 /**
- * 右侧渲染按接口类型拆分为 Http / 实时（WebSocket、Socket.IO）两种：
+ * 右侧渲染按接口类型拆分为三种：
  * - Http      ：Editor（请求编辑）+ Response（状态码 / 响应体）
  * - 实时       ：Editor（消息编辑 / 发送）+ WsResponse（实时交互记录）
+ * - TCP / UDP ：NetEditor（封包 / 解包）+ NetResponse（收发字节与解包解析）
  * 根据 api.protocol 加载不同的组件。
  */
 export function ApiWorkspace({
@@ -61,6 +66,7 @@ export function ApiWorkspace({
   hideResponse,
   editorRatio,
   response,
+  netResult,
   onChange,
   onSend,
   onSaveExample,
@@ -79,8 +85,29 @@ export function ApiWorkspace({
 }: Props) {
   /** 实时类接口（WebSocket / Socket.IO）：右侧渲染为消息编辑 + 实时交互记录 */
   const isWs = api.protocol === "websocket" || api.protocol === "socketio";
+  /** TCP / UDP 接口：右侧渲染为封包 / 解包编辑 + 收发结果 */
+  const isNet = api.protocol === "tcp" || api.protocol === "udp";
 
-  const editor = (
+  const editor = isNet ? (
+    <NetEditor
+      style={{ height: hideResponse ? "100%" : `${editorRatio * 100}%` }}
+      api={api}
+      baseUrl={baseUrl}
+      breadcrumb={breadcrumb}
+      currentVersion={currentVersion}
+      onChange={onChange}
+      onSend={onSend}
+      onSaveVersion={onSaveVersion}
+      enableVersion={enableVersion}
+      sending={sending}
+      onCommit={onCommit}
+      enableCodegen={enableCodegen}
+      codegenLang={codegenLang}
+      onTabChange={onTabChange}
+      objectsList={objectsList}
+      objectsStore={objectsStore}
+    />
+  ) : (
     <Editor
       style={{ height: hideResponse ? "100%" : `${editorRatio * 100}%` }}
       api={api}
@@ -116,7 +143,14 @@ export function ApiWorkspace({
         />
       )}
       {!hideResponse &&
-        (isWs ? (
+        (isNet ? (
+          <NetResponse
+            result={netResult ?? null}
+            sending={sending}
+            fields={api.unpack || []}
+            onSaveExample={onSaveExample}
+          />
+        ) : isWs ? (
           <WsResponse
             connected={wsConnected}
             connecting={wsConnecting}

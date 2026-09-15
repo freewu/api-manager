@@ -18,7 +18,7 @@ import {
   type MarkdownDoc,
 } from "../commands";
 import { buildApiDocComment } from "../utils/apidoc";
-import { ApiFile, AppSettings, TreeNode, VersionInfo } from "../types";
+import { ApiFile, AppSettings, TreeNode, VersionInfo, isNetProtocol } from "../types";
 import { InfoForm, ModalState, emptyInfoForm } from "../components/AppModals";
 import { parseCurl } from "../utils/curl";
 
@@ -62,16 +62,18 @@ export function useModals(opts: {
   /** 打开弹窗时记录的原始 path，用于确认时判断是否有改动 */
   const [modalPathInit, setModalPathInit] = useState("");
   const [modalProtocol, setModalProtocol] = useState<
-    "http" | "websocket" | "graphql" | "socketio" | "webdav"
+    "http" | "websocket" | "graphql" | "socketio" | "webdav" | "tcp" | "udp"
   >("http");
   const [infoForm, setInfoForm] = useState<InfoForm>(emptyInfoForm());
-  /** 空目录演示案例生成类型勾选（http/websocket/socketio/graphql/webdav/object，默认全部勾选） */
+  /** 空目录演示案例生成类型勾选（http/websocket/socketio/graphql/webdav/tcp/udp/object，默认全部勾选） */
   const [demoTypes, setDemoTypes] = useState<Record<string, boolean>>({
     http: true,
     websocket: true,
     socketio: true,
     graphql: true,
     webdav: true,
+    tcp: true,
+    udp: true,
     object: true,
   });
   const toggleDemoKind = (kind: string, enabled: boolean) =>
@@ -142,7 +144,8 @@ export function useModals(opts: {
       const data = await readApi(path);
       let changed = false;
       // 弹窗里填写了 path → 写入 .json（留空则使用协议默认：HTTP/WS/Socket.IO/WebDAV=/，GraphQL=/graphql）
-      const wantPath = normalizePath(modalPath);
+      // TCP / UDP 无 path 概念，弹窗不展示 path 输入框
+      const wantPath = isNetProtocol(modalProtocol) ? "" : normalizePath(modalPath);
       if (wantPath) {
         data.path = wantPath;
         changed = true;

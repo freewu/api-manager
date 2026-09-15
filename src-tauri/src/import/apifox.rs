@@ -234,6 +234,9 @@ fn apifox_api_to_api(name: &str, api_obj: &Value) -> Result<ApiFile, String> {
         .unwrap_or("")
         .to_string();
     Ok(ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name: name.to_string(),
         method,
@@ -500,6 +503,9 @@ fn apipost_request_to_api(name: &str, node: &Value) -> Result<ApiFile, String> {
         .unwrap_or("")
         .to_string();
     Ok(ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name: name.to_string(),
         method,

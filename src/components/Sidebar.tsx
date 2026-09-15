@@ -135,6 +135,15 @@ function validDrop(dragSrc: string, dst: string, dstIsFolder: boolean): boolean 
 // 废弃状态筛选：all=全部 / active=未废弃 / deprecated=已废弃
 type DepFilter = "all" | "active" | "deprecated";
 
+/** 节点类型标签：实时 / TCP / UDP 接口没有 Method，直接用协议名展示 */
+function protoLabel(node: TreeNode): string {
+  if (node.protocol === "websocket") return "WebSocket";
+  if (node.protocol === "socketio") return "Socket.IO";
+  if (node.protocol === "udp") return "UDP";
+  if (node.protocol === "tcp") return "TCP";
+  return node.method || "";
+}
+
 /** 高级搜索可选的接口协议类型 */
 const PROTOCOL_OPTIONS = [
   { id: "http", label: "HTTP" },
@@ -142,9 +151,11 @@ const PROTOCOL_OPTIONS = [
   { id: "socketio", label: "Socket.IO" },
   { id: "graphql", label: "GraphQL" },
   { id: "webdav", label: "WebDAV" },
+  { id: "tcp", label: "TCP" },
+  { id: "udp", label: "UDP" },
 ] as const;
 
-/** 高级搜索可选的接口 Method（WebSocket / Socket.IO / GraphQL 接口无 Method） */
+/** 高级搜索可选的接口 Method（WebSocket / Socket.IO / GraphQL / TCP / UDP 接口无 Method） */
 const METHOD_OPTIONS = [
   "GET",
   "POST",
@@ -277,7 +288,10 @@ function NodeRow({
         protocolFilters.length === 0 || protocolFilters.includes(n.protocol || "http");
       const mOk =
         methodFilters.length === 0 ||
-        (n.protocol === "websocket" || n.protocol === "socketio"
+        (n.protocol === "websocket" ||
+        n.protocol === "socketio" ||
+        n.protocol === "tcp" ||
+        n.protocol === "udp"
           ? false
           : methodFilters.includes((n.method || "").toUpperCase()));
       return (
@@ -394,12 +408,12 @@ function NodeRow({
         }}
         title={
           deprecated
-            ? `${t("sidebar.deprecated")} · ${canDrop ? t("sidebar.dropHere") : isFolder ? node.description || node.name : `${isWs ? "WebSocket" : node.protocol === "socketio" ? "Socket.IO" : node.method} ${node.endpoint}`}`
+            ? `${t("sidebar.deprecated")} · ${canDrop ? t("sidebar.dropHere") : isFolder ? node.description || node.name : `${protoLabel(node)} ${node.endpoint ?? ""}`}`
             : canDrop
               ? t("sidebar.dropHere")
               : isFolder
                 ? node.description || node.name
-                : `${isWs ? "WebSocket" : node.protocol === "socketio" ? "Socket.IO" : node.method} ${node.endpoint}`
+                : `${protoLabel(node)} ${node.endpoint ?? ""}`
         }
       >
         {canDrop && dragOver === dropTarget && isSortPos && dropPos && (
@@ -429,9 +443,14 @@ function NodeRow({
             {node.endpoint}
           </span>
         )}
-        {!isFolder && node.method && !isWs && node.protocol !== "socketio" && (
-          <span className={`node-method ${methodClass(node.method)}`}>{node.method}</span>
-        )}
+        {!isFolder &&
+          node.method &&
+          !isWs &&
+          node.protocol !== "socketio" &&
+          node.protocol !== "tcp" &&
+          node.protocol !== "udp" && (
+            <span className={`node-method ${methodClass(node.method)}`}>{node.method}</span>
+          )}
         {!isFolder && node.mockEnabled && <span className="mock-dot" title={t("sidebar.mockEnabled")} />}
         <span className="node-actions">
           {isFolder && (

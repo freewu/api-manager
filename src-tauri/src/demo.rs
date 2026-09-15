@@ -410,6 +410,58 @@ pub(crate) fn create_demo(
         write("WebDAV", "查询属性 REPORT.json", &dav_report)?;
     }
 
+    if has("tcp") {
+        // TCP 分组（与 tests/tcp_echo_server.py 一一对应）：封包 / 解包字段定义演示
+        write("TCP", INFO_FILE, &serde_json::json!({ "name": "TCP", "description": "TCP 接口示例（与 tests/tcp_echo_server.py 一一对应）" }))?;
+
+        let tcp_desc = "TCP 报文收发演示，配合测试服务 tests/tcp_echo_server.py 使用。\n\n【启动测试服务】\n1. 无需安装第三方依赖（纯 Python 标准库）\n2. 启动服务：python tests/tcp_echo_server.py\n   - 默认监听 127.0.0.1:9100\n   - 自定义端口：python tests/tcp_echo_server.py 9300\n\n【报文格式】\n| 字段 | 类型 | 字节 | 说明 |\n| --- | --- | --- | --- |\n| magic | 固定值 | 4 | 魔数 AM01（ASCII） |\n| cmd | 变量 | 1 | 命令码，0x01=回显 |\n| len | 变量 | 1 | payload 字节数（封包时按不定长变量实际长度自动填充） |\n| payload | 不定长变量 | - | 载荷，长度取自 len 字段 |\n\n【响应格式】\n服务端按同样格式回显：magic 不变，cmd 改为 cmd|0x80（0x81），len + payload 原样返回。\n\n【测试步骤】\n1. 启动测试服务（默认 127.0.0.1:9100）\n2. 在「封包」页签编辑 payload 的值（例如 hello tcp）\n3. 点击「发送」，下方响应区展示服务端回显的报文字节\n4. 切到「解包」页签可查看响应字段的解析结果";
+        let tcp_frame_pack = serde_json::json!([
+            { "key": "magic", "kind": "fixed", "bytes": 4, "value": "AM01", "description": "魔数（固定 ASCII 值）" },
+            { "key": "cmd", "kind": "var", "bytes": 1, "value": "0x01", "description": "命令码：0x01=回显" },
+            { "key": "len", "kind": "var", "bytes": 1, "value": "", "description": "payload 字节数（自动填充）" },
+            { "key": "payload", "kind": "varlen", "bytes": 0, "value": "hello tcp", "description": "载荷（长度取自 len 字段）", "lenFrom": 2 }
+        ]);
+        let tcp_frame_unpack = serde_json::json!([
+            { "key": "magic", "kind": "fixed", "bytes": 4, "value": "AM01", "description": "魔数，应为 AM01" },
+            { "key": "cmd", "kind": "var", "bytes": 1, "value": "", "description": "命令码：0x81=回显响应" },
+            { "key": "len", "kind": "var", "bytes": 1, "value": "", "description": "payload 字节数" },
+            { "key": "payload", "kind": "varlen", "bytes": 0, "value": "", "description": "载荷（长度取自 len 字段）", "lenFrom": 2 }
+        ]);
+
+        let mut tcp_echo = api_file("TCP 回显", "GET", "/", tcp_desc);
+        tcp_echo["protocol"] = serde_json::json!("tcp");
+        tcp_echo["pack"] = tcp_frame_pack.clone();
+        tcp_echo["unpack"] = tcp_frame_unpack.clone();
+        tcp_echo["net"] = serde_json::json!({ "host": "127.0.0.1", "port": 9100, "timeoutMs": 3000 });
+        write("TCP", "TCP 回显.json", &tcp_echo)?;
+    }
+
+    if has("udp") {
+        // UDP 分组（与 tests/udp_echo_server.py 一一对应）：报文格式与 TCP 示例一致
+        write("UDP", INFO_FILE, &serde_json::json!({ "name": "UDP", "description": "UDP 接口示例（与 tests/udp_echo_server.py 一一对应）" }))?;
+
+        let udp_desc = "UDP 数据报收发演示，配合测试服务 tests/udp_echo_server.py 使用。\n\n【启动测试服务】\n1. 无需安装第三方依赖（纯 Python 标准库）\n2. 启动服务：python tests/udp_echo_server.py\n   - 默认监听 127.0.0.1:9101\n   - 自定义端口：python tests/udp_echo_server.py 9301\n\n【报文格式（单个数据报）】\n| 字段 | 类型 | 字节 | 说明 |\n| --- | --- | --- | --- |\n| magic | 固定值 | 4 | 魔数 AM01（ASCII） |\n| cmd | 变量 | 1 | 命令码，0x01=回显 |\n| len | 变量 | 1 | payload 字节数（封包时按不定长变量实际长度自动填充） |\n| payload | 不定长变量 | - | 载荷，长度取自 len 字段 |\n\n【响应格式】\n服务端把同一数据报原样回显（cmd 改为 0x81）。UDP 无连接，超时未收到回包时会显示空响应。\n\n【测试步骤】\n1. 启动测试服务（默认 127.0.0.1:9101）\n2. 在「封包」页签编辑 payload 的值（例如 hello udp）\n3. 点击「发送」，下方响应区展示服务端回显的报文字节与对端地址\n4. 切到「解包」页签可查看响应字段的解析结果";
+        let udp_frame_pack = serde_json::json!([
+            { "key": "magic", "kind": "fixed", "bytes": 4, "value": "AM01", "description": "魔数（固定 ASCII 值）" },
+            { "key": "cmd", "kind": "var", "bytes": 1, "value": "0x01", "description": "命令码：0x01=回显" },
+            { "key": "len", "kind": "var", "bytes": 1, "value": "", "description": "payload 字节数（自动填充）" },
+            { "key": "payload", "kind": "varlen", "bytes": 0, "value": "hello udp", "description": "载荷（长度取自 len 字段）", "lenFrom": 2 }
+        ]);
+        let udp_frame_unpack = serde_json::json!([
+            { "key": "magic", "kind": "fixed", "bytes": 4, "value": "AM01", "description": "魔数，应为 AM01" },
+            { "key": "cmd", "kind": "var", "bytes": 1, "value": "", "description": "命令码：0x81=回显响应" },
+            { "key": "len", "kind": "var", "bytes": 1, "value": "", "description": "payload 字节数" },
+            { "key": "payload", "kind": "varlen", "bytes": 0, "value": "", "description": "载荷（长度取自 len 字段）", "lenFrom": 2 }
+        ]);
+
+        let mut udp_echo = api_file("UDP 回显", "GET", "/", udp_desc);
+        udp_echo["protocol"] = serde_json::json!("udp");
+        udp_echo["pack"] = udp_frame_pack;
+        udp_echo["unpack"] = udp_frame_unpack;
+        udp_echo["net"] = serde_json::json!({ "host": "127.0.0.1", "port": 9101, "timeoutMs": 3000 });
+        write("UDP", "UDP 回显.json", &udp_echo)?;
+    }
+
     if has("object") {
     // 对象示例：工作区 .object/ 下生成「用户管理 / 订单管理」分组与几个对象，
     // 与上面的接口演示呼应（属性含 mock 示例值，可配合数据生成体验）

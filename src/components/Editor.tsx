@@ -1140,7 +1140,7 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
  *  Header 分块无类型列；Path 类型仅 String / Integer / Float；
  *  字段类型可选 String / Integer / Float / Boolean / List / Object，Object 可绑定对象名，下级字段用树状表单表示；
  *  Body 可整体绑定对象管理中的对象，按对象属性展开请求体字段（仅文档展示） */
-function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile; set: (p: Partial<ApiFile>) => void; objectsList?: ObjectDef[]; objectsStore?: ObjectStore }) {
+export function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile; set: (p: Partial<ApiFile>) => void; objectsList?: ObjectDef[]; objectsStore?: ObjectStore }) {
   const T = useT();
   /** 正在选择对象名的文档行（source + keys 路径），null = 未打开 */
   const [objPick, setObjPick] = useState<{ source: DocSource; keys: string[] } | null>(null);
@@ -1817,7 +1817,7 @@ function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: ApiFile
 }
 
 /** 接口描述：Markdown 编辑 / 预览切换（预览由后端 md_to_html 渲染） */
-function DescEditor({
+export function DescEditor({
   value,
   onChange,
   onCommit,

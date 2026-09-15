@@ -760,7 +760,7 @@
 }
 .protocol-radios {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   gap: 10px;
 }
 /* 演示案例弹窗：类型多选（图标行） */

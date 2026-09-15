@@ -3,6 +3,9 @@
 
     fn sample() -> ApiFile {
         ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: "u1".into(),
             name: "创建用户".into(),
             method: "POST".into(),

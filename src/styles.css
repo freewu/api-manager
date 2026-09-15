@@ -14,6 +14,7 @@
  *   stats.css    统计弹窗
  *   history.css  请求历史（侧边栏列表 + 右侧详情）
  *   ws.css       WebSocket 交互记录面板
+ *   net.css      TCP / UDP 接口（连接配置 / 封包解包字段表 / 收发结果）
  */
 @import "./styles/base.css";
 @import "./styles/layout.css";
@@ -30,3 +31,4 @@
 @import "./styles/history.css";
 @import "./styles/ws.css";
 @import "./styles/objects.css";
+@import "./styles/net.css";

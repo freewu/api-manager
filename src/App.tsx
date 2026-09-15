@@ -76,13 +76,15 @@ function collectGroupNames(node: TreeNode, targetPath: string, chain: string[]):
   return null;
 }
 
-/** 空目录演示案例可选类型（http/websocket/socketio/graphql/webdav/object） */
+/** 空目录演示案例可选类型（http/websocket/socketio/graphql/webdav/tcp/udp/object） */
 const ALL_DEMO_KINDS: Record<string, boolean> = {
   http: true,
   websocket: true,
   socketio: true,
   graphql: true,
   webdav: true,
+  tcp: true,
+  udp: true,
   object: true,
 };
 
@@ -267,6 +269,7 @@ export default function App() {
   const {
     response,
     setResponse,
+    netResult,
     exampleVersion,
     sending,
     hideResponse,
@@ -779,6 +782,7 @@ export default function App() {
               hideResponse={hideResponse}
               editorRatio={editorRatio}
               response={response}
+            netResult={netResult}
               wsConnected={wsConnected}
               wsConnecting={wsConnecting}
               wsEntries={wsEntries}

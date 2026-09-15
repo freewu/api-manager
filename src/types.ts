@@ -25,6 +25,61 @@ export interface MockConfig {
   body: string;
 }
 
+/** 报文字段类型：fixed=固定值 / var=变量 / varlen=不定长变量 */
+export type PacketFieldKind = "fixed" | "var" | "varlen";
+
+/** TCP / UDP 报文字段定义（封包 / 解包共用同一结构） */
+export interface PacketField {
+  /** 字段英文标识 */
+  key: string;
+  kind: PacketFieldKind;
+  /** 位数：占几个字节；不定长变量忽略此值 */
+  bytes: number;
+  /** 值：0x 开头按 hex 解析，否则按 UTF-8 文本编码（不定长变量为其内容） */
+  value: string;
+  description: string;
+  /** 不定长变量：长度取自第几个字段（0 基下标），缺省表示前一个字段 */
+  lenFrom?: number;
+}
+
+/** TCP / UDP 连接配置（ip:port） */
+export interface NetConfig {
+  host: string;
+  port: number;
+  /** 超时（毫秒） */
+  timeoutMs: number;
+}
+
+/** TCP / UDP 一次收发的原始字节与统计信息 */
+export interface NetResult {
+  ok: boolean;
+  /** 接收到的字节（hex，空格分隔） */
+  hex: string;
+  /** 接收到的字节（可打印字符文本） */
+  text: string;
+  size: number;
+  /** 发送的字节（hex，空格分隔） */
+  sentHex: string;
+  sentSize: number;
+  timeMs: number;
+  /** UDP 对端地址 */
+  from?: string;
+  error?: string;
+}
+
+export function emptyPacketField(kind: PacketFieldKind = "var", bytes = 1): PacketField {
+  return { key: "", kind, bytes, value: "", description: "" };
+}
+
+export function emptyNet(): NetConfig {
+  return { host: "127.0.0.1", port: 0, timeoutMs: 3000 };
+}
+
+/** 是否为 TCP / UDP 接口协议（无 HTTP 方法 / path / Mock 概念） */
+export function isNetProtocol(protocol?: string): boolean {
+  return protocol === "tcp" || protocol === "udp";
+}
+
 /** 响应页签中的一条返回：名称（如 返回成功 / 返回失败）、HTTP 状态码、内容类型与示例体 */
 export interface ResponseItem {
   id: string;
@@ -73,8 +128,14 @@ export interface ApiFile {
   docParams: DocParam[];
   /** 是否已标记废弃 */
   deprecated: boolean;
-  /** 接口协议：http / websocket / socketio / graphql / webdav（WebDAV 无 Mock） */
-  protocol: "http" | "websocket" | "graphql" | "socketio" | "webdav";
+  /** 接口协议：http / websocket / socketio / graphql / webdav / tcp / udp */
+  protocol: "http" | "websocket" | "graphql" | "socketio" | "webdav" | "tcp" | "udp";
+  /** 封包字段定义（TCP / UDP） */
+  pack?: PacketField[];
+  /** 解包字段定义（TCP / UDP） */
+  unpack?: PacketField[];
+  /** TCP / UDP 连接配置（ip:port） */
+  net?: NetConfig;
 }
 
 export type DocSource =
@@ -204,8 +265,8 @@ export interface TreeNode {
   apiCount?: number;
   /** 是否已标记废弃（分组无此字段时默认未废弃） */
   deprecated?: boolean;
-  /** 接口协议（http / websocket，分组无此字段） */
-  protocol?: "http" | "websocket" | "graphql" | "socketio" | "webdav";
+  /** 接口协议（http / websocket / ... / tcp / udp，分组无此字段） */
+  protocol?: "http" | "websocket" | "graphql" | "socketio" | "webdav" | "tcp" | "udp";
   /** 接口 uuid（仅接口节点有，用于收藏等按 uuid 关联的场景） */
   uuid?: string;
   children?: TreeNode[];

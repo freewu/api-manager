@@ -230,6 +230,9 @@ fn raml_method_to_api(
     let file_base = sanitize_filename(&name);
     let file_path = unique_path(dir, &file_base, ".json");
     let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name: name.clone(),
         method: method.to_string(),
@@ -398,6 +401,9 @@ fn wadl_method_to_api(dir: &Path, path: &str, method_el: roxmltree::Node,
     let file_base = sanitize_filename(&name);
     let file_path = unique_path(dir, &file_base, ".json");
     let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name: name.clone(),
         method: method.clone(),

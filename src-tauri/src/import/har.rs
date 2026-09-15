@@ -245,6 +245,9 @@ fn har_entry_to_api(dir: &Path, entry: &Value,
     let file_base = sanitize_filename(&name);
     let file_path = unique_path(dir, &file_base, ".json");
     let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name: name.clone(),
         method: method.clone(),

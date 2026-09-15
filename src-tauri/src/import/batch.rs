@@ -253,6 +253,9 @@ fn apidog_api_to_api(dir: &Path, a: &Value,
         }
     }
     let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name,
         method,
@@ -430,6 +433,9 @@ fn bruno_req_to_api(dir: &Path, r: &Value, vars: &HashMap<String, String>,
         }
     }
     let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name,
         method,
@@ -601,6 +607,9 @@ fn apizza_api_to_api(dir: &Path, a: &Value, vars: &HashMap<String, String>,
         }
     }
     let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name,
         method,
@@ -922,6 +931,9 @@ fn nei_api_to_api(dir: &Path, it: &Value, datatypes: &HashMap<i64, &Value>,
         }
     }
     let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name,
         method,
@@ -1064,6 +1076,9 @@ fn doclever_api_to_api(dir: &Path, a: &Value,
         }
     }
     let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name,
         method,
@@ -1183,6 +1198,9 @@ fn io_docs_api_to_api(dir: &Path, a: &Value,
         }
     }
     let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name,
         method,
@@ -1345,6 +1363,9 @@ fn easydoc_api_to_api(dir: &Path, a: &Value,
         }
     }
     let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name,
         method,
@@ -1476,6 +1497,9 @@ fn docway_api_to_api(dir: &Path, a: &Value,
         body.raw = serde_json::to_string_pretty(&Value::Object(root_v)).unwrap_or_default();
     }
     let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name,
         method,
@@ -1618,6 +1642,9 @@ fn hoppscotch_req_to_api(dir: &Path, r: &Value,
         }
     }
     let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name,
         method,
@@ -1751,6 +1778,9 @@ fn metersphere_api_to_api(dir: &Path, a: &Value,
         }
     }
     let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name,
         method,
@@ -1981,6 +2011,9 @@ fn rap2_interface_to_api(it: &Value) -> ApiFile {
         responses.push(resp_item(200, "成功", &resp_body));
     }
     ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name: str_field(it, "name"),
         method: if method.is_empty() { "GET".to_string() } else { method },
@@ -2404,6 +2437,9 @@ fn apidoc_api_to_api(dir: &Path, a: &Value,
     let file_base = sanitize_filename(&name);
     let file_path = unique_path(dir, &file_base, ".json");
     let api_file = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name: name.clone(),
         method: method.clone(),

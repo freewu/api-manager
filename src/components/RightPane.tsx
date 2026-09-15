@@ -1,5 +1,5 @@
 import { useT } from "../i18n";
-import { ApiFile, HttpResult, WsLogEntry } from "../types";
+import { ApiFile, HttpResult, NetResult, WsLogEntry } from "../types";
 import { HistoryDetail as HistoryDetailType } from "../commands";
 import { HistoryDiffPair } from "../hooks/useHistory";
 import { AppView } from "./Sidebar";
@@ -41,6 +41,8 @@ interface RightPaneProps {
   hideResponse: boolean;
   editorRatio: number;
   response: HttpResult | null;
+  /** TCP / UDP 最近一次收发结果 */
+  netResult: NetResult | null;
   wsConnected: boolean;
   wsConnecting: boolean;
   wsEntries: WsLogEntry[];
@@ -95,6 +97,7 @@ export function RightPane({
   hideResponse,
   editorRatio,
   response,
+  netResult,
   wsConnected,
   wsConnecting,
   wsEntries,
@@ -188,6 +191,7 @@ export function RightPane({
             hideResponse={hideResponse}
             editorRatio={editorRatio}
             response={response}
+            netResult={netResult}
             onChange={onApiChange}
             onSend={onSend}
             onSaveExample={onSaveExample}

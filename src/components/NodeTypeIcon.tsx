@@ -3,9 +3,11 @@ import iconWs from "../assets/icon-websocket.png";
 import iconGql from "../assets/icon-graphql.png";
 import iconSocketIo from "../assets/icon-socketio.png";
 import iconWebdav from "../../asserts/icon/WebDAV.png";
+import iconTcp from "../../asserts/icon/TCP.png";
+import iconUdp from "../../asserts/icon/UDP.png";
 
 /**
- * 接口协议类型图标：HTTP / WebSocket / Socket.IO / GraphQL / WebDAV
+ * 接口协议类型图标：HTTP / WebSocket / Socket.IO / GraphQL / WebDAV / TCP / UDP
  * 左侧接口列表、收藏列表、导出弹窗接口树共用，保证图标一致。
  */
 export function NodeTypeIcon({
@@ -24,7 +26,11 @@ export function NodeTypeIcon({
           ? iconGql
           : protocol === "webdav"
             ? iconWebdav
-            : iconHttp;
+            : protocol === "tcp"
+              ? iconTcp
+              : protocol === "udp"
+                ? iconUdp
+                : iconHttp;
   const alt =
     protocol === "websocket"
       ? "WebSocket"
@@ -34,6 +40,10 @@ export function NodeTypeIcon({
           ? "GraphQL"
           : protocol === "webdav"
             ? "WebDAV"
-            : "HTTP";
+            : protocol === "tcp"
+              ? "TCP"
+              : protocol === "udp"
+                ? "UDP"
+                : "HTTP";
   return <img className={className} src={src} alt={alt} />;
 }

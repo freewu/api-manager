@@ -2,6 +2,9 @@
 
     fn sample_api() -> ApiFile {
         ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: "u1".into(),
             name: "创建用户".into(),
             method: "POST".into(),
@@ -206,6 +209,9 @@
     fn render_expands_object_children() {
         // 回归：类型为 Object 的字段必须展开下级字段（否则「值/子字段不显示」）
         let mut api = crate::ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: "u1".into(),
             name: "创建用户".into(),
             method: "POST".into(),

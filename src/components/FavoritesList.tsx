@@ -64,6 +64,16 @@ export function FavoritesList({ items, selectedPath, onSelect, onReorder, onCont
         const selected = selectedPath === node.path;
         const isWs = node.protocol === "websocket";
         const isSocketIo = node.protocol === "socketio";
+        const isNet = node.protocol === "tcp" || node.protocol === "udp";
+        const protoLabel = isWs
+          ? "WebSocket"
+          : isSocketIo
+            ? "Socket.IO"
+            : node.protocol === "udp"
+              ? "UDP"
+              : node.protocol === "tcp"
+                ? "TCP"
+                : node.method;
         return (
           <div
             key={node.uuid || node.path}
@@ -94,7 +104,7 @@ export function FavoritesList({ items, selectedPath, onSelect, onReorder, onCont
               e.stopPropagation();
               onContextMenu(e, node);
             }}
-            title={`${isWs ? "WebSocket" : isSocketIo ? "Socket.IO" : node.method} ${node.endpoint || ""}`}
+            title={`${protoLabel} ${node.endpoint || ""}`}
           >
             <span className="caret" />
             <span className="node-icon">
@@ -106,7 +116,7 @@ export function FavoritesList({ items, selectedPath, onSelect, onReorder, onCont
                 {node.endpoint}
               </span>
             )}
-            {node.method && !isWs && !isSocketIo && (
+            {node.method && !isWs && !isSocketIo && !isNet && (
               <span className={`node-method ${methodClass(node.method)}`}>{node.method}</span>
             )}
             {node.mockEnabled && <span className="mock-dot" title={t("sidebar.mockEnabled")} />}

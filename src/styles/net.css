@@ -1,0 +1,201 @@
+/*
+ * TCP / UDP 接口：连接配置（IP:Port）、封包 / 解包字段表、收发结果面板
+ */
+
+/* ---------- 连接配置 ---------- */
+.net-addr {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 10px;
+  min-width: 0;
+}
+.net-addr:focus-within {
+  border-color: var(--accent);
+}
+.net-colon {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.net-port {
+  flex: 0 0 90px;
+  max-width: 90px;
+}
+.net-timeout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.net-timeout-input {
+  width: 84px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 8px;
+  text-align: right;
+}
+.net-timeout-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ---------- 字段编辑表 ---------- */
+.packet-root {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+.packet-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.packet-head .section-title {
+  margin: 0;
+}
+.packet-head .help {
+  flex: 1;
+  color: var(--text-faint);
+  font-size: 11px;
+}
+.btn.small {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.packet-empty {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 28px 14px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 12.5px;
+}
+.packet-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.packet-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.packet-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  font-size: 12.5px;
+}
+.packet-table tbody tr:hover {
+  background: var(--bg-hover);
+}
+.packet-row-error {
+  background: rgba(200, 60, 60, 0.12);
+}
+.packet-table .col-seq {
+  width: 42px;
+  text-align: center;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+}
+.packet-table .col-kind {
+  width: 108px;
+}
+.packet-table .col-bytes {
+  width: 110px;
+}
+.packet-table .col-act {
+  width: 96px;
+  white-space: nowrap;
+  text-align: right;
+}
+.packet-input {
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  padding: 5px 6px;
+  outline: none;
+  box-sizing: border-box;
+}
+.packet-input:hover {
+  border-color: var(--border);
+}
+.packet-input:focus {
+  border-color: var(--accent);
+  background: var(--bg-input);
+}
+select.packet-input {
+  background: var(--bg-input);
+  border-color: var(--border);
+  cursor: pointer;
+}
+.packet-err {
+  color: #e06c75;
+  font-size: 11px;
+  line-height: 1.4;
+  padding-top: 2px;
+}
+.packet-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.packet-preview .section-title {
+  margin: 0;
+}
+.packet-hex {
+  display: block;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text);
+  word-break: break-all;
+  white-space: pre-wrap;
+  max-height: 140px;
+  overflow: auto;
+}
+
+/* 只读解析表 */
+.packet-table-view td {
+  vertical-align: top;
+}
+.packet-table-view .mono {
+  font-size: 12px;
+  word-break: break-all;
+}
+
+/* ---------- 收发结果面板 ---------- */
+.net-raw {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  overflow: auto;
+}
+.net-raw .section-title {
+  margin: 0;
+}

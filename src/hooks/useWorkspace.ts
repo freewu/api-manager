@@ -135,6 +135,15 @@ export function useWorkspace(opts: {
     return node;
   }
 
+  // 递归更新树中指定路径节点的协议（切换 TCP/UDP 时即时刷新左侧图标）
+  function patchNodeProtocol(node: TreeNode, path: string, protocol?: string): TreeNode {
+    if (node.path === path) return { ...node, protocol: protocol as TreeNode["protocol"] };
+    if (node.children) {
+      return { ...node, children: node.children.map((c) => patchNodeProtocol(c, path, protocol)) };
+    }
+    return node;
+  }
+
   // 递归更新树中指定路径节点的 mock 状态（切换 Mock 开关时即时刷新左侧圆点）
   function patchNodeMock(node: TreeNode, path: string, mockEnabled: boolean): TreeNode {
     if (node.path === path) return { ...node, mockEnabled };
@@ -148,6 +157,12 @@ export function useWorkspace(opts: {
     if (!api || !selectedPath) return;
     setTree((t2) => (t2 ? patchNodeMethod(t2, selectedPath, api.method) : t2));
   }, [selectedPath, api?.method]);
+
+  // 协议变化时同步刷新左侧列表的类型图标（TCP / UDP 互切、HTTP 系协议互切）
+  useEffect(() => {
+    if (!api || !selectedPath) return;
+    setTree((t2) => (t2 ? patchNodeProtocol(t2, selectedPath, api.protocol) : t2));
+  }, [selectedPath, api?.protocol]);
 
   // Mock 开关变化时同步刷新左侧列表的 Mock 圆点
   useEffect(() => {

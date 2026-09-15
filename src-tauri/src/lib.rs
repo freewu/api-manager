@@ -7,6 +7,7 @@ mod history;
 mod import;
 mod update;
 mod request;
+mod net;
 mod tray;
 mod demo;
 
@@ -38,6 +39,8 @@ use crate::prescript::*;
 use crate::objects::*;
 #[allow(unused_imports)]
 use crate::request::*;
+#[allow(unused_imports)]
+use crate::net::*;
 #[allow(unused_imports)]
 use crate::tray::*;
 #[allow(unused_imports)]
@@ -248,9 +251,82 @@ pub struct ApiFile {
     /// 是否已标记废弃
     #[serde(default)]
     pub deprecated: bool,
-    /// 接口协议：http（HTTP 接口）、websocket（WebSocket 接口）或 socketio（Socket.IO 接口）
+    /// 接口协议：http / websocket / socketio / graphql / webdav / tcp / udp
     #[serde(default = "default_protocol")]
     pub protocol: String,
+    /// 封包字段定义（TCP / UDP 接口使用）
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pack: Vec<PacketField>,
+    /// 解包字段定义（TCP / UDP 接口使用）
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub unpack: Vec<PacketField>,
+    /// TCP / UDP 连接配置（ip:port）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub net: Option<NetConfig>,
+}
+
+/// 报文字段类型：fixed=固定值 / var=变量 / varlen=不定长变量
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PacketField {
+    /// 字段英文标识
+    #[serde(default)]
+    pub key: String,
+    /// 类型：fixed / var / varlen
+    #[serde(default = "default_packet_kind")]
+    pub kind: String,
+    /// 位数（占几个字节）；不定长变量忽略此值，长度由 len_from 指向的字段决定
+    #[serde(default)]
+    pub bytes: u32,
+    /// 值：0x 前缀按 hex 解析，否则按 UTF-8 文本编码
+    #[serde(default)]
+    pub value: String,
+    /// 描述
+    #[serde(default)]
+    pub description: String,
+    /// 不定长变量：长度取自第几个字段（0 基下标），缺省表示取前一个字段
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub len_from: Option<usize>,
+}
+
+pub(crate) fn default_packet_kind() -> String {
+    "fixed".to_string()
+}
+
+/// TCP / UDP 连接配置
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetConfig {
+    #[serde(default)]
+    pub host: String,
+    #[serde(default)]
+    pub port: u16,
+    /// 超时（毫秒），缺省 3000
+    #[serde(default)]
+    pub timeout_ms: u64,
+}
+
+/// TCP / UDP 发送结果（含封包 / 解包所需的原始字节）
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetResult {
+    pub ok: bool,
+    /// 接收到的字节（hex，空格分隔）
+    pub hex: String,
+    /// 接收到的字节（UTF-8 文本，不可打印字符以 . 代替）
+    pub text: String,
+    /// 接收字节数
+    pub size: usize,
+    /// 发送的字节（hex，空格分隔）
+    pub sent_hex: String,
+    /// 发送字节数
+    pub sent_size: usize,
+    pub time_ms: u64,
+    /// UDP 对端地址
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
 }
 
 pub(crate) fn default_protocol() -> String {
@@ -721,6 +797,20 @@ fn build_api_node(path: &Path) -> TreeNode {
                 .and_then(|e| e.as_bool());
             deprecated = v.get("deprecated").and_then(|d| d.as_bool());
             protocol = v.get("protocol").and_then(|x| x.as_str()).map(String::from);
+            // TCP / UDP 接口没有 HTTP 方法，列表中把端点展示为 host:port
+            if matches!(protocol.as_deref(), Some("tcp") | Some("udp")) {
+                method = None;
+                let net = v.get("net");
+                let host = net
+                    .and_then(|n| n.get("host"))
+                    .and_then(|h| h.as_str())
+                    .unwrap_or("127.0.0.1");
+                let port = net.and_then(|n| n.get("port")).and_then(|p| p.as_u64());
+                endpoint = Some(match port {
+                    Some(p) => format!("{host}:{p}"),
+                    None => host.to_string(),
+                });
+            }
             uuid = v
                 .get("uuid")
                 .and_then(|x| x.as_str())
@@ -1577,8 +1667,22 @@ fn create_api(
             Some("socketio") => "socketio".into(),
             Some("graphql") => "graphql".into(),
             Some("webdav") => "webdav".into(),
+            Some("tcp") => "tcp".into(),
+            Some("udp") => "udp".into(),
             _ => "http".into(),
         },
+        // TCP / UDP：预置本地回环地址，配合 tests/ 下的 py 回显服务可直接联调
+        net: if matches!(protocol.as_deref(), Some("tcp") | Some("udp")) {
+            Some(NetConfig {
+                host: "127.0.0.1".into(),
+                port: if protocol.as_deref() == Some("udp") { 9101 } else { 9100 },
+                timeout_ms: 3000,
+            })
+        } else {
+            None
+        },
+        pack: vec![],
+        unpack: vec![],
     };    write_pretty(&file_path, &data)?;
     // 记录到父目录 __info.json 的 apis 顺序列表（新建接口排在最后）
     let fname = file_path.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
@@ -2250,6 +2354,7 @@ pub fn run() {
             set_workspace_selected_api,
             reorder_children,
             toggle_deprecated,
+            net_send,
             save_favorites,
             toggle_favorite,
             read_envs,

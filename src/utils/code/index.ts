@@ -23,6 +23,9 @@ import { genTsDispatch, genWsTypeScript } from "./typescript";
 import { genErlang, genWsErlang } from "./erlang";
 import { genLuaDispatch, genWsLuaDispatch } from "./lua";
 import { genPowershell, genWsPowershell } from "./powershell";
+import { generateNetCode, NET_CODE_LIBS } from "./net";
+
+export { generateNetCode, NET_CODE_LIBS };
 
 export function generateWebSocketCode(lang: CodeLang, api: ApiFile, baseUrl: string, lib?: string): string {
   const r = buildWsReq(api, baseUrl);

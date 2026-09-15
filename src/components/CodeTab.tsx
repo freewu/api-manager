@@ -24,7 +24,7 @@ import swift from "highlight.js/lib/languages/swift";
 import typescript from "highlight.js/lib/languages/typescript";
 import "highlight.js/styles/github-dark.css";
 import { ApiFile } from "../types";
-import { CODE_LANGS, CODE_LIBS, WS_CODE_LIBS, CodeLang, defaultLib, generateRequestCode, generateWebSocketCode } from "../utils/codegen";
+import { CODE_LANGS, CODE_LIBS, WS_CODE_LIBS, NET_CODE_LIBS, CodeLang, generateRequestCode, generateWebSocketCode, generateNetCode } from "../utils/codegen";
 import { LangSelect } from "./LangSelect";
 import { useT } from "../i18n";
 
@@ -87,20 +87,25 @@ interface Props {
 export function CodeTab({ api, baseUrl, defaultLang }: Props) {
   const t = useT();
   const isWs = api.protocol === "websocket";
+  const isNet = api.protocol === "tcp" || api.protocol === "udp";
+  const libsOf = (l: CodeLang) => (isWs ? WS_CODE_LIBS[l] : isNet ? NET_CODE_LIBS[l] : CODE_LIBS[l]);
   const [lang, setLang] = useState<CodeLang>(
     (CODE_LANGS.some((l) => l.value === defaultLang) ? defaultLang : "bash") as CodeLang
   );
-  const [lib, setLib] = useState<string | undefined>(() =>
-    isWs ? WS_CODE_LIBS[lang]?.[0]?.value : defaultLib(lang)
-  );
+  const [lib, setLib] = useState<string | undefined>(() => libsOf(lang)?.[0]?.value);
   const [copied, setCopied] = useState(false);
 
-  const libs = isWs ? WS_CODE_LIBS[lang] : CODE_LIBS[lang];
+  const libs = libsOf(lang);
   const activeLib = libs?.find((l) => l.value === lib);
 
   const code = useMemo(
-    () => (isWs ? generateWebSocketCode(lang, api, baseUrl, lib) : generateRequestCode(lang, api, baseUrl, lib)),
-    [isWs, lang, lib, api, baseUrl]
+    () =>
+      isNet
+        ? generateNetCode(lang, api, lib)
+        : isWs
+          ? generateWebSocketCode(lang, api, baseUrl, lib)
+          : generateRequestCode(lang, api, baseUrl, lib),
+    [isNet, isWs, lang, lib, api, baseUrl]
   );
   const html = useMemo(() => {
     try {
@@ -130,7 +135,7 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
           title={t("codegen.switchLang")}
           onChange={(next) => {
             setLang(next);
-            setLib(isWs ? WS_CODE_LIBS[next]?.[0]?.value : defaultLib(next));
+            setLib(libsOf(next)?.[0]?.value);
           }}
         />
         <button className="btn small" onClick={copy}>

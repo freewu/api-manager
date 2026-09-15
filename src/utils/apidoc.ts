@@ -1,4 +1,4 @@
-import type { ApiFile, DocParam, DocSource, KeyValue } from "../types";
+import { isNetProtocol, type ApiFile, type DocParam, type DocSource, type KeyValue } from "../types";
 
 /** 按 source+key 查找文档补充说明 */
 function findDoc(docs: DocParam[], source: DocSource, key: string): DocParam | undefined {
@@ -78,9 +78,18 @@ function jsonFields(
 /** 生成 apiDoc 注释块（含开始结束标记） */
 export function buildApiDocComment(api: ApiFile, groupPath: string): string {
   const lines: string[] = ["/**"];
+  // TCP / UDP 接口没有 HTTP 方法，协议名即方法；路径位置展示 host:port
+  const isNet = isNetProtocol(api.protocol);
   const method =
-    api.protocol === "websocket" ? "ws" : (api.method || "GET").toLowerCase();
-  lines.push(` * @api {${method}} ${api.path} ${fmtDesc(api.name)}`);
+    api.protocol === "websocket"
+      ? "ws"
+      : isNet
+        ? api.protocol
+        : (api.method || "GET").toLowerCase();
+  const target = isNet
+    ? `${api.net?.host || "127.0.0.1"}:${api.net?.port ?? 0}`
+    : api.path;
+  lines.push(` * @api {${method}} ${target} ${fmtDesc(api.name)}`);
   const groupName = groupPath
     .split(/[\\/]/)
     .filter(Boolean)

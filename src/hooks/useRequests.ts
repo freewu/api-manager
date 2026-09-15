@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { saveExample, saveHistory, runPrescript, sendRequest } from "../commands";
-import { ApiFile, BodyData, EnvStore, HttpRequestData, HttpResult, WsLogEntry } from "../types";
+import { netSend, saveExample, saveHistory, runPrescript, sendRequest } from "../commands";
+import { ApiFile, BodyData, EnvStore, HttpRequestData, HttpResult, NetResult, WsLogEntry } from "../types";
+import { buildPacket } from "../utils/packet";
 import { escapeRe } from "./useWorkspace";
 
 /**
@@ -19,6 +20,8 @@ export function useRequests(opts: {
   const { api, envs, baseUrl, onToast, onEnvChanged, t } = opts;
 
   const [response, setResponse] = useState<HttpResult | null>(null);
+  /** TCP / UDP 最近一次收发结果（展示在响应区） */
+  const [netResult, setNetResult] = useState<NetResult | null>(null);
   const [lastRequest, setLastRequest] = useState<HttpRequestData | null>(null);
   /** 发送请求时的接口快照（用于保存示例时记录 path/query 结构化参数） */
   const [lastApiSnapshot, setLastApiSnapshot] = useState<ApiFile | null>(null);
@@ -288,6 +291,7 @@ export function useRequests(opts: {
   useEffect(() => {
     closeWsConnection();
     closeSocketIoConnection();
+    setNetResult(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api?.uuid]);
   useEffect(() => () => {
@@ -396,6 +400,44 @@ export function useRequests(opts: {
         return;
       }
 
+      // TCP / UDP：单次收发，结果展示在响应区
+      if (api.protocol === "tcp" || api.protocol === "udp") {
+        const net = api.net || { host: "127.0.0.1", port: 0, timeoutMs: 3000 };
+        if (!net.host.trim() || !net.port) throw new Error(t("net.addrEmpty"));
+        const packet = buildPacket(api.pack || []);
+        if (packet.errors.length > 0) {
+          const err = packet.errors[0];
+          throw new Error(t(err.key, err.params));
+        }
+        if (packet.bytes.length === 0) throw new Error(t("net.payloadEmpty"));
+        const target = `${net.host.trim()}:${net.port}`;
+        const res = await netSend(api.protocol, net.host.trim(), net.port, packet.hex, net.timeoutMs);
+        setNetResult(res);
+        setLastRequest({ method: api.protocol.toUpperCase(), url: target, headers: [], body: packet.hex, timeoutMs: net.timeoutMs });
+        setLastApiSnapshot(api);
+        try {
+          await saveHistory({
+            method: api.protocol.toUpperCase(),
+            url: target,
+            apiUuid: api.uuid,
+            apiName: api.name,
+            reqHeaders: [],
+            reqBody: packet.hex,
+            ok: res.ok,
+            status: 0,
+            statusText: "",
+            respHeaders: [],
+            respBody: res.hex,
+            timeMs: res.timeMs,
+            size: res.size,
+            error: res.error,
+          });
+        } catch (e) {
+          console.error("保存请求历史失败", e);
+        }
+        return;
+      }
+
       // 表单：含文件字段时走 multipart（req.form），否则拼 urlencoded body
       const formRows = api.body.form.filter((f) => f.enabled && f.key);
       // 二进制模式：未选择文件时直接报错
@@ -458,8 +500,10 @@ export function useRequests(opts: {
   // 将最近一次请求与响应保存为示例 -> 工作区 .examples/<接口uuid>/<示例名称hash值>.json
   const handleSaveExample = async (name: string) => {
     if (!api || !lastRequest) return;
+    const isNet = api.protocol === "tcp" || api.protocol === "udp";
     const isWs = api.protocol === "websocket" || api.protocol === "socketio";
-    if (!isWs && !response) return;
+    if (isNet && !netResult) return;
+    if (!isWs && !isNet && !response) return;
     const snap = lastApiSnapshot || api;
     try {
       // 从最终请求 URL 解析出 query 参数（用户在 URL 里直接写的 ?a=1&b=2 也要收录）
@@ -486,7 +530,28 @@ export function useRequests(opts: {
       for (const [k, v] of urlQuery) {
         if (!seen.has(k)) reqQuery.push([k, v]);
       }
-      if (isWs) {
+      if (isNet) {
+        // TCP / UDP：保存请求报文字节与响应字节
+        if (!netResult) return;
+        const net = snap.net || { host: "127.0.0.1", port: 0, timeoutMs: 3000 };
+        await saveExample(api.uuid || crypto.randomUUID(), name, {
+          name,
+          time: Math.floor(Date.now() / 1000),
+          method: api.protocol.toUpperCase(),
+          url: `${net.host}:${net.port}`,
+          reqHeaders: [],
+          reqPath: [],
+          reqQuery: [],
+          reqBody: netResult.sentHex,
+          status: 0,
+          statusText: "",
+          respHeaders: [],
+          respBody: netResult.hex,
+          timeMs: netResult.timeMs,
+          size: netResult.size,
+          error: netResult.error,
+        });
+      } else if (isWs) {
         // 实时（WebSocket/Socket.IO）：保存最近一次发送的消息与收到的回显
         await saveExample(api.uuid || crypto.randomUUID(), name, {
           name,
@@ -536,6 +601,7 @@ export function useRequests(opts: {
   return {
     response,
     setResponse,
+    netResult,
     lastRequest,
     lastApiSnapshot,
     exampleVersion,

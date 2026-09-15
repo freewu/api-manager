@@ -363,6 +363,9 @@ fn jmeter_sampler_to_api(
     let file_base = sanitize_filename(&api_name);
     let file_path = unique_path(dir, &file_base, ".json");
     let api_file = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name: api_name.clone(),
         method: method.clone(),

@@ -412,6 +412,9 @@
         fs::create_dir_all(&sub).unwrap();
 
         let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: "11111111-2222-3333-4444-555555555555".into(),
             name: "创建用户".into(),
             method: "POST".into(),
@@ -469,6 +472,9 @@
     #[test]
     fn ensure_responses_migrates_old_files() {
         let mut api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: "u".into(),
             name: "测试".into(),
             method: "GET".into(),
@@ -520,6 +526,9 @@
         let g = base.join("用户管理");
         fs::create_dir_all(&g).unwrap();
         let a = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: "u".into(),
             name: "接口A".into(),
             method: "GET".into(),
@@ -569,6 +578,9 @@
         let _ = fs::create_dir_all(base.join("接口"));
         let uuid = "a1b2c3d4-1111-2222-3333-444455556666".to_string();
         let make = |name: &str, desc: &str| ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: uuid.clone(),
             name: name.into(),
             method: "GET".into(),
@@ -924,6 +936,9 @@
         fs::create_dir_all(&root).unwrap();
         // 构造两个接口
         let make = |name: &str, method: &str, path: &str, is_ws: bool| ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: uuid::Uuid::new_v4().to_string(),
             name: name.into(),
             method: method.into(),
@@ -1280,6 +1295,9 @@
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         let make = |name: &str, method: &str, path: &str| ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: uuid::Uuid::new_v4().to_string(),
             name: name.into(),
             method: method.into(),
@@ -1444,6 +1462,9 @@ let v = export::to_yapi(&apis);
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         let make = |name: &str, method: &str, path: &str| ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: uuid::Uuid::new_v4().to_string(),
             name: name.into(),
             method: method.into(),
@@ -1593,6 +1614,9 @@ let v = export::to_yapi(&apis);
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         let make = |name: &str, method: &str, path: &str| ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: uuid::Uuid::new_v4().to_string(),
             name: name.into(),
             method: method.into(),
@@ -1721,6 +1745,9 @@ let v = export::to_yapi(&apis);
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         let make = |name: &str, method: &str, path: &str| ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: uuid::Uuid::new_v4().to_string(),
             name: name.into(),
             method: method.into(),
@@ -1981,6 +2008,9 @@ let v = export::to_yapi(&apis);
         fs::create_dir_all(&root).unwrap();
         let src = root.join("创建用户.json");
         let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: "old-uuid".into(),
             name: "创建用户".into(),
             method: "POST".into(),
@@ -2026,6 +2056,9 @@ let v = export::to_yapi(&apis);
         .unwrap();
         let mk = |p: &std::path::Path, uuid: &str, name: &str| {
             let api = ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
                 uuid: uuid.into(),
                 name: name.into(),
                 method: "GET".into(),
@@ -2130,6 +2163,9 @@ let v = export::to_yapi(&apis);
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         let mk = |name: &str, method: &str, path: &str, body_mode: &str| ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: uuid::Uuid::new_v4().to_string(),
             name: name.into(),
             method: method.into(),
@@ -2301,6 +2337,9 @@ let v = export::to_yapi(&apis);
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         let mk = |name: &str, method: &str, path: &str| ApiFile {
+        pack: vec![],
+        unpack: vec![],
+        net: None,
             uuid: uuid::Uuid::new_v4().to_string(),
             name: name.into(),
             method: method.into(),

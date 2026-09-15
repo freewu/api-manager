@@ -13,6 +13,7 @@ import type {
   InfoJson,
   KeyValue,
   MockStatus,
+  NetResult,
   ObjectDef,
   ObjectImportResult,
   ObjectStore,
@@ -267,7 +268,11 @@ export function setLanguage(lang: "zh" | "zh-tw" | "en"): Promise<void> {
   return invoke<void>("set_language", { lang });
 }
 
-export function createApi(dir: string, name: string, protocol: "http" | "websocket" | "graphql" | "socketio" | "webdav" = "http"): Promise<string> {
+export function createApi(
+  dir: string,
+  name: string,
+  protocol: "http" | "websocket" | "graphql" | "socketio" | "webdav" | "tcp" | "udp" = "http"
+): Promise<string> {
   return invoke<string>("create_api", { dir, name, protocol });
 }
 
@@ -343,6 +348,17 @@ export function updateTrayEnv(name: string): Promise<void> {
 
 export function sendRequest(req: HttpRequestData): Promise<HttpResult> {
   return invoke<HttpResult>("send_request", { req });
+}
+
+/** TCP / UDP 收发：payload 为 hex 字符串（空格可省略），返回原始字节与统计信息 */
+export function netSend(
+  protocol: "tcp" | "udp",
+  host: string,
+  port: number,
+  payload: string,
+  timeoutMs?: number,
+): Promise<NetResult> {
+  return invoke<NetResult>("net_send", { protocol, host, port, payload, timeoutMs });
 }
 
 /** 弹出系统文件选择框，返回文件路径（取消时返回 null） */
