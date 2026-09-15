@@ -900,6 +900,7 @@ export const ZH: Record<string, string> = {
   "objects.updatedAt": "更新时间",
 "update.later": "稍后再说",
   "editor.mcpMethodTip": "MCP（Model Context Protocol）基于 JSON-RPC 2.0 over Streamable HTTP，固定 POST /mcp，请求体为 JSON-RPC 报文",
+  "editor.mcpBodyTip": "MCP 请求体固定为 JSON（JSON-RPC 2.0 报文），不支持其他 body 类型",
   "editor.mcpBodyHint": "MCP 请求体为 JSON-RPC 2.0 报文（method + params），响应也是 JSON-RPC 结构",
   // ===== TCP / UDP 接口 =====
   "editor.tcpType": "TCP 接口",

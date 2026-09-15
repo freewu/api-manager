@@ -116,6 +116,8 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
   const methodOptions = isWebdav ? [...METHODS, ...WEBDAV_METHODS] : METHODS;
   /** 是否 MCP 接口（JSON-RPC 2.0 over Streamable HTTP，编辑体验与 HTTP 一致；不支持 Mock） */
   const isMcp = api.protocol === "mcp";
+  /** MCP 无 Query / Path 页签，页签回退到 Body */
+  const fallbackTab: Tab = isMcp ? "body" : "params";
   // WebSocket 消息格式：文本 / json / xml / binary（复用 body.mode，text 映射为 raw）
   const WS_MODES = ["raw", "json", "xml", "binary"] as const;
   const wsMode: BodyData["mode"] = (WS_MODES as readonly string[]).includes(api.body.mode)
@@ -283,7 +285,7 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
   // HTTP 的 POST / PUT / PATCH 也默认 Body（这类方法通常带请求体），其余回 Query
   useEffect(() => {
     const def: Tab =
-      isGraphql || isRealtime || api.method === "POST" || api.method === "PUT" || api.method === "PATCH"
+      isGraphql || isMcp || isRealtime || api.method === "POST" || api.method === "PUT" || api.method === "PATCH"
         ? "body"
         : "params";
     setTab(def);
@@ -293,25 +295,34 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
   }, [api.uuid]);
 
   // 设置中全局关闭 Mock 时，若当前停留在 Mock 页签则切回 Query；
-  // WebSocket 无 Path / Mock 页签，若停留在这两个页签则切回 Query
+  // WebSocket 无 Path / Mock 页签，若停留在这两个页签则切回 Query；
+  // MCP 无 Query / Path / Mock 页签，统一回退到 Body
   useEffect(() => {
     if ((!enableMock || isRealtime || isGraphql || isWebdav || isMcp) && tab === "mock") {
-      setTab("params");
-      onTabChange?.("params");
+      setTab(fallbackTab);
+      onTabChange?.(fallbackTab);
     }
-    if ((isRealtime || isGraphql) && tab === "path") {
-      setTab("params");
-      onTabChange?.("params");
+    if ((isRealtime || isGraphql || isMcp) && tab === "path") {
+      setTab(fallbackTab);
+      onTabChange?.(fallbackTab);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enableMock, isRealtime, isGraphql, isWebdav, isMcp, tab]);
 
+  // MCP 请求体固定为 JSON（JSON-RPC 2.0 报文），保证历史数据 / 协议切换后仍可编辑
+  useEffect(() => {
+    if (isMcp && api.body.mode !== "json") {
+      set({ body: { ...api.body, mode: "json" } });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMcp, api.body.mode]);
+
   // URL / 路径中的 {xx} 占位符实时同步到 Path 页签（新增或删除）；
   // {{xx}} 是全局环境变量（双大括号），不会被当作路径参数
-  // WebSocket 不使用路径参数，跳过同步
+  // WebSocket / GraphQL / MCP 不使用路径参数，跳过同步
   const pathSource = api.url || api.path;
   useEffect(() => {
-    if (isRealtime || isGraphql) return;
+    if (isRealtime || isGraphql || isMcp) return;
     const names = new Set(
       [...pathSource.matchAll(/(?<!\{)\{([^{}]+)\}(?!\})/g)]
         .map((m) => m[1].trim())
@@ -440,15 +451,20 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
         ) : isSocketIo ? (
           // Socket.IO：不显示 method，也不提供 ws/wss 切换
           <span />
-        ) : isGraphql ? (
-          <select className="method-select" value="POST" disabled title={t("editor.graphqlMethodTip")}>
+        ) : isGraphql || isMcp ? (
+          // GraphQL / MCP：方法固定 POST，不可切换
+          <select
+            className="method-select"
+            value="POST"
+            disabled
+            title={isMcp ? t("editor.mcpMethodTip") : t("editor.graphqlMethodTip")}
+          >
             <option value="POST">POST</option>
           </select>
         ) : (
           <select
             className="method-select"
             value={api.method}
-            title={isMcp ? t("editor.mcpMethodTip") : undefined}
             onChange={(e) => {
               const v = e.target.value;
               set({ method: v });
@@ -524,15 +540,17 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
       </div>
 
       <div className="tabs">
-        <div className={`tab ${tab === "params" ? "active" : ""}`} onClick={() => switchTab("params")}>
-          Query{enabledCount(api.query) > 0 && <span className="count">{enabledCount(api.query)}</span>}
-          {isRealtime && (
-            <span className="tab-hint" title={t("editor.handshakeOnly")}>
-              {t("editor.handshakeBadge")}
-            </span>
-          )}
-        </div>
-        {!isRealtime && !isGraphql && (
+        {!isMcp && (
+          <div className={`tab ${tab === "params" ? "active" : ""}`} onClick={() => switchTab("params")}>
+            Query{enabledCount(api.query) > 0 && <span className="count">{enabledCount(api.query)}</span>}
+            {isRealtime && (
+              <span className="tab-hint" title={t("editor.handshakeOnly")}>
+                {t("editor.handshakeBadge")}
+              </span>
+            )}
+          </div>
+        )}
+        {!isRealtime && !isGraphql && !isMcp && (
           <div className={`tab ${tab === "path" ? "active" : ""}`} onClick={() => switchTab("path")}>
             Path{enabledCount(api.params) > 0 && <span className="count">{enabledCount(api.params)}</span>}
           </div>
@@ -745,8 +763,12 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
         {tab === "body" && !isRealtime && (
           <div>
             <div className="body-modes">
-              {isGraphql ? (
-                <div className="body-mode active" title={t("editor.graphqlBodyTip")}>
+              {isGraphql || isMcp ? (
+                // GraphQL / MCP：请求体固定 JSON，不提供其他 body 模式
+                <div
+                  className="body-mode active"
+                  title={isMcp ? t("editor.mcpBodyTip") : t("editor.graphqlBodyTip")}
+                >
                   JSON
                 </div>
               ) : (
@@ -791,7 +813,7 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
                 </div>
               </>
             )}
-            {(isGraphql || api.body.mode === "raw" || api.body.mode === "json" || api.body.mode === "xml") && (
+            {(isGraphql || isMcp || api.body.mode === "raw" || api.body.mode === "json" || api.body.mode === "xml") && (
               <div className="body-raw-wrap">
                 <div className="body-raw-toolbar">
                   {(isGraphql || api.body.mode === "json") ? (

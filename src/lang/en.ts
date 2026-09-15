@@ -244,6 +244,7 @@ export const EN: Record<string, string> = {
   "editor.graphqlMethodTip": "GraphQL APIs always use POST method",
   "editor.graphqlBodyTip": "GraphQL APIs only support JSON body",
   "editor.mcpMethodTip": "MCP (Model Context Protocol) uses JSON-RPC 2.0 over Streamable HTTP with POST /mcp and a JSON-RPC body",
+  "editor.mcpBodyTip": "MCP request bodies are fixed to JSON (JSON-RPC 2.0 messages); other body types are not supported",
   "editor.mcpBodyHint": "MCP request bodies are JSON-RPC 2.0 messages (method + params); responses use the JSON-RPC structure too",
   "editor.wsText": "Text",
   "editor.messagePlaceholder": "Initial message to send after connection",

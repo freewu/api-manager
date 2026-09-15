@@ -235,6 +235,7 @@ export const TW: Record<string, string> = {
   "editor.graphqlMethodTip": "GraphQL 接口固定使用 POST 方法",
   "editor.graphqlBodyTip": "GraphQL 接口仅支持 JSON 格式",
   "editor.mcpMethodTip": "MCP（Model Context Protocol）基於 JSON-RPC 2.0 over Streamable HTTP，固定 POST /mcp，請求體為 JSON-RPC 報文",
+  "editor.mcpBodyTip": "MCP 請求體固定為 JSON（JSON-RPC 2.0 報文），不支援其他 body 類型",
   "editor.mcpBodyHint": "MCP 請求體為 JSON-RPC 2.0 報文（method + params），回應也是 JSON-RPC 結構",
   "editor.wsText": "純文字",
   "editor.messagePlaceholder": "連接建立後發送的初始消息",
