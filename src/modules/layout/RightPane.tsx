@@ -1,0 +1,220 @@
+import { useT } from "../../i18n";
+import { ApiFile, HttpResult, NetResult, WsLogEntry } from "../../types";
+import { HistoryDetail as HistoryDetailType } from "../../commands";
+import { HistoryDiffPair } from "../../hooks/useHistory";
+import { AppView } from "./Sidebar";
+import { ApiWorkspace } from "../api/common/ApiWorkspace";
+import { HistoryDetail } from "../history/HistoryDetail";
+import { HistoryDiff } from "../history/HistoryDiff";
+import { GenLogsDetail } from "../gen-records/GenLogsDetail";
+import ObjectsView from "../object/ObjectsView";
+import { ObjectDef, ObjectImportResult, ObjectStore } from "../../types";
+
+/**
+ * 右侧面板：左右分栏拖拽条 + 内容区（请求历史详情 / 接口编辑工作台 / 空状态）。
+ * 与左侧 Sidebar 平级，由 App 传入数据与回调。
+ */
+interface RightPaneProps {
+  view: AppView;
+  api: ApiFile | null;
+  /** 右侧接口面包屑：工作区名称 / …/ 分组名称 / 接口名称 */
+  breadcrumb?: string[];
+  historyDetail: HistoryDetailType | null;
+  historyDetailLoading: boolean;
+  /** Diff 比对视图（非 null 时优先展示） */
+  historyDiff: HistoryDiffPair | null;
+  historyDiffLoading: boolean;
+  onHistoryDiffExit: () => void;
+  /** 数据生成记录详情（视图模式） */
+  genLogsDetail: import("../../commands").GenLogItem | null;
+  /** 重新生成：用记录配置打开数据生成弹窗 */
+  onGenLogsRegen: (rec: import("../../commands").GenLogItem) => void;
+  baseUrl: string;
+  currentVersion: number;
+  enableVersion: boolean;
+  enableCodegen: boolean;
+  enableMock: boolean;
+  codegenLang: string;
+  /** 示例保存版本号：保存示例成功后自增，用于刷新「示例」角标 */
+  exampleVersion: number;
+  sending: boolean;
+  hideResponse: boolean;
+  editorRatio: number;
+  response: HttpResult | null;
+  /** TCP / UDP 最近一次收发结果 */
+  netResult: NetResult | null;
+  wsConnected: boolean;
+  wsConnecting: boolean;
+  wsEntries: WsLogEntry[];
+  onApiChange: (a: ApiFile) => void;
+  onSend: () => void;
+  onSaveExample: (name: string) => void;
+  onSaveVersion: () => void;
+  onCommit: () => void;
+  onTabChange: (t: string) => void;
+  onEnvChanged?: () => void;
+  onStartVResize: (e: React.MouseEvent) => void;
+  onResetRatio: () => void;
+  onWsDisconnect: () => void;
+  onResizeStart: (e: React.MouseEvent) => void;
+  onResizeReset: () => void;
+  resizeTip: string;
+  onEmptyContextMenu: (e: React.MouseEvent) => void;
+  objectsStore: ObjectStore;
+  onObjectsSave: (store: ObjectStore) => Promise<ObjectStore>;
+  onObjectsImport: (name: string, group: string, json: string) => Promise<ObjectImportResult>;
+  onObjectsImportDdl: (group: string, ddl: string) => Promise<ObjectImportResult>;
+  onObjectsJumpApi: (path: string) => void;
+  onObjectsToast: (msg: string) => void;
+  objectsList?: ObjectDef[];
+  /** 对象管理中当前选中对象 uuid（右侧展开对象配置） */
+  objectsSelectedUuid: string | null;
+  onObjectsSelect: (uuid: string | null) => void;
+  /** 右侧空状态：请求左侧新建对象 / 导入对象 */
+  onObjectsRequestNew: () => void;
+  onObjectsRequestImport: () => void;
+}
+
+export function RightPane({
+  view,
+  api,
+  breadcrumb,
+  historyDetail,
+  historyDetailLoading,
+  historyDiff,
+  historyDiffLoading,
+  onHistoryDiffExit,
+  genLogsDetail,
+  onGenLogsRegen,
+  baseUrl,
+  currentVersion,
+  exampleVersion,
+  enableVersion,
+  enableCodegen,
+  enableMock,
+  codegenLang,
+  sending,
+  hideResponse,
+  editorRatio,
+  response,
+  netResult,
+  wsConnected,
+  wsConnecting,
+  wsEntries,
+  onApiChange,
+  onSend,
+  onSaveExample,
+  onSaveVersion,
+  onCommit,
+  onTabChange,
+  onEnvChanged,
+  onStartVResize,
+  onResetRatio,
+  onWsDisconnect,
+  onResizeStart,
+  onResizeReset,
+  resizeTip,
+  onEmptyContextMenu,
+  objectsStore,
+  onObjectsSave,
+  onObjectsImport,
+  onObjectsImportDdl,
+  onObjectsJumpApi,
+  onObjectsToast,
+  objectsList,
+  objectsSelectedUuid,
+  onObjectsSelect,
+  onObjectsRequestNew,
+  onObjectsRequestImport,
+}: RightPaneProps) {
+  const t = useT();
+  return (
+    <>
+      <div
+        className="resizer"
+        onMouseDown={onResizeStart}
+        onDoubleClick={onResizeReset}
+        title={resizeTip}
+      />
+      <div
+        className="content"
+        onContextMenu={(e) => {
+          // 右侧区域禁止右键（输入框/文本域保留原生菜单以便粘贴）
+          const target = e.target as HTMLElement;
+          if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+          e.preventDefault();
+        }}
+      >
+        {view === "objects" ? (
+          <ObjectsView
+            store={objectsStore}
+            onSave={onObjectsSave}
+            onImport={onObjectsImport}
+            onImportDdl={onObjectsImportDdl}
+            onJumpApi={onObjectsJumpApi}
+            onToast={onObjectsToast}
+            selectedUuid={objectsSelectedUuid}
+            onSelectObject={onObjectsSelect}
+            onRequestNew={onObjectsRequestNew}
+            onRequestImport={onObjectsRequestImport}
+            defaultCodeLang={codegenLang}
+          />
+        ) : view === "history" ? (
+          <div className="history-view-content">
+            {historyDiff ? (
+              <HistoryDiff
+                pair={historyDiff}
+                loading={historyDiffLoading}
+                onBack={onHistoryDiffExit}
+                onExit={onHistoryDiffExit}
+              />
+            ) : (
+              <HistoryDetail detail={historyDetail} loading={historyDetailLoading} />
+            )}
+          </div>
+        ) : view === "genlogs" ? (
+          <div className="history-view-content">
+            <GenLogsDetail detail={genLogsDetail} onRegen={onGenLogsRegen} />
+          </div>
+        ) : api ? (
+          <ApiWorkspace
+            api={api}
+            baseUrl={baseUrl}
+            breadcrumb={breadcrumb}
+            currentVersion={currentVersion}
+            exampleVersion={exampleVersion}
+            enableVersion={enableVersion}
+            enableCodegen={enableCodegen}
+            enableMock={enableMock}
+            codegenLang={codegenLang}
+            sending={sending}
+            hideResponse={hideResponse}
+            editorRatio={editorRatio}
+            response={response}
+            netResult={netResult}
+            onChange={onApiChange}
+            onSend={onSend}
+            onSaveExample={onSaveExample}
+            onSaveVersion={onSaveVersion}
+            onCommit={onCommit}
+            onTabChange={onTabChange}
+            onEnvChanged={onEnvChanged}
+            onStartVResize={onStartVResize}
+            onResetRatio={onResetRatio}
+            wsConnected={wsConnected}
+            wsConnecting={wsConnecting}
+            wsEntries={wsEntries}
+            onWsDisconnect={onWsDisconnect}
+            objectsList={objectsList}
+            objectsStore={objectsStore}
+          />
+        ) : (
+          <div className="empty-editor" onContextMenu={onEmptyContextMenu}>
+            <span className="big">📄</span>
+            <span>{t("editor.emptyHint")}</span>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}

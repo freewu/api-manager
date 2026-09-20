@@ -19,7 +19,7 @@ import {
 } from "../commands";
 import { buildApiDocComment, buildGroupApiDocComment } from "../utils/apidoc";
 import { ApiFile, AppSettings, TreeNode, VersionInfo, isNetProtocol } from "../types";
-import { InfoForm, ModalState, emptyInfoForm } from "../components/AppModals";
+import { InfoForm, ModalState, emptyInfoForm } from "../modules/layout/AppModals";
 import { parseCurl } from "../utils/curl";
 
 /** 资源路径规范化：去首尾空格并保证以 / 开头（空串保持空，表示不覆盖默认） */

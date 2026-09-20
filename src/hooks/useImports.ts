@@ -15,7 +15,7 @@ import {
   importWadl,
   importYapi,
 } from "../commands";
-import type { ImportResultView } from "../components/ImportResultModal";
+import type { ImportResultView } from "../modules/export/ImportResultModal";
 
 /**
  * 全部导入格式的统一入口：调用后端导入 → 刷新树 → 展示导入结果弹窗 → 热重载 Mock。
