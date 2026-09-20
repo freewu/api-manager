@@ -219,6 +219,7 @@ export const ZH: Record<string, string> = {
   "sidebar.removeFavorite": "取消收藏",
   "favorites.empty": "暂无收藏接口",
   "favorites.emptyHint": "在接口上右键，选择「收藏」即可加入这里",
+  "favorites.emptyEditor": "收藏接口",
   "toast.favorited": "已收藏",
   "toast.unfavorited": "已取消收藏",
   "toast.favoriteFailed": "操作失败: {err}",

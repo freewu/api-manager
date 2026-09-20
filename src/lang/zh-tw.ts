@@ -206,6 +206,7 @@ export const TW: Record<string, string> = {
   "sidebar.removeFavorite": "取消收藏",
   "favorites.empty": "暫無收藏介面",
   "favorites.emptyHint": "在介面上按右鍵，選擇「收藏」即可加入這裡",
+  "favorites.emptyEditor": "收藏介面",
   "toast.favorited": "已收藏",
   "toast.unfavorited": "已取消收藏",
   "toast.favoriteFailed": "操作失敗: {err}",

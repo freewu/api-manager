@@ -822,6 +822,7 @@ export default function App() {
               onObjectsRequestImport={() => setObjectsReq((r) => ({ ...r, imp: r.imp + 1 }))}
               onObjectsToast={showToast}
               objectsList={objectsStore.objects}
+              favoritesCount={favoriteNodes.length}
             />
           </div>
 

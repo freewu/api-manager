@@ -73,6 +73,8 @@ interface RightPaneProps {
   /** 右侧空状态：请求左侧新建对象 / 导入对象 */
   onObjectsRequestNew: () => void;
   onObjectsRequestImport: () => void;
+  /** 收藏接口数量：为 0 时「收藏」视图右侧展示空状态（不显示当前编辑中的接口） */
+  favoritesCount: number;
 }
 
 export function RightPane({
@@ -126,6 +128,7 @@ export function RightPane({
   onObjectsSelect,
   onObjectsRequestNew,
   onObjectsRequestImport,
+  favoritesCount,
 }: RightPaneProps) {
   const t = useT();
   return (
@@ -175,6 +178,12 @@ export function RightPane({
         ) : view === "genlogs" ? (
           <div className="history-view-content">
             <GenLogsDetail detail={genLogsDetail} onRegen={onGenLogsRegen} />
+          </div>
+        ) : view === "favorites" && favoritesCount === 0 ? (
+          // 收藏列表为空：右侧同步为空，提示去收藏接口
+          <div className="empty-editor">
+            <span className="big">⭐</span>
+            <span>{t("favorites.emptyEditor")}</span>
           </div>
         ) : api ? (
           <ApiWorkspace

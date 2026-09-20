@@ -214,6 +214,7 @@ export const EN: Record<string, string> = {
   "sidebar.removeFavorite": "Remove from Favorites",
   "favorites.empty": "No favorites yet",
   "favorites.emptyHint": "Right-click an API and choose “Add to Favorites”",
+  "favorites.emptyEditor": "Favorite APIs",
   "toast.favorited": "Added to favorites",
   "toast.unfavorited": "Removed from favorites",
   "toast.favoriteFailed": "Operation failed: {err}",
