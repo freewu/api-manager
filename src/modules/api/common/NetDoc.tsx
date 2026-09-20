@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ApiFile, PacketField, emptyNet } from "../../../types";
 import { KIND_LABELS, buildPacket, displayValue, lengthFieldIndex } from "../../../utils/packet";
-import { CopyBtn } from "../common/CopyBtn";
+import { CopyBtn } from "./CopyBtn";
 import { useT } from "../../../i18n";
 
 interface Props {

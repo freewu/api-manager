@@ -1,5 +1,8 @@
 // ---- 与 Rust 后端对应的类型定义 ----
 
+/** 接口协议类型：http=HTTP / websocket·socketio=实时 / graphql·webdav·mcp=HTTP 形态 / tcp·udp=网络封包 */
+export type ApiProtocol = "http" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp";
+
 export interface KeyValue {
   key: string;
   value: string;
@@ -129,7 +132,7 @@ export interface ApiFile {
   /** 是否已标记废弃 */
   deprecated: boolean;
   /** 接口协议：http / websocket / socketio / graphql / webdav / mcp / tcp / udp */
-  protocol: "http" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp";
+  protocol: ApiProtocol;
   /** 封包字段定义（TCP / UDP） */
   pack?: PacketField[];
   /** 解包字段定义（TCP / UDP） */
@@ -274,7 +277,7 @@ export interface TreeNode {
   /** 是否已标记废弃（分组无此字段时默认未废弃） */
   deprecated?: boolean;
   /** 接口协议（http / websocket / ... / mcp / tcp / udp，分组无此字段） */
-  protocol?: "http" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp";
+  protocol?: ApiProtocol;
   /** 接口 uuid（仅接口节点有，用于收藏等按 uuid 关联的场景） */
   uuid?: string;
   children?: TreeNode[];

@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { NetResult, PacketField } from "../../../types";
 import { bytesToText, hexToBytes, parsePacket } from "../../../utils/packet";
-import { PacketViewTable } from "../common/PacketViewTable";
-import { CopyBtn } from "../common/CopyBtn";
+import { PacketViewTable } from "./PacketViewTable";
+import { CopyBtn } from "./CopyBtn";
 import { useT } from "../../../i18n";
 
 interface Props {

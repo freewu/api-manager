@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { PacketField, PacketFieldKind, emptyPacketField } from "../../../types";
 import { KIND_LABELS, buildPacket } from "../../../utils/packet";
-import { CopyBtn } from "../common/CopyBtn";
+import { CopyBtn } from "./CopyBtn";
 import { useT } from "../../../i18n";
 
 const KINDS: PacketFieldKind[] = ["fixed", "var", "varlen"];
