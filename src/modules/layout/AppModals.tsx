@@ -28,7 +28,7 @@ import iconUdp from "../../../asserts/icon/UDP.png";
 // 弹窗组件按需懒加载：仅在对应弹窗打开时才下载对应 chunk
 const MarkdownModal = lazy(() => import("../markdown/MarkdownModal").then((m) => ({ default: m.MarkdownModal })));
 const ExportModal = lazy(() => import("../export/ExportModal").then((m) => ({ default: m.ExportModal })));
-const SettingsModal = lazy(() => import("./SettingsModal").then((m) => ({ default: m.SettingsModal })));
+const SettingsModal = lazy(() => import("../settings/SettingsModal").then((m) => ({ default: m.SettingsModal })));
 const StatsModal = lazy(() => import("../stat/StatsModal").then((m) => ({ default: m.StatsModal })));
 const VersionModal = lazy(() => import("../version/VersionModal").then((m) => ({ default: m.VersionModal })));
 const EnvModal = lazy(() => import("../env/EnvModal").then((m) => ({ default: m.EnvModal })));
