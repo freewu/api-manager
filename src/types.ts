@@ -1,4 +1,5 @@
 // ---- 与 Rust 后端对应的类型定义 ----
+import { DEFAULT_SHORTCUTS, ShortcutAction } from "./utils/shortcuts";
 
 /** 接口协议类型：http=HTTP / websocket·socketio=实时 / graphql·webdav·mcp=HTTP 形态 / tcp·udp=网络封包 */
 export type ApiProtocol = "http" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp";
@@ -404,6 +405,8 @@ export interface AppSettings {
   defaultFolderState: "expanded" | "collapsed";
   /** 最近打开的工作目录数量上限（最少 3） */
   recentLimit: number;
+  /** 全局快捷键（动作 → 归一化按键，如 ctrl+a；"" 表示未绑定） */
+  shortcuts: Record<ShortcutAction, string>;
 }
 
 export const defaultSettings = (): AppSettings => ({
@@ -481,6 +484,7 @@ export const defaultSettings = (): AppSettings => ({
   language: "zh",
   defaultFolderState: "expanded",
   recentLimit: 5,
+  shortcuts: { ...DEFAULT_SHORTCUTS },
 });
 
 export interface HttpRequestData {

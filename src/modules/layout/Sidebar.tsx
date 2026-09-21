@@ -61,6 +61,8 @@ interface Props {
   onImportExtra?: (format: string) => void;
   /** 当前设置（导入菜单按 importTypes 开关过滤格式） */
   settings?: AppSettings;
+  /** 快捷键「导入」请求信号（每次 +1，打开导入下拉菜单） */
+  importMenuReq?: number;
   onExport?: () => void;
   onExportNode?: (node: TreeNode) => void;
   /** 工作目录版本控制类型（.git / .svn），为空时不显示同步/提交按钮 */
@@ -605,6 +607,11 @@ export function Sidebar(props: Props) {
       props.onObjectsToast(String(e));
     }
   };
+
+  // 快捷键触发的「导入」：信号变化时打开导入下拉菜单
+  useEffect(() => {
+    if (props.importMenuReq) setImportMenu(true);
+  }, [props.importMenuReq]);
 
   // 导入菜单打开时按 ESC 关闭
   useEffect(() => {

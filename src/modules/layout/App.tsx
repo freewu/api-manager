@@ -38,6 +38,7 @@ import { useMock } from "../../hooks/useMock";
 import { useModals } from "../../hooks/useModals";
 import { useImports } from "../../hooks/useImports";
 import { useVcs } from "../../hooks/useVcs";
+import { useShortcuts } from "../../hooks/useShortcuts";
 import { useObjects } from "../../hooks/useObjects";
 import GenDataModal from "../object/GenDataModal";
 import { GenLogItem } from "../../commands";
@@ -318,6 +319,57 @@ export default function App() {
     // 每次进入历史视图都自动刷新一次列表
     if (v === "history") history.reload();
   };
+
+  // ---------- 全局快捷键（设置页可自定义，见 设置 → 快捷键） ----------
+  /** 快捷键「导入」请求信号（Sidebar 监听后打开导入下拉菜单） */
+  const [importMenuReq, setImportMenuReq] = useState(0);
+  /** 已有弹窗 / 浮层打开（打开类快捷键此时不再叠加，设置与环境改为关闭） */
+  const overlayOpen =
+    !!modal ||
+    !!versionModal ||
+    !!statsNode ||
+    !!mdView ||
+    !!apiDocView ||
+    exportOpen ||
+    settingsOpen ||
+    envModal ||
+    envValue ||
+    showUpdateModal ||
+    modals.curlOpen ||
+    !!imports.importResult;
+
+  /** 弹窗已打开时不再响应视图切换，避免界面在弹窗背后突然跳转 */
+  const switchViewSafe = (v: AppView) => {
+    if (!overlayOpen) switchView(v);
+  };
+
+  useShortcuts(settings.shortcuts, {
+    viewApi: () => switchViewSafe("api"),
+    viewObjects: () => switchViewSafe("objects"),
+    viewHistory: () => switchViewSafe("history"),
+    viewGenlogs: () => switchViewSafe("genlogs"),
+    viewFavorites: () => switchViewSafe("favorites"),
+    // 导出 / 导入：先切回接口管理界面，再弹出对应弹窗
+    openExport: () => {
+      if (overlayOpen || settings.exportEnabled === false) return;
+      switchView("api");
+      openExport();
+    },
+    openImport: () => {
+      if (overlayOpen || settings.importEnabled === false) return;
+      switchView("api");
+      setImportMenuReq((n) => n + 1);
+    },
+    // 设置 / 环境管理：已打开时关闭，未打开时打开
+    openSettings: () => {
+      if (settingsOpen) setSettingsOpen(false);
+      else if (!overlayOpen) setSettingsOpen(true);
+    },
+    openEnv: () => {
+      if (envModal) setEnvModal(false);
+      else if (!overlayOpen) setEnvModal(true);
+    },
+  });
 
   // ---------- 启动流程：加载设置（界面语言等，与托盘语言保持一致） ----------
   useEffect(() => {
@@ -698,6 +750,7 @@ export default function App() {
               onVersions={openVersions}
               onStats={setStatsNode}
               onOpenSettings={() => setSettingsOpen(true)}
+              importMenuReq={importMenuReq}
               onOpenGenLogs={() => setView(view === "genlogs" ? "api" : "genlogs")}
               favorites={favoriteNodes}
               onReorderFavorites={(uuids) => void handleReorderFavorites(uuids)}

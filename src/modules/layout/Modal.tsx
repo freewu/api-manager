@@ -12,13 +12,14 @@ interface ModalProps {
 }
 
 export function Modal({ title, onClose, children, footer, className, maskClassName, noContextMenu }: ModalProps) {
-  // 按 ESC 关闭弹窗
+  // 按 ESC 关闭弹窗（快捷键录制中不关闭，交给录制逻辑取消）
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onClose();
-      }
+      if (e.key !== "Escape") return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.("[data-shortcut-recording]")) return;
+      e.stopPropagation();
+      onClose();
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { loadSettings, saveSettings } from "../commands";
 import { AppSettings, defaultSettings } from "../types";
 import { setLang } from "../i18n";
+import { normalizeShortcuts } from "../utils/shortcuts";
 
 /** 归一化语言值：兼容旧配置 "" / "zh" / "en" 与新值 "zh-tw" */
 export const normalizeLang = (v: unknown): "zh" | "zh-tw" | "en" => {
@@ -18,7 +19,7 @@ export const normalizeLang = (v: unknown): "zh" | "zh-tw" | "en" => {
 export function useSettings(onError: (err: string) => void) {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings());
 
-  /** 初始化加载设置（旧配置可能缺少 importTypes/exportTypes 等开关，合并默认值） */
+  /** 初始化加载设置（旧配置可能缺少 importTypes/exportTypes/shortcuts 等字段，合并默认值） */
   const load = useCallback(async () => {
     try {
       const s = await loadSettings();
@@ -28,6 +29,8 @@ export function useSettings(onError: (err: string) => void) {
         ...s,
         importTypes: { ...def.importTypes, ...(s.importTypes || {}) },
         exportTypes: { ...def.exportTypes, ...(s.exportTypes || {}) },
+        // 旧配置缺少的动作回退默认按键，用户主动解绑的 "" 保留
+        shortcuts: normalizeShortcuts(s.shortcuts),
       });
       setLang(normalizeLang(s.language));
     } catch {

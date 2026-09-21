@@ -13,6 +13,7 @@ import { HtmlNavTab } from "./HtmlNavTab";
 import { ImportTab } from "./ImportTab";
 import { LanguageTab } from "./LanguageTab";
 import { MockTab } from "./MockTab";
+import { ShortcutsTab } from "./ShortcutsTab";
 import { SyncTab } from "./SyncTab";
 import { useCustomMocks } from "./useCustomMocks";
 import { VersionTab } from "./VersionTab";
@@ -116,6 +117,7 @@ export function SettingsModal({ settings, appVersion, vcs, workspaceName, onSave
           <ImportTab settings={settings} patch={patch} />
           <HtmlNavTab settings={settings} patch={patch} />
           <HeadersTab settings={settings} patch={patch} />
+          <ShortcutsTab settings={settings} patch={patch} />
           {vcs && <SyncTab settings={settings} patch={patch} vcs={vcs} />}
           <AboutTab appVersion={appVersion} />
         </div>

@@ -83,6 +83,7 @@ export const NAV = [
   { id: "export", icon: "📤", titleKey: "settings.nav.export", descKey: "settings.nav.exportDesc" },
   { id: "import", icon: "📥", titleKey: "settings.nav.import", descKey: "settings.nav.importDesc" },
   { id: "headers", icon: "🧾", titleKey: "settings.nav.headers", descKey: "settings.nav.headersDesc" },
+  { id: "shortcuts", icon: "⌨️", titleKey: "settings.nav.shortcuts", descKey: "settings.nav.shortcutsDesc" },
   { id: "sync", icon: "🔄", titleKey: "settings.nav.sync", descKey: "settings.nav.syncDesc" },
   { id: "about", icon: "ℹ️", titleKey: "settings.nav.about", descKey: "settings.nav.aboutDesc" },
 ] as const;
