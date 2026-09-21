@@ -2544,3 +2544,40 @@ fn test_config_language_yaml() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// 应用设置序列化：导入/导出开关、格式开关与快捷键写入后不应丢失（旧配置缺少时回退默认）
+#[test]
+fn test_settings_roundtrip() {
+    let json = r#"{
+        "displayMode": "dark",
+        "importEnabled": false,
+        "exportEnabled": false,
+        "importTypes": { "postman": true, "markdown": false },
+        "exportTypes": { "html": false },
+        "shortcuts": { "viewApi": "ctrl+shift+1", "openEnv": "" }
+    }"#;
+    let s: crate::AppSettings = serde_json::from_str(json).unwrap();
+    assert!(!s.import_enabled);
+    assert!(!s.export_enabled);
+    assert_eq!(s.import_types.get("markdown"), Some(&false));
+    assert_eq!(s.export_types.get("html"), Some(&false));
+    assert_eq!(s.shortcuts.get("viewApi").map(String::as_str), Some("ctrl+shift+1"));
+    assert_eq!(s.shortcuts.get("openEnv").map(String::as_str), Some(""));
+
+    // 序列化回写后再读取：字段仍然保留（settings.json 往返不丢字段）
+    let out = serde_json::to_string(&s).unwrap();
+    let back: crate::AppSettings = serde_json::from_str(&out).unwrap();
+    assert_eq!(back.shortcuts, s.shortcuts);
+    assert_eq!(back.import_types, s.import_types);
+    assert_eq!(back.export_types, s.export_types);
+    assert_eq!(back.import_enabled, s.import_enabled);
+
+    // 旧配置缺少这些字段：导入/导出默认开启，快捷键取全部默认值
+    let old: crate::AppSettings = serde_json::from_str(r#"{"displayMode":"light"}"#).unwrap();
+    assert!(old.import_enabled);
+    assert!(old.export_enabled);
+    assert!(old.import_types.is_empty());
+    assert_eq!(old.shortcuts.len(), 9);
+    assert_eq!(old.shortcuts.get("viewApi").map(String::as_str), Some("ctrl+a"));
+    assert_eq!(old.shortcuts.get("openSettings").map(String::as_str), Some("ctrl+s"));
+}

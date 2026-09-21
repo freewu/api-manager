@@ -382,6 +382,24 @@ fn info_rename_child(dir: &Path, old_name: &str, new_name: &str, is_dir: bool) {
     }
 }
 
+/// 默认全局快捷键（与前端 src/utils/shortcuts.ts 的 DEFAULT_SHORTCUTS 保持一致）
+fn default_shortcuts() -> HashMap<String, String> {
+    [
+        ("viewApi", "ctrl+a"),
+        ("viewObjects", "ctrl+o"),
+        ("viewHistory", "ctrl+h"),
+        ("viewGenlogs", "ctrl+g"),
+        ("viewFavorites", "ctrl+f"),
+        ("openExport", "ctrl+e"),
+        ("openImport", "ctrl+i"),
+        ("openSettings", "ctrl+s"),
+        ("openEnv", "ctrl+m"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect()
+}
+
 fn default_folder_state() -> String {
     "expanded".to_string()
 }
@@ -892,6 +910,21 @@ pub struct AppSettings {
     pub enable_default_headers: bool,
     /// 默认 Header 列表
     pub default_headers: Vec<KeyValue>,
+    /// 主页导入按钮总开关（false 时隐藏「导入」按钮）
+    #[serde(default = "default_true")]
+    pub import_enabled: bool,
+    /// 主页导出按钮总开关（false 时隐藏「导出」按钮）
+    #[serde(default = "default_true")]
+    pub export_enabled: bool,
+    /// 主页导入菜单展示的格式开关（格式 → 是否显示）
+    #[serde(default)]
+    pub import_types: HashMap<String, bool>,
+    /// 导出弹窗格式下拉展示的格式开关（格式 → 是否显示）
+    #[serde(default)]
+    pub export_types: HashMap<String, bool>,
+    /// 全局快捷键（动作 → 归一化按键，如 ctrl+a；空字符串表示未绑定）
+    #[serde(default = "default_shortcuts")]
+    pub shortcuts: HashMap<String, String>,
     /// 导出默认格式（postman / openapi / docsify）
     pub export_format: String,
     /// HTML 文档悬浮导航栏位置（off / left / right）
@@ -917,6 +950,11 @@ impl Default for AppSettings {
             codegen_lang: "bash".into(),
             enable_default_headers: false,
             default_headers: vec![],
+            import_enabled: true,
+            export_enabled: true,
+            import_types: HashMap::new(),
+            export_types: HashMap::new(),
+            shortcuts: default_shortcuts(),
             export_format: "postman".into(),
             html_nav: "right".into(),
             language: "zh".into(),
