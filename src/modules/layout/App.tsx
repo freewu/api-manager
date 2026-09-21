@@ -710,6 +710,7 @@ export default function App() {
               onImportPostman={() => void imports.handleImportPostman()}
               onImportCurl={modals.openCurlImport}
               onImportOpenApi={() => void imports.handleImportOpenApi()}
+              onImportOpenApiYaml={() => void imports.handleImportOpenApiYaml()}
               onImportMarkdown={() => void imports.handleImportMarkdown()}
               onImportApifox={() => void imports.handleImportApifox()}
               onImportApipost={() => void imports.handleImportApipost()}

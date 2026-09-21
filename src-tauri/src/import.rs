@@ -586,3 +586,24 @@ pub(crate) fn import_openapi(
     let result = import_openapi_file(&root, &path)?;
     Ok(Some(result))
 }
+
+/// 导入 OpenAPI 3.0 规范 YAML（文件选择框只过滤 .yml / .yaml）
+#[tauri::command]
+pub(crate) fn import_openapi_yaml(
+    app: AppHandle,
+    state: State<'_, WorkspaceState>,
+) -> Result<Option<OpenApiImportResult>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("OpenAPI YAML", &["yml", "yaml"])
+        .blocking_pick_file();
+    let Some(path) = picked else {
+        return Ok(None);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let root = workspace_root(&state)?;
+    let result = import_openapi_file(&root, &path)?;
+    Ok(Some(result))
+}

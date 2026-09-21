@@ -586,6 +586,7 @@ export const EN: Record<string, string> = {
   "export.html": "HTML document (.html)",
   "export.markdown": "Markdown document (.md)",  "export.noData": "No data",
   "export.openapi": "OpenAPI 3.0 (.json)",
+  "export.openapi-yaml": "OpenAPI 3.0 (.yaml)",
   "export.postman": "Postman Collection (.json)",
   "export.selected": "{count} selected",
   "export.title": "Export APIs / Groups",

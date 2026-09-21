@@ -45,6 +45,7 @@ interface Props {
   onImportPostman?: () => void;
   onImportCurl?: () => void;
   onImportOpenApi?: () => void;
+  onImportOpenApiYaml?: () => void;
   onImportMarkdown?: () => void;
   onImportApifox?: () => void;
   onImportApipost?: () => void;
@@ -545,7 +546,7 @@ function NodeRow({
 
 export function Sidebar(props: Props) {
   const t = useT();
-  const { tree, loading, genLogsRecords, genLogsLoading, genLogsSelected, onGenLogsSelect, onGenLogsReload, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, onOpenGenLogs, view, onSwitchView, onImportPostman, onImportCurl, onImportOpenApi, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onImportApiDoc, onImportExtra, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
+  const { tree, loading, genLogsRecords, genLogsLoading, genLogsSelected, onGenLogsSelect, onGenLogsReload, onNewApi, onNewFolder, onRename, onCopy, onDelete, onToggleDeprecated, onEditInfo, onVersions, onStats, onViewMarkdown, onOpenSettings, onOpenGenLogs, view, onSwitchView, onImportPostman, onImportCurl, onImportOpenApi, onImportOpenApiYaml, onImportMarkdown, onImportApifox, onImportApipost, onImportRaml, onImportWadl, onImportHar, onImportYapi, onImportEolink, onImportInsomnia, onImportJmeter, onImportApiDoc, onImportExtra, onExport, onExportNode, onViewApiDoc, vcs, onVcsSync, onVcsCommitPush, enableVersion, settings } = props;
   const { favorites, onReorderFavorites, onToggleFavorite } = props;
   /** 已收藏接口 uuid 集合（右键菜单显示收藏/取消收藏用） */
   const favoriteUuids = useMemo(
@@ -1229,6 +1230,17 @@ export function Sidebar(props: Props) {
                     >
                       <FormatIcon value="openapi" className="import-menu-icon" />
                       OpenAPI / Swagger（JSON / YAML）
+                    </button>
+                  )}
+                  {settings?.importTypes?.["openapi-yaml"] !== false && onImportOpenApiYaml && (
+                    <button
+                      onClick={() => {
+                        setImportMenu(false);
+                        onImportOpenApiYaml();
+                      }}
+                    >
+                      <FormatIcon value="openapi-yaml" className="import-menu-icon" />
+                      OpenAPI 3.0（YAML）
                     </button>
                   )}
                   {settings?.importTypes?.markdown !== false && onImportMarkdown && (

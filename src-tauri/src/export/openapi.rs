@@ -10,6 +10,11 @@ use std::fs;
 #[allow(unused_imports)]
 use std::path::{Path, PathBuf};
 
+/// 生成 OpenAPI 3.0 规范 YAML 文本（内容与 to_openapi 完全一致，仅序列化为 YAML）
+pub fn to_openapi_yaml(title: &str, apis: &[(Vec<(String, bool)>, ApiFile)]) -> Result<String, String> {
+    serde_yaml::to_string(&to_openapi(title, apis)).map_err(|e| format!("序列化失败: {e}"))
+}
+
 /// 生成 OpenAPI 3.0 规范 JSON
 pub fn to_openapi(title: &str, apis: &[(Vec<(String, bool)>, ApiFile)]) -> Value {
     let mut paths: Map<String, Value> = Map::new();

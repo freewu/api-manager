@@ -11,6 +11,7 @@ const FORMAT_ICON_FILES: Record<string, string> = {
   postman: "postman.png",
   curl: "curl.png",
   openapi: "swagger.png",
+  "openapi-yaml": "swagger.png",
   apifox: "apifox.png",
   apipost: "apipost.png",
   docsify: "docsify.svg",

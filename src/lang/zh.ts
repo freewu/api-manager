@@ -591,6 +591,7 @@ export const ZH: Record<string, string> = {
   "export.html": "HTML 文档（.html）",
   "export.markdown": "Markdown 文档（.md）",  "export.noData": "暂无数据",
   "export.openapi": "OpenAPI 3.0（.json）",
+  "export.openapi-yaml": "OpenAPI 3.0（.yaml）",
   "export.postman": "Postman Collection（.json）",
   "export.selected": "已选 {count} 项",
   "export.title": "导出接口 / 分组",

@@ -30,7 +30,7 @@ pub use self::eolink::to_eolink;
 pub use self::insomnia::to_insomnia;
 pub use self::jmeter::to_jmeter;
 pub use self::mkdocs::mkdocs_files;
-pub use self::openapi::to_openapi;
+pub use self::openapi::{to_openapi, to_openapi_yaml};
 pub use self::postman::to_postman;
 pub use self::raml::to_raml;
 pub use self::wadl::to_wadl;
@@ -238,16 +238,27 @@ pub(crate) fn export_selection(
             fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
             Ok(Some(path.to_string_lossy().to_string()))
         }
-        "openapi" => {
+        "openapi" | "openapi-yaml" => {
+            // YAML 与 JSON 内容同构（同一份 to_openapi 结果），仅序列化方式与文件后缀不同
+            let is_yaml = format == "openapi-yaml";
             let ws_name = read_info_file(&root).name.unwrap_or_default();
-            let v = to_openapi(&ws_name, &apis);
-            let content = serde_json::to_string_pretty(&v).map_err(|e| format!("序列化失败: {e}"))?;
+            let content = if is_yaml {
+                to_openapi_yaml(&ws_name, &apis)?
+            } else {
+                let v = to_openapi(&ws_name, &apis);
+                serde_json::to_string_pretty(&v).map_err(|e| format!("序列化失败: {e}"))?
+            };
+            let (title, file_name, filter_name, exts): (&str, &str, &str, &[&str]) = if is_yaml {
+                ("导出 OpenAPI 规范（YAML）", "openapi.yaml", "OpenAPI YAML", &["yaml", "yml"])
+            } else {
+                ("导出 OpenAPI 规范", "openapi.json", "OpenAPI", &["json"])
+            };
             let picked = app
                 .dialog()
                 .file()
-                .set_title("导出 OpenAPI 规范")
-                .set_file_name("openapi.json")
-                .add_filter("OpenAPI", &["json"])
+                .set_title(title)
+                .set_file_name(file_name)
+                .add_filter(filter_name, exts)
                 .blocking_save_file();
             let Some(p) = picked else {
                 return Ok(None);

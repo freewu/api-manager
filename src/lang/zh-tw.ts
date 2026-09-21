@@ -575,6 +575,7 @@ export const TW: Record<string, string> = {
   "export.html": "HTML 文檔（.html）",
   "export.markdown": "Markdown 文檔（.md）",  "export.noData": "暫無數據",
   "export.openapi": "OpenAPI 3.0（.json）",
+  "export.openapi-yaml": "OpenAPI 3.0（.yaml）",
   "export.postman": "Postman Collection（.json）",
   "export.selected": "已選 {count} 項",
   "export.title": "導出接口 / 分組",

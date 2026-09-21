@@ -2352,6 +2352,7 @@ pub fn run() {
             crate::demo::create_demo,
             crate::import::import_postman,
             crate::import::import_openapi,
+            crate::import::import_openapi_yaml,
             crate::import::import_apifox,
             crate::import::import_apipost,
             crate::import::import_raml,

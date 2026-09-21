@@ -45,6 +45,7 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
         [
           { value: "postman", label: t("export.postman") },
           { value: "openapi", label: t("export.openapi") },
+          { value: "openapi-yaml", label: t("export.openapi-yaml") },
           { value: "apifox", label: t("export.apifox") },
           { value: "apipost", label: t("export.apipost") },
           { value: "raml", label: t("export.raml") },

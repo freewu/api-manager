@@ -37,7 +37,7 @@
         for f in ["html", "markdown", "mkdocs", "docsify"] {
             assert!(supports_net_export(f), "{f} 应支持报文接口");
         }
-        for f in ["postman", "openapi", "yapi", "insomnia", "jmeter", "rap2-project"] {
+        for f in ["postman", "openapi", "openapi-yaml", "yapi", "insomnia", "jmeter", "rap2-project"] {
             assert!(!supports_net_export(f), "{f} 不应支持报文接口");
         }
     }
@@ -272,6 +272,21 @@
     }
 
     /// 同路径同方法的不同接口（如重名文件）在 OpenAPI 中不应互相覆盖，追加序号保留全部
+    /// OpenAPI YAML：与 JSON 内容同构，且为可回解析的合法 YAML
+    #[test]
+    fn openapi_yaml_shape() {
+        let apis = vec![(vec![("用户管理".to_string(), false)], sample())];
+        let yml = to_openapi_yaml("测试", &apis).expect("yaml 序列化");
+        // YAML 文本（非 JSON），可重新解析为同一份数据
+        assert!(!yml.trim_start().starts_with('{'), "yaml: {yml}");
+        assert!(yml.contains("openapi: 3.0.1"), "yaml: {yml}");
+        assert!(yml.contains("summary: 创建用户"), "yaml: {yml}");
+        let v: serde_json::Value = serde_yaml::from_str(&yml).unwrap();
+        assert_eq!(v["openapi"], "3.0.1");
+        assert_eq!(v["paths"]["/api/users"]["post"]["summary"], "创建用户");
+        assert_eq!(v["paths"]["/api/users"]["post"]["tags"][0], "用户管理");
+    }
+
     #[test]
     fn openapi_keeps_duplicate_path_method() {
         let mut a2 = sample();

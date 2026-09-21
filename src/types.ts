@@ -295,6 +295,7 @@ export interface VersionInfo {
 export type ExportFormat =
   | "postman"
   | "openapi"
+  | "openapi-yaml"
   | "docsify"
   | "mkdocs"
   | "markdown"
@@ -324,6 +325,7 @@ export type ExportFormat =
 export type ImportFormat =
   | "postman"
   | "openapi"
+  | "openapi-yaml"
   | "markdown"
   | "apifox"
   | "apipost"
@@ -360,12 +362,13 @@ export function supportsNetExport(format: ExportFormat): boolean {
 }
 
 /** 导入格式中必选（不可关闭）的类型 */
-export const REQUIRED_IMPORT_FORMATS: ImportFormat[] = ["postman", "openapi"];
+export const REQUIRED_IMPORT_FORMATS: ImportFormat[] = ["postman", "openapi", "openapi-yaml"];
 
 /** 导出格式中必选（不可关闭）的类型 */
 export const REQUIRED_EXPORT_FORMATS: ExportFormat[] = [
   "postman",
   "openapi",
+  "openapi-yaml",
   "docsify",
   "markdown",
   "html",
@@ -383,15 +386,15 @@ export interface AppSettings {
   enableDefaultHeaders: boolean;
   /** 默认 Header 列表 */
   defaultHeaders: KeyValue[];
-  /** 导出默认格式 */
+  /** 导出默认格式（默认 OpenAPI 3.0 YAML） */
   exportFormat: ExportFormat;
   /** 主页导入按钮总开关（false 时隐藏「导入」按钮） */
   importEnabled: boolean;
   /** 主页导出按钮总开关（false 时隐藏「导出」按钮） */
   exportEnabled: boolean;
-  /** 主页导入菜单展示的格式开关（postman/openapi 必选不可关闭） */
+  /** 主页导入菜单展示的格式开关（postman/openapi/openapi-yaml 必选不可关闭） */
   importTypes: Record<ImportFormat, boolean>;
-  /** 导出弹窗格式下拉展示的格式开关（postman/openapi/docsify/markdown/html 必选不可关闭） */
+  /** 导出弹窗格式下拉展示的格式开关（postman/openapi/openapi-yaml/docsify/markdown/html 必选不可关闭） */
   exportTypes: Record<ExportFormat, boolean>;
   /** HTML 文档悬浮导航栏位置（off 关闭 / left 左侧 / right 右侧） */
   htmlNav: "off" | "left" | "right";
@@ -413,13 +416,14 @@ export const defaultSettings = (): AppSettings => ({
   codegenLang: "bash",
   enableDefaultHeaders: false,
   defaultHeaders: [],
-  exportFormat: "postman",
+  exportFormat: "openapi-yaml",
   importEnabled: true,
   exportEnabled: true,
   // 默认仅开启 apifox / apipost（其余需在设置中手动开启；必选格式保持开启）
   importTypes: {
     postman: true,
     openapi: true,
+    "openapi-yaml": true,
     markdown: false,
     apifox: true,
     apipost: true,
@@ -447,6 +451,7 @@ export const defaultSettings = (): AppSettings => ({
   exportTypes: {
     postman: true,
     openapi: true,
+    "openapi-yaml": true,
     apifox: true,
     apipost: true,
     docsify: true,

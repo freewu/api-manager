@@ -15,6 +15,7 @@ export const ISSUE_URL = "https://github.com/freewu/api-manager/issues/new";
 export const IMPORT_FORMATS: { value: ImportFormat; labelKey: string }[] = [
   { value: "postman", labelKey: "export.postman" },
   { value: "openapi", labelKey: "export.openapi" },
+  { value: "openapi-yaml", labelKey: "export.openapi-yaml" },
   { value: "markdown", labelKey: "export.markdown" },
   { value: "apifox", labelKey: "export.apifox" },
   { value: "apipost", labelKey: "export.apipost" },
@@ -44,6 +45,7 @@ export const IMPORT_FORMATS: { value: ImportFormat; labelKey: string }[] = [
 export const EXPORT_FORMATS: { value: ExportFormat; labelKey: string }[] = [
   { value: "postman", labelKey: "export.postman" },
   { value: "openapi", labelKey: "export.openapi" },
+  { value: "openapi-yaml", labelKey: "export.openapi-yaml" },
   { value: "docsify", labelKey: "export.docsify" },
   { value: "mkdocs", labelKey: "export.mkdocs" },
   { value: "markdown", labelKey: "export.markdown" },
