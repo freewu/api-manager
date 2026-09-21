@@ -52,6 +52,8 @@
         <span class="badge">⚛️ React 18</span>
         <span class="badge" data-i18n="hero.badge.postman">🎨 Postman 风格</span>
         <span class="badge" data-i18n="hero.badge.standalone">📦 单文件分发</span>
+        <span class="badge" data-i18n="hero.badge.protocols">🔌 8 种协议接口</span>
+        <span class="badge" data-i18n="hero.badge.shortcuts">⌨️ 全局快捷键</span>
       </div>
     </div>
     <div class="hero-shot">
@@ -167,7 +169,7 @@
         <div class="feat-card">
           <div class="feat-shot"><img src="images/cn/export.png" data-shot="export" alt="一键导出" /></div>
           <h3 data-i18n="f5.title">一键导出</h3>
-          <p data-i18n="f5.desc">导出 Postman Collection、OpenAPI 3.0 或 Docsify 文档站点，方便共享与发布。</p>
+          <p data-i18n="f5.desc">28 种导出格式：Postman Collection、OpenAPI 3.0（JSON / YAML，默认 YAML）、Apifox、Apipost、Insomnia、JMeter、RAML、WADL、HAR，以及 Docsify / MkDocs / Markdown / HTML 文档站点。</p>
         </div>
 
         <div class="feat-card">
@@ -191,7 +193,7 @@
         <div class="feat-card">
           <div class="feat-shot"><img src="images/cn/import.png" data-shot="import" alt="多种格式导入" /></div>
           <h3 data-i18n="f9.title">多格式导入</h3>
-          <p data-i18n="f9.desc">支持 Postman Collection、OpenAPI (Swagger) 协议、Markdown 文档导入，接口与集合变量一键迁移。</p>
+          <p data-i18n="f9.desc">26 种导入格式：Postman Collection、OpenAPI (Swagger，JSON / YAML)、Markdown、Apifox、Apipost、cURL 等；接口与集合变量一键迁移，导入菜单可按需配置。</p>
         </div>
 
         <div class="feat-card">
@@ -209,7 +211,7 @@
         <div class="feat-card">
           <div class="feat-shot"><img src="images/cn/setting.png" data-shot="setting" alt="设置" /></div>
           <h3 data-i18n="f12.title">灵活设置</h3>
-          <p data-i18n="f12.desc">丰富的设置项（工作区、代码生成、导出格式等），打造个性化工作环境。</p>
+          <p data-i18n="f12.desc">12 个设置页签：工作区、语言、外观、接口版本、Mock 服务、代码生成、导出、导入、默认 Header、快捷键、同步远程、关于（开源组件清单），打造个性化工作环境。</p>
         </div>
 
         <div class="feat-card">
@@ -227,7 +229,25 @@
         <div class="feat-card">
           <div class="feat-shot"><img src="images/cn/api-add.png" data-shot="api-add" alt="新建接口" /></div>
           <h3 data-i18n="f15.title">多协议接口</h3>
-          <p data-i18n="f15.desc">新建接口支持 HTTP / WebSocket / Socket.IO / GraphQL 四种协议，一套工作区统一管理。</p>
+          <p data-i18n="f15.desc">新建接口支持 HTTP / WebSocket / Socket.IO / GraphQL / WebDAV / MCP / TCP / UDP 八种协议，一套工作区、一棵接口树统一管理。</p>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-emoji">⭐</div>
+          <h3 data-i18n="f16.title">收藏接口</h3>
+          <p data-i18n="f16.desc">接口右键选择「收藏」即可加入收藏视图，支持拖动排序，并拥有独立的编辑面板，常用接口触手可及。</p>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-emoji">⌨️</div>
+          <h3 data-i18n="f17.title">全局快捷键</h3>
+          <p data-i18n="f17.desc">9 个可自定义快捷键：视图切换（接口 / 对象 / 历史 / 生成记录 / 收藏）、导入导出、设置与环境管理，在设置中点击录制即可改键。</p>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-emoji">✍️</div>
+          <h3 data-i18n="f18.title">Markdown 接口描述</h3>
+          <p data-i18n="f18.desc">接口「描述」页签内置 Vditor Markdown 编辑器，所见即所得 + 高亮只读预览；全部资源本地化打包，完全离线可用。</p>
         </div>
 
       </div>
@@ -295,6 +315,15 @@
             <p data-i18n="stack.just.desc">命令运行器</p>
           </div>
         </a>
+      </div>
+      <div class="stack-badges">
+        <a href="https://tauri.app" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/Tauri-2-24C8DB?style=flat-square&amp;logo=tauri&amp;logoColor=white" alt="Tauri 2" /></a>
+        <a href="https://www.rust-lang.org" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/Rust-1.77%2B-000000?style=flat-square&amp;logo=rust&amp;logoColor=white" alt="Rust" /></a>
+        <a href="https://react.dev" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&amp;logo=react&amp;logoColor=black" alt="React 18" /></a>
+        <a href="https://www.typescriptlang.org" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&amp;logo=typescript&amp;logoColor=white" alt="TypeScript 5" /></a>
+        <a href="https://vitejs.dev" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&amp;logo=vite&amp;logoColor=white" alt="Vite 5" /></a>
+        <a href="https://b3log.org/vditor/" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/Vditor-4-4285F4?style=flat-square" alt="Vditor 4" /></a>
+        <a href="https://highlightjs.org" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/highlight.js-11-1E293B?style=flat-square" alt="highlight.js 11" /></a>
       </div>
     </div>
   </section>

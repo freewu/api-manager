@@ -236,6 +236,15 @@ img { max-width: 100%; display: block; }
 .feat-shot img { border-radius: 8px; border: 1px solid var(--border); }
 .feat-card h3 { font-size: 17px; padding: 16px 18px 6px; }
 .feat-card p { padding: 0 18px 18px; color: var(--muted); font-size: 14px; }
+/* 新功能卡片（无截图时使用图标占位） */
+.feat-emoji {
+  background: var(--primary-light);
+  border-bottom: 1px solid var(--border);
+  padding: 30px 14px;
+  text-align: center;
+  font-size: 40px;
+  line-height: 1;
+}
 
 /* ---------- 目录结构 ---------- */
 .structure { background: #fff; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
@@ -291,6 +300,14 @@ img { max-width: 100%; display: block; }
   margin-top: 6px;
   line-height: 1.5;
 }
+.stack-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 26px;
+}
+.stack-badges img { display: inline-block; height: 20px; }
 
 /* ---------- CTA ---------- */
 .cta {
