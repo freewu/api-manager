@@ -10,7 +10,6 @@ import {
   importJmeter,
   importMarkdown,
   importOpenApi,
-  importOpenApiYaml,
   importPostman,
   importRaml,
   importWadl,
@@ -77,17 +76,6 @@ export function useImports(opts: {
   const handleImportOpenApi = async () => {
     try {
       const result = await importOpenApi();
-      if (!result) return;
-      await finish("toast.importedOpenApi", { count: result.count });
-      showResult(result);
-    } catch (e) {
-      fail(e);
-    }
-  };
-
-  const handleImportOpenApiYaml = async () => {
-    try {
-      const result = await importOpenApiYaml();
       if (!result) return;
       await finish("toast.importedOpenApi", { count: result.count });
       showResult(result);
@@ -231,7 +219,6 @@ export function useImports(opts: {
   return {
     handleImportPostman,
     handleImportOpenApi,
-    handleImportOpenApiYaml,
     handleImportApifox,
     handleImportApipost,
     handleImportRaml,

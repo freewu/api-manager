@@ -114,11 +114,6 @@ export function importOpenApi(): Promise<OpenApiImportResult | null> {
   return invoke<OpenApiImportResult | null>("import_openapi");
 }
 
-/** 导入 OpenAPI 3.0 YAML 规范（弹窗只过滤 .yml / .yaml 文件） */
-export function importOpenApiYaml(): Promise<OpenApiImportResult | null> {
-  return invoke<OpenApiImportResult | null>("import_openapi_yaml");
-}
-
 /** 导入 Apifox 项目（弹窗选 .json 文件） */
 export function importApifox(): Promise<OpenApiImportResult | null> {
   return invoke<OpenApiImportResult | null>("import_apifox");

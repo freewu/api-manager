@@ -326,7 +326,6 @@ export type ExportFormat =
 export type ImportFormat =
   | "postman"
   | "openapi"
-  | "openapi-yaml"
   | "markdown"
   | "apifox"
   | "apipost"
@@ -363,7 +362,7 @@ export function supportsNetExport(format: ExportFormat): boolean {
 }
 
 /** 导入格式中必选（不可关闭）的类型 */
-export const REQUIRED_IMPORT_FORMATS: ImportFormat[] = ["postman", "openapi", "openapi-yaml"];
+export const REQUIRED_IMPORT_FORMATS: ImportFormat[] = ["postman", "openapi"];
 
 /** 导出格式中必选（不可关闭）的类型 */
 export const REQUIRED_EXPORT_FORMATS: ExportFormat[] = [
@@ -393,7 +392,7 @@ export interface AppSettings {
   importEnabled: boolean;
   /** 主页导出按钮总开关（false 时隐藏「导出」按钮） */
   exportEnabled: boolean;
-  /** 主页导入菜单展示的格式开关（postman/openapi/openapi-yaml 必选不可关闭） */
+  /** 主页导入菜单展示的格式开关（postman/openapi 必选不可关闭） */
   importTypes: Record<ImportFormat, boolean>;
   /** 导出弹窗格式下拉展示的格式开关（postman/openapi/openapi-yaml/docsify/markdown/html 必选不可关闭） */
   exportTypes: Record<ExportFormat, boolean>;
@@ -426,7 +425,6 @@ export const defaultSettings = (): AppSettings => ({
   importTypes: {
     postman: true,
     openapi: true,
-    "openapi-yaml": true,
     markdown: false,
     apifox: true,
     apipost: true,
