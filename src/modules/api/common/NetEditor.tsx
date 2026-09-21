@@ -1,7 +1,7 @@
 import { Fragment, lazy, Suspense, useEffect, useState } from "react";
 import { ApiFile, emptyNet } from "../../../types";
 import { PacketEditorList } from "./PacketEditorList";
-import { DescEditor } from "./Editor";
+import { DescEditor } from "./DescEditor";
 import { ExamplesTab } from "./ExamplesTab";
 import { NetDoc } from "./NetDoc";
 import { useT } from "../../../i18n";

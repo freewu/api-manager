@@ -29,6 +29,9 @@ export default defineConfig({
         manualChunks(id: string) {
           if (!id.includes("node_modules")) return undefined;
           if (id.includes("highlight.js")) return "highlight";
+          // Vditor（接口描述页签的 Markdown 编辑器）体积较大且只在打开描述页签时使用，
+          // 单独成块以便按需加载
+          if (id.includes("node_modules/vditor")) return "vditor";
           if (id.includes("@tauri-apps")) return "tauri-vendor";
           if (id.includes("react") || id.includes("scheduler")) return "react-vendor";
           return "vendor";

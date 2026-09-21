@@ -428,7 +428,6 @@ export const EN: Record<string, string> = {
   "editor.descHint": "Markdown syntax supported",
   "editor.descEdit": "Edit",
   "editor.descPreview": "Preview",
-  "editor.descPreviewTip": "Markdown preview",
   "editor.descPlaceholder": "Describe the API's purpose, parameters, return values, etc. (Markdown supported)",
   "editor.docBlockHint": "Field descriptions used to generate API documentation",
   "editor.enableMockHint": "Enable Mock (refresh Mock server after saving)",

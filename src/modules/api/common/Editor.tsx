@@ -2,7 +2,7 @@ import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from "
 import { ApiFile, BODY_MODES, BodyData, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, WEBDAV_METHODS, ObjectDef, ObjectGroup, ObjectStore, PrescriptResult, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../../../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { ExamplesTab } from "./ExamplesTab";
-import { renderMarkdown } from "../../../commands";
+import { DescEditor } from "./DescEditor";
 import { useT } from "../../../i18n";
 import { pickFile, listExamples, listCustomMocks, runPrescript, getGlobalVars, setGlobalVars } from "../../../commands";
 import JsCodeEditor from "./JsCodeEditor";
@@ -1842,64 +1842,3 @@ export function DocParamsEditor({ api, set, objectsList, objectsStore }: { api: 
   );
 }
 
-/** 接口描述：Markdown 编辑 / 预览切换（预览由后端 md_to_html 渲染） */
-export function DescEditor({
-  value,
-  onChange,
-  onCommit,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  onCommit?: () => void;
-}) {
-  const t = useT();
-  const [mode, setMode] = useState<"edit" | "preview">("edit");
-  const [html, setHtml] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const toPreview = async () => {
-    setBusy(true);
-    try {
-      setHtml(await renderMarkdown(value || ""));
-      setMode("preview");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="desc-root">
-      <div className="desc-toolbar">
-        <button
-          className={`btn-sm desc-mode-btn${mode === "edit" ? " active" : ""}`}
-          onClick={() => setMode("edit")}
-        >
-          ✏️ {t("editor.descEdit")}
-        </button>
-        <button
-          className={`btn-sm desc-mode-btn${mode === "preview" ? " active" : ""}`}
-          disabled={busy}
-          onClick={() => void toPreview()}
-        >
-          👁 {t("editor.descPreview")}
-        </button>
-        {mode === "preview" && (
-          <span className="desc-mode-tip">{t("editor.descPreviewTip")}</span>
-        )}
-      </div>
-      {mode === "edit" ? (
-        <textarea
-          className="desc-area"
-          value={value}
-          placeholder={t("editor.descPlaceholder")}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={onCommit}
-          spellCheck={false}
-        />
-      ) : (
-        <div className="desc-preview md-preview" dangerouslySetInnerHTML={{ __html: html }} />
-      )}
-      <div className="desc-hint">{t("editor.descHint")}</div>
-    </div>
-  );
-}
