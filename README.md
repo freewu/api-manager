@@ -229,9 +229,10 @@ Example: set `baseUrl` in `__info.json` to `{{baseUrl}}` and the request target 
 - WebView2 (bundled with Windows 10/11)
 - [just](https://github.com/casey/just) (command runner)
 
-### Common Commands (just)
+### Common Commands ([justfile](justfile))
 
 ```bash
+just init        # install dev prerequisites (Rust toolchain + Node.js)
 just dev         # run in dev mode (frontend HMR + Rust dev)
 just test        # run all tests (Rust unit tests + frontend type check + frontend build)
 just build       # full package: exe + NSIS / MSI installer (optional)

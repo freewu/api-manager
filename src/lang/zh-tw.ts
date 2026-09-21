@@ -361,6 +361,8 @@ export const TW: Record<string, string> = {
   "settings.projectUrl": "項目地址",
   "settings.issueUrl": "提交 Issue",
   "settings.issueUrlDesc": "反饋問題、建議新功能",
+  "settings.justfileTitle": "開發命令（justfile）",
+  "settings.justfileDesc": "just dev / just test / just build / just release …",
   "settings.aboutDeps": "開源組件",
   "settings.aboutDepsHint": "徽章由 shields.io 生成，離線時自動降級為文字標籤",
   "settings.aboutCoreStack": "核心技術棧",

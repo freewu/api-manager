@@ -371,6 +371,8 @@ export const EN: Record<string, string> = {
   "settings.projectUrl": "Project URL",
   "settings.issueUrl": "Submit Issue",
   "settings.issueUrlDesc": "Report bugs, suggest features",
+  "settings.justfileTitle": "Dev commands (justfile)",
+  "settings.justfileDesc": "just dev / just test / just build / just release …",
   "settings.aboutDeps": "Open source components",
   "settings.aboutDepsHint": "Badges powered by shields.io; fall back to text labels when offline",
   "settings.aboutCoreStack": "Core stack",

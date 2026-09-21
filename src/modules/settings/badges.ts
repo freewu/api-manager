@@ -82,6 +82,7 @@ export const CORE_STACK: StackBadge[] = [
   { label: "React", version: "18", color: "61DAFB", logo: "react", logoColor: "black", url: "https://react.dev" },
   { label: "TypeScript", version: "5", color: "3178C6", logo: "typescript", url: "https://www.typescriptlang.org" },
   { label: "Vite", version: "5", color: "646CFF", logo: "vite", url: "https://vitejs.dev" },
+  { label: "just", version: "command runner", color: "7B68EE", logo: "just", url: "https://just.systems" },
   { label: "Vditor", version: "4", color: "4285F4", url: "https://b3log.org/vditor/" },
   { label: "highlight.js", version: "11", color: "1E293B", url: "https://highlightjs.org" },
   { label: "Socket.IO", version: "4", color: "010101", logo: "socketdotio", url: "https://socket.io" },

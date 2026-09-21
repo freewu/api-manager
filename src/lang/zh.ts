@@ -375,6 +375,8 @@ export const ZH: Record<string, string> = {
   "settings.projectUrl": "项目地址",
   "settings.issueUrl": "提交 Issue",
   "settings.issueUrlDesc": "反馈问题、建议新功能",
+  "settings.justfileTitle": "开发命令（justfile）",
+  "settings.justfileDesc": "just dev / just test / just build / just release …",
   "settings.aboutDeps": "开源组件",
   "settings.aboutDepsHint": "徽章由 shields.io 生成，离线时自动降级为文字标签",
   "settings.aboutCoreStack": "核心技术栈",

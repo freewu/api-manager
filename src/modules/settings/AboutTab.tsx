@@ -2,7 +2,7 @@ import { useState } from "react";
 import { openExternal } from "../../commands";
 import { useT } from "../../i18n";
 import logoUrl from "../../assets/logo.png";
-import { ISSUE_URL, PROJECT_URL } from "./constants";
+import { ISSUE_URL, JUSTFILE_URL, PROJECT_URL } from "./constants";
 import { DEP_GROUPS } from "./deps";
 import { badgeUrl, CORE_STACK, groupBadges, type StackBadge } from "./badges";
 import { SettingsSection } from "./Section";
@@ -84,6 +84,7 @@ export function AboutTab({ appVersion }: Props) {
       <div className="about-links">
         <LinkRow icon="📦" title={t("settings.projectUrl")} desc={PROJECT_URL} url={PROJECT_URL} />
         <LinkRow icon="🐛" title={t("settings.issueUrl")} desc={t("settings.issueUrlDesc")} url={ISSUE_URL} />
+        <LinkRow icon="🛠️" title={t("settings.justfileTitle")} desc={t("settings.justfileDesc")} url={JUSTFILE_URL} />
       </div>
       <div className="about-deps">
         <div className="about-deps-head">

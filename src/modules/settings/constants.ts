@@ -7,9 +7,10 @@ export const MODES = [
   { value: "system", labelKey: "settings.mode.system" },
 ] as const;
 
-/** 关于页：项目地址 / 反馈地址 */
+/** 关于页：项目地址 / 反馈地址 / 构建脚本（justfile） */
 export const PROJECT_URL = "https://github.com/freewu/api-manager";
 export const ISSUE_URL = "https://github.com/freewu/api-manager/issues/new";
+export const JUSTFILE_URL = "https://github.com/freewu/api-manager/blob/main/justfile";
 
 /** 导入格式列表（含可开关的） */
 export const IMPORT_FORMATS: { value: ImportFormat; labelKey: string }[] = [

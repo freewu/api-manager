@@ -229,9 +229,10 @@
 - WebView2（Windows 10/11 自带）
 - [just](https://github.com/casey/just)（命令运行器）
 
-### 常用命令（just）
+### 常用命令（[justfile](justfile)）
 
 ```bash
+just init        # 安装开发环境依赖（Rust 工具链 + Node.js）
 just dev         # 开发模式运行（前端热更新 + Rust dev）
 just test        # 运行全部测试（Rust 单测 + 前端类型检查 + 前端构建）
 just build       # 完整打包：exe + NSIS / MSI 安装程序（可选）
