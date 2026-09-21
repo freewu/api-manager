@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { openExternal } from "../../commands";
 import { useT } from "../../i18n";
 import logoUrl from "../../assets/logo.png";
 import { ISSUE_URL, PROJECT_URL } from "./constants";
 import { DEP_GROUPS } from "./deps";
+import { badgeUrl, CORE_STACK, groupBadges, type StackBadge } from "./badges";
 import { SettingsSection } from "./Section";
 
 interface Props {
@@ -29,7 +31,41 @@ function LinkRow({ icon, title, desc, url }: { icon: string; title: string; desc
   );
 }
 
-/** 关于：应用信息、版本号、项目地址 / 反馈地址、开源组件 */
+/** 单个技术栈徽章（shields.io）：离线 / 加载失败时自动降级为文字标签 */
+function StackBadgeItem({ badge }: { badge: StackBadge }) {
+  const [failed, setFailed] = useState(false);
+  const alt = `${badge.label} ${badge.version}`;
+  return (
+    <button
+      type="button"
+      className={failed ? "about-dep" : "about-dep about-dep--badge"}
+      title={`${alt} ↗`}
+      onClick={() => {
+        void openExternal(badge.url);
+      }}
+    >
+      {failed ? (
+        <>
+          <span className="about-dep-name">{badge.label}</span>
+          <span className="about-dep-version">{badge.version}</span>
+        </>
+      ) : (
+        <img
+          className="about-dep-badge"
+          src={badgeUrl(badge)}
+          alt={alt}
+          loading="lazy"
+          draggable={false}
+          onError={() => {
+            setFailed(true);
+          }}
+        />
+      )}
+    </button>
+  );
+}
+
+/** 关于：应用信息、版本号、项目地址 / 反馈地址、技术栈徽章、开源组件 */
 export function AboutTab({ appVersion }: Props) {
   const t = useT();
 
@@ -54,6 +90,14 @@ export function AboutTab({ appVersion }: Props) {
           <span className="about-deps-title">{t("settings.aboutDeps")}</span>
           <span className="about-deps-hint">{t("settings.aboutDepsHint")}</span>
         </div>
+        <div className="about-deps-group about-deps-core">
+          <div className="about-deps-group-title">{t("settings.aboutCoreStack")}</div>
+          <div className="about-deps-list">
+            {CORE_STACK.map((badge) => (
+              <StackBadgeItem badge={badge} key={badge.label} />
+            ))}
+          </div>
+        </div>
         {DEP_GROUPS.map((group) => (
           <div className="about-deps-group" key={group.titleKey}>
             <div className="about-deps-group-title">
@@ -61,19 +105,8 @@ export function AboutTab({ appVersion }: Props) {
               <span className="about-deps-count">{group.deps.length}</span>
             </div>
             <div className="about-deps-list">
-              {group.deps.map((dep) => (
-                <button
-                  type="button"
-                  className="about-dep"
-                  key={dep.name}
-                  title={dep.url}
-                  onClick={() => {
-                    void openExternal(dep.url);
-                  }}
-                >
-                  <span className="about-dep-name">{dep.name}</span>
-                  <span className="about-dep-version">{dep.version}</span>
-                </button>
+              {groupBadges(group).map((badge) => (
+                <StackBadgeItem badge={badge} key={badge.label} />
               ))}
             </div>
           </div>

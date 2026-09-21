@@ -18,6 +18,10 @@ export interface ProjectDep {
 export interface DepGroup {
   /** 分组标题 i18n key */
   titleKey: string;
+  /** 分组徽章颜色（shields.io 右侧背景色，十六进制不带 #） */
+  color: string;
+  /** 分组兼置图标（组件名无精确图标时使用） */
+  logo?: string;
   deps: ProjectDep[];
 }
 
@@ -67,6 +71,6 @@ function rustDeps(): ProjectDep[] {
 
 /** 开源组件分组：前端（npm）+ 后端（Cargo） */
 export const DEP_GROUPS: DepGroup[] = [
-  { titleKey: "settings.aboutDepsFrontend", deps: frontendDeps() },
-  { titleKey: "settings.aboutDepsRust", deps: rustDeps() },
+  { titleKey: "settings.aboutDepsFrontend", color: "2E59A7", deps: frontendDeps() },
+  { titleKey: "settings.aboutDepsRust", color: "B7410E", logo: "rust", deps: rustDeps() },
 ];

@@ -91,7 +91,7 @@
 - 📊 **Statistics** — API counts, Mock usage and request-method distribution per group / workspace
 - 🖥️ **System tray** — closing the window minimizes to tray; the tray menu can show/hide the window, start/stop Mock, switch the display mode and language, check for updates, or quit
 - 🔔 **Update check** — checks GitHub Releases on startup and offers a one-click jump to the download page
-- ℹ️ **About tab** — *Settings → About* lists every open-source component the app depends on (name, version, jump link)
+- ℹ️ **About tab** — *Settings → About* renders the whole tech stack (Tauri / Rust / React / TypeScript / Vite …) as shields.io badges plus the full open-source component list (name, version, jump link); badges degrade to text labels when offline
 - 🎨 **Themes** — dark / light / follow system, applied instantly
 - 🌍 **Trilingual UI** — 简体中文 / 繁體中文 / English, switchable at any time
 
@@ -211,7 +211,7 @@ Example: set `baseUrl` in `__info.json` to `{{baseUrl}}` and the request target 
 | 🧾 Default Headers | Headers automatically attached to new APIs |
 | ⌨️ Shortcuts | Record / reset the global shortcuts |
 | 🔄 Remote Sync | Git / SVN remote sync options |
-| ℹ️ About | App version, project links and the open-source component list |
+| ℹ️ About | App version, project links, tech-stack badges and the open-source component list |
 
 ## System Tray
 
