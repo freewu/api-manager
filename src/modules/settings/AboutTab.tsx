@@ -2,6 +2,7 @@ import { openExternal } from "../../commands";
 import { useT } from "../../i18n";
 import logoUrl from "../../assets/logo.png";
 import { ISSUE_URL, PROJECT_URL } from "./constants";
+import { DEP_GROUPS } from "./deps";
 import { SettingsSection } from "./Section";
 
 interface Props {
@@ -28,7 +29,7 @@ function LinkRow({ icon, title, desc, url }: { icon: string; title: string; desc
   );
 }
 
-/** 关于：应用信息、版本号、项目地址 / 反馈地址 */
+/** 关于：应用信息、版本号、项目地址 / 反馈地址、开源组件 */
 export function AboutTab({ appVersion }: Props) {
   const t = useT();
 
@@ -47,6 +48,36 @@ export function AboutTab({ appVersion }: Props) {
       <div className="about-links">
         <LinkRow icon="📦" title={t("settings.projectUrl")} desc={PROJECT_URL} url={PROJECT_URL} />
         <LinkRow icon="🐛" title={t("settings.issueUrl")} desc={t("settings.issueUrlDesc")} url={ISSUE_URL} />
+      </div>
+      <div className="about-deps">
+        <div className="about-deps-head">
+          <span className="about-deps-title">{t("settings.aboutDeps")}</span>
+          <span className="about-deps-hint">{t("settings.aboutDepsHint")}</span>
+        </div>
+        {DEP_GROUPS.map((group) => (
+          <div className="about-deps-group" key={group.titleKey}>
+            <div className="about-deps-group-title">
+              {t(group.titleKey)}
+              <span className="about-deps-count">{group.deps.length}</span>
+            </div>
+            <div className="about-deps-list">
+              {group.deps.map((dep) => (
+                <button
+                  type="button"
+                  className="about-dep"
+                  key={dep.name}
+                  title={dep.url}
+                  onClick={() => {
+                    void openExternal(dep.url);
+                  }}
+                >
+                  <span className="about-dep-name">{dep.name}</span>
+                  <span className="about-dep-version">{dep.version}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </SettingsSection>
   );
