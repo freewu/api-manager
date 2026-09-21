@@ -1,5 +1,33 @@
 # API Manager 更新记录
 
+## v1.0.0
+
+### ✍️ 接口描述编辑
+- 「接口描述」页签改用 **Vditor** 编辑器：所见即所得 Markdown，支持标题 / 加粗 / 列表 / 表格 / 引用 / 代码块 / 链接 / 撤销重做等常用工具，编辑与预览同屏，跟随明暗主题
+- Vditor 全部资源（Lute 引擎、图标、语言包、样式）**内置本地**，离线环境可用，不请求任何 CDN
+
+### 📤 导出 / 导入
+- 导出新增 **OpenAPI 3.0（YAML）** 格式，并设为**默认导出格式**；与 OpenAPI 3.0（JSON）共用同一套转换逻辑，产物为标准 `openapi.yaml`
+- 导入菜单统一为 **OpenAPI / Swagger（JSON / YAML）**：`.yml` / `.yaml` / `.json` 自动识别（先按 YAML 解析，失败再按 JSON 解析）
+
+### ⌨️ 全局快捷键（设置 → 快捷键）
+- 新增设置页签，可视化**录制 / 清除 / 恢复默认**全局快捷键，改动实时生效并自动保存
+- 默认绑定：`Ctrl+A` 接口管理、`Ctrl+O` 对象管理、`Ctrl+H` 请求历史、`Ctrl+G` 数据生成记录、`Ctrl+F` 收藏、`Ctrl+E` 切到接口管理并打开导出、`Ctrl+I` 切到接口管理并打开导入、`Ctrl+S` 打开设置、`Ctrl+M` 打开环境管理
+- 修饰键严格匹配（`Ctrl+A` 与 `Ctrl+Shift+A` 为不同键位）；macOS 的 `Command` 等同 `Ctrl`，配置跨平台通用
+- 焦点在输入框 / 文本域 / Markdown 编辑器内时不触发，保留原生复制粘贴等操作；键位重复时给出 ⚠ 提示
+
+### ℹ️ 设置 → 关于
+- 聚合展示项目使用的开源组件（前端 `package.json` + Rust `Cargo.toml` 自动解析），列出名称与声明版本号，点击跳转 npm / crates.io
+
+### 🐞 修复
+- 修复导入 / 导出总开关与各格式开关**未持久化**：Rust 设置结构体缺少对应字段，重启后开关状态丢失；同时修复切换托盘显示模式会连带清空这些开关的问题
+- 收藏列表为空时，右侧区域同步为空并提示「收藏接口」，不再残留上一次查看的接口内容
+
+### 🧱 内部重构
+- 前端页面目录按模块重组（`src/modules/`：layout / api / object / history / favorite / export / gen-records / env / version / stat / apidoc / markdown / settings），`src/components` 目录下线
+- 各协议目录（HTTP / WebSocket / Socket.IO / GraphQL / MCP / WebDAV / TCP / UDP）新增 `Index.tsx` 页面模块与统一注册表，TCP / UDP 共用网络组件收敛到 `api/common`
+- 设置弹窗拆分到 `src/modules/settings/`，每个页签独立为 `xxxTab.tsx`
+
 ## v0.8.0
 
 ### 🔗 MCP 接口
