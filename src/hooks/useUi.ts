@@ -8,6 +8,10 @@ const RESPONSE_WINDOW_RATIO = 0.4;
 const FALLBACK_EDITOR_RATIO = 0.6;
 /** 旧版默认占比（响应偏高），未自定义过的用户迁移到新默认 */
 const LEGACY_EDITOR_RATIO = 0.45;
+/** 侧栏宽度范围（与 styles/sidebar.css 的 min-width / max-width 保持一致） */
+const MIN_SIDEBAR_WIDTH = 260;
+const MAX_SIDEBAR_WIDTH = 640;
+const DEFAULT_SIDEBAR_WIDTH = 310;
 
 /**
  * 计算编辑器默认占比：使响应面板默认高度等于窗体高度的 2/5。
@@ -39,7 +43,7 @@ export function useUi() {
   // ---------- 左右分栏宽度 ----------
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = Number(localStorage.getItem("sidebar-width"));
-    return saved >= 200 && saved <= 640 ? saved : 310;
+    return saved >= MIN_SIDEBAR_WIDTH && saved <= MAX_SIDEBAR_WIDTH ? saved : DEFAULT_SIDEBAR_WIDTH;
   });
   const sidebarWidthRef = useRef(sidebarWidth);
 
@@ -48,7 +52,7 @@ export function useUi() {
     const startX = e.clientX;
     const startW = sidebarWidthRef.current;
     const onMove = (ev: MouseEvent) => {
-      const w = Math.min(640, Math.max(200, startW + ev.clientX - startX));
+      const w = Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, startW + ev.clientX - startX));
       sidebarWidthRef.current = w;
       setSidebarWidth(w);
     };
@@ -66,9 +70,9 @@ export function useUi() {
   }, []);
 
   const resetSidebarWidth = useCallback(() => {
-    setSidebarWidth(310);
-    sidebarWidthRef.current = 310;
-    localStorage.setItem("sidebar-width", "310");
+    setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+    sidebarWidthRef.current = DEFAULT_SIDEBAR_WIDTH;
+    localStorage.setItem("sidebar-width", String(DEFAULT_SIDEBAR_WIDTH));
   }, []);
 
   // ---------- 编辑器 / 响应上下分栏比例 ----------

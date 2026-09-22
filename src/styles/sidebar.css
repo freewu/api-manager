@@ -1,7 +1,9 @@
 /* ============ 侧边栏 ============ */
 .sidebar {
   width: 310px;
-  min-width: 200px;
+  /* 最小宽度需容纳搜索框 + 废弃筛选 + 收起/展开按钮，避免高级搜索按钮被挤出隐藏
+     （与 hooks/useUi.ts 的 MIN_SIDEBAR_WIDTH 保持一致） */
+  min-width: 260px;
   max-width: 640px;
   flex-shrink: 0;
   display: flex;
@@ -54,7 +56,8 @@
 }
 .sidebar-search-row .search-box {
   flex: 1;
-  min-width: 0;
+  /* 保底宽度：保证图标 / 高级搜索按钮始终可见 */
+  min-width: 120px;
 }
 
 .search-box {
@@ -71,6 +74,8 @@
 }
 .search-box input {
   flex: 1;
+  /* 允许输入框收缩（默认 min-width:auto 会以其固有宽度撑开，把后面的高级搜索按钮挤出容器） */
+  min-width: 0;
   background: transparent;
   border: none;
   outline: none;
