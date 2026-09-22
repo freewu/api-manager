@@ -77,13 +77,15 @@ function collectGroupNames(node: TreeNode, targetPath: string, chain: string[]):
   return null;
 }
 
-/** 空目录演示案例可选类型（http/websocket/socketio/graphql/webdav/tcp/udp/object） */
+/** 空目录演示案例可选类型（http/webhook/websocket/socketio/graphql/webdav/mcp/tcp/udp/object） */
 const ALL_DEMO_KINDS: Record<string, boolean> = {
   http: true,
+  webhook: true,
   websocket: true,
   socketio: true,
   graphql: true,
   webdav: true,
+  mcp: true,
   tcp: true,
   udp: true,
   object: true,

@@ -149,6 +149,7 @@ function protoLabel(node: TreeNode): string {
 /** 高级搜索可选的接口协议类型 */
 const PROTOCOL_OPTIONS = [
   { id: "http", label: "HTTP" },
+  { id: "webhook", label: "Webhook" },
   { id: "websocket", label: "WebSocket" },
   { id: "socketio", label: "Socket.IO" },
   { id: "graphql", label: "GraphQL" },

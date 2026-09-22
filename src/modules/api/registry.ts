@@ -7,6 +7,7 @@ import { tcpModule } from "./tcp/Index";
 import { ApiProtocolModule } from "./types";
 import { udpModule } from "./udp/Index";
 import { webdavModule } from "./webdav/Index";
+import { webhookModule } from "./webhook/Index";
 import { websocketModule } from "./websocket/Index";
 
 /**
@@ -15,6 +16,7 @@ import { websocketModule } from "./websocket/Index";
  */
 export const API_MODULES: Record<ApiProtocol, ApiProtocolModule> = {
   http: httpModule,
+  webhook: webhookModule,
   websocket: websocketModule,
   socketio: socketioModule,
   graphql: graphqlModule,

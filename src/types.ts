@@ -2,7 +2,7 @@
 import { DEFAULT_SHORTCUTS, ShortcutAction } from "./utils/shortcuts";
 
 /** 接口协议类型：http=HTTP / websocket·socketio=实时 / graphql·webdav·mcp=HTTP 形态 / tcp·udp=网络封包 */
-export type ApiProtocol = "http" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp";
+export type ApiProtocol = "http" | "webhook" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp";
 
 export interface KeyValue {
   key: string;
@@ -132,7 +132,7 @@ export interface ApiFile {
   docParams: DocParam[];
   /** 是否已标记废弃 */
   deprecated: boolean;
-  /** 接口协议：http / websocket / socketio / graphql / webdav / mcp / tcp / udp */
+  /** 接口协议：http / webhook / websocket / socketio / graphql / webdav / mcp / tcp / udp */
   protocol: ApiProtocol;
   /** 封包字段定义（TCP / UDP） */
   pack?: PacketField[];
@@ -651,6 +651,9 @@ export const METHODS = [
   "HEAD",
   "OPTIONS",
 ] as const;
+
+/** Webhook 仅支持 GET / POST 两种请求方法 */
+export const WEBHOOK_METHODS = ["GET", "POST"] as const;
 
 /** WebDAV 扩展方法（除标准 HTTP 方法外的 WebDAV 专用协议） */
 export const WEBDAV_METHODS = [

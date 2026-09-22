@@ -21,6 +21,7 @@ import iconWs from "../../assets/icon-websocket.png";
 import iconSocketIo from "../../assets/icon-socketio.png";
 import iconGql from "../../assets/icon-graphql.png";
 import iconWebdav from "../../../asserts/icon/WebDAV.png";
+import iconWebhook from "../../../asserts/icon/webhook.png";
 import iconMcp from "../../../asserts/icon/mcp.png";
 import iconTcp from "../../../asserts/icon/TCP.png";
 import iconUdp from "../../../asserts/icon/UDP.png";
@@ -78,7 +79,7 @@ interface AppModalsProps {
   modal: ModalState | null;
   modalText: string;
   modalPath: string;
-  modalProtocol: "http" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp";
+  modalProtocol: "http" | "webhook" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp";
   infoForm: InfoForm;
   demoTypes: Record<string, boolean>;
   workspace: string | null;
@@ -102,7 +103,7 @@ interface AppModalsProps {
   onCloseModal: () => void;
   onModalTextChange: (v: string) => void;
   onModalPathChange: (v: string) => void;
-  onModalProtocolChange: (v: "http" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp") => void;
+  onModalProtocolChange: (v: "http" | "webhook" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp") => void;
   onInfoFormChange: (f: InfoForm) => void;
   onToggleDemoKind: (kind: string, enabled: boolean) => void;
   onDoNewApi: () => void;
@@ -176,6 +177,7 @@ export function AppModals({
   /** 空目录演示案例的类型清单（复选框，默认全部勾选，勾选的才会生成） */
   const demoKinds = [
     { kind: "http", label: t("editor.httpType"), icon: iconHttp },
+    { kind: "webhook", label: t("editor.webhookType"), icon: iconWebhook },
     { kind: "websocket", label: t("editor.wsType"), icon: iconWs },
     { kind: "socketio", label: t("editor.socketIoType"), icon: iconSocketIo },
     { kind: "graphql", label: t("editor.graphqlType"), icon: iconGql },
@@ -331,6 +333,7 @@ export function AppModals({
               {(
                 [
                   { value: "http", label: t("editor.httpType"), icon: iconHttp },
+                  { value: "webhook", label: t("editor.webhookType"), icon: iconWebhook },
                   { value: "websocket", label: t("editor.wsType"), icon: iconWs },
                   { value: "socketio", label: t("editor.socketIoType"), icon: iconSocketIo },
                   { value: "graphql", label: t("editor.graphqlType"), icon: iconGql },
@@ -351,7 +354,7 @@ export function AppModals({
                     checked={modalProtocol === o.value}
                     onChange={() =>
                       onModalProtocolChange(
-                        o.value as "http" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp"
+                        o.value as "http" | "webhook" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp"
                       )
                     }
                   />

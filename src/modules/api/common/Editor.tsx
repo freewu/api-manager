@@ -1,5 +1,5 @@
 import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { ApiFile, BODY_MODES, BodyData, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, WEBDAV_METHODS, ObjectDef, ObjectGroup, ObjectStore, PrescriptResult, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../../../types";
+import { ApiFile, BODY_MODES, BodyData, DOC_TYPES, DocParam, DocSource, KeyValue, METHODS, WEBDAV_METHODS, WEBHOOK_METHODS, ObjectDef, ObjectGroup, ObjectStore, PrescriptResult, ResponseItem, emptyDocParam, emptyResponse, respSource } from "../../../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { ExamplesTab } from "./ExamplesTab";
 import { DescEditor } from "./DescEditor";
@@ -11,6 +11,7 @@ import MockPicker from "./MockPicker";
 import { Modal } from "../../layout/Modal";
 import { renderMockBody } from "../../../utils/mockData";
 import { prettyXml } from "../../../utils/format";
+import { WEBHOOK_PRESETS } from "../webhook/templates";
 
 // 代码生成页签：highlight.js 体积较大，按需懒加载（首次打开「代码」页签时才下载）
 const CodeTab = lazy(() => import("./CodeTab").then((m) => ({ default: m.CodeTab })));
@@ -112,8 +113,14 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
   const isGraphql = api.protocol === "graphql";
   /** 是否 WebDAV 接口（编辑体验与 HTTP 一致，方法下拉框含 WebDAV 协议；不支持 Mock） */
   const isWebdav = api.protocol === "webdav";
-  /** WebDAV：标准 HTTP 方法 + WebDAV 专用方法 */
-  const methodOptions = isWebdav ? [...METHODS, ...WEBDAV_METHODS] : METHODS;
+  /** 是否 Webhook 接口（HTTP 形态，仅 GET / POST，提供平台预设自动填充参数与签名） */
+  const isWebhook = api.protocol === "webhook";
+  /** WebDAV：标准 HTTP 方法 + WebDAV 专用方法；Webhook：仅 GET / POST；其余为标准 HTTP 方法 */
+  const methodOptions = isWebdav
+    ? [...METHODS, ...WEBDAV_METHODS]
+    : isWebhook
+      ? [...WEBHOOK_METHODS]
+      : METHODS;
   /** 是否 MCP 接口（JSON-RPC 2.0 over Streamable HTTP，编辑体验与 HTTP 一致；不支持 Mock） */
   const isMcp = api.protocol === "mcp";
   /** MCP 无 Query / Path 页签，页签回退到 Body */
@@ -124,6 +131,8 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
     ? api.body.mode
     : "raw";
   const [tab, setTab] = useState<Tab>("params");
+  /** Webhook 平台预设选择（仅 Webhook 接口使用，切换接口时重置） */
+  const [webhookPreset, setWebhookPreset] = useState("");
   /** JSON 格式化失败提示（body / mock 页签共用） */
   const [formatError, setFormatError] = useState<string | null>(null);
   /** 示例记录数（「示例」页签角标） */
@@ -153,6 +162,10 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
       alive = false;
     };
   }, [api.uuid]);
+  // 切换接口 / 协议后重置 Webhook 平台预设选择
+  useEffect(() => {
+    setWebhookPreset("");
+  }, [api.uuid, api.protocol]);
   /** URL 为空时点击发送的红框提示 */
   const [urlError, setUrlError] = useState(false);
   /** URL 完全等于 bluefrog 时触发的彩蛋 */
@@ -343,6 +356,17 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
 
   const set = (patch: Partial<ApiFile>) => onChange({ ...api, ...patch });
 
+  /** Webhook 平台预设切换：自动填充方法 / 请求头 / 查询参数 / 请求体 / 前置脚本（签名） */
+  const applyWebhookPreset = (id: string) => {
+    setWebhookPreset(id);
+    const preset = WEBHOOK_PRESETS.find((p) => p.id === id);
+    if (!preset) return;
+    onChange({ ...api, ...preset.apply() });
+    // 预设通常带请求体 / 签名脚本，切到 Body 页签便于直接查看编辑
+    setTab("body");
+    onTabChange?.("body");
+  };
+
   /** ws/wss 协议切换 */
   const switchScheme = (scheme: "ws" | "wss") => {
     const cur = effectiveUrl;
@@ -462,25 +486,42 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
             <option value="POST">POST</option>
           </select>
         ) : (
-          <select
-            className="method-select"
-            value={api.method}
-            onChange={(e) => {
-              const v = e.target.value;
-              set({ method: v });
-              // POST / PUT / PATCH 有请求体，切换时默认选 Body 页签
-              if (v === "POST" || v === "PUT" || v === "PATCH") {
-                setTab("body");
-                onTabChange?.("body");
-              }
-            }}
-          >
-            {methodOptions.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+          <>
+            <select
+              className="method-select"
+              value={api.method}
+              onChange={(e) => {
+                const v = e.target.value;
+                set({ method: v });
+                // POST / PUT / PATCH 有请求体，切换时默认选 Body 页签
+                if (v === "POST" || v === "PUT" || v === "PATCH") {
+                  setTab("body");
+                  onTabChange?.("body");
+                }
+              }}
+            >
+              {methodOptions.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            {isWebhook && (
+              <select
+                className="method-select webhook-preset-select"
+                value={webhookPreset}
+                title={t("editor.webhookPresetTip")}
+                onChange={(e) => applyWebhookPreset(e.target.value)}
+              >
+                <option value="">{t("editor.webhookPreset")}</option>
+                {WEBHOOK_PRESETS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </>
         )}
         <div className={`url-input-wrap${urlError ? " url-error" : ""}`}>
           <span className="url-scheme">{isWs ? "WS" : isSocketIo ? "SIO" : "URL"}</span>

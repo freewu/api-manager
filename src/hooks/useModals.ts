@@ -62,12 +62,13 @@ export function useModals(opts: {
   /** 打开弹窗时记录的原始 path，用于确认时判断是否有改动 */
   const [modalPathInit, setModalPathInit] = useState("");
   const [modalProtocol, setModalProtocol] = useState<
-    "http" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp"
+    "http" | "webhook" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp"
   >("http");
   const [infoForm, setInfoForm] = useState<InfoForm>(emptyInfoForm());
   /** 空目录演示案例生成类型勾选（http/websocket/socketio/graphql/webdav/mcp/tcp/udp/object，默认全部勾选） */
   const [demoTypes, setDemoTypes] = useState<Record<string, boolean>>({
     http: true,
+    webhook: true,
     websocket: true,
     socketio: true,
     graphql: true,
@@ -144,7 +145,7 @@ export function useModals(opts: {
       await reloadTree();
       const data = await readApi(path);
       let changed = false;
-      // 弹窗里填写了 path → 写入 .json（留空则使用协议默认：HTTP/WS/Socket.IO/WebDAV=/，GraphQL=/graphql，MCP=/mcp）
+      // 弹窗里填写了 path → 写入 .json（留空则使用协议默认：HTTP/Webhook/WS/Socket.IO/WebDAV=/，GraphQL=/graphql，MCP=/mcp）
       // TCP / UDP 无 path 概念，弹窗不展示 path 输入框
       const wantPath = isNetProtocol(modalProtocol) ? "" : normalizePath(modalPath);
       if (wantPath) {

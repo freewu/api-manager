@@ -251,7 +251,7 @@ pub struct ApiFile {
     /// 是否已标记废弃
     #[serde(default)]
     pub deprecated: bool,
-    /// 接口协议：http / websocket / socketio / graphql / webdav / mcp / tcp / udp
+    /// 接口协议：http / webhook / websocket / socketio / graphql / webdav / mcp / tcp / udp
     #[serde(default = "default_protocol")]
     pub protocol: String,
     /// 封包字段定义（TCP / UDP 接口使用）
@@ -1678,8 +1678,8 @@ fn create_api(
         uuid: uuid::Uuid::new_v4().to_string(),
         name: display_name,
         // GraphQL 固定 POST + /graphql；MCP（JSON-RPC 2.0 over Streamable HTTP）固定 POST + /mcp；
-        // WebDAV 接口默认 PROPFIND（方法下拉框可切换）
-        method: if matches!(protocol.as_deref(), Some("graphql") | Some("mcp")) {
+        // Webhook 默认 POST（仅支持 GET / POST）；WebDAV 接口默认 PROPFIND（方法下拉框可切换）
+        method: if matches!(protocol.as_deref(), Some("graphql") | Some("mcp") | Some("webhook")) {
             "POST".into()
         } else if protocol.as_deref() == Some("webdav") {
             "PROPFIND".into()
@@ -1748,6 +1748,7 @@ fn create_api(
             Some("socketio") => "socketio".into(),
             Some("graphql") => "graphql".into(),
             Some("webdav") => "webdav".into(),
+            Some("webhook") => "webhook".into(),
             Some("mcp") => "mcp".into(),
             Some("tcp") => "tcp".into(),
             Some("udp") => "udp".into(),

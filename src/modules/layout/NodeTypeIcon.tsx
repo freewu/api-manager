@@ -6,9 +6,10 @@ import iconWebdav from "../../../asserts/icon/WebDAV.png";
 import iconMcp from "../../../asserts/icon/mcp.png";
 import iconTcp from "../../../asserts/icon/TCP.png";
 import iconUdp from "../../../asserts/icon/UDP.png";
+import iconWebhook from "../../../asserts/icon/webhook.png";
 
 /**
- * 接口协议类型图标：HTTP / WebSocket / Socket.IO / GraphQL / WebDAV / MCP / TCP / UDP
+ * 接口协议类型图标：HTTP / Webhook / WebSocket / Socket.IO / GraphQL / WebDAV / MCP / TCP / UDP
  * 左侧接口列表、收藏列表、导出弹窗接口树共用，保证图标一致。
  */
 export function NodeTypeIcon({
@@ -19,36 +20,40 @@ export function NodeTypeIcon({
   className?: string;
 }) {
   const src =
-    protocol === "websocket"
-      ? iconWs
-      : protocol === "socketio"
-        ? iconSocketIo
-        : protocol === "graphql"
-          ? iconGql
-          : protocol === "webdav"
-            ? iconWebdav
-            : protocol === "mcp"
-              ? iconMcp
-              : protocol === "tcp"
-                ? iconTcp
-                : protocol === "udp"
-                  ? iconUdp
-                  : iconHttp;
+    protocol === "webhook"
+      ? iconWebhook
+      : protocol === "websocket"
+        ? iconWs
+        : protocol === "socketio"
+          ? iconSocketIo
+          : protocol === "graphql"
+            ? iconGql
+            : protocol === "webdav"
+              ? iconWebdav
+              : protocol === "mcp"
+                ? iconMcp
+                : protocol === "tcp"
+                  ? iconTcp
+                  : protocol === "udp"
+                    ? iconUdp
+                    : iconHttp;
   const alt =
-    protocol === "websocket"
-      ? "WebSocket"
-      : protocol === "socketio"
-        ? "Socket.IO"
-        : protocol === "graphql"
-          ? "GraphQL"
-          : protocol === "webdav"
-            ? "WebDAV"
-            : protocol === "mcp"
-              ? "MCP"
-              : protocol === "tcp"
-                ? "TCP"
-                : protocol === "udp"
-                  ? "UDP"
-                  : "HTTP";
+    protocol === "webhook"
+      ? "Webhook"
+      : protocol === "websocket"
+        ? "WebSocket"
+        : protocol === "socketio"
+          ? "Socket.IO"
+          : protocol === "graphql"
+            ? "GraphQL"
+            : protocol === "webdav"
+              ? "WebDAV"
+              : protocol === "mcp"
+                ? "MCP"
+                : protocol === "tcp"
+                  ? "TCP"
+                  : protocol === "udp"
+                    ? "UDP"
+                    : "HTTP";
   return <img className={className} src={src} alt={alt} />;
 }

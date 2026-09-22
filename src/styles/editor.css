@@ -65,6 +65,12 @@
   cursor: pointer;
   flex-shrink: 0;
 }
+/* Webhook 平台预设下拉：宽度自适应，字号略小避免与 Method 抢空间 */
+.webhook-preset-select {
+  max-width: 140px;
+  font-weight: 600;
+  font-family: inherit;
+}
 
 .scheme-switch {
   display: flex;

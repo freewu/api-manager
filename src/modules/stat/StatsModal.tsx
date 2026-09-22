@@ -31,6 +31,7 @@ const FALLBACK_COLORS = ["#4f8ef7", "#37b26c", "#f0a63a", "#9a6cf0", "#e05561", 
 interface Stats {
   totalApis: number;
   httpApis: number;
+  webhookApis: number;
   wsApis: number;
   socketIoApis: number;
   graphqlApis: number;
@@ -44,6 +45,8 @@ interface Stats {
   mockEnabled: number;
   /** HTTP 接口方法分布 */
   httpMethods: [string, number][];
+  /** Webhook 接口方法分布 */
+  webhookMethods: [string, number][];
   /** WebDAV 接口方法分布 */
   webdavMethods: [string, number][];
   /** MCP 接口方法分布 */
@@ -53,12 +56,14 @@ interface Stats {
 
 function computeStats(node: TreeNode): Stats {
   const httpMethodsMap = new Map<string, number>();
+  const webhookMethodsMap = new Map<string, number>();
   const webdavMethodsMap = new Map<string, number>();
   const mcpMethodsMap = new Map<string, number>();
   let mockEnabled = 0;
   let deprecatedApis = 0;
   let deprecatedFolders = 0;
   let httpApis = 0;
+  let webhookApis = 0;
   let wsApis = 0;
   let socketIoApis = 0;
   let graphqlApis = 0;
@@ -75,6 +80,10 @@ function computeStats(node: TreeNode): Stats {
       if (parentDeprecated || n.deprecated) deprecatedApis++;
       if (n.protocol === "websocket") {
         wsApis++;
+      } else if (n.protocol === "webhook") {
+        webhookApis++;
+        const m = (n.method || "POST").toUpperCase();
+        webhookMethodsMap.set(m, (webhookMethodsMap.get(m) || 0) + 1);
       } else if (n.protocol === "socketio") {
         socketIoApis++;
       } else if (n.protocol === "graphql") {
@@ -132,6 +141,7 @@ function computeStats(node: TreeNode): Stats {
   return {
     totalApis,
     httpApis,
+    webhookApis,
     wsApis,
     socketIoApis,
     graphqlApis,
@@ -144,6 +154,7 @@ function computeStats(node: TreeNode): Stats {
     deprecatedFolders,
     mockEnabled,
     httpMethods: byCount(httpMethodsMap),
+    webhookMethods: byCount(webhookMethodsMap),
     webdavMethods: byCount(webdavMethodsMap),
     mcpMethods: byCount(mcpMethodsMap),
     items,
@@ -199,8 +210,8 @@ function Donut({ data }: { data: [string, number][] }) {
   );
 }
 
-/** 可点击查看方法分布的协议（HTTP / WebDAV / MCP 有方法概念） */
-type MethodProto = "http" | "webdav" | "mcp";
+/** 可点击查看方法分布的协议（HTTP / Webhook / WebDAV / MCP 有方法概念） */
+type MethodProto = "http" | "webhook" | "webdav" | "mcp";
 
 export function StatsModal({ node, onClose }: Props) {
   const t = useT();
@@ -212,12 +223,21 @@ export function StatsModal({ node, onClose }: Props) {
   const methods =
     methodProto === "http"
       ? stats.httpMethods
+      : methodProto === "webhook"
+        ? stats.webhookMethods
+        : methodProto === "webdav"
+          ? stats.webdavMethods
+          : methodProto === "mcp"
+            ? stats.mcpMethods
+            : [];
+  const protoName =
+    methodProto === "webhook"
+      ? "Webhook"
       : methodProto === "webdav"
-        ? stats.webdavMethods
+        ? "WebDAV"
         : methodProto === "mcp"
-          ? stats.mcpMethods
-          : [];
-  const protoName = methodProto === "webdav" ? "WebDAV" : methodProto === "mcp" ? "MCP" : "HTTP";
+          ? "MCP"
+          : "HTTP";
 
   const card = (
     key: string,
@@ -251,6 +271,7 @@ export function StatsModal({ node, onClose }: Props) {
       <div className="stats-cards">
         {card("total", stats.totalApis, t("stats.totalApis"))}
         {card("http", stats.httpApis, t("stats.httpApis"), { select: "http" })}
+        {card("webhook", stats.webhookApis, t("stats.webhookApis"), { select: "webhook" })}
         {card("ws", stats.wsApis, t("stats.wsApis"))}
         {card("socketio", stats.socketIoApis, t("stats.socketioApis"))}
         {card("graphql", stats.graphqlApis, t("stats.graphqlApis"))}
