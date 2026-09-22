@@ -361,10 +361,12 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
     setWebhookPreset(id);
     const preset = WEBHOOK_PRESETS.find((p) => p.id === id);
     if (!preset) return;
-    onChange({ ...api, ...preset.apply() });
-    // 预设通常带请求体 / 签名脚本，切到 Body 页签便于直接查看编辑
-    setTab("body");
-    onTabChange?.("body");
+    const patch = preset.apply();
+    onChange({ ...api, ...patch });
+    // 有请求体的预设切到 Body 页签；否则（如企业微信回调）切到 Query 页签便于核对参数
+    const nextTab: Tab = patch.body && patch.body.mode !== "none" ? "body" : "params";
+    setTab(nextTab);
+    onTabChange?.(nextTab);
   };
 
   /** ws/wss 协议切换 */
