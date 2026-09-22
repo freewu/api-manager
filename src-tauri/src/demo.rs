@@ -210,61 +210,46 @@ pub(crate) fn create_demo(
 
     }
 
-    // Webhook 分组：与 HTTP 编辑体验一致，仅支持 GET / POST；
-    // 方法下拉框旁的「平台模板」可一键填充请求头 / 查询参数 / 请求体与签名脚本（密钥取环境变量 webhook_secret）
+    // Webhook 分组（与 tests/webhook-server.py 一一对应）：与 HTTP 编辑体验一致，仅支持 GET / POST；
+    // 方法下拉框左侧的「平台模板」可一键填充请求头 / 查询参数 / 请求体与签名脚本（密钥取环境变量 webhook_secret）
     if has("webhook") {
-        write("Webhook", INFO_FILE, &serde_json::json!({ "name": "Webhook", "description": "Webhook 接口示例（仅 GET / POST，内置微信支付 / 支付宝 / 企业微信 / 钉钉 / 飞书 / GitLab / GitHub 平台模板）" }))?;
+        write("Webhook", INFO_FILE, &serde_json::json!({ "name": "Webhook", "description": "Webhook 接口示例（仅 GET / POST，内置微信支付 / 支付宝 / 企业微信 / 钉钉 / 飞书 / GitLab / GitHub 平台模板，可配合 tests/webhook-server.py 验证签名）" }))?;
 
-        let wh_desc = "Webhook 接口演示：接收第三方平台推送时，通常需要携带平台签名以便接收方校验。\n\n【平台模板】\n编辑区方法下拉框旁选择平台（微信支付 / 支付宝 / 企业微信 / 钉钉 / 飞书 / GitLab / GitHub），会自动填充请求头 / 查询参数 / 请求体与签名脚本。\n\n【密钥配置】\n签名脚本从环境变量 webhook_secret 读取密钥，未配置时使用 demo-secret 占位，可在「环境」中新增该变量。\n\n【测试步骤】\n1. 把 URL 换成自己的接收地址\n2. 点击「发送」，接收方应按签名校验通过";
+        let wh_desc = |name: &str, rule: &str| {
+            format!(
+                "Webhook（{name}）接口演示。\n\n【启动测试服务】\npython tests/webhook-server.py           # 默认监听 http://127.0.0.1:8092\npython tests/webhook-server.py 8093      # 自定义端口\n本用例 URL 已指向测试服务对应路由，启动服务后点「发送」即可看到签名校验结果；服务端返回 ok / verified 即验证通过。\n\n【签名规则】\n{rule}\n\n【密钥配置】\n签名脚本从环境变量 webhook_secret 读取密钥（未配置时使用 demo-secret 占位），需与测试服务的 WEBHOOK_SECRET 保持一致。\n\n【平台模板】\n编辑区方法下拉框左侧选择平台可一键重新填充请求头 / 查询参数 / 请求体与签名脚本。"
+            )
+        };
 
-        let mut wh_github = api_file("GitHub 推送事件", "POST", "/", wh_desc);
-        wh_github["protocol"] = serde_json::json!("webhook");
-        wh_github["headers"] = serde_json::json!([
-            { "key": "Content-Type", "value": "application/json", "enabled": true, "description": "" },
-            { "key": "User-Agent", "value": "GitHub-Hookshot/1.0", "enabled": true, "description": "" },
-            { "key": "X-GitHub-Event", "value": "push", "enabled": true, "description": "事件类型" },
-            { "key": "X-GitHub-Delivery", "value": "{{delivery}}", "enabled": true, "description": "本次推送唯一 ID" },
-            { "key": "X-Hub-Signature-256", "value": "sha256={{signature}}", "enabled": true, "description": "HMAC-SHA256 签名" },
-        ]);
-        wh_github["body"] = serde_json::json!({ "mode": "json", "raw": r#"{"ref":"refs/heads/main","before":"0000000000000000000000000000000000000000","after":"1111111111111111111111111111111111111111","repository":{"id":123456,"name":"demo","full_name":"octocat/demo","private":false},"pusher":{"name":"octocat","email":"octocat@example.com"},"sender":{"login":"octocat","id":1}}"#, "form": [], "binaryPath": "" });
-        wh_github["prescript"] = serde_json::json!(r#"// GitHub Webhook 签名：sha256=HMAC-SHA256(Secret, 原始请求体)
-const secret = ctx.global.get('webhook_secret') || 'demo-secret';
-const raw = JSON.stringify(ctx.body);
-const signature = 'sha256=' + CryptoJS.HmacSHA256(raw, secret).toString();
-ctx.global.set('signature', signature);
-ctx.global.set('delivery', String(Date.now()));"#);
-        wh_github["responses"] = serde_json::json!([
-            { "id": format!("wh-github-{}", uuid::Uuid::new_v4()), "name": "接收成功", "status": 200, "content_type": "application/json", "body": "{\"ok\":true}" }
-        ]);
-        write("Webhook", "GitHub 推送事件.json", &wh_github)?;
-
-        let mut wh_dingtalk = api_file("钉钉机器人加签", "POST", "/", wh_desc);
-        wh_dingtalk["protocol"] = serde_json::json!("webhook");
-        wh_dingtalk["headers"] = serde_json::json!([
-            { "key": "Content-Type", "value": "application/json; charset=utf-8", "enabled": true, "description": "" },
-        ]);
-        wh_dingtalk["query"] = serde_json::json!([
-            { "key": "timestamp", "value": "{{timestamp}}", "enabled": true, "description": "毫秒时间戳" },
-            { "key": "sign", "value": "{{sign}}", "enabled": true, "description": "加签结果" },
-        ]);
-        wh_dingtalk["body"] = serde_json::json!({ "mode": "json", "raw": "{\"msgtype\":\"text\",\"text\":{\"content\":\"API Manager 钉钉机器人测试\"}}", "form": [], "binaryPath": "" });
-        wh_dingtalk["prescript"] = serde_json::json!(r#"// 钉钉加签：sign = Base64(HMAC-SHA256(key = timestamp + "\n" + 密钥, data = ""))
-const secret = ctx.global.get('webhook_secret') || 'demo-secret';
-const ts = String(Date.now());
-const sign = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256('', ts + '\n' + secret));
-ctx.global.set('timestamp', ts);
-ctx.global.set('sign', sign);"#);
-        wh_dingtalk["responses"] = serde_json::json!([
-            { "id": format!("wh-dingtalk-{}", uuid::Uuid::new_v4()), "name": "发送成功", "status": 200, "content_type": "application/json", "body": "{\"errcode\":0,\"errmsg\":\"ok\"}" }
-        ]);
-        write("Webhook", "钉钉机器人加签.json", &wh_dingtalk)?;
-
-        let mut wh_wechatpay = api_file("微信支付支付通知", "POST", "/", wh_desc);
+        let mut wh_wechatpay = api_file(
+            "微信支付支付通知",
+            "POST",
+            "/wechatpay",
+            &wh_desc(
+                "微信支付",
+                "参数按字段名字典序拼接为 stringA，末尾追加 &key=API密钥 后取 MD5 大写，写入 sign 字段（v2 签名）。",
+            ),
+        );
         wh_wechatpay["protocol"] = serde_json::json!("webhook");
+        wh_wechatpay["url"] = serde_json::json!("http://127.0.0.1:8092/wechatpay");
         wh_wechatpay["headers"] = serde_json::json!([
             { "key": "Content-Type", "value": "application/json; charset=utf-8", "enabled": true, "description": "" },
         ]);
-        wh_wechatpay["body"] = serde_json::json!({ "mode": "json", "raw": r#"{"appid":"wx8888888888888888","mch_id":"1900000109","nonce_str":"{{nonce_str}}","result_code":"SUCCESS","openid":"oUpF8uMuAJO_M2pxb1Q9zNjWeS6o","trade_type":"NATIVE","bank_type":"CFT","total_fee":1,"fee_type":"CNY","transaction_id":"4200000000000000000000","out_trade_no":"{{out_trade_no}}","time_end":"20240101000000","sign":"{{sign}}"}"#, "form": [], "binaryPath": "" });
+        wh_wechatpay["body"] = serde_json::json!({ "mode": "json", "raw": r#"{
+  "appid": "wx8888888888888888",
+  "mch_id": "1900000109",
+  "nonce_str": "{{nonce_str}}",
+  "result_code": "SUCCESS",
+  "openid": "oUpF8uMuAJO_M2pxb1Q9zNjWeS6o",
+  "trade_type": "NATIVE",
+  "bank_type": "CFT",
+  "total_fee": 1,
+  "fee_type": "CNY",
+  "transaction_id": "4200000000000000000000",
+  "out_trade_no": "{{out_trade_no}}",
+  "time_end": "20240101000000",
+  "sign": "{{sign}}"
+}"#, "form": [], "binaryPath": "" });
         wh_wechatpay["prescript"] = serde_json::json!(r#"// 微信支付 v2 签名：参数按字典序拼接 + &key=API密钥 后取 MD5 大写
 const secret = ctx.global.get('webhook_secret') || 'demo-secret';
 const nonce = Math.random().toString(36).slice(2, 12).toUpperCase();
@@ -292,6 +277,252 @@ ctx.global.set('sign', sign);"#);
             { "id": format!("wh-wechatpay-{}", uuid::Uuid::new_v4()), "name": "接收成功", "status": 200, "content_type": "application/json", "body": "{\"code\":\"SUCCESS\",\"message\":\"OK\"}" }
         ]);
         write("Webhook", "微信支付支付通知.json", &wh_wechatpay)?;
+
+        let mut wh_alipay = api_file(
+            "支付宝异步通知",
+            "POST",
+            "/alipay",
+            &wh_desc(
+                "支付宝",
+                "sign_type=MD5 时，去除 sign / sign_type 后按字段名字典序拼接，末尾直接追加密钥后取 MD5（小写）。",
+            ),
+        );
+        wh_alipay["protocol"] = serde_json::json!("webhook");
+        wh_alipay["url"] = serde_json::json!("http://127.0.0.1:8092/alipay");
+        wh_alipay["headers"] = serde_json::json!([
+            { "key": "Content-Type", "value": "application/x-www-form-urlencoded; charset=utf-8", "enabled": true, "description": "" },
+        ]);
+        wh_alipay["body"] = serde_json::json!({
+            "mode": "form", "raw": "", "binaryPath": "",
+            "form": [
+                { "key": "notify_time", "value": "2024-01-01 00:00:00", "enabled": true, "description": "" },
+                { "key": "notify_type", "value": "trade_status_sync", "enabled": true, "description": "" },
+                { "key": "app_id", "value": "2021000000000000", "enabled": true, "description": "" },
+                { "key": "out_trade_no", "value": "{{out_trade_no}}", "enabled": true, "description": "" },
+                { "key": "trade_no", "value": "2024010122001400000000000000", "enabled": true, "description": "" },
+                { "key": "trade_status", "value": "TRADE_SUCCESS", "enabled": true, "description": "" },
+                { "key": "total_amount", "value": "0.01", "enabled": true, "description": "" },
+                { "key": "seller_id", "value": "2088101117955611", "enabled": true, "description": "" },
+                { "key": "sign_type", "value": "MD5", "enabled": true, "description": "" },
+                { "key": "sign", "value": "{{sign}}", "enabled": true, "description": "签名结果" },
+            ]
+        });
+        wh_alipay["prescript"] = serde_json::json!(r#"// 支付宝异步通知签名（sign_type=MD5）：按字典序拼接后追加密钥取 MD5
+const secret = ctx.global.get('webhook_secret') || 'demo-secret';
+const outTradeNo = 'DEMO' + Date.now();
+const params = {
+  notify_time: '2024-01-01 00:00:00',
+  notify_type: 'trade_status_sync',
+  app_id: '2021000000000000',
+  out_trade_no: outTradeNo,
+  trade_no: '2024010122001400000000000000',
+  trade_status: 'TRADE_SUCCESS',
+  total_amount: '0.01',
+  seller_id: '2088101117955611',
+};
+const content = Object.keys(params).sort().map(k => k + '=' + params[k]).join('&');
+const sign = CryptoJS.MD5(content + secret).toString();
+ctx.global.set('out_trade_no', outTradeNo);
+ctx.global.set('sign', sign);"#);
+        wh_alipay["responses"] = serde_json::json!([
+            { "id": format!("wh-alipay-{}", uuid::Uuid::new_v4()), "name": "接收成功", "status": 200, "content_type": "text/plain", "body": "success" }
+        ]);
+        write("Webhook", "支付宝异步通知.json", &wh_alipay)?;
+
+        let mut wh_wecom = api_file(
+            "企业微信回调校验",
+            "GET",
+            "/wecom",
+            &wh_desc(
+                "企业微信",
+                "token、timestamp、nonce、echostr 四个值按字典序排序后拼接，取 SHA1 得到 msg_signature。",
+            ),
+        );
+        wh_wecom["protocol"] = serde_json::json!("webhook");
+        wh_wecom["url"] = serde_json::json!("http://127.0.0.1:8092/wecom");
+        wh_wecom["query"] = serde_json::json!([
+            { "key": "msg_signature", "value": "{{msg_signature}}", "enabled": true, "description": "SHA1 签名" },
+            { "key": "timestamp", "value": "{{timestamp}}", "enabled": true, "description": "" },
+            { "key": "nonce", "value": "{{nonce}}", "enabled": true, "description": "" },
+            { "key": "echostr", "value": "{{echostr}}", "enabled": true, "description": "" },
+        ]);
+        wh_wecom["body"] = serde_json::json!({ "mode": "none", "raw": "", "form": [], "binaryPath": "" });
+        wh_wecom["prescript"] = serde_json::json!(r#"// 企业微信回调签名：sha1(sort(token, timestamp, nonce, echostr).join(''))
+const token = ctx.global.get('webhook_secret') || 'demo-secret';
+const ts = String(Date.now());
+const nonce = Math.random().toString(36).slice(2, 10);
+const echostr = 'demo-echostr';
+const sign = CryptoJS.SHA1([token, ts, nonce, echostr].sort().join('')).toString();
+ctx.global.set('timestamp', ts);
+ctx.global.set('nonce', nonce);
+ctx.global.set('echostr', echostr);
+ctx.global.set('msg_signature', sign);"#);
+        wh_wecom["responses"] = serde_json::json!([
+            { "id": format!("wh-wecom-{}", uuid::Uuid::new_v4()), "name": "校验通过", "status": 200, "content_type": "text/plain", "body": "demo-echostr" }
+        ]);
+        write("Webhook", "企业微信回调校验.json", &wh_wecom)?;
+
+        let mut wh_dingtalk = api_file(
+            "钉钉机器人加签",
+            "POST",
+            "/dingtalk",
+            &wh_desc(
+                "钉钉",
+                "sign = Base64(HMAC-SHA256(key = timestamp + \"\\n\" + 密钥, data = \"\"))，timestamp 与 sign 作为查询参数附加在 Webhook 地址后。",
+            ),
+        );
+        wh_dingtalk["protocol"] = serde_json::json!("webhook");
+        wh_dingtalk["url"] = serde_json::json!("http://127.0.0.1:8092/dingtalk");
+        wh_dingtalk["headers"] = serde_json::json!([
+            { "key": "Content-Type", "value": "application/json; charset=utf-8", "enabled": true, "description": "" },
+        ]);
+        wh_dingtalk["query"] = serde_json::json!([
+            { "key": "timestamp", "value": "{{timestamp}}", "enabled": true, "description": "毫秒时间戳" },
+            { "key": "sign", "value": "{{sign}}", "enabled": true, "description": "加签结果" },
+        ]);
+        wh_dingtalk["body"] = serde_json::json!({ "mode": "json", "raw": r#"{
+  "msgtype": "text",
+  "text": {
+    "content": "API Manager 钉钉机器人测试"
+  }
+}"#, "form": [], "binaryPath": "" });
+        wh_dingtalk["prescript"] = serde_json::json!(r#"// 钉钉加签：sign = Base64(HMAC-SHA256(key = timestamp + "\n" + 密钥, data = ""))
+const secret = ctx.global.get('webhook_secret') || 'demo-secret';
+const ts = String(Date.now());
+const sign = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256('', ts + '\n' + secret));
+ctx.global.set('timestamp', ts);
+ctx.global.set('sign', sign);"#);
+        wh_dingtalk["responses"] = serde_json::json!([
+            { "id": format!("wh-dingtalk-{}", uuid::Uuid::new_v4()), "name": "发送成功", "status": 200, "content_type": "application/json", "body": "{\"errcode\":0,\"errmsg\":\"ok\"}" }
+        ]);
+        write("Webhook", "钉钉机器人加签.json", &wh_dingtalk)?;
+
+        let mut wh_feishu = api_file(
+            "飞书机器人加签",
+            "POST",
+            "/feishu",
+            &wh_desc(
+                "飞书",
+                "sign = Base64(HMAC-SHA256(key = timestamp + \"\\n\" + 密钥, data = \"\"))，timestamp（秒）与 sign 放在请求体中。",
+            ),
+        );
+        wh_feishu["protocol"] = serde_json::json!("webhook");
+        wh_feishu["url"] = serde_json::json!("http://127.0.0.1:8092/feishu");
+        wh_feishu["headers"] = serde_json::json!([
+            { "key": "Content-Type", "value": "application/json; charset=utf-8", "enabled": true, "description": "" },
+        ]);
+        wh_feishu["body"] = serde_json::json!({ "mode": "json", "raw": r#"{
+  "timestamp": "{{timestamp}}",
+  "sign": "{{sign}}",
+  "msg_type": "text",
+  "content": {
+    "text": "API Manager 飞书机器人测试"
+  }
+}"#, "form": [], "binaryPath": "" });
+        wh_feishu["prescript"] = serde_json::json!(r#"// 飞书自定义机器人加签：sign = Base64(HMAC-SHA256(key = timestamp + "\n" + 密钥, data = ""))
+const secret = ctx.global.get('webhook_secret') || 'demo-secret';
+const ts = String(Math.floor(Date.now() / 1000));
+const sign = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256('', ts + '\n' + secret));
+ctx.global.set('timestamp', ts);
+ctx.global.set('sign', sign);"#);
+        wh_feishu["responses"] = serde_json::json!([
+            { "id": format!("wh-feishu-{}", uuid::Uuid::new_v4()), "name": "发送成功", "status": 200, "content_type": "application/json", "body": "{\"code\":0,\"msg\":\"success\"}" }
+        ]);
+        write("Webhook", "飞书机器人加签.json", &wh_feishu)?;
+
+        let mut wh_gitlab = api_file(
+            "GitLab 推送事件",
+            "POST",
+            "/gitlab",
+            &wh_desc(
+                "GitLab",
+                "通过请求头 X-Gitlab-Token 与配置的 Secret Token 是否一致校验，无签名计算。",
+            ),
+        );
+        wh_gitlab["protocol"] = serde_json::json!("webhook");
+        wh_gitlab["url"] = serde_json::json!("http://127.0.0.1:8092/gitlab");
+        wh_gitlab["headers"] = serde_json::json!([
+            { "key": "Content-Type", "value": "application/json", "enabled": true, "description": "" },
+            { "key": "X-Gitlab-Event", "value": "Push Hook", "enabled": true, "description": "事件类型" },
+            { "key": "X-Gitlab-Token", "value": "{{webhook_token}}", "enabled": true, "description": "与 GitLab Secret Token 一致" },
+        ]);
+        wh_gitlab["body"] = serde_json::json!({ "mode": "json", "raw": r#"{
+  "object_kind": "push",
+  "ref": "refs/heads/main",
+  "before": "0000000000000000000000000000000000000000",
+  "after": "1111111111111111111111111111111111111111",
+  "project": {
+    "id": 123456,
+    "name": "demo",
+    "web_url": "https://gitlab.example.com/group/demo"
+  },
+  "commits": [
+    {
+      "id": "1111111111111111111111111111111111111111",
+      "message": "demo commit",
+      "author": {
+        "name": "octocat",
+        "email": "octocat@example.com"
+      }
+    }
+  ],
+  "user_name": "octocat"
+}"#, "form": [], "binaryPath": "" });
+        wh_gitlab["prescript"] = serde_json::json!(r#"// GitLab Webhook 无签名：X-Gitlab-Token 直接使用 Secret Token
+ctx.global.set('webhook_token', ctx.global.get('webhook_secret') || 'demo-secret');"#);
+        wh_gitlab["responses"] = serde_json::json!([
+            { "id": format!("wh-gitlab-{}", uuid::Uuid::new_v4()), "name": "接收成功", "status": 200, "content_type": "application/json", "body": "{\"ok\":true}" }
+        ]);
+        write("Webhook", "GitLab 推送事件.json", &wh_gitlab)?;
+
+        let mut wh_github = api_file(
+            "GitHub 推送事件",
+            "POST",
+            "/github",
+            &wh_desc(
+                "GitHub",
+                "X-Hub-Signature-256 = \"sha256=\" + HMAC-SHA256(Secret, 原始请求体)；脚本按 2 空格缩进重新序列化 body 后计算签名。",
+            ),
+        );
+        wh_github["protocol"] = serde_json::json!("webhook");
+        wh_github["url"] = serde_json::json!("http://127.0.0.1:8092/github");
+        wh_github["headers"] = serde_json::json!([
+            { "key": "Content-Type", "value": "application/json", "enabled": true, "description": "" },
+            { "key": "User-Agent", "value": "GitHub-Hookshot/1.0", "enabled": true, "description": "" },
+            { "key": "X-GitHub-Event", "value": "push", "enabled": true, "description": "事件类型" },
+            { "key": "X-GitHub-Delivery", "value": "{{delivery}}", "enabled": true, "description": "本次推送唯一 ID" },
+            { "key": "X-Hub-Signature-256", "value": "sha256={{signature}}", "enabled": true, "description": "HMAC-SHA256 签名" },
+        ]);
+        wh_github["body"] = serde_json::json!({ "mode": "json", "raw": r#"{
+  "ref": "refs/heads/main",
+  "before": "0000000000000000000000000000000000000000",
+  "after": "1111111111111111111111111111111111111111",
+  "repository": {
+    "id": 123456,
+    "name": "demo",
+    "full_name": "octocat/demo",
+    "private": false
+  },
+  "pusher": {
+    "name": "octocat",
+    "email": "octocat@example.com"
+  },
+  "sender": {
+    "login": "octocat",
+    "id": 1
+  }
+}"#, "form": [], "binaryPath": "" });
+        wh_github["prescript"] = serde_json::json!(r#"// GitHub Webhook 签名：sha256=HMAC-SHA256(Secret, 原始请求体)
+// body 为 2 空格缩进 JSON，这里用同样的缩进序列化，保证签名内容与实际发送内容一致
+const secret = ctx.global.get('webhook_secret') || 'demo-secret';
+const raw = JSON.stringify(ctx.body, null, 2);
+const signature = 'sha256=' + CryptoJS.HmacSHA256(raw, secret).toString();
+ctx.global.set('signature', signature);
+ctx.global.set('delivery', String(Date.now()));"#);
+        wh_github["responses"] = serde_json::json!([
+            { "id": format!("wh-github-{}", uuid::Uuid::new_v4()), "name": "接收成功", "status": 200, "content_type": "application/json", "body": "{\"ok\":true}" }
+        ]);
+        write("Webhook", "GitHub 推送事件.json", &wh_github)?;
     }
 
     if has("websocket") {

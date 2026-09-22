@@ -396,6 +396,25 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
     if (!text) return;
     try {
       onFormatted(JSON.stringify(JSON.parse(text), null, 2));
+      return;
+    } catch {
+      // 可能含 {{变量}} 占位符（如 Webhook 平台模板）——先临时替换为普通字符串再格式化，最后还原
+    }
+    try {
+      const marks: string[] = [];
+      const mask = (m: string) => {
+        marks.push(m);
+        return `"__PH_${marks.length - 1}__"`;
+      };
+      const masked = text
+        .replace(/"\{\{[^{}]+\}\}"/g, mask)
+        .replace(/\{\{[^{}]+\}\}/g, mask);
+      onFormatted(
+        JSON.stringify(JSON.parse(masked), null, 2).replace(
+          /"__PH_(\d+)__"/g,
+          (_, i: string) => marks[Number(i)]
+        )
+      );
     } catch {
       setFormatError(t("editor.formatJsonFailed"));
     }
@@ -489,6 +508,21 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
           </select>
         ) : (
           <>
+            {isWebhook && (
+              <select
+                className="method-select webhook-preset-select"
+                value={webhookPreset}
+                title={t("editor.webhookPresetTip")}
+                onChange={(e) => applyWebhookPreset(e.target.value)}
+              >
+                <option value="">{t("editor.webhookPreset")}</option>
+                {WEBHOOK_PRESETS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            )}
             <select
               className="method-select"
               value={api.method}
@@ -508,21 +542,6 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
                 </option>
               ))}
             </select>
-            {isWebhook && (
-              <select
-                className="method-select webhook-preset-select"
-                value={webhookPreset}
-                title={t("editor.webhookPresetTip")}
-                onChange={(e) => applyWebhookPreset(e.target.value)}
-              >
-                <option value="">{t("editor.webhookPreset")}</option>
-                {WEBHOOK_PRESETS.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            )}
           </>
         )}
         <div className={`url-input-wrap${urlError ? " url-error" : ""}`}>

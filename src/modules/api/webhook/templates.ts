@@ -6,7 +6,10 @@ import { ApiFile, BodyData, KeyValue } from "../../../types";
  * 约定：
  * - 签名脚本从全局变量（环境变量）`webhook_secret` 读取密钥，未设置时使用 `demo-secret` 占位；
  *   脚本内通过 `ctx.global.set(...)` 写入的变量可在请求头 / 查询参数 / 请求体中用 `{{变量名}}` 绑定。
- * - 请求体尽量使用紧凑 JSON（无多余空白），保证 GitHub 这类对原始 body 做 HMAC 的签名与发送内容一致。
+ * - JSON 请求体统一使用 2 空格缩进（便于在编辑器 / 响应区阅读）；
+ *   对原始 body 做 HMAC 的平台（GitHub）在脚本里用 `JSON.stringify(ctx.body, null, 2)` 还原同样的文本再签名，
+ *   保证「签名内容 == 实际发送内容」。若手动改动请求体排版，需同步保证缩进为 2 空格。
+ * - 可运行 `python tests/webhook-server.py` 启动本地接收端，逐个平台验证签名。
  */
 export interface WebhookPreset {
   id: string;
@@ -30,6 +33,9 @@ const body = (raw: string, mode: BodyData["mode"] = "json"): BodyData => ({
   binaryPath: "",
 });
 
+/** 生成 2 空格缩进的 JSON 请求体 */
+const jsonBody = (obj: unknown): BodyData => body(JSON.stringify(obj, null, 2));
+
 const form = (rows: KeyValue[]): BodyData => ({
   mode: "form",
   raw: "",
@@ -47,9 +53,21 @@ export const WEBHOOK_PRESETS: WebhookPreset[] = [
         "微信支付 v2 支付结果通知（Webhook 模拟）。\n\n【签名规则】参数按字段名字典序拼接为 stringA，末尾追加 `&key=API密钥` 后取 MD5 大写，\n写入 sign 字段。\n\n【使用步骤】\n1. 在「环境」中新增变量 webhook_secret（值为 API 密钥），或在下方前置脚本中直接改。\n2. 填写真实的接收地址（URL 输入框）。\n3. 点击发送，接收方应能通过签名校验。",
       headers: [kv("Content-Type", "application/json; charset=utf-8")],
       query: [],
-      body: body(
-        '{"appid":"wx8888888888888888","mch_id":"1900000109","nonce_str":"{{nonce_str}}","result_code":"SUCCESS","openid":"oUpF8uMuAJO_M2pxb1Q9zNjWeS6o","trade_type":"NATIVE","bank_type":"CFT","total_fee":1,"fee_type":"CNY","transaction_id":"4200000000000000000000","out_trade_no":"{{out_trade_no}}","time_end":"20240101000000","sign":"{{sign}}"}'
-      ),
+      body: jsonBody({
+        appid: "wx8888888888888888",
+        mch_id: "1900000109",
+        nonce_str: "{{nonce_str}}",
+        result_code: "SUCCESS",
+        openid: "oUpF8uMuAJO_M2pxb1Q9zNjWeS6o",
+        trade_type: "NATIVE",
+        bank_type: "CFT",
+        total_fee: 1,
+        fee_type: "CNY",
+        transaction_id: "4200000000000000000000",
+        out_trade_no: "{{out_trade_no}}",
+        time_end: "20240101000000",
+        sign: "{{sign}}",
+      }),
       prescript:
         "// 微信支付 v2 签名：参数按字典序拼接 + &key=API密钥 后取 MD5 大写\n" +
         "const secret = ctx.global.get('webhook_secret') || 'demo-secret';\n" +
@@ -157,7 +175,7 @@ export const WEBHOOK_PRESETS: WebhookPreset[] = [
         kv("timestamp", "{{timestamp}}"),
         kv("sign", "{{sign}}"),
       ],
-      body: body('{"msgtype":"text","text":{"content":"API Manager 钉钉机器人测试"}}'),
+      body: jsonBody({ msgtype: "text", text: { content: "API Manager 钉钉机器人测试" } }),
       prescript:
         "// 钉钉加签：sign = Base64(HMAC-SHA256(key = timestamp + \"\\n\" + 密钥, data = \"\"))\n" +
         "const secret = ctx.global.get('webhook_secret') || 'demo-secret';\n" +
@@ -176,9 +194,12 @@ export const WEBHOOK_PRESETS: WebhookPreset[] = [
         "飞书自定义机器人加签（Webhook 模拟）。\n\n【签名规则】sign = Base64(HMAC-SHA256(key = timestamp + \"\\n\" + 密钥, data = \"\"))，\ntimestamp（秒）与 sign 放在请求体中。\n\n【使用步骤】\n1. 在「环境」中新增变量 webhook_secret（值为机器人签名校验密钥）。\n2. 填写机器人 Webhook 地址。\n3. 点击发送。",
       headers: [kv("Content-Type", "application/json; charset=utf-8")],
       query: [],
-      body: body(
-        '{"timestamp":"{{timestamp}}","sign":"{{sign}}","msg_type":"text","content":{"text":"API Manager 飞书机器人测试"}}'
-      ),
+      body: jsonBody({
+        timestamp: "{{timestamp}}",
+        sign: "{{sign}}",
+        msg_type: "text",
+        content: { text: "API Manager 飞书机器人测试" },
+      }),
       prescript:
         "// 飞书自定义机器人加签：sign = Base64(HMAC-SHA256(key = timestamp + \"\\n\" + 密钥, data = \"\"))\n" +
         "const secret = ctx.global.get('webhook_secret') || 'demo-secret';\n" +
@@ -201,9 +222,21 @@ export const WEBHOOK_PRESETS: WebhookPreset[] = [
         kv("X-Gitlab-Token", "{{webhook_token}}", "与 GitLab Secret Token 一致"),
       ],
       query: [],
-      body: body(
-        '{"object_kind":"push","ref":"refs/heads/main","before":"0000000000000000000000000000000000000000","after":"1111111111111111111111111111111111111111","project":{"id":123456,"name":"demo","web_url":"https://gitlab.example.com/group/demo"},"commits":[{"id":"1111111111111111111111111111111111111111","message":"demo commit","author":{"name":"octocat","email":"octocat@example.com"}}],"user_name":"octocat"}'
-      ),
+      body: jsonBody({
+        object_kind: "push",
+        ref: "refs/heads/main",
+        before: "0000000000000000000000000000000000000000",
+        after: "1111111111111111111111111111111111111111",
+        project: { id: 123456, name: "demo", web_url: "https://gitlab.example.com/group/demo" },
+        commits: [
+          {
+            id: "1111111111111111111111111111111111111111",
+            message: "demo commit",
+            author: { name: "octocat", email: "octocat@example.com" },
+          },
+        ],
+        user_name: "octocat",
+      }),
       prescript:
         "// GitLab Webhook 无签名：X-Gitlab-Token 直接使用 Secret Token\n" +
         "ctx.global.set('webhook_token', ctx.global.get('webhook_secret') || 'demo-secret');",
@@ -215,7 +248,7 @@ export const WEBHOOK_PRESETS: WebhookPreset[] = [
     apply: () => ({
       method: "POST",
       description:
-        "GitHub Webhook（push 事件）模拟。\n\n【签名规则】X-Hub-Signature-256 = \"sha256=\" + HMAC-SHA256(Secret, 原始请求体)。\n请保持请求体为紧凑 JSON，脚本按原始文本计算签名。\n\n【使用步骤】\n1. 在「环境」中新增变量 webhook_secret（值为 Webhook Secret）。\n2. 填写接收地址。\n3. 点击发送。",
+        "GitHub Webhook（push 事件）模拟。\n\n【签名规则】X-Hub-Signature-256 = \"sha256=\" + HMAC-SHA256(Secret, 原始请求体)。\n脚本按 2 空格缩进重新序列化请求体后计算签名，与编辑器中的 body 保持一致。\n\n【使用步骤】\n1. 在「环境」中新增变量 webhook_secret（值为 Webhook Secret）。\n2. 填写接收地址。\n3. 点击发送。",
       headers: [
         kv("Content-Type", "application/json"),
         kv("User-Agent", "GitHub-Hookshot/1.0"),
@@ -224,13 +257,19 @@ export const WEBHOOK_PRESETS: WebhookPreset[] = [
         kv("X-Hub-Signature-256", "sha256={{signature}}", "HMAC-SHA256 签名"),
       ],
       query: [],
-      body: body(
-        '{"ref":"refs/heads/main","before":"0000000000000000000000000000000000000000","after":"1111111111111111111111111111111111111111","repository":{"id":123456,"name":"demo","full_name":"octocat/demo","private":false},"pusher":{"name":"octocat","email":"octocat@example.com"},"sender":{"login":"octocat","id":1}}'
-      ),
+      body: jsonBody({
+        ref: "refs/heads/main",
+        before: "0000000000000000000000000000000000000000",
+        after: "1111111111111111111111111111111111111111",
+        repository: { id: 123456, name: "demo", full_name: "octocat/demo", private: false },
+        pusher: { name: "octocat", email: "octocat@example.com" },
+        sender: { login: "octocat", id: 1 },
+      }),
       prescript:
         "// GitHub Webhook 签名：sha256=HMAC-SHA256(Secret, 原始请求体)\n" +
+        "// body 为 2 空格缩进 JSON，这里用同样的缩进序列化，保证签名内容与实际发送内容一致\n" +
         "const secret = ctx.global.get('webhook_secret') || 'demo-secret';\n" +
-        "const raw = JSON.stringify(ctx.body);\n" +
+        "const raw = JSON.stringify(ctx.body, null, 2);\n" +
         "const signature = 'sha256=' + CryptoJS.HmacSHA256(raw, secret).toString();\n" +
         "ctx.global.set('signature', signature);\n" +
         "ctx.global.set('delivery', String(Date.now()));",
