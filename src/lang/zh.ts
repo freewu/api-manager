@@ -205,6 +205,8 @@ export const ZH: Record<string, string> = {
   "sidebar.depFilterAll": "全部",
   "sidebar.depFilterActive": "未废弃",
   "sidebar.depFilterDeprecated": "已废弃",
+  "sidebar.collapseAll": "收起全部分组",
+  "sidebar.expandAll": "展开全部分组",
   "sidebar.deprecatedBadge": "已废弃（删除线标记，不影响发送/编辑）",
   "history.title": "请求历史",
   "history.back": "返回接口管理",

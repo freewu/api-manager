@@ -137,6 +137,19 @@ function validDrop(dragSrc: string, dst: string, dstIsFolder: boolean): boolean 
 // 废弃状态筛选：all=全部 / active=未废弃 / deprecated=已废弃
 type DepFilter = "all" | "active" | "deprecated";
 
+/** 递归收集树中全部分组的 path → 默认展开状态（openMap 无记录时按节点 collapsed 判断） */
+function folderOpenDefaults(
+  node: TreeNode | null,
+  out: Record<string, boolean> = {},
+): Record<string, boolean> {
+  for (const c of node?.children ?? []) {
+    if (c.kind !== "folder") continue;
+    out[c.path] = c.collapsed !== true;
+    folderOpenDefaults(c, out);
+  }
+  return out;
+}
+
 /** 节点类型标签：实时 / TCP / UDP 接口没有 Method，直接用协议名展示 */
 function protoLabel(node: TreeNode): string {
   if (node.protocol === "websocket") return "WebSocket";
@@ -645,6 +658,23 @@ export function Sidebar(props: Props) {
   const [dragSrc, setDragSrc] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
 
+  /** 全部分组 path → 默认展开状态（用于「一键收起 / 展开全部」判断当前状态） */
+  const folderDefaults = useMemo(() => folderOpenDefaults(tree), [tree]);
+  /** 是否所有分组当前都已收起（收起状态点击 = 展开全部） */
+  const allCollapsed = useMemo(() => {
+    const paths = Object.keys(folderDefaults);
+    return paths.length > 0 && paths.every((p) => !(openMap[p] ?? folderDefaults[p]));
+  }, [folderDefaults, openMap]);
+  /** 一键收起 / 展开全部：只改内存展开状态，不逐目录写 __info.json（避免大量文件写入） */
+  const toggleAllFolders = useCallback(() => {
+    const expand = allCollapsed;
+    setOpenMap((m) => {
+      const next = { ...m };
+      for (const p of Object.keys(folderDefaults)) next[p] = expand;
+      return next;
+    });
+  }, [allCollapsed, folderDefaults]);
+
   const handleDragStart = (path: string) => setDragSrc(path);
   const handleDragEnd = () => {
     setDragSrc(null);
@@ -784,6 +814,23 @@ export function Sidebar(props: Props) {
               <option value="active">{t("sidebar.depFilterActive")}</option>
               <option value="deprecated">{t("sidebar.depFilterDeprecated")}</option>
             </select>
+            <button
+              className="collapse-all-btn"
+              onClick={toggleAllFolders}
+              disabled={Object.keys(folderDefaults).length === 0}
+              title={allCollapsed ? t("sidebar.expandAll") : t("sidebar.collapseAll")}
+              aria-label={allCollapsed ? t("sidebar.expandAll") : t("sidebar.collapseAll")}
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+                {allCollapsed ? (
+                  // 全部收起时：点击展开全部（向外双向箭头）
+                  <path d="M12 5.83 15.17 9l1.41-1.41L12 3 7.41 7.59 8.83 9 12 5.83zm0 12.34L8.83 15l-1.41 1.41L12 21l4.59-4.59L15.17 15 12 18.17z" />
+                ) : (
+                  // 存在展开的分组时：点击收起全部（向内双向箭头）
+                  <path d="M7.41 18.59 8.83 20 12 16.83 15.17 20l1.41-1.41L12 14l-4.59 4.59zm9.18-13.18L15.17 4 12 7.17 8.83 4 7.41 5.41 12 10l4.59-4.59z" />
+                )}
+              </svg>
+            </button>
           </div>
           {advOpen && (
             <div className="adv-search">

@@ -200,6 +200,8 @@ export const EN: Record<string, string> = {
   "sidebar.depFilterAll": "All",
   "sidebar.depFilterActive": "Active",
   "sidebar.depFilterDeprecated": "Deprecated",
+  "sidebar.collapseAll": "Collapse all groups",
+  "sidebar.expandAll": "Expand all groups",
   "sidebar.deprecatedBadge": "Deprecated (strikethrough marked; sending/editing not affected)",
   "history.title": "Request History",
   "history.back": "Back to APIs",

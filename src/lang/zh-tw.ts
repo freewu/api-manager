@@ -192,6 +192,8 @@ export const TW: Record<string, string> = {
   "sidebar.depFilterAll": "全部",
   "sidebar.depFilterActive": "未廢棄",
   "sidebar.depFilterDeprecated": "已廢棄",
+  "sidebar.collapseAll": "收合全部分組",
+  "sidebar.expandAll": "展開全部分組",
   "sidebar.deprecatedBadge": "已廢棄（刪除線標記，不影響發送/編輯）",
   "history.title": "請求歷史",
   "history.back": "返回接口管理",

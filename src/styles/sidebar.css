@@ -352,6 +352,33 @@
   border-color: var(--border-light);
 }
 
+/* 一键收起 / 展开全部分组 */
+.collapse-all-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 32px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-dim);
+  border-radius: var(--radius);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+.collapse-all-btn:hover {
+  color: var(--accent);
+  border-color: var(--border-light);
+}
+.collapse-all-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  color: var(--text-faint);
+  border-color: var(--border);
+}
+
 /* 分组接口数量角标 */
 .node-count {
   flex-shrink: 0;
