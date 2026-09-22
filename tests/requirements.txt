@@ -6,6 +6,7 @@
 #   tests/websocket-server.py   -> websockets
 #   tests/socketio-server.py    -> python-socketio, simple-websocket, werkzeug
 #   tests/graphql-server.py     -> 仅标准库
+#   tests/webhook-server.py     -> 仅标准库
 #   tests/http.py               -> 仅标准库
 #
 # 说明：
