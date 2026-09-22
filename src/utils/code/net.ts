@@ -148,9 +148,10 @@ python3 - <<'PY'
 ${pythonBody(r, api)}
 PY`;
   }
+  // -t/-w 都是「对端不主动断开时的等待时限」，与界面上的超时设置保持一致
   const pipe =
     lib === "socat"
-      ? `socat - ${r.protocol.toUpperCase()}:${r.host}:${r.port}`
+      ? `socat -t ${timeout} - ${r.protocol.toUpperCase()}:${r.host}:${r.port}`
       : `nc${udpFlag} -w ${timeout} ${r.host} ${r.port}`;
   if (!unpack) {
     return `${header(r, "#")}

@@ -179,7 +179,8 @@ const bashOps: NetPackOps = {
   defInt: (n, e) => `${n}=${e}`,
   defPacket: (parts) => `PACKET="${parts.map((p) => `\${${p}}`).join("")}"`,
   defSlice: (n, a, b) => `${n}="\${data:$(( (${a}) * 2 )):$(( ((${b}) - (${a})) * 2 ))}"`,
-  toInt: (e) => `$((16#${e}))`,
+  // 必须写成 16#$var：bash 不会把「16#u2_len」里的变量名展开（长度超过 1 字节时会报 value too great for base）
+  toInt: (e) => (e === "0" ? "0" : `$((16#$${e}))`),
   len: (e) => `$(( \${#${e}} / 2 ))`,
   log: (label, e) => `echo "${label} = \${${e}^^}"`,
   note: (text) => `# ${text}`,
