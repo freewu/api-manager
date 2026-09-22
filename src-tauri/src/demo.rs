@@ -516,7 +516,7 @@ ctx.global.set('webhook_token', ctx.global.get('webhook_secret') || 'demo-secret
 // body 为 2 空格缩进 JSON，这里用同样的缩进序列化，保证签名内容与实际发送内容一致
 const secret = ctx.global.get('webhook_secret') || 'demo-secret';
 const raw = JSON.stringify(ctx.body, null, 2);
-const signature = 'sha256=' + CryptoJS.HmacSHA256(raw, secret).toString();
+const signature = CryptoJS.HmacSHA256(raw, secret).toString();
 ctx.global.set('signature', signature);
 ctx.global.set('delivery', String(Date.now()));"#);
         wh_github["responses"] = serde_json::json!([

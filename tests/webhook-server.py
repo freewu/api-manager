@@ -312,6 +312,11 @@ def check_templates_file() -> list:
         for key in keys:
             if key not in src:
                 errors.append(f"templates.ts 缺少 {pid} 的关键实现: {key}")
+
+    # 负向检查：占位符只存裸签名，"sha256=" 前缀由请求头拼，避免出现 sha256=sha256=
+    for bad in ("'sha256=' +", "\"sha256=\" +", "sha256=sha256="):
+        if bad in src:
+            errors.append(f"templates.ts 签名重复拼接前缀: {bad}")
     return errors
 
 

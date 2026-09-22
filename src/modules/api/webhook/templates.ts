@@ -270,7 +270,7 @@ export const WEBHOOK_PRESETS: WebhookPreset[] = [
         "// body 为 2 空格缩进 JSON，这里用同样的缩进序列化，保证签名内容与实际发送内容一致\n" +
         "const secret = ctx.global.get('webhook_secret') || 'demo-secret';\n" +
         "const raw = JSON.stringify(ctx.body, null, 2);\n" +
-        "const signature = 'sha256=' + CryptoJS.HmacSHA256(raw, secret).toString();\n" +
+        "const signature = CryptoJS.HmacSHA256(raw, secret).toString();\n" +
         "ctx.global.set('signature', signature);\n" +
         "ctx.global.set('delivery', String(Date.now()));",
     }),
