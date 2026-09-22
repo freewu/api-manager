@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ObjectDef, ObjectImportResult, ObjectProp, ObjectStore, ObjectUsageItem } from "../../types";
 
 /** 对象名称校验：字母开头，仅允许字母和数字（不允许空格） */
@@ -173,6 +173,30 @@ export default function ObjectsTree({
     sortLevel(roots);
     return roots;
   }, [store.groups]);
+
+  /** 全部分组 id（递归，含子分组） */
+  const allGroupIds = useMemo(() => {
+    const out: string[] = [];
+    const walk = (nodes: GNode[]) => {
+      for (const n of nodes) {
+        out.push(n.id);
+        walk(n.children);
+      }
+    };
+    walk(groupTree);
+    return out;
+  }, [groupTree]);
+
+  /** 全部分组是否都已收起（收起状态点击 = 展开全部） */
+  const allGroupsCollapsed = useMemo(
+    () => allGroupIds.length > 0 && allGroupIds.every((id) => !openGroups.has(id)),
+    [allGroupIds, openGroups],
+  );
+
+  /** 一键收起 / 展开全部分组 */
+  const toggleAllGroups = useCallback(() => {
+    setOpenGroups(allGroupsCollapsed ? new Set(allGroupIds) : new Set());
+  }, [allGroupsCollapsed, allGroupIds]);
 
   const objectsByGroup = useMemo(() => {
     const m: Record<string, ObjectDef[]> = { "": [] };
@@ -703,6 +727,21 @@ export default function ObjectsTree({
             spellCheck={false}
           />
         </div>
+        <button
+          className="collapse-all-btn"
+          onClick={toggleAllGroups}
+          disabled={allGroupIds.length === 0}
+          title={allGroupsCollapsed ? t("objects.expandAll") : t("objects.collapseAll")}
+          aria-label={allGroupsCollapsed ? t("objects.expandAll") : t("objects.collapseAll")}
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+            {allGroupsCollapsed ? (
+              <path d="M12 5.83 15.17 9l1.41-1.41L12 3 7.41 7.59 8.83 9 12 5.83zm0 12.34L8.83 15l-1.41 1.41L12 21l4.59-4.59L15.17 15 12 18.17z" />
+            ) : (
+              <path d="M7.41 18.59 8.83 20 12 16.83 15.17 20l1.41-1.41L12 14l-4.59 4.59zm9.18-13.18L15.17 4 12 7.17 8.83 4 7.41 5.41 12 10l4.59-4.59z" />
+            )}
+          </svg>
+        </button>
       </div>
       <div
         className="tree objects-list"
