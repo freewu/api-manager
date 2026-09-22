@@ -45,6 +45,15 @@
   margin-top: 4px;
   font-size: 11px;
   color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.stats-card-icon {
+  width: 13px;
+  height: 13px;
+  flex: none;
 }
 .stats-body {
   display: flex;

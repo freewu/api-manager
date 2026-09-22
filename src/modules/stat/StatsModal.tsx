@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { TreeNode } from "../../types";
 import { Modal } from "../layout/Modal";
+import { NodeTypeIcon } from "../layout/NodeTypeIcon";
 import { useT } from "../../i18n";
 
 interface Props {
@@ -243,7 +244,7 @@ export function StatsModal({ node, onClose }: Props) {
     key: string,
     num: number,
     label: string,
-    opts: { deprecated?: boolean; select?: MethodProto } = {},
+    opts: { deprecated?: boolean; select?: MethodProto; icon?: string } = {},
   ) => (
     <div
       key={key}
@@ -262,7 +263,10 @@ export function StatsModal({ node, onClose }: Props) {
       title={opts.select ? t("stats.selectTip") : undefined}
     >
       <div className={`stats-card-num${opts.deprecated ? " deprecated" : ""}`}>{num}</div>
-      <div className="stats-card-label">{label}</div>
+      <div className="stats-card-label">
+        {opts.icon && <NodeTypeIcon protocol={opts.icon} className="stats-card-icon" />}
+        <span>{label}</span>
+      </div>
     </div>
   );
 
@@ -270,15 +274,18 @@ export function StatsModal({ node, onClose }: Props) {
     <Modal title={`📊 ${t("stats.title")} - ${node.name}`} onClose={onClose} className="stats-modal">
       <div className="stats-cards">
         {card("total", stats.totalApis, t("stats.totalApis"))}
-        {card("http", stats.httpApis, t("stats.httpApis"), { select: "http" })}
-        {card("webhook", stats.webhookApis, t("stats.webhookApis"), { select: "webhook" })}
-        {card("ws", stats.wsApis, t("stats.wsApis"))}
-        {card("socketio", stats.socketIoApis, t("stats.socketioApis"))}
-        {card("graphql", stats.graphqlApis, t("stats.graphqlApis"))}
-        {card("webdav", stats.webdavApis, t("stats.webdavApis"), { select: "webdav" })}
-        {card("mcp", stats.mcpApis, t("stats.mcpApis"), { select: "mcp" })}
-        {card("tcp", stats.tcpApis, t("stats.tcpApis"))}
-        {card("udp", stats.udpApis, t("stats.udpApis"))}
+        {card("http", stats.httpApis, t("stats.httpApis"), { select: "http", icon: "http" })}
+        {card("webhook", stats.webhookApis, t("stats.webhookApis"), {
+          select: "webhook",
+          icon: "webhook",
+        })}
+        {card("ws", stats.wsApis, t("stats.wsApis"), { icon: "websocket" })}
+        {card("socketio", stats.socketIoApis, t("stats.socketioApis"), { icon: "socketio" })}
+        {card("graphql", stats.graphqlApis, t("stats.graphqlApis"), { icon: "graphql" })}
+        {card("webdav", stats.webdavApis, t("stats.webdavApis"), { select: "webdav", icon: "webdav" })}
+        {card("mcp", stats.mcpApis, t("stats.mcpApis"), { select: "mcp", icon: "mcp" })}
+        {card("tcp", stats.tcpApis, t("stats.tcpApis"), { icon: "tcp" })}
+        {card("udp", stats.udpApis, t("stats.udpApis"), { icon: "udp" })}
         {card("folders", stats.totalFolders, t("stats.totalFolders"))}
         {card("mock", stats.mockEnabled, t("stats.mockEnabled"))}
         {card("deprecatedApis", stats.deprecatedApis, t("stats.deprecatedApis"), { deprecated: true })}
@@ -288,42 +295,38 @@ export function StatsModal({ node, onClose }: Props) {
       </div>
 
       <div className="stats-body">
-        <div className="stats-panel">
-          <div className="stats-panel-title">
-            {methodProto ? `${t("stats.methods")} · ${protoName}` : t("stats.methods")}
-          </div>
-          {methodProto === null ? (
-            <div className="stats-empty">{t("stats.methodsHint")}</div>
-          ) : (
-            <>
-              {stats.wsApis + stats.socketIoApis + stats.graphqlApis > 0 && (
-                <div className="stats-ws-note">{t("stats.wsExcluded")}</div>
-              )}
-              {methods.length === 0 ? (
-                <div className="stats-empty">{t("stats.noApis")}</div>
-              ) : (
-                <div className="stats-method-row">
-                  <Donut data={methods} />
-                  <div className="stats-legend">
-                    {methods.map(([m, c], i) => (
-                      <div key={m} className="stats-legend-item">
-                        <span
-                          className="stats-dot"
-                          style={{
-                            background:
-                              METHOD_COLORS[m] || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
-                          }}
-                        />
-                        <span className="stats-legend-method">{m}</span>
-                        <span className="stats-legend-count">{c}</span>
-                      </div>
-                    ))}
-                  </div>
+        {methodProto !== null && (
+          <div className="stats-panel">
+            <div className="stats-panel-title">
+              {`${t("stats.methods")} · ${protoName}`}
+            </div>
+            {stats.wsApis + stats.socketIoApis + stats.graphqlApis > 0 && (
+              <div className="stats-ws-note">{t("stats.wsExcluded")}</div>
+            )}
+            {methods.length === 0 ? (
+              <div className="stats-empty">{t("stats.noApis")}</div>
+            ) : (
+              <div className="stats-method-row">
+                <Donut data={methods} />
+                <div className="stats-legend">
+                  {methods.map(([m, c], i) => (
+                    <div key={m} className="stats-legend-item">
+                      <span
+                        className="stats-dot"
+                        style={{
+                          background:
+                            METHOD_COLORS[m] || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+                        }}
+                      />
+                      <span className="stats-legend-method">{m}</span>
+                      <span className="stats-legend-count">{c}</span>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="stats-panel">
           <div className="stats-panel-title">{t("stats.subItems")}</div>
