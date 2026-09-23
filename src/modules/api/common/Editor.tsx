@@ -113,7 +113,7 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
   const isGraphql = api.protocol === "graphql";
   /** 是否 WebDAV 接口（编辑体验与 HTTP 一致，方法下拉框含 WebDAV 协议；不支持 Mock） */
   const isWebdav = api.protocol === "webdav";
-  /** 是否 Webhook 接口（HTTP 形态，仅 GET / POST，提供平台预设自动填充参数与签名） */
+  /** 是否 Webhook 接口（HTTP 形态，仅 GET / POST，提供平台预设自动填充参数与签名；不支持 Mock） */
   const isWebhook = api.protocol === "webhook";
   /** WebDAV：标准 HTTP 方法 + WebDAV 专用方法；Webhook：仅 GET / POST；其余为标准 HTTP 方法 */
   const methodOptions = isWebdav
@@ -309,9 +309,10 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
 
   // 设置中全局关闭 Mock 时，若当前停留在 Mock 页签则切回 Query；
   // WebSocket 无 Path / Mock 页签，若停留在这两个页签则切回 Query；
+  // Webhook / WebDAV / GraphQL 无 Mock 页签（Webhook 用于接收平台回调，不做 Mock），若停留则回退；
   // MCP 无 Query / Path / Mock 页签，统一回退到 Body
   useEffect(() => {
-    if ((!enableMock || isRealtime || isGraphql || isWebdav || isMcp) && tab === "mock") {
+    if ((!enableMock || isRealtime || isGraphql || isWebdav || isMcp || isWebhook) && tab === "mock") {
       setTab(fallbackTab);
       onTabChange?.(fallbackTab);
     }
@@ -320,7 +321,7 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
       onTabChange?.(fallbackTab);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enableMock, isRealtime, isGraphql, isWebdav, isMcp, tab]);
+  }, [enableMock, isRealtime, isGraphql, isWebdav, isMcp, isWebhook, tab]);
 
   // MCP 请求体固定为 JSON（JSON-RPC 2.0 报文），保证历史数据 / 协议切换后仍可编辑
   useEffect(() => {
@@ -651,7 +652,7 @@ export function Editor({ api, baseUrl, breadcrumb, onChange, onSend, onSaveVersi
           {t("editor.responseTab")}
           {(api.responses?.length ?? 0) > 0 && <span className="count">{api.responses.length}</span>}
         </div>
-        {enableMock && !isRealtime && !isGraphql && !isWebdav && !isMcp && (
+        {enableMock && !isRealtime && !isGraphql && !isWebdav && !isMcp && !isWebhook && (
           <div className={`tab ${tab === "mock" ? "active" : ""}`} onClick={() => switchTab("mock")}>
             Mock{api.mock.enabled && <span className="count">●</span>}
           </div>

@@ -49,8 +49,8 @@ fn parse_route(api: &ApiFile) -> Option<MockRoute> {
     if !api.mock.enabled {
         return None;
     }
-    // GraphQL 接口暂不支持 Mock（无法按路径生成路由）
-    if api.protocol == "graphql" || api.protocol == "socketio" {
+    // GraphQL 接口暂不支持 Mock（无法按路径生成路由）；Webhook 接口不支持 Mock（编辑区无 Mock 页签，仅用于接收平台回调）
+    if api.protocol == "graphql" || api.protocol == "socketio" || api.protocol == "webhook" {
         return None;
     }
     let path = if api.path.trim().is_empty() {
