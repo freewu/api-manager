@@ -215,17 +215,54 @@
 
     #[test]
     fn test_read_env_map() {
-        // 示例工作区：激活“开发环境”
-        let root =
-            Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../examples/demo-workspace"));
-        let map = read_env_map(root);
+        // 构造临时工作区（原示例工作区 examples/demo-workspace 已删除）：激活「开发环境」
+        let root = std::env::temp_dir().join(format!("apimgr-envmap-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join(ENV_FILE),
+            r#"{
+  "active": "开发环境",
+  "environments": [
+    {
+      "name": "开发环境",
+      "variables": [
+        { "key": "baseUrl", "value": "http://127.0.0.1:5050" },
+        { "key": "token", "value": "dev-token-123456", "enabled": true },
+        { "key": "fallback", "value": "", "defaultValue": "默认值" },
+        { "key": "off", "value": "不应出现", "enabled": false },
+        { "key": " ", "value": "空 key 忽略" }
+      ]
+    },
+    {
+      "name": "生产环境",
+      "variables": [ { "key": "baseUrl", "value": "https://api.example.com" } ]
+    }
+  ]
+}"#,
+        )
+        .unwrap();
+
+        let map = read_env_map(&root);
         assert_eq!(
             map.get("baseUrl").map(|s| s.as_str()),
             Some("http://127.0.0.1:5050")
         );
         assert_eq!(map.get("token").map(|s| s.as_str()), Some("dev-token-123456"));
-        // 不存在的环境 -> 空
+        // value 为空时回退 defaultValue
+        assert_eq!(map.get("fallback").map(|s| s.as_str()), Some("默认值"));
+        // 未启用变量 / 非激活环境变量不参与
+        assert!(!map.contains_key("off"));
         assert!(!map.contains_key("nope"));
+
+        // 不存在 __envs.json 的目录 -> 空映射
+        let empty = std::env::temp_dir().join(format!("apimgr-envmap-empty-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&empty);
+        fs::create_dir_all(&empty).unwrap();
+        assert!(read_env_map(&empty).is_empty());
+
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_dir_all(&empty);
     }
 
     #[test]

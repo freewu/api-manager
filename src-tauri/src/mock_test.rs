@@ -65,14 +65,50 @@
 
     #[test]
     fn test_scan_workspace() {
-        // 扫描示例工作区，应能找到 4 条启用了 mock 的路由
-        let root = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../examples/demo-workspace"));
-        let routes = scan_workspace(root);
+        // 构造临时工作区（原示例工作区 examples/demo-workspace 已删除），
+        // 覆盖：多级目录 / 多方法、未启用 mock、分组说明文件、Webhook（不支持 Mock）
+        let root = std::env::temp_dir().join(format!("apim-scan-mock-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("用户管理")).unwrap();
+        std::fs::create_dir_all(root.join("订单管理").join("子分组")).unwrap();
+
+        let api = |method: &str, path: &str, mock_enabled: bool, protocol: &str| {
+            serde_json::json!({
+                "uuid": format!("u-{method}-{path}"),
+                "name": format!("{method} {path}"),
+                "method": method,
+                "path": path,
+                "url": "", "description": "", "headers": [], "query": [], "params": [],
+                "body": { "mode": "none", "raw": "", "form": [] },
+                "mock": { "enabled": mock_enabled, "status": 200, "headers": [], "delay": 0, "body": "{}" },
+                "examples": [], "responses": [], "docParams": [], "deprecated": false,
+                "protocol": protocol
+            })
+        };
+        let write = |rel: &str, v: serde_json::Value| {
+            std::fs::write(root.join(rel), serde_json::to_string_pretty(&v).unwrap()).unwrap();
+        };
+
+        // 4 条启用 mock 的接口（含多级分组）
+        write("用户管理/获取用户.json", api("GET", "/api/users/{id}", true, "http"));
+        write("用户管理/创建用户.json", api("POST", "/api/users", true, "http"));
+        write("订单管理/删除订单.json", api("DELETE", "/api/orders/{id}", true, "http"));
+        write("订单管理/子分组/订单预检.json", api("OPTIONS", "/api/orders", true, "http"));
+        // 以下均不应产生 mock 路由
+        write("订单管理/未启用 mock.json", api("GET", "/api/off", false, "http"));
+        write("订单管理/回调通知.json", api("POST", "/notify", true, "webhook"));
+        write(INFO_FILE, serde_json::json!({ "name": "订单管理" }));
+
+        let routes = scan_workspace(&root);
         assert_eq!(routes.len(), 4, "期望 4 条 mock 路由");
         let methods: Vec<&str> = routes.iter().map(|r| r.method.as_str()).collect();
         assert!(methods.contains(&"GET"));
         assert!(methods.contains(&"POST"));
         assert!(methods.contains(&"DELETE"));
+        // Webhook 接口不支持 Mock，不应注册路由
+        assert!(!routes.iter().any(|r| r.segments.iter().any(|s| matches!(s, Segment::Literal(l) if l == "notify"))));
+
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
