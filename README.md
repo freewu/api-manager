@@ -261,8 +261,7 @@ just test
 
 ### Sample Workspace
 
-`examples/demo-workspace/` provides a complete example with two groups: user management and order management.
-Open the app and pick this directory to try every feature (built-in Mock is enabled).
+Open the app, pick an empty directory as the workspace, and the "Generate demo cases" prompt can create the sample groups (user management, order management, ...) with built-in Mock enabled.
 
 ## Tech Stack
 
