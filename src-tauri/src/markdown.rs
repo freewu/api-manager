@@ -215,13 +215,20 @@ fn mq_addr(api: &ApiFile) -> String {
     }
 }
 
-/// MQ 类型显示名（kafka → Kafka）
+/// MQ 类型显示名（kafka → Kafka）；回读 `> MQ 类型` 标注时取小写即为 kind
 fn mq_kind_label(kind: &str) -> &'static str {
     match kind {
         "rabbitmq" => "RabbitMQ",
         "rocketmq" => "RocketMQ",
         "activemq" => "ActiveMQ",
         "zeromq" => "ZeroMQ",
+        "pulsar" => "Pulsar",
+        "emqx" => "EMQX",
+        "hivemq" => "HiveMQ",
+        "mosquitto" => "Mosquitto",
+        "nanomq" => "NanoMQ",
+        "nats" => "NATS",
+        "vernemq" => "VerneMQ",
         _ => "Kafka",
     }
 }
@@ -233,6 +240,9 @@ fn mq_default_port(kind: &str) -> u16 {
         "rocketmq" => 9876,
         "activemq" => 61616,
         "zeromq" => 5555,
+        "pulsar" => 6650,
+        "emqx" | "hivemq" | "mosquitto" | "nanomq" | "vernemq" => 1883,
+        "nats" => 4222,
         _ => 9092,
     }
 }

@@ -2532,7 +2532,7 @@ let v = export::to_yapi(&apis);
         let _ = std::fs::remove_dir_all(&root);
     }
 
-    /// demo 生成的 MQ 演示分组：5 种消息队列各一个接口文件（能反序列化为 ApiFile），
+    /// demo 生成的 MQ 演示分组：8 种消息队列各一个接口文件（能反序列化为 ApiFile），
     /// 且每个接口都附带一个已保存示例（示例页签可列出并载入）
     #[test]
     fn test_demo_creates_mq_apis_and_examples() {
@@ -2541,7 +2541,7 @@ let v = export::to_yapi(&apis);
         std::fs::create_dir_all(&root).unwrap();
         crate::demo::write_mq_demo(&root).unwrap();
 
-        // 分组信息 + 5 个接口文件
+        // 分组信息 + 8 个接口文件
         assert!(root.join("MQ").join(crate::INFO_FILE).exists(), "MQ 分组 __info.json 存在");
         let mut kinds = Vec::new();
         for entry in std::fs::read_dir(root.join("MQ")).unwrap() {
@@ -2573,8 +2573,10 @@ let v = export::to_yapi(&apis);
         kinds.sort();
         assert_eq!(
             kinds,
-            vec!["activemq", "kafka", "rabbitmq", "rocketmq", "zeromq"],
-            "5 种消息队列都有演示接口"
+            vec![
+                "activemq", "emqx", "kafka", "nats", "pulsar", "rabbitmq", "rocketmq", "zeromq"
+            ],
+            "8 种消息队列都有演示接口"
         );
         let _ = std::fs::remove_dir_all(&root);
     }

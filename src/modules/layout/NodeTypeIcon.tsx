@@ -13,6 +13,14 @@ import iconRabbitMq from "../../../asserts/mq/RabbitMQ.png";
 import iconRocketMq from "../../../asserts/mq/rocketmq.png";
 import iconActiveMq from "../../../asserts/mq/ActiveMQ.png";
 import iconZeroMq from "../../../asserts/mq/zeromq.png";
+import iconPulsar from "../../../asserts/mq/Pulsar.png";
+import iconEmqx from "../../../asserts/mq/EMQX.png";
+import iconHiveMq from "../../../asserts/mq/HIVEMQ.png";
+import iconMosquitto from "../../../asserts/mq/mosquitto.png";
+import iconNanoMq from "../../../asserts/mq/NanoMQ.png";
+import iconNats from "../../../asserts/mq/NATS.png";
+import iconVerneMq from "../../../asserts/mq/VerneMQ.png";
+import { mqKindLabel } from "../../types";
 
 /** MQ 类型 → 品牌图标（列表与 MQ 配置栏按所选消息队列展示对应图标） */
 export const MQ_ICONS: Record<string, string> = {
@@ -21,15 +29,13 @@ export const MQ_ICONS: Record<string, string> = {
   rocketmq: iconRocketMq,
   activemq: iconActiveMq,
   zeromq: iconZeroMq,
-};
-
-/** MQ 类型 → 图标 alt / title */
-const MQ_LABELS: Record<string, string> = {
-  kafka: "Kafka",
-  rabbitmq: "RabbitMQ",
-  rocketmq: "RocketMQ",
-  activemq: "ActiveMQ",
-  zeromq: "ZeroMQ",
+  pulsar: iconPulsar,
+  emqx: iconEmqx,
+  hivemq: iconHiveMq,
+  mosquitto: iconMosquitto,
+  nanomq: iconNanoMq,
+  nats: iconNats,
+  vernemq: iconVerneMq,
 };
 
 /**
@@ -43,13 +49,13 @@ export function NodeTypeIcon({
   className = "node-type-icon",
 }: {
   protocol?: string;
-  /** MQ 接口的消息队列类型（kafka / rabbitmq / rocketmq / activemq / zeromq） */
+  /** MQ 接口的消息队列类型（kafka / rabbitmq / rocketmq / activemq / zeromq / pulsar / nats / emqx / hivemq / mosquitto / nanomq / vernemq） */
   mqType?: string;
   className?: string;
 }) {
   if (protocol === "mq") {
     const kind = mqType || "kafka";
-    return <img className={className} src={MQ_ICONS[kind] || iconMq} alt={MQ_LABELS[kind] || "MQ"} />;
+    return <img className={className} src={MQ_ICONS[kind] || iconMq} alt={mqKindLabel(kind)} />;
   }
   const src =
     protocol === "webhook"

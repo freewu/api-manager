@@ -478,6 +478,53 @@
     }
 
     #[test]
+    fn render_mq_new_kinds_roundtrip() {
+        // 新增 MQ 类型（Pulsar / NATS / MQTT 系）：类型名与标注互转、默认端口补齐都要一致
+        for (kind, label, port) in [
+            ("pulsar", "Pulsar", 6650u16),
+            ("emqx", "EMQX", 1883),
+            ("hivemq", "HiveMQ", 1883),
+            ("mosquitto", "Mosquitto", 1883),
+            ("nanomq", "NanoMQ", 1883),
+            ("nats", "NATS", 4222),
+            ("vernemq", "VerneMQ", 1883),
+        ] {
+            let mut api = sample_api();
+            api.protocol = "mq".into();
+            api.method = String::new();
+            api.path = "/".into();
+            api.url = String::new();
+            api.headers.clear();
+            api.query.clear();
+            api.params.clear();
+            api.responses.clear();
+            api.body = BodyData {
+                mode: "raw".into(),
+                raw: "hello".into(),
+                form: vec![],
+                binary_path: String::new(),
+            };
+            api.mq = Some(MqConfig {
+                kind: kind.into(),
+                host: "127.0.0.1".into(),
+                port: 0,
+                topic: "demo.topic".into(),
+                group: String::new(),
+                offset: "latest".into(),
+                max_messages: 1,
+                timeout_ms: 3000,
+            });
+            let md = render(&api, "", false);
+            assert!(md.contains(&format!("> MQ {label} 127.0.0.1")), "{kind}: {md}");
+            assert!(md.contains(&format!("- 类型: {label}")), "{kind}: {md}");
+            let parsed = parse(&md).expect("parse ok");
+            let mq = parsed.apis[0].mq.clone().expect("mq 配置还原");
+            assert_eq!(mq.kind, kind);
+            assert_eq!(mq.port, port);
+        }
+    }
+
+    #[test]
     fn render_udp_without_pack() {
         // UDP 未定义封包字段：只输出连接信息，不产生 HTTP 小节
         let mut api = sample_api();

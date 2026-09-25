@@ -59,7 +59,7 @@
 - 🗂️ **WebDAV**：在標準 HTTP 方法之外提供 `PROPFIND` / `PROPPATCH` / `MKCOL` / `COPY` / `MOVE` / `LOCK` / `UNLOCK` / `REPORT` 等 WebDAV 方法
 - 🤖 **MCP**：以 HTTP 方式調用 MCP 端點，複用同一套請求編輯器與響應查看器
 - 📦 **TCP / UDP**：報文編輯器自定義字段（名稱 / 類型 / 長度 / 值），並內置報文解析查看器
-- 📨 **MQ 消息隊列**：支持 Kafka / RabbitMQ / RocketMQ / ActiveMQ / ZeroMQ，維護連接配置與 Topic 後一鍵生成生產 / 消費代碼（10+ 語言），列表按消息隊列類型展示對應圖標
+- 📨 **MQ 消息隊列**：支持 Kafka / RabbitMQ / RocketMQ / ActiveMQ / ZeroMQ / Pulsar / NATS 以及 MQTT 系（EMQX / HiveMQ / Mosquitto / NanoMQ / VerneMQ），維護連接配置與 Topic 後一鍵生成生產 / 消費代碼（10+ 語言），列表按消息隊列類型展示對應圖標
 
 ### 🎭 Mock 服務
 

@@ -89,16 +89,39 @@ export function emptyNet(): NetConfig {
   return { host: "127.0.0.1", port: 0, timeoutMs: 3000 };
 }
 
-/** 消息队列类型：kafka / rabbitmq / rocketmq / activemq / zeromq */
-export type MqKind = "kafka" | "rabbitmq" | "rocketmq" | "activemq" | "zeromq";
+/**
+ * 消息队列类型：
+ *   - 原生协议：kafka / rabbitmq / rocketmq / activemq / zeromq / pulsar / nats
+ *   - MQTT 系：emqx / hivemq / mosquitto / nanomq / vernemq
+ */
+export type MqKind =
+  | "kafka"
+  | "rabbitmq"
+  | "rocketmq"
+  | "activemq"
+  | "zeromq"
+  | "pulsar"
+  | "emqx"
+  | "hivemq"
+  | "mosquitto"
+  | "nanomq"
+  | "nats"
+  | "vernemq";
 
-/** MQ 类型清单（含默认端口，切换类型时用于填充默认端口） */
+/** MQ 类型清单（含默认端口，切换类型时用于填充默认端口；MQTT 系默认 1883） */
 export const MQ_KINDS: { value: MqKind; label: string; port: number }[] = [
   { value: "kafka", label: "Kafka", port: 9092 },
   { value: "rabbitmq", label: "RabbitMQ", port: 5672 },
   { value: "rocketmq", label: "RocketMQ", port: 9876 },
   { value: "activemq", label: "ActiveMQ", port: 61616 },
   { value: "zeromq", label: "ZeroMQ", port: 5555 },
+  { value: "pulsar", label: "Pulsar", port: 6650 },
+  { value: "emqx", label: "EMQX", port: 1883 },
+  { value: "hivemq", label: "HiveMQ", port: 1883 },
+  { value: "mosquitto", label: "Mosquitto", port: 1883 },
+  { value: "nanomq", label: "NanoMQ", port: 1883 },
+  { value: "nats", label: "NATS", port: 4222 },
+  { value: "vernemq", label: "VerneMQ", port: 1883 },
 ];
 
 /** MQ（消息队列）连接与消费配置 */
@@ -349,7 +372,7 @@ export interface TreeNode {
   protocol?: ApiProtocol;
   /** 接口 uuid（仅接口节点有，用于收藏等按 uuid 关联的场景） */
   uuid?: string;
-  /** MQ 接口的消息队列类型（kafka / rabbitmq / rocketmq / activemq / zeromq） */
+  /** MQ 接口的消息队列类型（kafka / rabbitmq / rocketmq / activemq / zeromq / pulsar / nats / emqx / hivemq / mosquitto / nanomq / vernemq） */
   mqType?: string;
   children?: TreeNode[];
 }

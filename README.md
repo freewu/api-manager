@@ -59,7 +59,7 @@
 - 🗂️ **WebDAV** — the WebDAV methods `PROPFIND` / `PROPPATCH` / `MKCOL` / `COPY` / `MOVE` / `LOCK` / `UNLOCK` / `REPORT` are available next to the standard HTTP methods
 - 🤖 **MCP** — call an MCP endpoint over HTTP with the same request builder and response viewer
 - 📦 **TCP / UDP** — packet editor with field definitions (name / type / length / value) and a built-in packet inspector
-- 📨 **MQ** — Kafka / RabbitMQ / RocketMQ / ActiveMQ / ZeroMQ: keep the connection config and topic, then generate producer / consumer code (10+ languages); the tree shows the icon of the selected message broker
+- 📨 **MQ** — Kafka / RabbitMQ / RocketMQ / ActiveMQ / ZeroMQ / Pulsar / NATS plus MQTT brokers (EMQX / HiveMQ / Mosquitto / NanoMQ / VerneMQ): keep the connection config and topic, then generate producer / consumer code (10+ languages); the tree shows the icon of the selected message broker
 
 ### 🎭 Mock Server
 

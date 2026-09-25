@@ -1111,5 +1111,41 @@ pub(crate) fn write_mq_demo(root: &Path) -> Result<(), String> {
 }"#,
         &format!("{mq_desc}\n\n【本示例】\nZeroMQ 无中心 Broker，地址（127.0.0.1:5555）即通信端点；无 Topic 概念，生成的代码为 PUSH（生产 connect）/ PULL（消费 bind）点对点示例，需要消息过滤时可改用 SUB 端按前缀过滤。\n\n【本地依赖】\n无需启动 Broker：pip install pyzmq / npm i zeromq 即可直接运行生成代码"),
     )?;
+
+    // Pulsar：生产订单事件流
+    mq_write(
+        "订单事件流（Pulsar 生产）",
+        serde_json::json!({ "type": "pulsar", "host": "127.0.0.1", "port": 6650, "topic": "order.events", "group": "order-stream", "offset": "earliest", "maxMessages": 3, "timeoutMs": 5000 }),
+        r#"{
+  "orderId": 1001,
+  "event": "order.created",
+  "amount": 99.5
+}"#,
+        &format!("{mq_desc}\n\n【本示例】\nPulsar 生产端：topic 会自动补全为 persistent://public/default/order.events，消费端可用 subscription/offset 从最早位置重放。\n\n【本地 Broker】\ndocker run -d --name demo-pulsar -p 6650:6650 -p 8080:8080 apachepulsar/pulsar:latest bin/pulsar standalone"),
+    )?;
+
+    // EMQX：MQTT 生产传感器数据
+    mq_write(
+        "传感器数据上报（EMQX 生产）",
+        serde_json::json!({ "type": "emqx", "host": "127.0.0.1", "port": 1883, "topic": "sensor/temperature", "group": "", "offset": "latest", "maxMessages": 1, "timeoutMs": 5000 }),
+        r#"{
+  "deviceId": "sensor-001",
+  "temperature": 26.5,
+  "reportedAt": "2024-01-01T10:10:00+08:00"
+}"#,
+        &format!("{mq_desc}\n\n【本示例】\nEMQX 使用标准 MQTT 协议，topic 形如 sensor/temperature（支持 / 分层与通配符订阅）；MQTT 无消费组 / offset 概念，示例用 QoS 1。\n\n【本地 Broker】\ndocker run -d --name demo-emqx -p 1883:1883 -p 18083:18083 emqx/emqx:latest"),
+    )?;
+
+    // NATS：生产服务事件
+    mq_write(
+        "服务事件广播（NATS 生产）",
+        serde_json::json!({ "type": "nats", "host": "127.0.0.1", "port": 4222, "topic": "service.user.updated", "group": "", "offset": "latest", "maxMessages": 1, "timeoutMs": 5000 }),
+        r#"{
+  "userId": 1001,
+  "nickname": "api-manager",
+  "updatedAt": "2024-01-01T10:20:00+08:00"
+}"#,
+        &format!("{mq_desc}\n\n【本示例】\nNATS 生产端：Core NATS 按 subject（service.user.updated）发布 / 订阅，无消费组 / offset 概念；需要持久化与重放可改用 JetStream。\n\n【本地 Broker】\ndocker run -d --name demo-nats -p 4222:4222 nats:latest"),
+    )?;
     Ok(())
 }

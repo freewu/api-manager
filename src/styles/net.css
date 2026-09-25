@@ -332,6 +332,9 @@ select.packet-input {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* 消息队列类型较多（12 种），超高时列表内部滚动，避免弹层超出窗口 */
+  max-height: 320px;
+  overflow-y: auto;
   background: var(--bg-panel);
   border: 1px solid var(--border-light);
   border-radius: 8px;

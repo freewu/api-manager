@@ -1,5 +1,9 @@
 /**
- * MQ（消息队列）代码生成：按 Kafka / RabbitMQ / RocketMQ / ActiveMQ / ZeroMQ 生成「生产 / 消费」示例代码。
+ * MQ（消息队列）代码生成：生成「生产 / 消费」示例代码。
+ *
+ * 支持的消息队列：
+ *   - 原生协议：Kafka / RabbitMQ / RocketMQ / ActiveMQ / ZeroMQ / Pulsar / NATS
+ *   - MQTT 系（共用 MQTT 客户端）：EMQX / HiveMQ / Mosquitto / NanoMQ / VerneMQ
  *
  * 与 net.ts（TCP / UDP 封包）不同，MQ 代码不涉及报文字节，而是按语言客户端库给出连接 + 生产 / 消费调用。
  * 已内置代码生成的语言：Bash / Python / JavaScript / TypeScript / Java / Kotlin / Go / C# / PHP / Ruby；
@@ -68,6 +72,31 @@ const secs = (r: MqReq) => Math.max(1, Math.round(r.timeoutMs / 1000));
 /** 去换行（用于单行命令行） */
 const oneline = (s: string) => s.replace(/\r?\n/g, " ");
 
+/** MQ 协议族：MQTT 系（EMQX / HiveMQ / Mosquitto / NanoMQ / VerneMQ）共用 MQTT 客户端代码 */
+export type MqFamily =
+  | "kafka"
+  | "rabbitmq"
+  | "rocketmq"
+  | "activemq"
+  | "zeromq"
+  | "pulsar"
+  | "nats"
+  | "mqtt";
+
+const MQ_FAMILY: Partial<Record<MqKind, MqFamily>> = {
+  emqx: "mqtt",
+  hivemq: "mqtt",
+  mosquitto: "mqtt",
+  nanomq: "mqtt",
+  vernemq: "mqtt",
+};
+
+/** 归类到协议族（未列出的类型即自身） */
+export function mqFamily(kind: MqKind): MqFamily {
+  return MQ_FAMILY[kind] ?? (kind as MqFamily);
+}
+
+
 /** 各消息队列的 CLI 命令：Bash 语言直接输出；其余语言作为兜底提示 */
 function cliCommands(r: MqReq, dir: MqDirection): string[] {
   switch (r.kind) {
@@ -104,6 +133,32 @@ function cliCommands(r: MqReq, dir: MqDirection): string[] {
             `activemq consumer --brokerUrl tcp://${r.target} --destination queue://${r.topic} \\`,
             `  --messageCount ${r.maxMessages}`,
           ];
+    case "emqx":
+    case "hivemq":
+    case "mosquitto":
+    case "nanomq":
+    case "vernemq":
+      // MQTT 系：mosquitto 的 pub/sub 命令行可连接任意 MQTT Broker（含 EMQX / HiveMQ / NanoMQ / VerneMQ）
+      return dir === "produce"
+        ? [`mosquitto_pub -h ${r.host} -p ${r.port} -t ${r.topic} -m ${sh(oneline(r.body))}`]
+        : [
+            `mosquitto_sub -h ${r.host} -p ${r.port} -t ${r.topic} \\`,
+            `  -C ${r.maxMessages} -W ${secs(r)} -q 1`,
+          ];
+    case "pulsar":
+      return dir === "produce"
+        ? [
+            `pulsar-client produce ${r.topic} --url pulsar://${r.target} \\`,
+            `  --messages ${sh(oneline(r.body))}`,
+          ]
+        : [
+            `pulsar-client consume ${r.topic} --url pulsar://${r.target} \\`,
+            `  --subscription-name ${r.group} --num-messages ${r.maxMessages}`,
+          ];
+    case "nats":
+      return dir === "produce"
+        ? [`nats pub ${r.topic} ${sh(oneline(r.body))} --server nats://${r.target}`]
+        : [`nats sub ${r.topic} --server nats://${r.target} --count ${r.maxMessages}`];
     case "zeromq":
       return dir === "produce"
         ? [
@@ -249,6 +304,9 @@ function genPython(r: MqReq, dir: MqDirection): string {
             `time.sleep(${secs(r)})  # 消费为异步回调，按需保持连接`,
             "conn.disconnect()",
           ].join("\n");
+    default:
+      // 新增消息队列（MQTT 系 / Pulsar / NATS）：由协议族函数生成
+      return genMqFamily("python", r, dir);
     case "zeromq":
       return produce
         ? [
@@ -401,6 +459,9 @@ function genJs(r: MqReq, dir: MqDirection): string {
             "  });",
             "});",
           ].join("\n");
+    default:
+      // 新增消息队列（MQTT 系 / Pulsar / NATS）：由协议族函数生成
+      return genMqFamily("javascript", r, dir);
     case "zeromq":
       return produce
         ? [
@@ -574,6 +635,9 @@ function genKotlin(r: MqReq, dir: MqDirection): string {
             "    }",
             "}",
           ].join("\n");
+    default:
+      // 新增消息队列（MQTT 系 / Pulsar / NATS）：由协议族函数生成
+      return genMqFamily("kotlin", r, dir);
     case "zeromq":
       return [
         '// 依赖（build.gradle.kts）：implementation("org.zeromq:jeromq:0.5.3")',
@@ -743,6 +807,9 @@ function genJava(r: MqReq, dir: MqDirection): string {
         "    }",
         "}",
       ].join("\n");
+    default:
+      // 新增消息队列（MQTT 系 / Pulsar / NATS）：由协议族函数生成
+      return genMqFamily("java", r, dir);
     case "zeromq":
       return [
         `// ZeroMQ ${produce ? "生产" : "消费"}（Maven：org.zeromq:jeromq:0.5.3）`,
@@ -1003,6 +1070,9 @@ function genGo(r: MqReq, dir: MqDirection): string {
             "\tfmt.Println(string(msg.Body))",
             "}",
           ].join("\n");
+    default:
+      // 新增消息队列（MQTT 系 / Pulsar / NATS）：由协议族函数生成
+      return genMqFamily("go", r, dir);
     case "zeromq":
       return produce
         ? [
@@ -1172,6 +1242,9 @@ function genCsharp(r: MqReq, dir: MqDirection): string {
             `var msg = consumer.Receive(TimeSpan.FromMilliseconds(${r.timeoutMs})) as ITextMessage;`,
             'Console.WriteLine(msg?.Text ?? "no message");',
           ].join("\n");
+    default:
+      // 新增消息队列（MQTT 系 / Pulsar / NATS）：由协议族函数生成
+      return genMqFamily("csharp", r, dir);
     case "zeromq":
       return produce
         ? [
@@ -1322,6 +1395,9 @@ function genPhp(r: MqReq, dir: MqDirection): string {
             "}",
             "$stomp->disconnect();",
           ].join("\n");
+    default:
+      // 新增消息队列（MQTT 系 / Pulsar / NATS）：由协议族函数生成
+      return genMqFamily("php", r, dir);
     case "zeromq":
       return produce
         ? [
@@ -1449,6 +1525,9 @@ function genRuby(r: MqReq, dir: MqDirection): string {
             "",
             '# 连接参数：client = Stomp::Client.new("admin", "admin", "' + r.host + '", ' + r.port + ")",
           ].join("\n");
+    default:
+      // 新增消息队列（MQTT 系 / Pulsar / NATS）：由协议族函数生成
+      return genMqFamily("ruby", r, dir);
     case "zeromq":
       return produce
         ? [
@@ -1479,6 +1558,907 @@ function genRuby(r: MqReq, dir: MqDirection): string {
   }
 }
 
+// ---------------------------------------------------------------- MQTT 系（EMQX / HiveMQ / Mosquitto / NanoMQ / VerneMQ）
+//
+// 这几种消息队列都使用标准 MQTT 协议，所以共用同一套 MQTT 客户端代码，仅注释里标注具体 Broker。
+
+/** MQTT 系提示：MQTT 无消费组 / offset 概念（消费组 / 位点由 QoS、会话与 retained 消息替代） */
+const mqttNote = (r: MqReq) =>
+  `${r.kindLabel} 使用标准 MQTT 协议：无消费组 / offset 概念（示例用 QoS 1）`;
+
+/** Pulsar topic 规范：未带协议前缀时补默认租户 / 命名空间 */
+const pulsarTopic = (t: string) => (t.includes("://") ? t : `persistent://public/default/${t}`);
+
+/** NATS 提示：Core NATS 无持久化语义 */
+const natsNote = (r: MqReq) =>
+  `${r.kindLabel} Core NATS：无消费组 / offset 概念（需要持久化 / 重放可改用 JetStream）`;
+
+function mqttPython(r: MqReq, dir: MqDirection): string {
+  return dir === "produce"
+    ? [
+        '# 依赖：pip install "paho-mqtt>=2.0"',
+        `# ${mqttNote(r)}`,
+        "import paho.mqtt.client as mqtt",
+        "",
+        "client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)",
+        `client.connect("${r.host}", ${r.port}, 10)`,
+        `client.publish("${r.topic}", ${j(r.body)}, qos=1)`,
+        "client.disconnect()",
+      ].join("\n")
+    : [
+        '# 依赖：pip install "paho-mqtt>=2.0"',
+        `# ${mqttNote(r)}`,
+        "import paho.mqtt.client as mqtt",
+        "",
+        "received = 0",
+        "",
+        "",
+        "def on_message(client, userdata, msg):",
+        "    global received",
+        '    print(msg.payload.decode("utf-8"))',
+        "    received += 1",
+        `    if received >= ${r.maxMessages}:`,
+        "        client.disconnect()",
+        "",
+        "",
+        "client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)",
+        "client.on_message = on_message",
+        `client.connect("${r.host}", ${r.port}, 10)`,
+        `client.subscribe("${r.topic}", qos=1)`,
+        "client.loop_forever()  # 收到指定条数后自动断开",
+      ].join("\n");
+}
+
+function mqttJs(r: MqReq, dir: MqDirection): string {
+  return dir === "produce"
+    ? [
+        "// 依赖：npm i mqtt",
+        `// ${mqttNote(r)}`,
+        'const mqtt = require("mqtt");',
+        "",
+        `const client = mqtt.connect("mqtt://${r.target}");`,
+        'client.on("connect", () => {',
+        `  client.publish("${r.topic}", ${j(r.body)}, { qos: 1 }, () => client.end());`,
+        "});",
+      ].join("\n")
+    : [
+        "// 依赖：npm i mqtt",
+        `// ${mqttNote(r)}`,
+        'const mqtt = require("mqtt");',
+        "",
+        "let received = 0;",
+        `const client = mqtt.connect("mqtt://${r.target}");`,
+        `client.on("connect", () => client.subscribe("${r.topic}", { qos: 1 }));`,
+        'client.on("message", (_topic, payload) => {',
+        "  console.log(payload.toString());",
+        `  if (++received >= ${r.maxMessages}) client.end();`,
+        "});",
+      ].join("\n");
+}
+
+function mqttKotlin(r: MqReq, dir: MqDirection): string {
+  return dir === "produce"
+    ? [
+        '// 依赖（build.gradle.kts）：implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")',
+        "import org.eclipse.paho.client.mqttv3.MqttClient",
+        "import org.eclipse.paho.client.mqttv3.MqttMessage",
+        "",
+        `// ${mqttNote(r)}`,
+        "fun main() {",
+        `    val client = MqttClient("tcp://${r.target}", MqttClient.generateClientId())`,
+        "    client.connect()",
+        `    client.publish("${r.topic}", MqttMessage(${j(r.body)}.toByteArray()).apply { qos = 1 })`,
+        "    client.disconnect()",
+        "}",
+      ].join("\n")
+    : [
+        '// 依赖（build.gradle.kts）：implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")',
+        "import org.eclipse.paho.client.mqttv3.IMqttMessageListener",
+        "import org.eclipse.paho.client.mqttv3.MqttClient",
+        "",
+        `// ${mqttNote(r)}`,
+        "fun main() {",
+        `    val client = MqttClient("tcp://${r.target}", MqttClient.generateClientId())`,
+        "    client.connect()",
+        `    client.subscribe("${r.topic}", 1, IMqttMessageListener { _, msg -> println(String(msg.payload)) })`,
+        `    Thread.sleep(${r.timeoutMs})`,
+        "    client.disconnect()",
+        "}",
+      ].join("\n");
+}
+
+function mqttJava(r: MqReq, dir: MqDirection): string {
+  const produce = dir === "produce";
+  const cls = `Mq${produce ? "Producer" : "Consumer"}`;
+  return produce
+    ? [
+        "// 依赖（Maven）：org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5",
+        "import java.nio.charset.StandardCharsets;",
+        "import org.eclipse.paho.client.mqttv3.MqttClient;",
+        "import org.eclipse.paho.client.mqttv3.MqttMessage;",
+        "",
+        `// ${mqttNote(r)}`,
+        `public class ${cls} {`,
+        "    public static void main(String[] args) throws Exception {",
+        `        MqttClient client = new MqttClient("tcp://${r.target}", MqttClient.generateClientId());`,
+        "        client.connect();",
+        `        MqttMessage message = new MqttMessage(${j(r.body)}.getBytes(StandardCharsets.UTF_8));`,
+        "        message.setQos(1);",
+        `        client.publish("${r.topic}", message);`,
+        "        client.disconnect();",
+        "    }",
+        "}",
+      ].join("\n")
+    : [
+        "// 依赖（Maven）：org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5",
+        "import java.nio.charset.StandardCharsets;",
+        "import org.eclipse.paho.client.mqttv3.MqttClient;",
+        "",
+        `// ${mqttNote(r)}`,
+        `public class ${cls} {`,
+        "    public static void main(String[] args) throws Exception {",
+        `        MqttClient client = new MqttClient("tcp://${r.target}", MqttClient.generateClientId());`,
+        "        client.connect();",
+        `        client.subscribe("${r.topic}", 1, (topic, message) ->`,
+        "            System.out.println(new String(message.getPayload(), StandardCharsets.UTF_8)));",
+        `        Thread.sleep(${r.timeoutMs});`,
+        "        client.disconnect();",
+        "    }",
+        "}",
+      ].join("\n");
+}
+
+function mqttGo(r: MqReq, dir: MqDirection): string {
+  return dir === "produce"
+    ? [
+        "// 依赖：go get github.com/eclipse/paho.mqtt.golang",
+        "package main",
+        "",
+        "import (",
+        '\t"time"',
+        "",
+        '\tmqtt "github.com/eclipse/paho.mqtt.golang"',
+        ")",
+        "",
+        `// ${mqttNote(r)}`,
+        "func main() {",
+        `\topts := mqtt.NewClientOptions().AddBroker("tcp://${r.target}").SetClientID("api-manager")`,
+        "\tclient := mqtt.NewClient(opts)",
+        "\tif token := client.Connect(); token.Wait() && token.Error() != nil {",
+        "\t\tpanic(token.Error())",
+        "\t}",
+        `\tif token := client.Publish("${r.topic}", 1, false, ${j(r.body)}); token.Wait() && token.Error() != nil {`,
+        "\t\tpanic(token.Error())",
+        "\t}",
+        "\ttime.Sleep(300 * time.Millisecond) // 等待发送完成",
+        "\tclient.Disconnect(250)",
+        "}",
+      ].join("\n")
+    : [
+        "// 依赖：go get github.com/eclipse/paho.mqtt.golang",
+        "package main",
+        "",
+        "import (",
+        '\t"fmt"',
+        '\t"time"',
+        "",
+        '\tmqtt "github.com/eclipse/paho.mqtt.golang"',
+        ")",
+        "",
+        `// ${mqttNote(r)}`,
+        "func main() {",
+        `\topts := mqtt.NewClientOptions().AddBroker("tcp://${r.target}").SetClientID("api-manager")`,
+        "\tclient := mqtt.NewClient(opts)",
+        "\tif token := client.Connect(); token.Wait() && token.Error() != nil {",
+        "\t\tpanic(token.Error())",
+        "\t}",
+        `\tif token := client.Subscribe("${r.topic}", 1, func(_ mqtt.Client, msg mqtt.Message) {`,
+        "\t\tfmt.Println(string(msg.Payload()))",
+        "\t}); token.Wait() && token.Error() != nil {",
+        "\t\tpanic(token.Error())",
+        "\t}",
+        `\ttime.Sleep(${r.timeoutMs} * time.Millisecond)`,
+        `\tclient.Unsubscribe("${r.topic}")`,
+        "\tclient.Disconnect(250)",
+        "}",
+      ].join("\n");
+}
+
+function mqttCsharp(r: MqReq, dir: MqDirection): string {
+  return dir === "produce"
+    ? [
+        "// 依赖：dotnet add package MQTTnet",
+        "using MQTTnet;",
+        "using MQTTnet.Client;",
+        "using MQTTnet.Protocol;",
+        "",
+        `// ${mqttNote(r)}`,
+        "var factory = new MqttFactory();",
+        "using var client = factory.CreateMqttClient();",
+        `await client.ConnectAsync(new MqttClientOptionsBuilder().WithTcpServer("${r.host}", ${r.port}).Build());`,
+        "var message = new MqttApplicationMessageBuilder()",
+        `    .WithTopic("${r.topic}")`,
+        `    .WithPayload(${j(r.body)})`,
+        "    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)",
+        "    .Build();",
+        "await client.PublishAsync(message);",
+        "await client.DisconnectAsync();",
+      ].join("\n")
+    : [
+        "// 依赖：dotnet add package MQTTnet",
+        "using MQTTnet;",
+        "using MQTTnet.Client;",
+        "using MQTTnet.Protocol;",
+        "",
+        `// ${mqttNote(r)}`,
+        "var factory = new MqttFactory();",
+        "using var client = factory.CreateMqttClient();",
+        "client.ApplicationMessageReceivedAsync += e =>",
+        "{",
+        "    Console.WriteLine(e.ApplicationMessage.ConvertPayloadToString());",
+        "    return Task.CompletedTask;",
+        "};",
+        `await client.ConnectAsync(new MqttClientOptionsBuilder().WithTcpServer("${r.host}", ${r.port}).Build());`,
+        "await client.SubscribeAsync(new MqttTopicFilterBuilder()",
+        `    .WithTopic("${r.topic}")`,
+        "    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)",
+        "    .Build());",
+        `await Task.Delay(${r.timeoutMs});`,
+        "await client.DisconnectAsync();",
+      ].join("\n");
+}
+
+function mqttPhp(r: MqReq, dir: MqDirection): string {
+  return dir === "produce"
+    ? [
+        "<?php",
+        "// 依赖：composer require php-mqtt/client",
+        "use PhpMqtt\\Client\\ConnectionSettings;",
+        "use PhpMqtt\\Client\\MqttClient;",
+        "",
+        `// ${mqttNote(r)}`,
+        `$client = new MqttClient("${r.host}", ${r.port}, "api-manager");`,
+        "$client->connect((new ConnectionSettings())->setKeepAliveInterval(30));",
+        `$client->publish("${r.topic}", ${j(r.body)}, 1);`,
+        "$client->disconnect();",
+      ].join("\n")
+    : [
+        "<?php",
+        "// 依赖：composer require php-mqtt/client",
+        "use PhpMqtt\\Client\\ConnectionSettings;",
+        "use PhpMqtt\\Client\\MqttClient;",
+        "",
+        `// ${mqttNote(r)}`,
+        `$client = new MqttClient("${r.host}", ${r.port}, "api-manager");`,
+        "$client->connect((new ConnectionSettings())->setKeepAliveInterval(30));",
+        `$client->subscribe("${r.topic}", function (string $topic, string $message) {`,
+        "    echo $message . PHP_EOL;",
+        "}, 1);",
+        "$client->loop(true); // 常驻订阅，收到消息后按需 Ctrl+C 结束",
+      ].join("\n");
+}
+
+function mqttRuby(r: MqReq, dir: MqDirection): string {
+  return dir === "produce"
+    ? [
+        "# 依赖：gem install mqtt",
+        'require "mqtt"',
+        "",
+        `# ${mqttNote(r)}`,
+        `MQTT::Client.connect(host: "${r.host}", port: ${r.port}) do |client|`,
+        `  client.publish("${r.topic}", ${j(r.body)}, qos: 1)`,
+        "end",
+      ].join("\n")
+    : [
+        "# 依赖：gem install mqtt",
+        'require "mqtt"',
+        "",
+        `# ${mqttNote(r)}`,
+        `MQTT::Client.connect(host: "${r.host}", port: ${r.port}) do |client|`,
+        `  topic, message = client.get("${r.topic}")`,
+        '  puts "#{topic}: #{message}"',
+        "end",
+      ].join("\n");
+}
+
+// ---------------------------------------------------------------- Pulsar
+
+function pulsarPython(r: MqReq, dir: MqDirection): string {
+  const topic = pulsarTopic(r.topic);
+  return dir === "produce"
+    ? [
+        "# 依赖：pip install pulsar-client",
+        "import pulsar",
+        "",
+        `# Pulsar 生产：topic ${topic}`,
+        `client = pulsar.Client("pulsar://${r.target}")`,
+        `producer = client.create_producer("${topic}")`,
+        `producer.send(${j(r.body)}.encode("utf-8"))`,
+        "producer.close()",
+        "client.close()",
+      ].join("\n")
+    : [
+        "# 依赖：pip install pulsar-client",
+        "import pulsar",
+        "",
+        `# Pulsar 消费：topic ${topic}`,
+        `client = pulsar.Client("pulsar://${r.target}")`,
+        "consumer = client.subscribe(",
+        `    "${topic}",`,
+        `    subscription_name="${r.group}",`,
+        `    initial_position=pulsar.InitialPosition.${earliest(r) ? "Earliest" : "Latest"},`,
+        ")",
+        `for _ in range(${r.maxMessages}):`,
+        `    msg = consumer.receive(timeout_millis=${r.timeoutMs})  # 超时未收到会抛异常`,
+        '    print(msg.data().decode("utf-8"))',
+        "    consumer.acknowledge(msg)",
+        "consumer.close()",
+        "client.close()",
+      ].join("\n");
+}
+
+function pulsarJs(r: MqReq, dir: MqDirection): string {
+  const topic = pulsarTopic(r.topic);
+  return dir === "produce"
+    ? [
+        "// 依赖：npm i pulsar-client",
+        'const Pulsar = require("pulsar-client");',
+        "",
+        `// Pulsar 生产：topic ${topic}`,
+        "(async () => {",
+        `  const client = new Pulsar.Client({ serviceUrl: "pulsar://${r.target}" });`,
+        `  const producer = await client.createProducer({ topic: "${topic}" });`,
+        `  await producer.send({ data: Buffer.from(${j(r.body)}) });`,
+        "  await producer.close();",
+        "  await client.close();",
+        "})();",
+      ].join("\n")
+    : [
+        "// 依赖：npm i pulsar-client",
+        'const Pulsar = require("pulsar-client");',
+        "",
+        `// Pulsar 消费：topic ${topic}`,
+        "(async () => {",
+        `  const client = new Pulsar.Client({ serviceUrl: "pulsar://${r.target}" });`,
+        "  const consumer = await client.subscribe({",
+        `    topic: "${topic}",`,
+        `    subscription: "${r.group}",`,
+        `    subscriptionInitialPosition: "${earliest(r) ? "Earliest" : "Latest"}",`,
+        "  });",
+        `  for (let i = 0; i < ${r.maxMessages}; i++) {`,
+        `    const msg = await consumer.receive(${r.timeoutMs}); // 超时抛错`,
+        "    console.log(msg.getData().toString());",
+        "    await consumer.acknowledge(msg);",
+        "  }",
+        "  await consumer.close();",
+        "  await client.close();",
+        "})();",
+      ].join("\n");
+}
+
+function pulsarJava(r: MqReq, dir: MqDirection): string {
+  const produce = dir === "produce";
+  const cls = `Mq${produce ? "Producer" : "Consumer"}`;
+  const topic = pulsarTopic(r.topic);
+  return produce
+    ? [
+        "// 依赖（Maven）：org.apache.pulsar:pulsar-client:3.3.0",
+        "import java.nio.charset.StandardCharsets;",
+        "import org.apache.pulsar.client.api.Producer;",
+        "import org.apache.pulsar.client.api.PulsarClient;",
+        "",
+        `// Pulsar 生产：topic ${topic}`,
+        `public class ${cls} {`,
+        "    public static void main(String[] args) throws Exception {",
+        `        try (PulsarClient client = PulsarClient.builder().serviceUrl("pulsar://${r.target}").build();`,
+        `             Producer<byte[]> producer = client.newProducer().topic("${topic}").create()) {`,
+        `            producer.send(${j(r.body)}.getBytes(StandardCharsets.UTF_8));`,
+        "        }",
+        "    }",
+        "}",
+      ].join("\n")
+    : [
+        "// 依赖（Maven）：org.apache.pulsar:pulsar-client:3.3.0",
+        "import java.nio.charset.StandardCharsets;",
+        "import java.util.concurrent.TimeUnit;",
+        "import org.apache.pulsar.client.api.Consumer;",
+        "import org.apache.pulsar.client.api.Message;",
+        "import org.apache.pulsar.client.api.PulsarClient;",
+        "import org.apache.pulsar.client.api.SubscriptionInitialPosition;",
+        "",
+        `// Pulsar 消费：topic ${topic}`,
+        `public class ${cls} {`,
+        "    public static void main(String[] args) throws Exception {",
+        `        try (PulsarClient client = PulsarClient.builder().serviceUrl("pulsar://${r.target}").build();`,
+        "             Consumer<byte[]> consumer = client.newConsumer()",
+        `                 .topic("${topic}")`,
+        `                 .subscriptionName("${r.group}")`,
+        `                 .subscriptionInitialPosition(SubscriptionInitialPosition.${earliest(r) ? "Earliest" : "Latest"})`,
+        "                 .subscribe()) {",
+        `            for (int i = 0; i < ${r.maxMessages}; i++) {`,
+        `                Message<byte[]> msg = consumer.receive(${secs(r)}, TimeUnit.SECONDS);`,
+        "                System.out.println(new String(msg.getData(), StandardCharsets.UTF_8));",
+        "                consumer.acknowledge(msg);",
+        "            }",
+        "        }",
+        "    }",
+        "}",
+      ].join("\n");
+}
+
+function pulsarKotlin(r: MqReq, dir: MqDirection): string {
+  const topic = pulsarTopic(r.topic);
+  return dir === "produce"
+    ? [
+        '// 依赖（build.gradle.kts）：implementation("org.apache.pulsar:pulsar-client:3.3.0")',
+        "import org.apache.pulsar.client.api.PulsarClient",
+        "",
+        `// Pulsar 生产：topic ${topic}`,
+        "fun main() {",
+        `    val client = PulsarClient.builder().serviceUrl("pulsar://${r.target}").build()`,
+        "    client.newProducer()",
+        `        .topic("${topic}")`,
+        "        .create()",
+        "        .use { producer ->",
+        `            producer.send(${j(r.body)}.toByteArray())`,
+        "        }",
+        "    client.close()",
+        "}",
+      ].join("\n")
+    : [
+        '// 依赖（build.gradle.kts）：implementation("org.apache.pulsar:pulsar-client:3.3.0")',
+        "import java.util.concurrent.TimeUnit",
+        "import org.apache.pulsar.client.api.PulsarClient",
+        "import org.apache.pulsar.client.api.SubscriptionInitialPosition",
+        "",
+        `// Pulsar 消费：topic ${topic}`,
+        "fun main() {",
+        `    val client = PulsarClient.builder().serviceUrl("pulsar://${r.target}").build()`,
+        "    client.newConsumer()",
+        `        .topic("${topic}")`,
+        `        .subscriptionName("${r.group}")`,
+        `        .subscriptionInitialPosition(SubscriptionInitialPosition.${earliest(r) ? "Earliest" : "Latest"})`,
+        "        .subscribe()",
+        "        .use { consumer ->",
+        `            repeat(${r.maxMessages}) {`,
+        `                val msg = consumer.receive(${secs(r)}, TimeUnit.SECONDS)`,
+        "                println(String(msg.data))",
+        "                consumer.acknowledge(msg)",
+        "            }",
+        "        }",
+        "    client.close()",
+        "}",
+      ].join("\n");
+}
+
+function pulsarGo(r: MqReq, dir: MqDirection): string {
+  const topic = pulsarTopic(r.topic);
+  return dir === "produce"
+    ? [
+        "// 依赖：go get github.com/apache/pulsar-client-go/pulsar",
+        "package main",
+        "",
+        "import (",
+        '\t"context"',
+        "",
+        '\t"github.com/apache/pulsar-client-go/pulsar"',
+        ")",
+        "",
+        `// Pulsar 生产：topic ${topic}`,
+        "func main() {",
+        `\tclient, err := pulsar.NewClient(pulsar.ClientOptions{URL: "pulsar://${r.target}"})`,
+        "\tif err != nil {",
+        "\t\tpanic(err)",
+        "\t}",
+        "\tdefer client.Close()",
+        "",
+        `\tproducer, err := client.CreateProducer(pulsar.ProducerOptions{Topic: "${topic}"})`,
+        "\tif err != nil {",
+        "\t\tpanic(err)",
+        "\t}",
+        "\tdefer producer.Close()",
+        "",
+        `\tif _, err := producer.Send(context.Background(), &pulsar.ProducerMessage{Payload: []byte(${j(r.body)})}); err != nil {`,
+        "\t\tpanic(err)",
+        "\t}",
+        "}",
+      ].join("\n")
+    : [
+        "// 依赖：go get github.com/apache/pulsar-client-go/pulsar",
+        "package main",
+        "",
+        "import (",
+        '\t"context"',
+        '\t"fmt"',
+        '\t"time"',
+        "",
+        '\t"github.com/apache/pulsar-client-go/pulsar"',
+        ")",
+        "",
+        `// Pulsar 消费：topic ${topic}`,
+        "func main() {",
+        `\tclient, err := pulsar.NewClient(pulsar.ClientOptions{URL: "pulsar://${r.target}"})`,
+        "\tif err != nil {",
+        "\t\tpanic(err)",
+        "\t}",
+        "\tdefer client.Close()",
+        "",
+        "\tconsumer, err := client.Subscribe(pulsar.ConsumerOptions{",
+        `\t\tTopic:            "${topic}",`,
+        `\t\tSubscriptionName: "${r.group}",`,
+        `\t\tSubscriptionInitialPosition: pulsar.SubscriptionPosition${earliest(r) ? "Earliest" : "Latest"},`,
+        "\t})",
+        "\tif err != nil {",
+        "\t\tpanic(err)",
+        "\t}",
+        "\tdefer consumer.Close()",
+        "",
+        `\tctx, cancel := context.WithTimeout(context.Background(), ${r.timeoutMs}*time.Millisecond)`,
+        "\tdefer cancel()",
+        "",
+        `\tfor i := 0; i < ${r.maxMessages}; i++ {`,
+        "\t\tmsg, err := consumer.Receive(ctx)",
+        "\t\tif err != nil {",
+        "\t\t\tpanic(err)",
+        "\t\t}",
+        "\t\tfmt.Println(string(msg.Payload()))",
+        "\t\tconsumer.Ack(msg)",
+        "\t}",
+        "}",
+      ].join("\n");
+}
+
+function pulsarCsharp(r: MqReq, dir: MqDirection): string {
+  const topic = pulsarTopic(r.topic);
+  return dir === "produce"
+    ? [
+        "// 依赖：dotnet add package DotPulsar",
+        "using System.Text;",
+        "using DotPulsar;",
+        "using DotPulsar.Extensions;",
+        "",
+        `// Pulsar 生产：topic ${topic}`,
+        `await using var client = PulsarClient.Builder().ServiceUrl(new Uri("pulsar://${r.target}")).Build();`,
+        "await using var producer = client.NewProducer()",
+        `    .Topic("${topic}")`,
+        "    .Create();",
+        `await producer.Send(Encoding.UTF8.GetBytes(${j(r.body)}));`,
+      ].join("\n")
+    : [
+        "// 依赖：dotnet add package DotPulsar",
+        "using System.Text;",
+        "using DotPulsar;",
+        "using DotPulsar.Extensions;",
+        "",
+        `// Pulsar 消费：topic ${topic}`,
+        `await using var client = PulsarClient.Builder().ServiceUrl(new Uri("pulsar://${r.target}")).Build();`,
+        "await using var consumer = client.NewConsumer()",
+        `    .SubscriptionName("${r.group}")`,
+        `    .Topic("${topic}")`,
+        `    .InitialPosition(SubscriptionInitialPosition.${earliest(r) ? "Earliest" : "Latest"})`,
+        "    .Create();",
+        "",
+        `using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(${r.timeoutMs}));`,
+        `for (var i = 0; i < ${r.maxMessages}; i++)`,
+        "{",
+        "    var message = await consumer.Receive(cts.Token);",
+        "    Console.WriteLine(Encoding.UTF8.GetString(message.Data.ToArray()));",
+        "    await consumer.Acknowledge(message, cts.Token);",
+        "}",
+      ].join("\n");
+}
+
+/** PHP / Ruby 暂无成熟的 Pulsar 官方客户端，给出命令行等价写法（避免编造库用法） */
+function pulsarFallback(lang: CodeLang, r: MqReq, dir: MqDirection): string {
+  return genFallback(lang, r, dir);
+}
+
+// ---------------------------------------------------------------- NATS
+
+function natsPython(r: MqReq, dir: MqDirection): string {
+  return dir === "produce"
+    ? [
+        "# 依赖：pip install nats-py",
+        "import asyncio",
+        "",
+        "import nats",
+        "",
+        `# ${natsNote(r)}`,
+        "",
+        "async def main():",
+        `    nc = await nats.connect("nats://${r.target}")`,
+        `    await nc.publish("${r.topic}", ${j(r.body)}.encode("utf-8"))`,
+        "    await nc.flush()",
+        "    await nc.close()",
+        "",
+        "",
+        "asyncio.run(main())",
+      ].join("\n")
+    : [
+        "# 依赖：pip install nats-py",
+        "import asyncio",
+        "",
+        "import nats",
+        "",
+        `# ${natsNote(r)}`,
+        "",
+        "",
+        "async def main():",
+        `    nc = await nats.connect("nats://${r.target}")`,
+        "    received = 0",
+        "",
+        "    async def on_message(msg):",
+        "        nonlocal received",
+        '        print(msg.data.decode("utf-8"))',
+        "        received += 1",
+        `        if received >= ${r.maxMessages}:`,
+        "            await nc.close()",
+        "",
+        `    await nc.subscribe("${r.topic}", cb=on_message)`,
+        "    await nc.flush()",
+        `    await asyncio.sleep(${secs(r)})  # 收到指定条数后连接会自动关闭`,
+        "",
+        "",
+        "asyncio.run(main())",
+      ].join("\n");
+}
+
+function natsJs(r: MqReq, dir: MqDirection): string {
+  return dir === "produce"
+    ? [
+        "// 依赖：npm i nats",
+        'const { connect } = require("nats");',
+        "",
+        `// ${natsNote(r)}`,
+        "(async () => {",
+        `  const nc = await connect({ servers: "nats://${r.target}" });`,
+        `  nc.publish("${r.topic}", Buffer.from(${j(r.body)}));`,
+        "  await nc.flush();",
+        "  await nc.drain();",
+        "})();",
+      ].join("\n")
+    : [
+        "// 依赖：npm i nats",
+        'const { connect } = require("nats");',
+        "",
+        `// ${natsNote(r)}`,
+        "(async () => {",
+        `  const nc = await connect({ servers: "nats://${r.target}" });`,
+        `  const sub = nc.subscribe("${r.topic}");`,
+        "  for await (const msg of sub) {",
+        "    console.log(msg.string());",
+        "    break;",
+        "  }",
+        "  await nc.drain();",
+        "})();",
+      ].join("\n");
+}
+
+function natsJava(r: MqReq, dir: MqDirection): string {
+  const produce = dir === "produce";
+  const cls = `Mq${produce ? "Producer" : "Consumer"}`;
+  return produce
+    ? [
+        "// 依赖（Maven）：io.nats:jnats:2.20.5",
+        "import io.nats.client.Connection;",
+        "import io.nats.client.Nats;",
+        "import java.nio.charset.StandardCharsets;",
+        "import java.time.Duration;",
+        "",
+        `// ${natsNote(r)}`,
+        `public class ${cls} {`,
+        "    public static void main(String[] args) throws Exception {",
+        `        try (Connection nc = Nats.connect("nats://${r.target}")) {`,
+        `            nc.publish("${r.topic}", ${j(r.body)}.getBytes(StandardCharsets.UTF_8));`,
+        "            nc.flush(Duration.ofSeconds(3));",
+        "        }",
+        "    }",
+        "}",
+      ].join("\n")
+    : [
+        "// 依赖（Maven）：io.nats:jnats:2.20.5",
+        "import io.nats.client.Connection;",
+        "import io.nats.client.Dispatcher;",
+        "import io.nats.client.Nats;",
+        "import java.nio.charset.StandardCharsets;",
+        "",
+        `// ${natsNote(r)}`,
+        `public class ${cls} {`,
+        "    public static void main(String[] args) throws Exception {",
+        `        try (Connection nc = Nats.connect("nats://${r.target}")) {`,
+        "            Dispatcher dispatcher = nc.createDispatcher(message ->",
+        "                System.out.println(new String(message.getData(), StandardCharsets.UTF_8)));",
+        `            dispatcher.subscribe("${r.topic}");`,
+        `            Thread.sleep(${r.timeoutMs});`,
+        "        }",
+        "    }",
+        "}",
+      ].join("\n");
+}
+
+function natsKotlin(r: MqReq, dir: MqDirection): string {
+  return dir === "produce"
+    ? [
+        '// 依赖（build.gradle.kts）：implementation("io.nats:jnats:2.20.5")',
+        "import io.nats.client.Nats",
+        "import java.time.Duration",
+        "",
+        `// ${natsNote(r)}`,
+        "fun main() {",
+        `    Nats.connect("nats://${r.target}").use { nc ->`,
+        `        nc.publish("${r.topic}", ${j(r.body)}.toByteArray())`,
+        "        nc.flush(Duration.ofSeconds(3))",
+        "    }",
+        "}",
+      ].join("\n")
+    : [
+        '// 依赖（build.gradle.kts）：implementation("io.nats:jnats:2.20.5")',
+        "import io.nats.client.Nats",
+        "",
+        `// ${natsNote(r)}`,
+        "fun main() {",
+        `    Nats.connect("nats://${r.target}").use { nc ->`,
+        `        val dispatcher = nc.createDispatcher { msg -> println(String(msg.data)) }`,
+        `        dispatcher.subscribe("${r.topic}")`,
+        `        Thread.sleep(${r.timeoutMs})`,
+        "    }",
+        "}",
+      ].join("\n");
+}
+
+function natsGo(r: MqReq, dir: MqDirection): string {
+  return dir === "produce"
+    ? [
+        "// 依赖：go get github.com/nats-io/nats.go",
+        "package main",
+        "",
+        'import "github.com/nats-io/nats.go"',
+        "",
+        `// ${natsNote(r)}`,
+        "func main() {",
+        `\tnc, err := nats.Connect("nats://${r.target}")`,
+        "\tif err != nil {",
+        "\t\tpanic(err)",
+        "\t}",
+        "\tdefer nc.Close()",
+        "",
+        `\tif err := nc.Publish("${r.topic}", []byte(${j(r.body)})); err != nil {`,
+        "\t\tpanic(err)",
+        "\t}",
+        "\t_ = nc.Flush()",
+        "}",
+      ].join("\n")
+    : [
+        "// 依赖：go get github.com/nats-io/nats.go",
+        "package main",
+        "",
+        "import (",
+        '\t"fmt"',
+        '\t"time"',
+        "",
+        '\t"github.com/nats-io/nats.go"',
+        ")",
+        "",
+        `// ${natsNote(r)}`,
+        "func main() {",
+        `\tnc, err := nats.Connect("nats://${r.target}")`,
+        "\tif err != nil {",
+        "\t\tpanic(err)",
+        "\t}",
+        "\tdefer nc.Close()",
+        "",
+        `\tsub, err := nc.SubscribeSync("${r.topic}")`,
+        "\tif err != nil {",
+        "\t\tpanic(err)",
+        "\t}",
+        "\t_ = nc.Flush()",
+        "",
+        `\tfor i := 0; i < ${r.maxMessages}; i++ {`,
+        `\t\tmsg, err := sub.NextMsg(${r.timeoutMs} * time.Millisecond)`,
+        "\t\tif err != nil {",
+        "\t\t\tpanic(err)",
+        "\t\t}",
+        "\t\tfmt.Println(string(msg.Data))",
+        "\t}",
+        "}",
+      ].join("\n");
+}
+
+function natsCsharp(r: MqReq, dir: MqDirection): string {
+  return dir === "produce"
+    ? [
+        "// 依赖：dotnet add package NATS.Client.Core",
+        "using NATS.Client.Core;",
+        "",
+        `// ${natsNote(r)}`,
+        `await using var client = new NatsClient("nats://${r.target}");`,
+        `await client.PublishAsync("${r.topic}", ${j(r.body)});`,
+      ].join("\n")
+    : [
+        "// 依赖：dotnet add package NATS.Client.Core",
+        "using NATS.Client.Core;",
+        "",
+        `// ${natsNote(r)}`,
+        `await using var client = new NatsClient("nats://${r.target}");`,
+        `await foreach (var msg in client.SubscribeAsync<string>("${r.topic}"))`,
+        "{",
+        "    Console.WriteLine(msg.Data);",
+        "    break;",
+        "}",
+      ].join("\n");
+}
+
+function natsPhp(r: MqReq, dir: MqDirection): string {
+  return dir === "produce"
+    ? [
+        "<?php",
+        "// 依赖：composer require basis-company/nats",
+        "use Basis\\Nats\\Client;",
+        "",
+        `// ${natsNote(r)}`,
+        `$client = new Client(["host" => "${r.host}", "port" => ${r.port}]);`,
+        `$client->publish("${r.topic}", ${j(r.body)});`,
+      ].join("\n")
+    : [
+        "<?php",
+        "// 依赖：composer require basis-company/nats",
+        "use Basis\\Nats\\Client;",
+        "",
+        `// ${natsNote(r)}`,
+        `$client = new Client(["host" => "${r.host}", "port" => ${r.port}]);`,
+        `$client->subscribe("${r.topic}", function ($message) {`,
+        '    echo $message->payload . PHP_EOL;',
+        "});",
+        `$client->process(${r.maxMessages}); // 处理指定条数后返回`,
+      ].join("\n");
+}
+
+function natsRuby(r: MqReq, dir: MqDirection): string {
+  return dir === "produce"
+    ? [
+        "# 依赖：gem install nats-pure",
+        'require "nats"',
+        "",
+        `# ${natsNote(r)}`,
+        `nc = NATS.connect("nats://${r.target}")`,
+        `nc.publish("${r.topic}", ${j(r.body)})`,
+        "nc.flush",
+        "nc.close",
+      ].join("\n")
+    : [
+        "# 依赖：gem install nats-pure",
+        'require "nats"',
+        "",
+        `# ${natsNote(r)}`,
+        `nc = NATS.connect("nats://${r.target}")`,
+        `sub = nc.subscribe("${r.topic}")`,
+        `msg = sub.next_msg(timeout: ${secs(r)})`,
+        "puts msg.data",
+        "nc.close",
+      ].join("\n");
+}
+
+/** 协议族生成函数表：语言 → 协议族（MQTT 系 / Pulsar / NATS） */
+const FAMILY_GENERATORS: Partial<
+  Record<CodeLang, Partial<Record<MqFamily, (r: MqReq, dir: MqDirection) => string>>>
+> = {
+  python: { mqtt: mqttPython, pulsar: pulsarPython, nats: natsPython },
+  javascript: { mqtt: mqttJs, pulsar: pulsarJs, nats: natsJs },
+  typescript: { mqtt: mqttJs, pulsar: pulsarJs, nats: natsJs },
+  java: { mqtt: mqttJava, pulsar: pulsarJava, nats: natsJava },
+  kotlin: { mqtt: mqttKotlin, pulsar: pulsarKotlin, nats: natsKotlin },
+  go: { mqtt: mqttGo, pulsar: pulsarGo, nats: natsGo },
+  csharp: { mqtt: mqttCsharp, pulsar: pulsarCsharp, nats: natsCsharp },
+  php: { mqtt: mqttPhp, pulsar: (r, dir) => pulsarFallback("php", r, dir), nats: natsPhp },
+  ruby: { mqtt: mqttRuby, pulsar: (r, dir) => pulsarFallback("ruby", r, dir), nats: natsRuby },
+};
+
+/** 生成新增消息队列（MQTT 系 / Pulsar / NATS）的代码；该语言暂无内置实现时退回命令行提示 */
+function genMqFamily(lang: CodeLang, r: MqReq, dir: MqDirection): string {
+  const gen = FAMILY_GENERATORS[lang]?.[mqFamily(r.kind)];
+  return gen ? gen(r, dir) : genFallback(lang, r, dir);
+}
+
 // ---------------------------------------------------------------- 兜底：无内置客户端的语言
 
 /** 各种语言的注释前缀（兜底提示用） */
@@ -1501,7 +2481,7 @@ function genFallback(lang: CodeLang, r: MqReq, dir: MqDirection): string {
   const p = COMMENT_PREFIX[lang] || "//";
   const lines = [
     `${p} ${r.kindLabel} ${dir === "produce" ? "生产" : "消费"}：topic ${r.topic} @ ${r.target}`,
-    `${p} 暂未内置 ${lang} 客户端示例，可直接使用 ${r.kindLabel} 官方命令行工具完成同样的操作：`,
+    `${p} 暂未内置 ${lang} 客户端示例，可直接使用命令行客户端完成同样的操作：`,
     `${p}`,
     ...cliCommands(r, dir).map((l) => `${p} ${l}`),
     `${p}`,
