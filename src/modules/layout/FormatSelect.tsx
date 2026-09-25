@@ -40,7 +40,8 @@ const FORMAT_ICON_FILES: Record<string, string> = {
   docway: "docway.png",
 };
 
-const formatIconImgs = import.meta.glob<string>("../assets/import/*.{png,svg}", {
+// 注意：路径以 / 开头时相对「项目根目录」解析（组件挪过目录后，相对路径曾经失效导致图标全部不显示）
+const formatIconImgs = import.meta.glob<string>("/src/assets/import/*.{png,svg}", {
   eager: true,
   import: "default",
 });

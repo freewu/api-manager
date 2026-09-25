@@ -32,7 +32,8 @@ const LANG_ICON_FILES: Record<string, string> = {
   lua: "Lua.png",
   powershell: "powershell.png",
 };
-const langIconImgs = import.meta.glob<string>("../assets/code/*.png", {
+// 注意：路径以 / 开头时相对「项目根目录」解析（组件挪过目录后，相对路径曾经失效导致图标全部不显示）
+const langIconImgs = import.meta.glob<string>("/src/assets/code/*.png", {
   eager: true,
   import: "default",
 });
