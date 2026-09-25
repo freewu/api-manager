@@ -366,6 +366,7 @@ fn jmeter_sampler_to_api(
         pack: vec![],
         unpack: vec![],
         net: None,
+        mq: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name: api_name.clone(),
         method: method.clone(),

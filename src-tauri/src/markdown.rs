@@ -1,7 +1,7 @@
 //! 接口文档 Markdown：导出（render）、HTML 预览（md_to_html）、导入回读（parse）。
 //! 导出与导入格式自洽，保证「查看 Markdown → 保存 → 再导入」能完整还原接口。
 
-use crate::{ApiFile, BodyData, DocParam, KeyValue, MockConfig, NetConfig, PacketField};
+use crate::{ApiFile, BodyData, DocParam, KeyValue, MqConfig, MockConfig, NetConfig, PacketField};
 use serde::Serialize;
 use serde_json::Value;
 use std::fmt::Write as _;
@@ -40,7 +40,9 @@ pub fn render(api: &ApiFile, group: &str, group_deprecated: bool) -> String {
     let url = if url.is_empty() { api.path.trim() } else { url };
     // TCP / UDP：没有 HTTP 方法与路径，引用行标注协议与 ip:port
     let is_net = matches!(api.protocol.as_str(), "tcp" | "udp");
+    let is_mq = api.protocol == "mq";
     let net_addr = net_addr(api);
+    let mq_addr = mq_addr(api);
     // WebSocket 没有 method，直接标注为 WebSocket，避免在文档里显示虚假的 HTTP 方法
     let bline = if is_net {
         let proto = api.protocol.to_uppercase();
@@ -48,6 +50,14 @@ pub fn render(api: &ApiFile, group: &str, group_deprecated: bool) -> String {
             format!("> {proto}")
         } else {
             format!("> {proto} {net_addr}")
+        }
+    } else if is_mq {
+        // MQ：标注类型与 Broker 地址（如 `> MQ Kafka 127.0.0.1:9092`）
+        let kind = mq_kind_label(api.mq.as_ref().map(|m| m.kind.as_str()).unwrap_or("kafka"));
+        if mq_addr.is_empty() {
+            format!("> MQ {kind}")
+        } else {
+            format!("> MQ {kind} {mq_addr}")
         }
     } else if api.protocol == "websocket" {
         if url.is_empty() {
@@ -89,6 +99,30 @@ pub fn render(api: &ApiFile, group: &str, group_deprecated: bool) -> String {
         let _ = writeln!(s);
         render_packet_section(&mut s, "封包", &api.pack);
         render_packet_section(&mut s, "解包", &api.unpack);
+        return s;
+    }
+
+    // MQ：用「MQ 配置」（连接信息 + 生产消息 + 消费配置）代替 HTTP 的请求 / 响应
+    if is_mq {
+        let m = api.mq.clone().unwrap_or_default();
+        let _ = writeln!(s, "## MQ 配置\n");
+        let _ = writeln!(s, "- 类型: {}", mq_kind_label(&m.kind));
+        let _ = writeln!(s, "- 地址: {}", mq_addr);
+        if !m.topic.trim().is_empty() {
+            let _ = writeln!(s, "- Topic: {}", m.topic.trim());
+        }
+        if !m.group.trim().is_empty() {
+            let _ = writeln!(s, "- 消费组: {}", m.group.trim());
+        }
+        let _ = writeln!(s, "- 起始位置: {}", m.offset);
+        let _ = writeln!(s, "- 拉取条数: {}", m.max_messages);
+        let _ = writeln!(s, "- 超时: {} ms", m.timeout_ms);
+        let _ = writeln!(s);
+        let _ = writeln!(s, "### 生产消息\n");
+        let _ = writeln!(s, "```");
+        let _ = writeln!(s, "{}", api.body.raw.trim_end());
+        let _ = writeln!(s, "```");
+        let _ = writeln!(s);
         return s;
     }
 
@@ -169,6 +203,37 @@ fn net_addr(api: &ApiFile) -> String {
         Some(n) if !n.host.trim().is_empty() && n.port > 0 => format!("{}:{}", n.host.trim(), n.port),
         Some(n) if !n.host.trim().is_empty() => n.host.trim().to_string(),
         _ => String::new(),
+    }
+}
+
+/// MQ Broker 地址（ip:port）；未配置时返回空串
+fn mq_addr(api: &ApiFile) -> String {
+    match api.mq.as_ref() {
+        Some(m) if !m.host.trim().is_empty() && m.port > 0 => format!("{}:{}", m.host.trim(), m.port),
+        Some(m) if !m.host.trim().is_empty() => m.host.trim().to_string(),
+        _ => String::new(),
+    }
+}
+
+/// MQ 类型显示名（kafka → Kafka）
+fn mq_kind_label(kind: &str) -> &'static str {
+    match kind {
+        "rabbitmq" => "RabbitMQ",
+        "rocketmq" => "RocketMQ",
+        "activemq" => "ActiveMQ",
+        "zeromq" => "ZeroMQ",
+        _ => "Kafka",
+    }
+}
+
+/// MQ 类型默认端口（回读 `> MQ` 标注时地址缺端口则按默认端口补齐）
+fn mq_default_port(kind: &str) -> u16 {
+    match kind {
+        "rabbitmq" => 5672,
+        "rocketmq" => 9876,
+        "activemq" => 61616,
+        "zeromq" => 5555,
+        _ => 9092,
     }
 }
 
@@ -905,7 +970,18 @@ pub fn parse(md: &str) -> Result<ParsedMarkdown, String> {
 fn is_section_name(t: &str) -> bool {
     matches!(
         t,
-        "基本信息" | "请求 Header" | "Query" | "Path" | "Body" | "响应" | "Mock" | "header" | "请求参数" | "响应参数" | "报文结构"
+        "基本信息"
+            | "请求 Header"
+            | "Query"
+            | "Path"
+            | "Body"
+            | "响应"
+            | "Mock"
+            | "header"
+            | "请求参数"
+            | "响应参数"
+            | "报文结构"
+            | "MQ 配置"
     )
 }
 
@@ -965,8 +1041,10 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
     let mut method: Option<String> = None;
     let mut protocol = "http".to_string();
     let mut url = String::new();
-    // 引用行 `> TCP ip:port` 解析出的目标地址
+    // 引用行 `> TCP ip:port` 解析出的目标地址（MQ 复用该变量存 Broker 地址）
     let mut net_target = String::new();
+    // 引用行 `> MQ Kafka ip:port` 解析出的 MQ 类型
+    let mut mq_kind = String::new();
     let mut desc_lines: Vec<String> = Vec::new();
     let mut section = String::new();
     let mut subsection = String::new();
@@ -1026,6 +1104,14 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
                     protocol = head.to_lowercase();
                     method = Some(String::new());
                     net_target = t[head.len()..].trim().to_string();
+                } else if head == "MQ" {
+                    // MQ 标注：> MQ Kafka 127.0.0.1:9092（还原 protocol 与 mq 配置）
+                    protocol = "mq".to_string();
+                    method = Some(String::new());
+                    let rest = t[head.len()..].trim();
+                    let mut parts = rest.split_whitespace();
+                    mq_kind = parts.next().unwrap_or("").to_lowercase();
+                    net_target = parts.next().unwrap_or("").to_string();
                 } else {
                     // WebSocket 标注：> WebSocket url（还原 protocol，method 置空）
                     let ws_rest = ["WebSocket", "websocket", "WEBSOCKET"]
@@ -1061,6 +1147,7 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
         pack: vec![],
         unpack: vec![],
         net: None,
+        mq: None,
         uuid: String::new(),
         name: name.clone(),
         method: method.clone().unwrap_or_else(|| "GET".to_string()),
@@ -1091,6 +1178,22 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
             host: if host.is_empty() { "127.0.0.1".to_string() } else { host },
             port: if port > 0 { port } else { default_port },
             timeout_ms: 3000,
+        });
+    }
+
+    // MQ：从 `> MQ 类型 ip:port` 还原连接配置（方法/路径为空，配置存 mq）
+    if api.protocol == "mq" {
+        let (host, port) = split_net_addr(&net_target);
+        let kind = if mq_kind.is_empty() { "kafka".to_string() } else { mq_kind.clone() };
+        let default_port = mq_default_port(&kind);
+        api.method = String::new();
+        api.url = String::new();
+        api.path = "/".to_string();
+        api.mq = Some(MqConfig {
+            kind,
+            host: if host.is_empty() { "127.0.0.1".to_string() } else { host },
+            port: if port > 0 { port } else { default_port },
+            ..Default::default()
         });
     }
 
@@ -1175,6 +1278,62 @@ fn parse_one(block: &str, old_format: bool) -> Result<Option<ApiFile>, String> {
                     }
                     parse_doc_section(&mut api, &format!("resp:{}", entry.id), text);
                     api.responses.push(entry);
+                }
+            },
+            "MQ 配置" => match sub.as_str() {
+                "生产消息" => {
+                    if let Some(fence) = first_fence(text) {
+                        api.body.raw = fence.trim_end().to_string();
+                        api.body.mode = if api.body.raw.trim_start().starts_with('{')
+                            || api.body.raw.trim_start().starts_with('[')
+                        {
+                            "json".to_string()
+                        } else {
+                            "raw".to_string()
+                        };
+                    }
+                }
+                _ => {
+                    let mut m = api.mq.clone().unwrap_or_default();
+                    for line in text.lines() {
+                        let t = line.trim();
+                        if let Some(v) = t.strip_prefix("- 类型:") {
+                            let v = v.trim().to_lowercase();
+                            m.kind = if v.is_empty() { "kafka".to_string() } else { v };
+                        } else if let Some(v) = t.strip_prefix("- 地址:") {
+                            let (host, port) = split_net_addr(v.trim());
+                            if !host.is_empty() {
+                                m.host = host;
+                            }
+                            if port > 0 {
+                                m.port = port;
+                            }
+                        } else if let Some(v) = t.strip_prefix("- Topic:") {
+                            m.topic = v.trim().to_string();
+                        } else if let Some(v) = t.strip_prefix("- 消费组:") {
+                            m.group = v.trim().to_string();
+                        } else if let Some(v) = t.strip_prefix("- 起始位置:") {
+                            let v = v.trim();
+                            m.offset = if v == "earliest" { "earliest".to_string() } else { "latest".to_string() };
+                        } else if let Some(v) = t.strip_prefix("- 拉取条数:") {
+                            let n = v.trim().parse::<u32>().unwrap_or(0);
+                            if n > 0 {
+                                m.max_messages = n;
+                            }
+                        } else if let Some(v) = t.strip_prefix("- 超时:") {
+                            let ms = v.trim().trim_end_matches("ms").trim().parse::<u64>().unwrap_or(0);
+                            if ms > 0 {
+                                m.timeout_ms = ms;
+                            }
+                        }
+                    }
+                    if m.timeout_ms == 0 {
+                        m.timeout_ms = 3000;
+                    }
+                    if m.port == 0 {
+                        m.port = mq_default_port(&m.kind);
+                    }
+                    api.mq = Some(m);
                 }
             },
             "报文结构" => match sub.as_str() {

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { TreeNode } from "../../types";
+import { TreeNode, mqKindLabel } from "../../types";
+import iconMq from "../../../asserts/icon/MQ.png";
 import { Modal } from "../layout/Modal";
 import { NodeTypeIcon } from "../layout/NodeTypeIcon";
 import { useT } from "../../i18n";
@@ -40,6 +41,7 @@ interface Stats {
   mcpApis: number;
   tcpApis: number;
   udpApis: number;
+  mqApis: number;
   totalFolders: number;
   deprecatedApis: number;
   deprecatedFolders: number;
@@ -52,6 +54,8 @@ interface Stats {
   webdavMethods: [string, number][];
   /** MCP 接口方法分布 */
   mcpMethods: [string, number][];
+  /** MQ 接口类型分布（Kafka / RabbitMQ / RocketMQ / ActiveMQ / ZeroMQ） */
+  mqKinds: [string, number][];
   items: { name: string; kind: string; apis: number }[];
 }
 
@@ -72,6 +76,8 @@ function computeStats(node: TreeNode): Stats {
   let mcpApis = 0;
   let tcpApis = 0;
   let udpApis = 0;
+  let mqApis = 0;
+  const mqKindsMap = new Map<string, number>();
 
   // 单次遍历：按协议分类计数；方法分布分别统计 HTTP / WebDAV（实时与 GraphQL 单独计数、不计入方法分布）；mock 与废弃接口数（有副作用，只调用一次）
   // 分组被废弃时，其下所有接口一并计为废弃
@@ -101,6 +107,10 @@ function computeStats(node: TreeNode): Stats {
         tcpApis++;
       } else if (n.protocol === "udp") {
         udpApis++;
+      } else if (n.protocol === "mq") {
+        mqApis++;
+        const k = mqKindLabel(n.mqType);
+        mqKindsMap.set(k, (mqKindsMap.get(k) || 0) + 1);
       } else {
         httpApis++;
         const m = (n.method || "GET").toUpperCase();
@@ -150,6 +160,7 @@ function computeStats(node: TreeNode): Stats {
     mcpApis,
     tcpApis,
     udpApis,
+    mqApis,
     totalFolders,
     deprecatedApis,
     deprecatedFolders,
@@ -158,6 +169,7 @@ function computeStats(node: TreeNode): Stats {
     webhookMethods: byCount(webhookMethodsMap),
     webdavMethods: byCount(webdavMethodsMap),
     mcpMethods: byCount(mcpMethodsMap),
+    mqKinds: byCount(mqKindsMap),
     items,
   };
 }
@@ -211,8 +223,8 @@ function Donut({ data }: { data: [string, number][] }) {
   );
 }
 
-/** 可点击查看方法分布的协议（HTTP / Webhook / WebDAV / MCP 有方法概念） */
-type MethodProto = "http" | "webhook" | "webdav" | "mcp";
+/** 可点击查看分布的协议（HTTP / Webhook / WebDAV / MCP 有方法概念；MQ 展示类型分布） */
+type MethodProto = "http" | "webhook" | "webdav" | "mcp" | "mq";
 
 export function StatsModal({ node, onClose }: Props) {
   const t = useT();
@@ -230,7 +242,9 @@ export function StatsModal({ node, onClose }: Props) {
           ? stats.webdavMethods
           : methodProto === "mcp"
             ? stats.mcpMethods
-            : [];
+            : methodProto === "mq"
+              ? stats.mqKinds
+              : [];
   const protoName =
     methodProto === "webhook"
       ? "Webhook"
@@ -238,13 +252,15 @@ export function StatsModal({ node, onClose }: Props) {
         ? "WebDAV"
         : methodProto === "mcp"
           ? "MCP"
-          : "HTTP";
+          : methodProto === "mq"
+            ? "MQ"
+            : "HTTP";
 
   const card = (
     key: string,
     num: number,
     label: string,
-    opts: { deprecated?: boolean; select?: MethodProto; icon?: string } = {},
+    opts: { deprecated?: boolean; select?: MethodProto; icon?: string; img?: string } = {},
   ) => (
     <div
       key={key}
@@ -264,7 +280,11 @@ export function StatsModal({ node, onClose }: Props) {
     >
       <div className={`stats-card-num${opts.deprecated ? " deprecated" : ""}`}>{num}</div>
       <div className="stats-card-label">
-        {opts.icon && <NodeTypeIcon protocol={opts.icon} className="stats-card-icon" />}
+        {opts.img ? (
+          <img className="stats-card-icon" src={opts.img} alt="" />
+        ) : (
+          opts.icon && <NodeTypeIcon protocol={opts.icon} className="stats-card-icon" />
+        )}
         <span>{label}</span>
       </div>
     </div>
@@ -286,6 +306,7 @@ export function StatsModal({ node, onClose }: Props) {
         {card("mcp", stats.mcpApis, t("stats.mcpApis"), { select: "mcp", icon: "mcp" })}
         {card("tcp", stats.tcpApis, t("stats.tcpApis"), { icon: "tcp" })}
         {card("udp", stats.udpApis, t("stats.udpApis"), { icon: "udp" })}
+        {card("mq", stats.mqApis, t("stats.mqApis"), { select: "mq", img: iconMq })}
         {card("folders", stats.totalFolders, t("stats.totalFolders"))}
         {card("mock", stats.mockEnabled, t("stats.mockEnabled"))}
         {card("deprecatedApis", stats.deprecatedApis, t("stats.deprecatedApis"), { deprecated: true })}
@@ -298,9 +319,9 @@ export function StatsModal({ node, onClose }: Props) {
         {methodProto !== null && (
           <div className="stats-panel">
             <div className="stats-panel-title">
-              {`${t("stats.methods")} · ${protoName}`}
+              {methodProto === "mq" ? t("stats.mqKinds") : `${t("stats.methods")} · ${protoName}`}
             </div>
-            {stats.wsApis + stats.socketIoApis + stats.graphqlApis > 0 && (
+            {methodProto !== "mq" && stats.wsApis + stats.socketIoApis + stats.graphqlApis > 0 && (
               <div className="stats-ws-note">{t("stats.wsExcluded")}</div>
             )}
             {methods.length === 0 ? (

@@ -2,6 +2,7 @@ import { ApiProtocol } from "../../types";
 import { graphqlModule } from "./graphql/Index";
 import { httpModule } from "./http/Index";
 import { mcpModule } from "./mcp/Index";
+import { mqModule } from "./mq/Index";
 import { socketioModule } from "./socketio/Index";
 import { tcpModule } from "./tcp/Index";
 import { ApiProtocolModule } from "./types";
@@ -23,5 +24,6 @@ export const API_MODULES: Record<ApiProtocol, ApiProtocolModule> = {
   mcp: mcpModule,
   webdav: webdavModule,
   tcp: tcpModule,
+  mq: mqModule,
   udp: udpModule,
 };

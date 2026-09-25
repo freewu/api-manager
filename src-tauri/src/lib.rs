@@ -263,6 +263,9 @@ pub struct ApiFile {
     /// TCP / UDP 连接配置（ip:port）
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub net: Option<NetConfig>,
+    /// MQ（消息队列）连接与消费配置
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mq: Option<MqConfig>,
 }
 
 /// 报文字段类型：fixed=固定值 / var=变量 / varlen=不定长变量
@@ -304,6 +307,57 @@ pub struct NetConfig {
     /// 超时（毫秒），缺省 3000
     #[serde(default)]
     pub timeout_ms: u64,
+}
+
+/// MQ（消息队列）连接配置
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MqConfig {
+    /// 消息队列类型：kafka / rabbitmq / rocketmq / activemq / zeromq
+    #[serde(default = "default_mq_kind", rename = "type")]
+    pub kind: String,
+    #[serde(default)]
+    pub host: String,
+    #[serde(default)]
+    pub port: u16,
+    /// 主题 / 队列名称
+    #[serde(default)]
+    pub topic: String,
+    /// 消费组（消费者分组）
+    #[serde(default)]
+    pub group: String,
+    /// 消费起始位置：earliest（最早）/ latest（最新）
+    #[serde(default = "default_mq_offset")]
+    pub offset: String,
+    /// 单次消费最多拉取的消息条数
+    #[serde(default)]
+    pub max_messages: u32,
+    /// 超时（毫秒），缺省 3000
+    #[serde(default)]
+    pub timeout_ms: u64,
+}
+
+pub(crate) fn default_mq_kind() -> String {
+    "kafka".to_string()
+}
+
+fn default_mq_offset() -> String {
+    "latest".to_string()
+}
+
+impl Default for MqConfig {
+    fn default() -> Self {
+        Self {
+            kind: default_mq_kind(),
+            host: "127.0.0.1".into(),
+            port: 9092,
+            topic: String::new(),
+            group: String::new(),
+            offset: default_mq_offset(),
+            max_messages: 1,
+            timeout_ms: 3000,
+        }
+    }
 }
 
 /// TCP / UDP 发送结果（含封包 / 解包所需的原始字节）
@@ -565,6 +619,9 @@ pub struct TreeNode {
     /// 接口 uuid（仅接口节点有，用于收藏等按 uuid 关联的场景）
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
+    /// MQ 接口的消息队列类型（kafka / rabbitmq / rocketmq / activemq / zeromq，仅 MQ 接口有）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mq_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub children: Option<Vec<TreeNode>>,
 }
@@ -794,6 +851,7 @@ fn build_folder_node(dir: &Path) -> Result<TreeNode, String> {
         deprecated: info.deprecated,
         protocol: None,
         uuid: None,
+        mq_type: None,
         api_count: Some(api_count),
         children: Some(children),
     })
@@ -811,6 +869,7 @@ fn build_api_node(path: &Path) -> TreeNode {
     let mut deprecated = None;
     let mut protocol = None;
     let mut uuid = None;
+    let mut mq_type = None;
 
     if let Ok(content) = fs::read_to_string(path) {
         if let Ok(v) = serde_json::from_str::<Value>(&content) {
@@ -847,6 +906,34 @@ fn build_api_node(path: &Path) -> TreeNode {
                 .map(str::trim)
                 .filter(|s| !s.is_empty())
                 .map(String::from);
+            // MQ 接口：列表展示消息队列类型图标，端点展示主题（未填主题时展示 broker 地址）
+            if protocol.as_deref() == Some("mq") {
+                method = None;
+                let mq = v.get("mq");
+                let kind = mq
+                    .and_then(|m| m.get("type"))
+                    .and_then(|x| x.as_str())
+                    .filter(|s| !s.trim().is_empty())
+                    .unwrap_or("kafka");
+                mq_type = Some(kind.to_string());
+                let topic = mq
+                    .and_then(|m| m.get("topic"))
+                    .and_then(|x| x.as_str())
+                    .unwrap_or("");
+                let host = mq
+                    .and_then(|m| m.get("host"))
+                    .and_then(|x| x.as_str())
+                    .unwrap_or("127.0.0.1");
+                let port = mq.and_then(|m| m.get("port")).and_then(|p| p.as_u64());
+                endpoint = Some(if topic.trim().is_empty() {
+                    match port {
+                        Some(p) => format!("{host}:{p}"),
+                        None => host.to_string(),
+                    }
+                } else {
+                    topic.trim().to_string()
+                });
+            }
         }
     }
 
@@ -862,6 +949,7 @@ fn build_api_node(path: &Path) -> TreeNode {
         deprecated,
         protocol,
         uuid,
+        mq_type,
         api_count: None,
         children: None,
     }
@@ -1683,6 +1771,9 @@ fn create_api(
             "POST".into()
         } else if protocol.as_deref() == Some("webdav") {
             "PROPFIND".into()
+        } else if protocol.as_deref() == Some("mq") {
+            // MQ 接口没有 HTTP 方法
+            String::new()
         } else {
             "GET".into()
         },
@@ -1752,6 +1843,7 @@ fn create_api(
             Some("mcp") => "mcp".into(),
             Some("tcp") => "tcp".into(),
             Some("udp") => "udp".into(),
+            Some("mq") => "mq".into(),
             _ => "http".into(),
         },
         // TCP / UDP：预置本地回环地址，配合 tests/ 下的 py 回显服务可直接联调
@@ -1766,6 +1858,12 @@ fn create_api(
         },
         pack: vec![],
         unpack: vec![],
+        // MQ（消息队列）：预置默认类型与本地地址，具体 broker 地址由用户在编辑区填写
+        mq: if protocol.as_deref() == Some("mq") {
+            Some(MqConfig::default())
+        } else {
+            None
+        },
     };    write_pretty(&file_path, &data)?;
     // 记录到父目录 __info.json 的 apis 顺序列表（新建接口排在最后）
     let fname = file_path.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();

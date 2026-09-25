@@ -24,7 +24,7 @@ import swift from "highlight.js/lib/languages/swift";
 import typescript from "highlight.js/lib/languages/typescript";
 import "highlight.js/styles/github-dark.css";
 import { ApiFile } from "../../../types";
-import { CODE_LANGS, CODE_LIBS, WS_CODE_LIBS, NET_CODE_LIBS, CodeLang, generateRequestCode, generateWebSocketCode, generateNetCode } from "../../../utils/codegen";
+import { CODE_LANGS, CODE_LIBS, WS_CODE_LIBS, NET_CODE_LIBS, MQ_CODE_LIBS, CodeLang, generateRequestCode, generateWebSocketCode, generateNetCode, generateMqCode } from "../../../utils/codegen";
 import { LangSelect } from "../../layout/LangSelect";
 import { useT } from "../../../i18n";
 
@@ -88,24 +88,30 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
   const t = useT();
   const isWs = api.protocol === "websocket";
   const isNet = api.protocol === "tcp" || api.protocol === "udp";
-  const libsOf = (l: CodeLang) => (isWs ? WS_CODE_LIBS[l] : isNet ? NET_CODE_LIBS[l] : CODE_LIBS[l]);
+  const isMq = api.protocol === "mq";
+  const libsOf = (l: CodeLang) =>
+    isMq ? MQ_CODE_LIBS[l] : isWs ? WS_CODE_LIBS[l] : isNet ? NET_CODE_LIBS[l] : CODE_LIBS[l];
   const [lang, setLang] = useState<CodeLang>(
     (CODE_LANGS.some((l) => l.value === defaultLang) ? defaultLang : "bash") as CodeLang
   );
   const [lib, setLib] = useState<string | undefined>(() => libsOf(lang)?.[0]?.value);
   const [copied, setCopied] = useState(false);
+  /** MQ 代码生成方向：生产 / 消费 */
+  const [mqDir, setMqDir] = useState<"produce" | "consume">("produce");
 
   const libs = libsOf(lang);
   const activeLib = libs?.find((l) => l.value === lib);
 
   const code = useMemo(
     () =>
-      isNet
-        ? generateNetCode(lang, api, lib)
-        : isWs
-          ? generateWebSocketCode(lang, api, baseUrl, lib)
-          : generateRequestCode(lang, api, baseUrl, lib),
-    [isNet, isWs, lang, lib, api, baseUrl]
+      isMq
+        ? generateMqCode(lang, api, mqDir)
+        : isNet
+          ? generateNetCode(lang, api, lib)
+          : isWs
+            ? generateWebSocketCode(lang, api, baseUrl, lib)
+            : generateRequestCode(lang, api, baseUrl, lib),
+    [isMq, mqDir, isNet, isWs, lang, lib, api, baseUrl]
   );
   const html = useMemo(() => {
     try {
@@ -129,6 +135,22 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
     <div className="codegen-root">
       <div className="section-title codegen-head">
         <span>{t("codegen.title")}</span>
+        {isMq && (
+          <div className="scheme-switch" title={t("mq.codeDirTip")}>
+            <button
+              className={`scheme-btn${mqDir === "produce" ? " active" : ""}`}
+              onClick={() => setMqDir("produce")}
+            >
+              {t("mq.codeProduce")}
+            </button>
+            <button
+              className={`scheme-btn${mqDir === "consume" ? " active" : ""}`}
+              onClick={() => setMqDir("consume")}
+            >
+              {t("mq.codeConsume")}
+            </button>
+          </div>
+        )}
         <LangSelect
           value={lang}
           options={CODE_LANGS}
@@ -164,7 +186,7 @@ export function CodeTab({ api, baseUrl, defaultLang }: Props) {
           dangerouslySetInnerHTML={{ __html: html }}
         />
       </pre>
-      <div className="codegen-hint">{t("codegen.hint")}</div>
+      <div className="codegen-hint">{isMq ? t("mq.codeHint") : t("codegen.hint")}</div>
     </div>
   );
 }

@@ -37,7 +37,7 @@ pub use self::wadl::to_wadl;
 pub use self::yapi::to_yapi;
 
 /// 支持导出 TCP / UDP 接口的格式：仅文档类（HTML / Markdown / MkDocs / Docsify）
-/// 其余格式（Postman / OpenAPI / YApi …）没有报文概念，导出时自动跳过报文接口。
+/// 其余格式（Postman / OpenAPI / YApi …）没有报文 / 消息队列概念，导出时自动跳过这类接口。
 pub const NET_EXPORT_FORMATS: [&str; 4] = ["html", "markdown", "mkdocs", "docsify"];
 
 /// 该导出格式是否支持 TCP / UDP 接口
@@ -55,7 +55,7 @@ pub fn filter_apis_for_format(
         return apis;
     }
     apis.into_iter()
-        .filter(|(_, a)| !matches!(a.protocol.as_str(), "tcp" | "udp"))
+        .filter(|(_, a)| !matches!(a.protocol.as_str(), "tcp" | "udp" | "mq"))
         .collect()
 }
 

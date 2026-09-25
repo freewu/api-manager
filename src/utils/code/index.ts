@@ -24,8 +24,11 @@ import { genErlang, genWsErlang } from "./erlang";
 import { genLuaDispatch, genWsLuaDispatch } from "./lua";
 import { genPowershell, genWsPowershell } from "./powershell";
 import { generateNetCode, NET_CODE_LIBS } from "./net";
+import { generateMqCode, MQ_CODE_LIBS } from "./mq";
+import type { MqDirection } from "./mq";
 
-export { generateNetCode, NET_CODE_LIBS };
+export { generateNetCode, NET_CODE_LIBS, generateMqCode, MQ_CODE_LIBS };
+export type { MqDirection };
 
 export function generateWebSocketCode(lang: CodeLang, api: ApiFile, baseUrl: string, lib?: string): string {
   const r = buildWsReq(api, baseUrl);

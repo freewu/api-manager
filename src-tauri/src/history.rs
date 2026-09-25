@@ -378,6 +378,9 @@ pub struct ExampleFile {
     /// TCP / UDP 示例：解包字段定义（保存时的定义，用于解析响应报文）
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub unpack: Vec<PacketField>,
+    /// MQ 示例：连接与消费配置（保存时的配置）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mq: Option<crate::MqConfig>,
 }
 
 /// 示例列表摘要（不含请求/响应全文）

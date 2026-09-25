@@ -1,8 +1,18 @@
 // ---- 与 Rust 后端对应的类型定义 ----
 import { DEFAULT_SHORTCUTS, ShortcutAction } from "./utils/shortcuts";
 
-/** 接口协议类型：http=HTTP / websocket·socketio=实时 / graphql·webdav·mcp=HTTP 形态 / tcp·udp=网络封包 */
-export type ApiProtocol = "http" | "webhook" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp";
+/** 接口协议类型：http=HTTP / websocket·socketio=实时 / graphql·webdav·mcp=HTTP 形态 / tcp·udp=网络封包 / mq=消息队列 */
+export type ApiProtocol =
+  | "http"
+  | "webhook"
+  | "websocket"
+  | "graphql"
+  | "socketio"
+  | "webdav"
+  | "mcp"
+  | "tcp"
+  | "udp"
+  | "mq";
 
 export interface KeyValue {
   key: string;
@@ -79,6 +89,60 @@ export function emptyNet(): NetConfig {
   return { host: "127.0.0.1", port: 0, timeoutMs: 3000 };
 }
 
+/** 消息队列类型：kafka / rabbitmq / rocketmq / activemq / zeromq */
+export type MqKind = "kafka" | "rabbitmq" | "rocketmq" | "activemq" | "zeromq";
+
+/** MQ 类型清单（含默认端口，切换类型时用于填充默认端口） */
+export const MQ_KINDS: { value: MqKind; label: string; port: number }[] = [
+  { value: "kafka", label: "Kafka", port: 9092 },
+  { value: "rabbitmq", label: "RabbitMQ", port: 5672 },
+  { value: "rocketmq", label: "RocketMQ", port: 9876 },
+  { value: "activemq", label: "ActiveMQ", port: 61616 },
+  { value: "zeromq", label: "ZeroMQ", port: 5555 },
+];
+
+/** MQ（消息队列）连接与消费配置 */
+export interface MqConfig {
+  /** 消息队列类型 */
+  type: MqKind;
+  host: string;
+  port: number;
+  /** 主题 / 队列名称 */
+  topic: string;
+  /** 消费组 */
+  group: string;
+  /** 消费起始位置：earliest（最早）/ latest（最新） */
+  offset: "earliest" | "latest";
+  /** 单次消费最多拉取的消息条数 */
+  maxMessages: number;
+  /** 超时（毫秒） */
+  timeoutMs: number;
+}
+
+export function emptyMq(kind: MqKind = "kafka"): MqConfig {
+  const preset = MQ_KINDS.find((k) => k.value === kind);
+  return {
+    type: kind,
+    host: "127.0.0.1",
+    port: preset?.port ?? 9092,
+    topic: "",
+    group: "",
+    offset: "latest",
+    maxMessages: 1,
+    timeoutMs: 3000,
+  };
+}
+
+/** MQ 类型显示名 */
+export function mqKindLabel(kind?: string): string {
+  return MQ_KINDS.find((k) => k.value === kind)?.label ?? "MQ";
+}
+
+/** 是否为 MQ（消息队列）接口协议（无 HTTP 方法 / path / Mock 概念，也不直连发送） */
+export function isMqProtocol(protocol?: string): boolean {
+  return protocol === "mq";
+}
+
 /** 是否为 TCP / UDP 接口协议（无 HTTP 方法 / path / Mock 概念） */
 export function isNetProtocol(protocol?: string): boolean {
   return protocol === "tcp" || protocol === "udp";
@@ -140,6 +204,8 @@ export interface ApiFile {
   unpack?: PacketField[];
   /** TCP / UDP 连接配置（ip:port） */
   net?: NetConfig;
+  /** MQ（消息队列）连接与消费配置 */
+  mq?: MqConfig;
 }
 
 export type DocSource =
@@ -203,13 +269,15 @@ export interface ExampleFile {
   size: number;
   error?: string;
   /** TCP / UDP 示例：协议（tcp / udp） */
-  protocol?: "tcp" | "udp";
+  protocol?: "tcp" | "udp" | "mq";
   /** TCP / UDP 示例：连接配置（保存时的目标地址） */
   net?: NetConfig;
   /** TCP / UDP 示例：封包字段定义（用于还原请求报文） */
   pack?: PacketField[];
   /** TCP / UDP 示例：解包字段定义（用于解析响应报文） */
   unpack?: PacketField[];
+  /** MQ 示例：连接与消费配置（保存时的配置） */
+  mq?: MqConfig;
 }
 
 /** 示例列表摘要（不含请求/响应全文） */
@@ -277,10 +345,12 @@ export interface TreeNode {
   apiCount?: number;
   /** 是否已标记废弃（分组无此字段时默认未废弃） */
   deprecated?: boolean;
-  /** 接口协议（http / websocket / ... / mcp / tcp / udp，分组无此字段） */
+  /** 接口协议（http / websocket / ... / mcp / tcp / udp / mq，分组无此字段） */
   protocol?: ApiProtocol;
   /** 接口 uuid（仅接口节点有，用于收藏等按 uuid 关联的场景） */
   uuid?: string;
+  /** MQ 接口的消息队列类型（kafka / rabbitmq / rocketmq / activemq / zeromq） */
+  mqType?: string;
   children?: TreeNode[];
 }
 

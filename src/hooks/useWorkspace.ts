@@ -144,6 +144,25 @@ export function useWorkspace(opts: {
     return node;
   }
 
+  // 递归更新树中指定路径节点的 MQ 类型（切换 Kafka/RabbitMQ… 时即时刷新左侧图标）与端点（Topic）
+  function patchNodeMq(
+    node: TreeNode,
+    path: string,
+    mqType?: string,
+    endpoint?: string
+  ): TreeNode {
+    if (node.path === path) {
+      return { ...node, mqType, endpoint: endpoint || node.endpoint };
+    }
+    if (node.children) {
+      return {
+        ...node,
+        children: node.children.map((c) => patchNodeMq(c, path, mqType, endpoint)),
+      };
+    }
+    return node;
+  }
+
   // 递归更新树中指定路径节点的 mock 状态（切换 Mock 开关时即时刷新左侧圆点）
   function patchNodeMock(node: TreeNode, path: string, mockEnabled: boolean): TreeNode {
     if (node.path === path) return { ...node, mockEnabled };
@@ -163,6 +182,12 @@ export function useWorkspace(opts: {
     if (!api || !selectedPath) return;
     setTree((t2) => (t2 ? patchNodeProtocol(t2, selectedPath, api.protocol) : t2));
   }, [selectedPath, api?.protocol]);
+
+  // MQ 类型 / Topic 变化时同步刷新左侧列表的类型图标与端点
+  useEffect(() => {
+    if (!api || !selectedPath || api.protocol !== "mq") return;
+    setTree((t2) => (t2 ? patchNodeMq(t2, selectedPath, api.mq?.type, api.mq?.topic) : t2));
+  }, [selectedPath, api?.protocol, api?.mq?.type, api?.mq?.topic]);
 
   // Mock 开关变化时同步刷新左侧列表的 Mock 圆点
   useEffect(() => {

@@ -297,6 +297,7 @@ fn openapi_op_to_api(
         pack: vec![],
         unpack: vec![],
         net: None,
+        mq: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name: format!("{} {}", method.to_uppercase(), path),
         method: method.to_uppercase(),

@@ -263,3 +263,128 @@ select.packet-input {
 .muted {
   color: var(--text-faint);
 }
+
+/* ---------- MQ 消息队列接口 ---------- */
+.mq-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* MQ 类型下拉：带图标感的窄框 */
+.mq-kind {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.mq-kind-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 8px;
+  color: var(--text);
+  font-size: 13px;
+}
+.mq-kind-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Topic 输入（连接地址之后的窄框，可拉伸） */
+.mq-topic {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.mq-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  flex: 1;
+  padding: 12px 14px;
+  overflow: auto;
+}
+.mq-pane-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mq-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.mq-num {
+  width: 92px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 8px;
+  text-align: right;
+}
+.mq-num:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.mq-format {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.mq-format-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  color: var(--text);
+  font-size: 12px;
+}
+.mq-format-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.mq-hint {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.mq-saved {
+  font-size: 12px;
+  color: var(--ok, #37b26c);
+}
+.mq-saved.failed {
+  color: var(--danger, #e05561);
+}
+
+/* 文档页签：连接信息键值行 */
+.mq-doc-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 2px;
+  overflow: auto;
+}
+.mq-kv {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  min-width: 0;
+}
+.mq-kv .label {
+  flex: 0 0 96px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.mq-kv b {
+  font-weight: 500;
+  word-break: break-all;
+}

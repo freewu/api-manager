@@ -325,6 +325,7 @@ fn postman_request_to_api(name: &str, request: &Value) -> Result<ApiFile, String
         pack: vec![],
         unpack: vec![],
         net: None,
+        mq: None,
         uuid: uuid::Uuid::new_v4().to_string(),
         name: name.to_string(),
         method,

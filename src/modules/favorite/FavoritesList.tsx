@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { TreeNode } from "../../types";
+import { TreeNode, mqKindLabel } from "../../types";
 import { useT } from "../../i18n";
 import { NodeTypeIcon } from "../layout/NodeTypeIcon";
 
@@ -65,6 +65,7 @@ export function FavoritesList({ items, selectedPath, onSelect, onReorder, onCont
         const isWs = node.protocol === "websocket";
         const isSocketIo = node.protocol === "socketio";
         const isNet = node.protocol === "tcp" || node.protocol === "udp";
+        const isMq = node.protocol === "mq";
         const protoLabel = isWs
           ? "WebSocket"
           : isSocketIo
@@ -73,7 +74,9 @@ export function FavoritesList({ items, selectedPath, onSelect, onReorder, onCont
               ? "UDP"
               : node.protocol === "tcp"
                 ? "TCP"
-                : node.method;
+                : isMq
+                  ? `MQ · ${mqKindLabel(node.mqType)}`
+                  : node.method;
         return (
           <div
             key={node.uuid || node.path}
@@ -108,7 +111,7 @@ export function FavoritesList({ items, selectedPath, onSelect, onReorder, onCont
           >
             <span className="caret" />
             <span className="node-icon">
-              <NodeTypeIcon protocol={node.protocol} />
+              <NodeTypeIcon protocol={node.protocol} mqType={node.mqType} />
             </span>
             <span className="node-name">{node.name}</span>
             {node.endpoint && (
@@ -116,7 +119,7 @@ export function FavoritesList({ items, selectedPath, onSelect, onReorder, onCont
                 {node.endpoint}
               </span>
             )}
-            {node.method && !isWs && !isSocketIo && !isNet && (
+            {node.method && !isWs && !isSocketIo && !isNet && !isMq && (
               <span className={`node-method ${methodClass(node.method)}`}>{node.method}</span>
             )}
             {node.mockEnabled && <span className="mock-dot" title={t("sidebar.mockEnabled")} />}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ApiFile, ExampleFile, ExampleSummary, isNetProtocol } from "../../../types";
+import { ApiFile, ExampleFile, ExampleSummary, isNetProtocol, mqKindLabel } from "../../../types";
 import {
   bytesToHex,
   encodeValue,
@@ -79,6 +79,76 @@ function bytesToFieldValue(r: PacketFieldResult): string {
   if (!hex) return "";
   if (r.text.trim() && bytesToHex(encodeValue(r.text)).replace(/ /g, "") === hex) return r.text;
   return "0x" + hex;
+}
+
+/**
+ * MQ 示例详情：展示保存时的连接配置（MQ 类型 / 地址 / Topic）与生产消息内容、消费配置，
+ * 与 TCP / UDP 一样没有响应（MQ 接口不直连 Broker）。
+ */
+function MqExampleDetail({
+  detail,
+  api,
+  onApply,
+}: {
+  detail: ExampleFile;
+  api: ApiFile;
+  onApply: () => void;
+}) {
+  const t = useT();
+  const mq = detail.mq || api.mq;
+  const fmt = (v: string) => <b className="mono">{v}</b>;
+  return (
+    <div className="examples-detail">
+      <div className="examples-request-line">
+        <b>MQ</b> {detail.url}
+        <button
+          type="button"
+          className="btn small primary examples-apply"
+          title={t("examples.mqApplyTip")}
+          onClick={onApply}
+        >
+          ⬇ {t("examples.apply")}
+        </button>
+      </div>
+      <div className="examples-section">
+        <div className="examples-detail-title">{t("mq.docConn")}</div>
+        {mq ? (
+          <div className="mq-kv-list">
+            <div className="mq-kv">
+              <span className="label">{t("mq.docKind")}</span>
+              {fmt(mqKindLabel(mq.type))}
+            </div>
+            <div className="mq-kv">
+              <span className="label">{t("mq.docAddr")}</span>
+              {fmt(`${mq.host}:${mq.port}`)}
+            </div>
+            <div className="mq-kv">
+              <span className="label">{t("mq.docTopic")}</span>
+              {fmt(mq.topic || t("mq.docDefault"))}
+            </div>
+            <div className="mq-kv">
+              <span className="label">{t("mq.docGroup")}</span>
+              {fmt(mq.group || t("mq.docDefault"))}
+            </div>
+            <div className="mq-kv">
+              <span className="label">{t("mq.docOffset")}</span>
+              {fmt(mq.offset)}
+            </div>
+            <div className="mq-kv">
+              <span className="label">{t("mq.docMaxMessages")}</span>
+              {fmt(`${mq.maxMessages}`)}
+            </div>
+          </div>
+        ) : (
+          <div className="examples-empty">{t("mq.docDefault")}</div>
+        )}
+      </div>
+      <div className="examples-section">
+        <div className="examples-detail-title">{t("mq.docProduce")}</div>
+        <BodyView text={detail.reqBody || ""} />
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -272,6 +342,8 @@ export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
   const isHttp = api.protocol === "http";
   /** TCP / UDP 接口（示例详情展示报文字节与字段解析） */
   const isNet = isNetProtocol(api.protocol);
+  /** MQ 接口（示例详情展示连接配置与生产消息） */
+  const isMq = api.protocol === "mq";
   const [exported, setExported] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const exportAllHttp = async () => {
@@ -324,6 +396,21 @@ export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
         const value = bytesToFieldValue(r);
         return value ? { ...f, value } : f;
       }),
+    });
+  };
+
+  /** MQ：把示例的连接配置与生产消息填回当前接口 */
+  const applyMq = (d: ExampleFile) => {
+    const nextBody = { ...api.body };
+    if (d.reqBody !== undefined && d.reqBody !== null) {
+      const text = d.reqBody.trim();
+      nextBody.mode = text.startsWith("{") || text.startsWith("[") ? "json" : "raw";
+      nextBody.raw = d.reqBody;
+    }
+    onChange({
+      ...api,
+      mq: d.mq || api.mq,
+      body: nextBody,
     });
   };
 
@@ -414,10 +501,13 @@ export function ExamplesTab({ uuid, api, onChange, onCountChange }: Props) {
                   🗑
                 </button>
               </div>
+              {expanded === s.file && detail && isMq && (
+                <MqExampleDetail detail={detail} api={api} onApply={() => applyMq(detail)} />
+              )}
               {expanded === s.file && detail && isNet && (
                 <NetExampleDetail detail={detail} api={api} onApply={() => applyNet(detail)} />
               )}
-              {expanded === s.file && detail && !isNet && (
+              {expanded === s.file && detail && !isNet && !isMq && (
                 <div className="examples-detail">
                   <div className="examples-request-line">
                     <b>{detail.method}</b> {detail.url}

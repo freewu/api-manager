@@ -6,6 +6,7 @@
         pack: vec![],
         unpack: vec![],
         net: None,
+        mq: None,
             uuid: "u1".into(),
             name: "创建用户".into(),
             method: "POST".into(),
@@ -50,15 +51,19 @@
         let mut udp = sample();
         udp.name = "UDP 接口".into();
         udp.protocol = "udp".into();
+        let mut mq = sample();
+        mq.name = "MQ 接口".into();
+        mq.protocol = "mq".into();
         let apis = vec![
             (vec![("g".to_string(), false)], sample()),
             (vec![("g".to_string(), false)], tcp),
             (vec![("g".to_string(), false)], udp),
+            (vec![("g".to_string(), false)], mq),
         ];
 
         // 文档类格式：全部保留
         for f in ["html", "markdown", "mkdocs", "docsify"] {
-            assert_eq!(filter_apis_for_format(apis.clone(), f).len(), 3, "{f}");
+            assert_eq!(filter_apis_for_format(apis.clone(), f).len(), 4, "{f}");
         }
         // 其他格式：只保留非报文接口
         let kept = filter_apis_for_format(apis.clone(), "postman");

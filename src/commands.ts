@@ -271,7 +271,17 @@ export function setLanguage(lang: "zh" | "zh-tw" | "en"): Promise<void> {
 export function createApi(
   dir: string,
   name: string,
-  protocol: "http" | "webhook" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp" = "http"
+  protocol:
+    | "http"
+    | "webhook"
+    | "websocket"
+    | "graphql"
+    | "socketio"
+    | "webdav"
+    | "mcp"
+    | "tcp"
+    | "udp"
+    | "mq" = "http"
 ): Promise<string> {
   return invoke<string>("create_api", { dir, name, protocol });
 }

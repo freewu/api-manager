@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AppSettings, TreeNode } from "../../types";
+import { AppSettings, TreeNode, mqKindLabel } from "../../types";
 import { HistoryDay, HistorySummary, setFolderCollapsed } from "../../commands";
 import { HistoryList } from "../history/HistoryList";
 import ObjectsTree from "../object/ObjectsTree";
@@ -156,6 +156,7 @@ function protoLabel(node: TreeNode): string {
   if (node.protocol === "socketio") return "Socket.IO";
   if (node.protocol === "udp") return "UDP";
   if (node.protocol === "tcp") return "TCP";
+  if (node.protocol === "mq") return `MQ · ${mqKindLabel(node.mqType)}`;
   return node.method || "";
 }
 
@@ -170,6 +171,7 @@ const PROTOCOL_OPTIONS = [
   { id: "mcp", label: "MCP" },
   { id: "tcp", label: "TCP" },
   { id: "udp", label: "UDP" },
+  { id: "mq", label: "MQ" },
 ] as const;
 
 /** 高级搜索可选的接口 Method（WebSocket / Socket.IO / GraphQL / TCP / UDP 接口无 Method） */
@@ -273,6 +275,8 @@ function NodeRow({
   const isFolder = node.kind === "folder";
   // WebSocket 接口无 HTTP method
   const isWs = node.protocol === "websocket";
+  // MQ 接口同样没有 Method（只有 MQ 类型 / Topic）
+  const isMq = node.protocol === "mq";
   // 展开状态提升到 Sidebar 顶层（openMap），导入/刷新重建树后保持不变
   const open = openMap[node.path] ?? node.collapsed !== true;
   // 已废弃：自身标记或继承自上层已废弃分组
@@ -286,7 +290,7 @@ function NodeRow({
   const methodOk =
     isFolder ||
     methodFilters.length === 0 ||
-    (isWs ? false : methodFilters.includes((node.method || "").toUpperCase()));
+    (isWs || isMq ? false : methodFilters.includes((node.method || "").toUpperCase()));
 
   const matches =
     protocolOk &&
@@ -308,7 +312,8 @@ function NodeRow({
         (n.protocol === "websocket" ||
         n.protocol === "socketio" ||
         n.protocol === "tcp" ||
-        n.protocol === "udp"
+        n.protocol === "udp" ||
+        n.protocol === "mq"
           ? false
           : methodFilters.includes((n.method || "").toUpperCase()));
       return (
@@ -442,7 +447,7 @@ function NodeRow({
           <span className="caret"></span>
         )}
         <span className="node-icon">
-          {isFolder ? "📁" : <NodeTypeIcon protocol={node.protocol} />}
+          {isFolder ? "📁" : <NodeTypeIcon protocol={node.protocol} mqType={node.mqType} />}
         </span>
         {deprecated && (
           <span className="node-dep-badge" title={t("sidebar.deprecatedBadge")}>
@@ -465,7 +470,8 @@ function NodeRow({
           !isWs &&
           node.protocol !== "socketio" &&
           node.protocol !== "tcp" &&
-          node.protocol !== "udp" && (
+          node.protocol !== "udp" &&
+          node.protocol !== "mq" && (
             <span className={`node-method ${methodClass(node.method)}`}>{node.method}</span>
           )}
         {!isFolder && node.mockEnabled && <span className="mock-dot" title={t("sidebar.mockEnabled")} />}

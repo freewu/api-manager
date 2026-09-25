@@ -850,7 +850,19 @@ export default function App() {
               onSaveVersion={handleSaveVersion}
               onCommit={handleAutoSave}
               onTabChange={(tab) =>
-                setHideResponse(["response", "mock", "prescript", "desc", "doc", "code", "examples"].includes(tab))
+                setHideResponse(
+                  [
+                    "response",
+                    "mock",
+                    "prescript",
+                    "desc",
+                    "doc",
+                    "code",
+                    "examples",
+                    "produce",
+                    "consume",
+                  ].includes(tab)
+                )
               }
               onEnvChanged={() => void readEnv().then(hydrateEnvs)}
               onStartVResize={startVResize}

@@ -6,6 +6,7 @@
         pack: vec![],
         unpack: vec![],
         net: None,
+        mq: None,
             uuid: "test-uuid".into(),
             name: "t".into(),
             method: "GET".into(),

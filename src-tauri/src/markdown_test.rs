@@ -5,6 +5,7 @@
         pack: vec![],
         unpack: vec![],
         net: None,
+        mq: None,
             uuid: "u1".into(),
             name: "创建用户".into(),
             method: "POST".into(),
@@ -212,6 +213,7 @@
         pack: vec![],
         unpack: vec![],
         net: None,
+        mq: None,
             uuid: "u1".into(),
             name: "创建用户".into(),
             method: "POST".into(),
@@ -324,6 +326,7 @@
                 port: 9100,
                 timeout_ms: 5000,
             }),
+            mq: None,
             uuid: "n1".into(),
             name: "TCP 回显".into(),
             method: String::new(),
@@ -373,6 +376,105 @@
         assert_eq!(a.pack[2].len_from, Some(1));
         assert_eq!(a.unpack.len(), 1);
         assert_eq!(a.unpack[0].key, "cmd");
+    }
+
+    #[test]
+    fn render_mq_roundtrip() {
+        // MQ：文档用「MQ 配置」（连接信息 + 生产消息）代替 HTTP 参数，且导出→导入自洽
+        let mut api = sample_api();
+        api.protocol = "mq".into();
+        api.method = String::new();
+        api.path = "/".into();
+        api.url = String::new();
+        api.headers.clear();
+        api.query.clear();
+        api.params.clear();
+        api.responses.clear();
+        api.body = BodyData {
+            mode: "json".into(),
+            raw: "{\"orderId\":1}".into(),
+            form: vec![],
+            binary_path: String::new(),
+        };
+        api.mq = Some(MqConfig {
+            kind: "rocketmq".into(),
+            host: "10.0.0.9".into(),
+            port: 9876,
+            topic: "order.created".into(),
+            group: "order-service".into(),
+            offset: "earliest".into(),
+            max_messages: 5,
+            timeout_ms: 8000,
+        });
+        let md = render(&api, "MQ", false);
+        assert!(md.contains("> MQ RocketMQ 10.0.0.9:9876"), "{md}");
+        assert!(md.contains("## MQ 配置"), "{md}");
+        assert!(md.contains("- 类型: RocketMQ"), "{md}");
+        assert!(md.contains("- Topic: order.created"), "{md}");
+        assert!(md.contains("- 消费组: order-service"), "{md}");
+        assert!(md.contains("- 起始位置: earliest"), "{md}");
+        assert!(md.contains("- 拉取条数: 5"), "{md}");
+        assert!(md.contains("- 超时: 8000 ms"), "{md}");
+        assert!(md.contains("### 生产消息"), "{md}");
+        assert!(md.contains("{\"orderId\":1}"), "{md}");
+        // 不再输出 HTTP 专用小节
+        assert!(!md.contains("## header"), "{md}");
+        assert!(!md.contains("## 请求参数"), "{md}");
+        assert!(!md.contains("## 响应参数"), "{md}");
+
+        // 回读自洽
+        let parsed = parse(&md).expect("parse ok");
+        let a = &parsed.apis[0];
+        assert_eq!(a.protocol, "mq");
+        assert_eq!(a.method, "");
+        assert!(a.headers.is_empty() && a.params.is_empty() && a.responses.is_empty());
+        let mq = a.mq.clone().expect("mq 配置还原");
+        assert_eq!(mq.kind, "rocketmq");
+        assert_eq!(mq.host, "10.0.0.9");
+        assert_eq!(mq.port, 9876);
+        assert_eq!(mq.topic, "order.created");
+        assert_eq!(mq.group, "order-service");
+        assert_eq!(mq.offset, "earliest");
+        assert_eq!(mq.max_messages, 5);
+        assert_eq!(mq.timeout_ms, 8000);
+        assert_eq!(a.body.raw, "{\"orderId\":1}");
+        assert_eq!(a.body.mode, "json");
+    }
+
+    #[test]
+    fn render_mq_without_custom_port() {
+        // 地址省略端口时回读按 MQ 类型补默认端口
+        let mut api = sample_api();
+        api.protocol = "mq".into();
+        api.method = String::new();
+        api.path = "/".into();
+        api.url = String::new();
+        api.headers.clear();
+        api.query.clear();
+        api.params.clear();
+        api.responses.clear();
+        api.body = BodyData {
+            mode: "raw".into(),
+            raw: "hello".into(),
+            form: vec![],
+            binary_path: String::new(),
+        };
+        api.mq = Some(MqConfig {
+            kind: "rabbitmq".into(),
+            host: "127.0.0.1".into(),
+            port: 0,
+            topic: String::new(),
+            group: String::new(),
+            offset: "latest".into(),
+            max_messages: 1,
+            timeout_ms: 3000,
+        });
+        let md = render(&api, "", false);
+        assert!(md.contains("> MQ RabbitMQ 127.0.0.1"), "{md}");
+        let parsed = parse(&md).expect("parse ok");
+        let mq = parsed.apis[0].mq.clone().expect("mq 配置还原");
+        assert_eq!(mq.kind, "rabbitmq");
+        assert_eq!(mq.port, 5672);
     }
 
     #[test]

@@ -25,6 +25,7 @@ import iconWebhook from "../../../asserts/icon/webhook.png";
 import iconMcp from "../../../asserts/icon/mcp.png";
 import iconTcp from "../../../asserts/icon/TCP.png";
 import iconUdp from "../../../asserts/icon/UDP.png";
+import iconMq from "../../../asserts/icon/MQ.png";
 
 // 弹窗组件按需懒加载：仅在对应弹窗打开时才下载对应 chunk
 const MarkdownModal = lazy(() => import("../markdown/MarkdownModal").then((m) => ({ default: m.MarkdownModal })));
@@ -79,7 +80,7 @@ interface AppModalsProps {
   modal: ModalState | null;
   modalText: string;
   modalPath: string;
-  modalProtocol: "http" | "webhook" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp";
+  modalProtocol: "http" | "webhook" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp" | "mq";
   infoForm: InfoForm;
   demoTypes: Record<string, boolean>;
   workspace: string | null;
@@ -103,7 +104,7 @@ interface AppModalsProps {
   onCloseModal: () => void;
   onModalTextChange: (v: string) => void;
   onModalPathChange: (v: string) => void;
-  onModalProtocolChange: (v: "http" | "webhook" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp") => void;
+  onModalProtocolChange: (v: "http" | "webhook" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp" | "mq") => void;
   onInfoFormChange: (f: InfoForm) => void;
   onToggleDemoKind: (kind: string, enabled: boolean) => void;
   onDoNewApi: () => void;
@@ -341,6 +342,7 @@ export function AppModals({
                   { value: "mcp", label: t("editor.mcpType"), icon: iconMcp },
                   { value: "tcp", label: t("editor.tcpType"), icon: iconTcp },
                   { value: "udp", label: t("editor.udpType"), icon: iconUdp },
+                  { value: "mq", label: t("editor.mqType"), icon: iconMq },
                 ] as const
               ).map((o) => (
                 <label
@@ -354,7 +356,17 @@ export function AppModals({
                     checked={modalProtocol === o.value}
                     onChange={() =>
                       onModalProtocolChange(
-                        o.value as "http" | "webhook" | "websocket" | "graphql" | "socketio" | "webdav" | "mcp" | "tcp" | "udp"
+                        o.value as
+                          | "http"
+                          | "webhook"
+                          | "websocket"
+                          | "graphql"
+                          | "socketio"
+                          | "webdav"
+                          | "mcp"
+                          | "tcp"
+                          | "udp"
+                          | "mq"
                       )
                     }
                   />
@@ -364,7 +376,7 @@ export function AppModals({
               ))}
             </div>
           </div>
-          {modalProtocol === "tcp" || modalProtocol === "udp" ? (
+          {modalProtocol === "tcp" || modalProtocol === "udp" || modalProtocol === "mq" ? (
             <div className="modal-tip">{t("modal.netPathTip")}</div>
           ) : (
             <>

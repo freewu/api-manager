@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Modal } from "../layout/Modal";
 import { FormatSelect } from "../layout/FormatSelect";
 import { NodeTypeIcon } from "../layout/NodeTypeIcon";
-import { AppSettings, TreeNode, isNetProtocol, supportsNetExport } from "../../types";
+import { AppSettings, TreeNode, isMqProtocol, isNetProtocol, supportsNetExport } from "../../types";
 import { ExportFormat } from "../../commands";
 import { useT } from "../../i18n";
 
@@ -108,7 +108,7 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
     // 返回该子树是否存在可导出（非报文）接口，顺带标记不可导出的节点
     const walk = (node: TreeNode): boolean => {
       if (node.kind === "api") {
-        if (isNetProtocol(node.protocol)) {
+        if (isNetProtocol(node.protocol) || isMqProtocol(node.protocol)) {
           s.add(node.path);
           return false;
         }
@@ -219,7 +219,7 @@ export function ExportModal({ tree, preselect, defaultFormat, settings, onExport
             onClick={(e) => e.stopPropagation()}
           />
           <span className={`export-row-icon ${isFolder ? "folder" : ""}`}>
-            {isFolder ? "📁" : <NodeTypeIcon protocol={node.protocol} />}
+            {isFolder ? "📁" : <NodeTypeIcon protocol={node.protocol} mqType={node.mqType} />}
           </span>
           <span className={`export-row-name${isDeprecated ? " deprecated" : ""}`}>
             {node.name}
