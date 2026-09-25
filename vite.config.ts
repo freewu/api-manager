@@ -15,7 +15,8 @@ export default defineConfig({
   envPrefix: ["VITE_", "TAURI_"],
   build: {
     target: "es2021",
-    minify: "esbuild",
+    // Vite 8 默认使用 oxc 压缩（esbuild 已从 Vite 依赖中移除，需单独安装才能用 "esbuild"）
+    minify: "oxc",
     sourcemap: false,
     rollupOptions: {
       input: {
