@@ -272,47 +272,101 @@ select.packet-input {
   flex-wrap: wrap;
 }
 
-/* MQ 类型：平铺图标选择（每个类型前展示对应 MQ 品牌图标，替代下拉框） */
-.mq-kinds {
+/*
+ * MQ 类型选择：原生 select 的选项里无法展示图片，这里用 dl/dd 自绘下拉，
+ * 触发区与每个选项都带对应消息队列的品牌图标（视觉与代码生成页签的语言下拉一致）。
+ */
+.mq-select-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.mq-select {
   display: flex;
   align-items: center;
-  gap: 3px;
-  flex-shrink: 0;
+  gap: 7px;
+  height: 34px;
+  min-width: 150px;
+  padding: 0 10px;
+  cursor: pointer;
+  color: var(--text);
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 3px;
+  font-size: 13px;
+  outline: none;
+  user-select: none;
 }
-.mq-kind-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: transparent;
-  border: none;
-  border-radius: calc(var(--radius) - 2px);
-  color: var(--text-dim);
-  font-family: inherit;
-  font-size: 11.5px;
-  padding: 5px 7px;
-  cursor: pointer;
-  white-space: nowrap;
+.mq-select:hover,
+.mq-select.open,
+.mq-select:focus-visible {
+  border-color: var(--accent);
 }
-.mq-kind-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
-.mq-kind-btn.active {
-  background: var(--accent);
-  color: #fff;
-}
-.mq-kind-icon {
-  width: 15px;
-  height: 15px;
+.mq-select-icon {
+  width: 16px;
+  height: 16px;
   object-fit: contain;
   flex-shrink: 0;
 }
-.mq-kind-name {
-  font-weight: 600;
+.mq-select-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mq-select-caret {
+  color: var(--text-faint);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+/* 浮层用 dl/dd（dd 需清掉浏览器默认缩进） */
+.mq-select-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 200;
+  margin: 0;
+  min-width: 212px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  animation: menu-in 0.12s ease;
+}
+.mq-select-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+}
+.mq-select-opt:hover {
+  background: var(--bg-hover);
+}
+.mq-select-opt.active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+.mq-select-opt-name {
+  flex: 1;
+  min-width: 0;
+}
+.mq-select-opt-port {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.mq-select-opt.active .mq-select-opt-port {
+  color: var(--accent);
 }
 /* 消费配置的下拉框（起始位置） */
 .mq-kind-select {

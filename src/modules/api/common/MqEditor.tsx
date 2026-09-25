@@ -3,8 +3,8 @@ import { ApiFile, BodyData, MQ_KINDS, MqKind, emptyMq } from "../../../types";
 import { DescEditor } from "./DescEditor";
 import { ExamplesTab } from "./ExamplesTab";
 import { MqDoc } from "./MqDoc";
+import { MqKindSelect } from "./MqKindSelect";
 import { listExamples, saveExample } from "../../../commands";
-import { MQ_ICONS } from "../../layout/NodeTypeIcon";
 import { useT } from "../../../i18n";
 
 // 代码生成页签懒加载（与 Editor / NetEditor 一致）
@@ -147,23 +147,14 @@ export function MqEditor({
         </div>
       )}
       <div className="editor-head mq-head">
-        {/* MQ 类型：不用下拉框，直接平铺每个类型并在名称前展示对应 MQ 品牌图标 */}
-        <div className="mq-kinds" role="radiogroup" aria-label={t("mq.kind")} title={t("mq.kindTip")}>
-          {MQ_KINDS.map((k) => (
-            <button
-              key={k.value}
-              type="button"
-              role="radio"
-              aria-checked={mq.type === k.value}
-              className={`mq-kind-btn${mq.type === k.value ? " active" : ""}`}
-              title={`${k.label} · ${k.port}`}
-              onClick={() => changeKind(k.value)}
-            >
-              <img className="mq-kind-icon" src={MQ_ICONS[k.value]} alt="" />
-              <span className="mq-kind-name">{k.label}</span>
-            </button>
-          ))}
-        </div>
+        {/* MQ 类型：原生 select 无法展示图标，改用 dl/dd 自绘下拉（触发区与选项都带品牌图标） */}
+        <MqKindSelect
+          value={mq.type}
+          options={MQ_KINDS}
+          onChange={changeKind}
+          title={t("mq.kindTip")}
+          ariaLabel={t("mq.kind")}
+        />
         <div className="net-addr">
           <span className="url-scheme">IP</span>
           <input
