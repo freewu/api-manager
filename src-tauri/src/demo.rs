@@ -2,6 +2,35 @@
 
 use super::*;
 
+/// 演示接口文件骨架（与 create_demo 内部构造一致）
+fn api_json(name: &str, method: &str, path: &str, description: &str) -> serde_json::Value {
+    serde_json::json!({
+        "uuid": uuid::Uuid::new_v4().to_string(),
+        "name": name,
+        "method": method,
+        "path": path,
+        "url": "",
+        "description": description,
+        "headers": [],
+        "query": [],
+        "params": [],
+        "body": { "mode": "none", "raw": "", "form": [] },
+        "mock": { "enabled": false, "status": 200, "headers": [], "delay": 0, "body": "" },
+        "examples": []
+    })
+}
+
+/// 在演示工作区写入 JSON 文件（dir 为空时写工作区根目录）
+fn write_json(root: &Path, dir: &str, file: &str, value: &serde_json::Value) -> Result<(), String> {
+    let dir_path = if dir.is_empty() {
+        root.to_path_buf()
+    } else {
+        root.join(dir)
+    };
+    fs::create_dir_all(&dir_path).map_err(|e| format!("创建目录失败: {e}"))?;
+    write_pretty(&dir_path.join(file), value)
+}
+
 /// 在空工作区中生成演示案例（示例分组 + 接口 + 环境变量）
 #[tauri::command]
 pub(crate) fn create_demo(
@@ -9,33 +38,12 @@ pub(crate) fn create_demo(
     types: Option<Vec<String>>,
 ) -> Result<(), String> {
     let root = workspace_root(&state)?;
-    // 勾选类型（http / webhook / websocket / socketio / graphql / webdav / mcp / tcp / udp / object），未传时默认全部生成
+    // 勾选类型（http / webhook / websocket / socketio / graphql / webdav / mcp / tcp / udp / mq / object），未传时默认全部生成
     let has = |kind: &str| types.as_ref().map_or(true, |list| list.iter().any(|s| s == kind));
     // 不判断工作区是否为空：演示案例直接生成（同名文件会被覆盖）
-    let api_file = |name: &str, method: &str, path: &str, description: &str| {
-        serde_json::json!({
-            "uuid": uuid::Uuid::new_v4().to_string(),
-            "name": name,
-            "method": method,
-            "path": path,
-            "url": "",
-            "description": description,
-            "headers": [],
-            "query": [],
-            "params": [],
-            "body": { "mode": "none", "raw": "", "form": [] },
-            "mock": { "enabled": false, "status": 200, "headers": [], "delay": 0, "body": "" },
-            "examples": []
-        })
-    };
+    let api_file = |name: &str, method: &str, path: &str, description: &str| api_json(name, method, path, description);
     let write = |dir: &str, file: &str, value: &serde_json::Value| -> Result<(), String> {
-        let dir_path = if dir.is_empty() {
-            root.clone()
-        } else {
-            root.join(dir)
-        };
-        fs::create_dir_all(&dir_path).map_err(|e| format!("创建目录失败: {e}"))?;
-        write_pretty(&dir_path.join(file), value)
+        write_json(&root, dir, file, value)
     };
 
     // docParams 快捷构造：位置 + 字段名 + 类型 + 说明（children 可嵌套下级字段）
@@ -902,6 +910,10 @@ ctx.global.set('delivery', String(Date.now()));"#);
         write("UDP", "UDP 回显.json", &udp_echo)?;
     }
 
+    if has("mq") {
+        write_mq_demo(&root)?;
+    }
+
     if has("object") {
     // 对象示例：工作区 .object/ 下生成「用户管理 / 订单管理」分组与几个对象，
     // 与上面的接口演示呼应（属性含 mock 示例值，可配合数据生成体验）
@@ -979,5 +991,125 @@ ctx.global.set('delivery', String(Date.now()));"#);
 
     }
 
+    Ok(())
+}
+
+/// 生成 MQ（消息队列）演示分组：5 种消息队列（Kafka / RabbitMQ / RocketMQ / ActiveMQ / ZeroMQ）各一个接口
+/// （生产 / 消费示例），并给每个接口附带一个已保存示例（示例页签可直接载入配置与消息内容）。
+/// 单独抽出便于单测：create_demo 依赖 Tauri State，无法直接构造。
+pub(crate) fn write_mq_demo(root: &Path) -> Result<(), String> {
+    // MQ 分组（消息队列）：维护 Broker 连接配置与消息内容，可生成生产 / 消费代码；
+    // MQ 接口不直连 Broker（没有发送按钮），生成代码复制到项目后按注释安装客户端依赖即可运行
+    write_json(root, "MQ", INFO_FILE, &serde_json::json!({ "name": "MQ", "description": "MQ 消息队列接口示例（Kafka / RabbitMQ / RocketMQ / ActiveMQ / ZeroMQ）" }))?;
+
+    let mq_desc = "MQ（消息队列）接口演示：顶部选择消息队列类型并填写 IP / 端口 / Topic，不会连接 Broker，只维护连接配置与消息内容。\n\n【页签说明】\n- 生产：编辑要发送到队列的消息内容，可「保存为示例」\n- 消费：配置消费组、起始位置（earliest / latest）与单次拉取条数\n- 文档：按连接配置与生产 / 消费说明展示接口文档\n- 代码生成：切换生成生产端 / 消费端代码（支持 10+ 语言）\n- 示例：保存过的消息示例，可一键载入连接配置与消息内容\n\n【生成的代码怎么跑】\n1. 切到「代码生成」页签选择语言，复制代码到项目\n2. 按代码注释安装对应客户端依赖（kafka-python / pika / rocketmq-client / stomp.py / pyzmq 等）\n3. 按下方说明启动本地 Broker，再运行代码";
+
+    // MQ 接口快捷构造：MQ 配置（type / host / port / topic / group / offset / maxMessages / timeoutMs）+ 消息内容
+    let mq_api = |name: &str, cfg: serde_json::Value, raw: &str, description: &str| -> serde_json::Value {
+        let mut v = api_json(name, "", "/", description);
+        v["protocol"] = serde_json::json!("mq");
+        v["mq"] = cfg;
+        v["body"] = serde_json::json!({ "mode": "json", "raw": raw, "form": [], "binaryPath": "" });
+        v
+    };
+
+    // 生成 MQ 接口文件，并附带一个已保存示例（示例页签可直接载入配置与消息内容）
+    let mq_write = |name: &str, cfg: serde_json::Value, raw: &str, description: &str| -> Result<(), String> {
+        let api = mq_api(name, cfg.clone(), raw, description);
+        let uuid = api["uuid"].as_str().unwrap_or_default().to_string();
+        write_json(root, "MQ", &format!("{name}.json"), &api)?;
+        let kind = cfg["type"].as_str().unwrap_or("kafka").to_string();
+        let host = cfg["host"].as_str().unwrap_or_default().to_string();
+        let port = cfg["port"].as_u64().unwrap_or(0);
+        let topic = cfg["topic"].as_str().unwrap_or_default().to_string();
+        let example = crate::history::ExampleFile {
+            name: name.to_string(),
+            time: chrono::Local::now().timestamp() as u64,
+            method: "MQ".into(),
+            url: format!("{kind}://{host}:{port}/{topic}"),
+            req_headers: Vec::new(),
+            req_path: Vec::new(),
+            req_query: Vec::new(),
+            req_body: Some(raw.to_string()),
+            status: 0,
+            status_text: String::new(),
+            resp_headers: Vec::new(),
+            resp_body: String::new(),
+            time_ms: 0,
+            size: 0,
+            error: None,
+            protocol: Some("mq".into()),
+            net: None,
+            pack: Vec::new(),
+            unpack: Vec::new(),
+            mq: serde_json::from_value(cfg).ok(),
+        };
+        crate::history::save_example_to(root, &uuid, name, example).map(|_| ())
+    };
+
+    // Kafka：生产订单创建消息
+    mq_write(
+        "订单创建消息（Kafka 生产）",
+        serde_json::json!({ "type": "kafka", "host": "127.0.0.1", "port": 9092, "topic": "order.created", "group": "order-service", "offset": "latest", "maxMessages": 1, "timeoutMs": 5000 }),
+        r#"{
+  "orderId": 1001,
+  "userId": 1001,
+  "amount": 99.5,
+  "status": "created",
+  "createdAt": "2024-01-01T10:00:00+08:00"
+}"#,
+        &format!("{mq_desc}\n\n【本示例】\nKafka 生产端：把订单创建事件写入 topic order.created，消费组 order-service 消费。\n\n【本地 Broker】\ndocker run -d --name demo-kafka -p 9092:9092 apache/kafka:latest"),
+    )?;
+
+    // RabbitMQ：生产支付成功通知
+    mq_write(
+        "支付成功通知（RabbitMQ 生产）",
+        serde_json::json!({ "type": "rabbitmq", "host": "127.0.0.1", "port": 5672, "topic": "order.paid", "group": "order-notify", "offset": "latest", "maxMessages": 1, "timeoutMs": 5000 }),
+        r#"{
+  "orderId": 1001,
+  "tradeNo": "PAY20240101001",
+  "amount": 99.5,
+  "paidAt": "2024-01-01T10:05:00+08:00"
+}"#,
+        &format!("{mq_desc}\n\n【本示例】\nRabbitMQ 生产端：向交换机发送支付成功事件（topic 即 routing key / 队列名）。\n\n【本地 Broker】\ndocker run -d --name demo-rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management"),
+    )?;
+
+    // RocketMQ：消费订单消息
+    mq_write(
+        "订单消息消费（RocketMQ 消费）",
+        serde_json::json!({ "type": "rocketmq", "host": "127.0.0.1", "port": 9876, "topic": "order.created", "group": "order-consumer", "offset": "earliest", "maxMessages": 5, "timeoutMs": 5000 }),
+        r#"{
+  "orderId": 1001,
+  "userId": 1001,
+  "amount": 99.5,
+  "status": "created"
+}"#,
+        &format!("{mq_desc}\n\n【本示例】\nRocketMQ 消费端：消费组 order-consumer 从最早位置开始，一次最多拉取 5 条消息（生成代码时可选生产端 / 消费端）。\n\n【本地 Broker】\ndocker run -d --name demo-rocketmq -p 9876:9876 -p 10911:10911 apache/rocketmq:5.3.0 sh mqnamesrv"),
+    )?;
+
+    // ActiveMQ：生产设备状态上报
+    mq_write(
+        "设备状态上报（ActiveMQ 生产）",
+        serde_json::json!({ "type": "activemq", "host": "127.0.0.1", "port": 61616, "topic": "device.status", "group": "device-monitor", "offset": "latest", "maxMessages": 1, "timeoutMs": 5000 }),
+        r#"{
+  "deviceId": "sensor-001",
+  "status": "online",
+  "temperature": 26.5,
+  "reportedAt": "2024-01-01T10:10:00+08:00"
+}"#,
+        &format!("{mq_desc}\n\n【本示例】\nActiveMQ 生产端：上报设备状态到队列 device.status（生成代码默认使用 queue:// 目的地）。\n\n【本地 Broker】\ndocker run -d --name demo-activemq -p 61616:61616 -p 8161:8161 apache/activemq-classic:latest"),
+    )?;
+
+    // ZeroMQ：无 Broker、无 Topic，地址即通信端点
+    mq_write(
+        "事件广播（ZeroMQ 生产）",
+        serde_json::json!({ "type": "zeromq", "host": "127.0.0.1", "port": 5555, "topic": "event.notify", "group": "", "offset": "latest", "maxMessages": 1, "timeoutMs": 5000 }),
+        r#"{
+  "event": "cache.refresh",
+  "scope": "user:1001",
+  "at": "2024-01-01T10:15:00+08:00"
+}"#,
+        &format!("{mq_desc}\n\n【本示例】\nZeroMQ 无中心 Broker，地址（127.0.0.1:5555）即通信端点；无 Topic 概念，生成的代码为 PUSH（生产 connect）/ PULL（消费 bind）点对点示例，需要消息过滤时可改用 SUB 端按前缀过滤。\n\n【本地依赖】\n无需启动 Broker：pip install pyzmq / npm i zeromq 即可直接运行生成代码"),
+    )?;
     Ok(())
 }

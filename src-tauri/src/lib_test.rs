@@ -2532,6 +2532,53 @@ let v = export::to_yapi(&apis);
         let _ = std::fs::remove_dir_all(&root);
     }
 
+    /// demo 生成的 MQ 演示分组：5 种消息队列各一个接口文件（能反序列化为 ApiFile），
+    /// 且每个接口都附带一个已保存示例（示例页签可列出并载入）
+    #[test]
+    fn test_demo_creates_mq_apis_and_examples() {
+        let root = std::env::temp_dir().join(format!("apim-demo-mq-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        crate::demo::write_mq_demo(&root).unwrap();
+
+        // 分组信息 + 5 个接口文件
+        assert!(root.join("MQ").join(crate::INFO_FILE).exists(), "MQ 分组 __info.json 存在");
+        let mut kinds = Vec::new();
+        for entry in std::fs::read_dir(root.join("MQ")).unwrap() {
+            let path = entry.unwrap().path();
+            let file = path.file_name().unwrap().to_string_lossy().to_string();
+            if file == crate::INFO_FILE {
+                continue;
+            }
+            let text = std::fs::read_to_string(&path).unwrap();
+            // 演示 JSON 需完全符合 ApiFile 结构
+            let api: crate::ApiFile = serde_json::from_str(&text).unwrap_or_else(|e| panic!("{file} 反序列化失败: {e}"));
+            assert_eq!(api.protocol, "mq", "{file} 协议为 mq");
+            assert!(api.method.is_empty(), "{file} MQ 接口无 HTTP 方法");
+            let mq = api.mq.expect("MQ 配置存在");
+            assert!(!mq.kind.is_empty(), "{file} MQ 类型非空");
+            assert!(mq.port > 0, "{file} MQ 端口已配置");
+            assert!(!mq.topic.is_empty(), "{file} MQ Topic 已配置");
+            assert!(!api.body.raw.is_empty(), "{file} 消息内容非空");
+            kinds.push(mq.kind.clone());
+
+            // 同目录示例：list_examples_from 能列出，且 mq 配置与消息内容完整（示例页签可直接载入）
+            let list = crate::history::list_examples_from(&root, &api.uuid).unwrap();
+            assert_eq!(list.len(), 1, "{file} 附带一个示例");
+            let example = crate::history::read_example_file(&root, &api.uuid, &list[0].file).unwrap();
+            assert_eq!(example.protocol.as_deref(), Some("mq"), "{file} 示例协议为 mq");
+            assert_eq!(example.mq.expect("示例 MQ 配置存在").kind, mq.kind, "{file} 示例 MQ 类型一致");
+            assert_eq!(example.req_body.as_deref(), Some(api.body.raw.as_str()), "{file} 示例消息内容一致");
+        }
+        kinds.sort();
+        assert_eq!(
+            kinds,
+            vec!["activemq", "kafka", "rabbitmq", "rocketmq", "zeromq"],
+            "5 种消息队列都有演示接口"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
     #[test]
     fn test_migrate_legacy_data_dirs() {
         let root = std::env::temp_dir().join(format!("apimgr-migrate-{}", std::process::id()));

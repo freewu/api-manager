@@ -186,6 +186,7 @@ export function AppModals({
     { kind: "mcp", label: t("editor.mcpType"), icon: iconMcp },
     { kind: "tcp", label: t("editor.tcpType"), icon: iconTcp },
     { kind: "udp", label: t("editor.udpType"), icon: iconUdp },
+    { kind: "mq", label: t("editor.mqType"), icon: iconMq },
     { kind: "object", label: t("modal.demoObject"), icon: null },
   ] as const;
   const checkedDemoKinds = demoKinds.filter((k) => demoTypes[k.kind]).map((k) => k.kind);

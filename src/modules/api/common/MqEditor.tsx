@@ -4,6 +4,7 @@ import { DescEditor } from "./DescEditor";
 import { ExamplesTab } from "./ExamplesTab";
 import { MqDoc } from "./MqDoc";
 import { listExamples, saveExample } from "../../../commands";
+import { MQ_ICONS } from "../../layout/NodeTypeIcon";
 import { useT } from "../../../i18n";
 
 // 代码生成页签懒加载（与 Editor / NetEditor 一致）
@@ -145,21 +146,24 @@ export function MqEditor({
           ))}
         </div>
       )}
-      <div className="editor-head">
-        <label className="mq-kind" title={t("mq.kindTip")}>
-          {t("mq.kind")}
-          <select
-            className="mq-kind-select"
-            value={mq.type}
-            onChange={(e) => changeKind(e.target.value as MqKind)}
-          >
-            {MQ_KINDS.map((k) => (
-              <option key={k.value} value={k.value}>
-                {k.label}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="editor-head mq-head">
+        {/* MQ 类型：不用下拉框，直接平铺每个类型并在名称前展示对应 MQ 品牌图标 */}
+        <div className="mq-kinds" role="radiogroup" aria-label={t("mq.kind")} title={t("mq.kindTip")}>
+          {MQ_KINDS.map((k) => (
+            <button
+              key={k.value}
+              type="button"
+              role="radio"
+              aria-checked={mq.type === k.value}
+              className={`mq-kind-btn${mq.type === k.value ? " active" : ""}`}
+              title={`${k.label} · ${k.port}`}
+              onClick={() => changeKind(k.value)}
+            >
+              <img className="mq-kind-icon" src={MQ_ICONS[k.value]} alt="" />
+              <span className="mq-kind-name">{k.label}</span>
+            </button>
+          ))}
+        </div>
         <div className="net-addr">
           <span className="url-scheme">IP</span>
           <input
@@ -182,7 +186,7 @@ export function MqEditor({
             onChange={(e) => set({ mq: { ...mq, port: Math.max(0, Number(e.target.value) || 0) } })}
           />
         </div>
-        <div className="mq-topic">
+        <div className="url-input-wrap mq-topic">
           <span className="url-scheme">{t("mq.topic")}</span>
           <input
             className="url-input"

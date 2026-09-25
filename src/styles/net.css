@@ -272,15 +272,49 @@ select.packet-input {
   flex-wrap: wrap;
 }
 
-/* MQ 类型下拉：带图标感的窄框 */
-.mq-kind {
+/* MQ 类型：平铺图标选择（每个类型前展示对应 MQ 品牌图标，替代下拉框） */
+.mq-kinds {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
   flex-shrink: 0;
-  font-size: 12px;
-  color: var(--text-dim);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 3px;
 }
+.mq-kind-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius) - 2px);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: 5px 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mq-kind-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.mq-kind-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+.mq-kind-icon {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.mq-kind-name {
+  font-weight: 600;
+}
+/* 消费配置的下拉框（起始位置） */
 .mq-kind-select {
   background: var(--bg-input);
   border: 1px solid var(--border);
@@ -294,9 +328,19 @@ select.packet-input {
   border-color: var(--accent);
 }
 
+/* MQ 配置栏（类型平铺较宽，窄窗口时换行） */
+.mq-head {
+  flex-wrap: wrap;
+}
+
 /* Topic 输入（连接地址之后的窄框，可拉伸） */
 .mq-topic {
   flex: 1 1 160px;
+  min-width: 0;
+}
+/* 输入框默认 intrinsic 宽度（size=20）会让内容撑出外框，需允许收缩 */
+.mq-topic .url-input,
+.net-addr .url-input {
   min-width: 0;
 }
 

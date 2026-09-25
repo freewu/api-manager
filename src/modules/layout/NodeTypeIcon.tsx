@@ -14,8 +14,8 @@ import iconRocketMq from "../../../asserts/mq/rocketmq.png";
 import iconActiveMq from "../../../asserts/mq/ActiveMQ.png";
 import iconZeroMq from "../../../asserts/mq/zeromq.png";
 
-/** MQ 类型 → 品牌图标（列表里按所选消息队列展示对应图标） */
-const MQ_ICONS: Record<string, string> = {
+/** MQ 类型 → 品牌图标（列表与 MQ 配置栏按所选消息队列展示对应图标） */
+export const MQ_ICONS: Record<string, string> = {
   kafka: iconKafka,
   rabbitmq: iconRabbitMq,
   rocketmq: iconRocketMq,

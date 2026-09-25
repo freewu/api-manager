@@ -74,7 +74,7 @@ export function useModals(opts: {
     | "mq"
   >("http");
   const [infoForm, setInfoForm] = useState<InfoForm>(emptyInfoForm());
-  /** 空目录演示案例生成类型勾选（http/websocket/socketio/graphql/webdav/mcp/tcp/udp/object，默认全部勾选） */
+  /** 空目录演示案例生成类型勾选（http/websocket/socketio/graphql/webdav/mcp/tcp/udp/mq/object，默认全部勾选） */
   const [demoTypes, setDemoTypes] = useState<Record<string, boolean>>({
     http: true,
     webhook: true,
@@ -85,6 +85,7 @@ export function useModals(opts: {
     mcp: true,
     tcp: true,
     udp: true,
+    mq: true,
     object: true,
   });
   const toggleDemoKind = (kind: string, enabled: boolean) =>
