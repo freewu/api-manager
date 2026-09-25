@@ -313,7 +313,7 @@ pub struct NetConfig {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MqConfig {
-    /// 消息队列类型：kafka / rabbitmq / rocketmq / activemq / zeromq / pulsar / nats / emqx / hivemq / mosquitto / nanomq / vernemq
+    /// 消息队列类型：kafka / rabbitmq / rocketmq / activemq / zeromq / pulsar / nats / mqtt / emqx / hivemq / mosquitto / nanomq / vernemq
     #[serde(default = "default_mq_kind", rename = "type")]
     pub kind: String,
     #[serde(default)]
@@ -619,7 +619,7 @@ pub struct TreeNode {
     /// 接口 uuid（仅接口节点有，用于收藏等按 uuid 关联的场景）
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uuid: Option<String>,
-    /// MQ 接口的消息队列类型（kafka / rabbitmq / rocketmq / activemq / zeromq / pulsar / nats / emqx / hivemq / mosquitto / nanomq / vernemq，仅 MQ 接口有）
+    /// MQ 接口的消息队列类型（kafka / rabbitmq / rocketmq / activemq / zeromq / pulsar / nats / mqtt / emqx / hivemq / mosquitto / nanomq / vernemq，仅 MQ 接口有）
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mq_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

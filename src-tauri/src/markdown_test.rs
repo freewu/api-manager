@@ -482,6 +482,7 @@
         // 新增 MQ 类型（Pulsar / NATS / MQTT 系）：类型名与标注互转、默认端口补齐都要一致
         for (kind, label, port) in [
             ("pulsar", "Pulsar", 6650u16),
+            ("mqtt", "MQTT", 1883),
             ("emqx", "EMQX", 1883),
             ("hivemq", "HiveMQ", 1883),
             ("mosquitto", "Mosquitto", 1883),

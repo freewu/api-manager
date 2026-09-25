@@ -14,6 +14,7 @@ import iconRocketMq from "../../../asserts/mq/rocketmq.png";
 import iconActiveMq from "../../../asserts/mq/ActiveMQ.png";
 import iconZeroMq from "../../../asserts/mq/zeromq.png";
 import iconPulsar from "../../../asserts/mq/Pulsar.png";
+import iconMqtt from "../../../asserts/mq/MQTT.png";
 import iconEmqx from "../../../asserts/mq/EMQX.png";
 import iconHiveMq from "../../../asserts/mq/HIVEMQ.png";
 import iconMosquitto from "../../../asserts/mq/mosquitto.png";
@@ -30,6 +31,7 @@ export const MQ_ICONS: Record<string, string> = {
   activemq: iconActiveMq,
   zeromq: iconZeroMq,
   pulsar: iconPulsar,
+  mqtt: iconMqtt,
   emqx: iconEmqx,
   hivemq: iconHiveMq,
   mosquitto: iconMosquitto,
@@ -49,7 +51,7 @@ export function NodeTypeIcon({
   className = "node-type-icon",
 }: {
   protocol?: string;
-  /** MQ 接口的消息队列类型（kafka / rabbitmq / rocketmq / activemq / zeromq / pulsar / nats / emqx / hivemq / mosquitto / nanomq / vernemq） */
+  /** MQ 接口的消息队列类型（kafka / rabbitmq / rocketmq / activemq / zeromq / pulsar / nats / mqtt / emqx / hivemq / mosquitto / nanomq / vernemq） */
   mqType?: string;
   className?: string;
 }) {

@@ -223,6 +223,7 @@ fn mq_kind_label(kind: &str) -> &'static str {
         "activemq" => "ActiveMQ",
         "zeromq" => "ZeroMQ",
         "pulsar" => "Pulsar",
+        "mqtt" => "MQTT",
         "emqx" => "EMQX",
         "hivemq" => "HiveMQ",
         "mosquitto" => "Mosquitto",
@@ -241,7 +242,7 @@ fn mq_default_port(kind: &str) -> u16 {
         "activemq" => 61616,
         "zeromq" => 5555,
         "pulsar" => 6650,
-        "emqx" | "hivemq" | "mosquitto" | "nanomq" | "vernemq" => 1883,
+        "mqtt" | "emqx" | "hivemq" | "mosquitto" | "nanomq" | "vernemq" => 1883,
         "nats" => 4222,
         _ => 9092,
     }

@@ -3,7 +3,7 @@
  *
  * 支持的消息队列：
  *   - 原生协议：Kafka / RabbitMQ / RocketMQ / ActiveMQ / ZeroMQ / Pulsar / NATS
- *   - MQTT 系（共用 MQTT 客户端）：EMQX / HiveMQ / Mosquitto / NanoMQ / VerneMQ
+ *   - MQTT 系（共用 MQTT 客户端）：MQTT / EMQX / HiveMQ / Mosquitto / NanoMQ / VerneMQ
  *
  * 与 net.ts（TCP / UDP 封包）不同，MQ 代码不涉及报文字节，而是按语言客户端库给出连接 + 生产 / 消费调用。
  * 已内置代码生成的语言：Bash / Python / JavaScript / TypeScript / Java / Kotlin / Go / C# / PHP / Ruby；
@@ -72,7 +72,7 @@ const secs = (r: MqReq) => Math.max(1, Math.round(r.timeoutMs / 1000));
 /** 去换行（用于单行命令行） */
 const oneline = (s: string) => s.replace(/\r?\n/g, " ");
 
-/** MQ 协议族：MQTT 系（EMQX / HiveMQ / Mosquitto / NanoMQ / VerneMQ）共用 MQTT 客户端代码 */
+/** MQ 协议族：MQTT 系（MQTT / EMQX / HiveMQ / Mosquitto / NanoMQ / VerneMQ）共用 MQTT 客户端代码 */
 export type MqFamily =
   | "kafka"
   | "rabbitmq"
@@ -84,6 +84,7 @@ export type MqFamily =
   | "mqtt";
 
 const MQ_FAMILY: Partial<Record<MqKind, MqFamily>> = {
+  mqtt: "mqtt",
   emqx: "mqtt",
   hivemq: "mqtt",
   mosquitto: "mqtt",
@@ -133,6 +134,7 @@ function cliCommands(r: MqReq, dir: MqDirection): string[] {
             `activemq consumer --brokerUrl tcp://${r.target} --destination queue://${r.topic} \\`,
             `  --messageCount ${r.maxMessages}`,
           ];
+    case "mqtt":
     case "emqx":
     case "hivemq":
     case "mosquitto":
