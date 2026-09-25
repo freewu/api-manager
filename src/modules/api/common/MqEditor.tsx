@@ -10,7 +10,7 @@ import { useT } from "../../../i18n";
 // 代码生成页签懒加载（与 Editor / NetEditor 一致）
 const CodeTab = lazy(() => import("../common/CodeTab").then((m) => ({ default: m.CodeTab })));
 
-type Tab = "produce" | "consume" | "doc" | "code" | "examples";
+type Tab = "produce" | "consume" | "desc" | "doc" | "code" | "examples";
 
 /** 面包屑最多直接展示的层级数，超出时折叠中间层级为 … */
 const BREADCRUMB_MAX = 5;
@@ -35,7 +35,7 @@ interface Props {
 }
 
 /**
- * MQ（消息队列）接口编辑区：MQ 类型 / IP:Port / Topic 连接配置 + 生产 / 消费 / 文档 / 代码生成 / 示例 五个页签。
+ * MQ（消息队列）接口编辑区：MQ 类型 / IP:Port / Topic 连接配置 + 生产 / 消费 / 接口描述 / 文档 / 代码生成 / 示例 六个页签。
  * MQ 接口不直接连接 Broker（无发送按钮），只用于维护连接配置与生成生产 / 消费代码。
  */
 export function MqEditor({
@@ -217,6 +217,9 @@ export function MqEditor({
         <div className={`tab ${tab === "consume" ? "active" : ""}`} onClick={() => switchTab("consume")}>
           {t("mq.consumeTab")}
         </div>
+        <div className={`tab ${tab === "desc" ? "active" : ""}`} onClick={() => switchTab("desc")}>
+          {t("editor.descTab")}
+        </div>
         <div className={`tab ${tab === "doc" ? "active" : ""}`} onClick={() => switchTab("doc")}>
           {t("tab.doc")}
         </div>
@@ -330,10 +333,12 @@ export function MqEditor({
           </div>
         )}
 
+        {tab === "desc" && (
+          <DescEditor value={api.description} onChange={(v) => set({ description: v })} onCommit={onCommit} />
+        )}
+
         {tab === "doc" && (
           <div className="mq-pane mq-doc-pane">
-            <div className="section-title">{t("editor.descTab")}</div>
-            <DescEditor value={api.description} onChange={(v) => set({ description: v })} onCommit={onCommit} />
             <MqDoc api={api} />
           </div>
         )}
