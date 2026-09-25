@@ -53,12 +53,13 @@
 
 ### 🔌 多协议接口
 
-- 🔌 新建接口支持 **HTTP / WebSocket / Socket.IO / GraphQL / WebDAV / MCP / TCP / UDP**，一套工作区、一棵接口树、一份历史记录统一管理
+- 🔌 新建接口支持 **HTTP / WebSocket / Socket.IO / GraphQL / WebDAV / MCP / TCP / UDP / MQ**，一套工作区、一棵接口树、一份历史记录统一管理
 - 🔁 **WebSocket / Socket.IO**：连接后实时收发消息，并在响应区查看帧 / 事件日志
 - 🧮 **GraphQL**：查询语句 + 变量编辑器
 - 🗂️ **WebDAV**：在标准 HTTP 方法之外提供 `PROPFIND` / `PROPPATCH` / `MKCOL` / `COPY` / `MOVE` / `LOCK` / `UNLOCK` / `REPORT` 等 WebDAV 方法
 - 🤖 **MCP**：以 HTTP 方式调用 MCP 端点，复用同一套请求编辑器与响应查看器
 - 📦 **TCP / UDP**：报文编辑器自定义字段（名称 / 类型 / 长度 / 值），并内置报文解析查看器
+- 📨 **MQ 消息队列**：支持 Kafka / RabbitMQ / RocketMQ / ActiveMQ / ZeroMQ，维护连接配置与 Topic 后一键生成生产 / 消费代码（10+ 语言），列表按消息队列类型展示对应图标
 
 ### 🎭 Mock 服务
 

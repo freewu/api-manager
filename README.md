@@ -53,12 +53,13 @@
 
 ### 🔌 Multi-protocol APIs
 
-- 🔌 Create APIs over **HTTP / WebSocket / Socket.IO / GraphQL / WebDAV / MCP / TCP / UDP** — one workspace, one tree, one history for every protocol
+- 🔌 Create APIs over **HTTP / WebSocket / Socket.IO / GraphQL / WebDAV / MCP / TCP / UDP / MQ** — one workspace, one tree, one history for every protocol
 - 🔁 **WebSocket / Socket.IO** — connect, send messages and watch the incoming frame/event log in real time
 - 🧮 **GraphQL** — query document plus variables editor
 - 🗂️ **WebDAV** — the WebDAV methods `PROPFIND` / `PROPPATCH` / `MKCOL` / `COPY` / `MOVE` / `LOCK` / `UNLOCK` / `REPORT` are available next to the standard HTTP methods
 - 🤖 **MCP** — call an MCP endpoint over HTTP with the same request builder and response viewer
 - 📦 **TCP / UDP** — packet editor with field definitions (name / type / length / value) and a built-in packet inspector
+- 📨 **MQ** — Kafka / RabbitMQ / RocketMQ / ActiveMQ / ZeroMQ: keep the connection config and topic, then generate producer / consumer code (10+ languages); the tree shows the icon of the selected message broker
 
 ### 🎭 Mock Server
 
