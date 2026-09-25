@@ -1,5 +1,31 @@
 # API Manager 更新记录
 
+## v1.2.0
+
+### 📨 MQ 消息队列接口
+- 新增 **MQ（消息队列）** 接口类型，覆盖 **13 种**消息队列：**Kafka / RabbitMQ / RocketMQ / ActiveMQ / ZeroMQ**（原生协议）、**Pulsar / NATS**，以及 **MQTT 系**（MQTT / EMQX / HiveMQ / Mosquitto / NanoMQ / VerneMQ）
+- 每个接口维护 **IP / 端口 / Topic / 消费组 / 起始位置（earliest · latest）/ 拉取条数 / 超时**；类型选择为自绘下拉，选项带各消息队列**品牌图标**
+- 共 **6 个页签**：生产 / 消费 / 接口描述 / 接口文档 / 代码 / 示例，生产与消费页签分别维护消息内容与消费参数
+- 代码生成按**协议族**复用客户端示例（MQTT 系共用 MQTT 客户端），提供 Python / JavaScript / TypeScript / Java / Kotlin / Go / C# / PHP / Ruby 等真实客户端代码，其余语言及 PHP / Ruby 下的 Pulsar 给出等价命令行提示
+- 侧栏、收藏、导出、统计均按消息队列类型展示对应图标；MQ 接口不直连 Broker（无发送按钮与响应面板），也不参与 Mock
+- 导出 / 导入 **Markdown** 支持 MQ 配置（`## MQ 配置` 小节）完整往返；空目录一键生成演示案例新增 **MQ 分组**（8 个示例，含各 Broker 的 Docker 启动命令）
+
+### 🪝 Webhook 接口
+- Webhook 接口**去掉 Mock**：编辑区不再显示 Mock 页签，Mock 服务也会跳过 Webhook 路由
+
+### 🗂️ 对象管理
+- 侧栏新增**一键收起 / 展开全部分组**按钮（与接口管理一致，支持嵌套分组）
+
+### 🐞 修复
+- 修复代码生成的**语言图标与导出格式图标全部不显示**（`import.meta.glob` 相对路径在目录重构后失效，改为项目根路径）
+- 修复 MQ **Topic 输入框**以及 TCP / UDP 地址输入框在窄编辑区不收缩、溢出容器的问题
+- 修复 MQ 类型下拉在选项较多（13 种）时弹层超出窗口的问题（列表内部滚动）
+- 修复「依赖已删除示例工作区」导致的两个陈旧单测失败（改为自建临时工作区）
+
+### 🧰 维护
+- **Vite 升级至 8.3.1**（Rolldown 内核），`@vitejs/plugin-react` 升级至 6.1.1，压缩改用 **oxc**
+- README（简 / 繁 / 英）协议清单补充 MQ 消息队列支持说明
+
 ## v1.1.0
 
 ### 🪝 Webhook 接口
