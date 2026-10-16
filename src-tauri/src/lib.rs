@@ -1147,7 +1147,7 @@ pub(crate) fn set_display_mode(app: &AppHandle, mode: &str) -> Result<(), String
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn load_settings(app: AppHandle) -> Result<AppSettings, String> {
     let p = settings_path(&app)?;
     if let Ok(content) = fs::read_to_string(&p) {
@@ -1173,6 +1173,12 @@ fn save_settings(app: AppHandle, settings: AppSettings) -> Result<(), String> {
 }
 
 // ==================== 工作区命令 ====================
+//
+// 注意：Tauri 中「同步 fn 命令」默认在主线程执行（ExecutionContext::Blocking），
+// 读写文件期间会阻塞 WebView，导致主界面（接口列表 / 接口内容）渲染卡顿甚至白屏。
+// 因此所有「加载接口」相关的命令统一标注 `#[tauri::command(async)]`，
+// 让 Tauri 把命令丢到工作线程执行，返回值照常通过 invoke 的 Promise 回传，
+// 前端调用方式不变，但不再阻塞主屏幕渲染。
 
 /// 工作区版本控制信息（检测 .git / .svn）
 #[derive(Serialize)]
@@ -1193,7 +1199,7 @@ fn detect_vcs(root: &Path) -> Option<String> {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn vcs_info(state: State<'_, WorkspaceState>) -> Result<VcsInfo, String> {
     let root = workspace_root(&state)?;
     Ok(VcsInfo {
@@ -1317,7 +1323,7 @@ fn record_recent(app: &AppHandle, path: &str) {
     let _ = write_pretty(&p, &list);
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_recent_workspaces(app: AppHandle) -> Vec<String> {
     // 过滤掉已不存在的目录；返回全部存在的记录，由前端按设置限制展示数量（历史记录不删除）
     read_recent(&app)
@@ -1365,7 +1371,7 @@ pub(crate) fn migrate_legacy_data_dirs(root: &Path) -> Result<(), String> {
 }
 
 /// 按路径直接打开工作目录（开始页「最近打开」点击时调用）
-#[tauri::command]
+#[tauri::command(async)]
 fn open_workspace(
     app: AppHandle,
     state: State<'_, WorkspaceState>,
@@ -1383,7 +1389,7 @@ fn open_workspace(
     Ok(path)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn get_workspace(state: State<'_, WorkspaceState>) -> Option<String> {
     state
         .root
@@ -1428,25 +1434,25 @@ fn is_workspace_empty(root: &Path) -> Result<bool, String> {
 }
 
 /// 工作区根目录是否已存在 __info.json（判断是否为全新工作目录）
-#[tauri::command]
+#[tauri::command(async)]
 fn has_workspace_info(state: State<'_, WorkspaceState>) -> Result<bool, String> {
     let root = workspace_root(&state)?;
     Ok(root.join(INFO_FILE).exists())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn workspace_is_empty(state: State<'_, WorkspaceState>) -> Result<bool, String> {
     let root = workspace_root(&state)?;
     is_workspace_empty(&root)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn read_tree(state: State<'_, WorkspaceState>) -> Result<TreeNode, String> {
     let root = workspace_root(&state)?;
     build_folder_node(&root)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn read_api(path: String) -> Result<ApiFile, String> {
     let content = fs::read_to_string(&path).map_err(|e| format!("读取失败: {e}"))?;
     // 仅旧文件（无 responses 字段）需要迁移补全；显式保存过空列表的接口保持原样
@@ -1534,7 +1540,7 @@ fn next_version(ver_dir: &Path, name: &str) -> u32 {
 }
 
 /// 列出某个接口（按 uuid）的所有历史版本，按版本号从大到小排序
-#[tauri::command]
+#[tauri::command(async)]
 fn list_versions(state: State<'_, WorkspaceState>, uuid: String) -> Result<Vec<VersionInfo>, String> {
     let root = workspace_root(&state)?;
     let uuid = uuid.trim().to_string();
@@ -1593,7 +1599,7 @@ fn list_versions(state: State<'_, WorkspaceState>, uuid: String) -> Result<Vec<V
 }
 
 /// 查询接口当前版本号：.version/<uuid> 目录下的最大版本号（未保存过版本返回 0）
-#[tauri::command]
+#[tauri::command(async)]
 fn get_current_version(state: State<'_, WorkspaceState>, uuid: String) -> Result<u32, String> {
     let root = workspace_root(&state)?;
     let uuid = uuid.trim().to_string();
@@ -1620,7 +1626,7 @@ fn get_current_version(state: State<'_, WorkspaceState>, uuid: String) -> Result
 }
 
 /// 读取某个历史版本文件的原始内容（用于 diff）
-#[tauri::command]
+#[tauri::command(async)]
 fn read_api_version(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|e| format!("读取版本失败: {e}"))
 }
@@ -2203,7 +2209,7 @@ fn move_entry_inner(root: &Path, src: &str, dst_dir: &str) -> Result<String, Str
     Ok(target.to_string_lossy().to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn read_info(state: State<'_, WorkspaceState>, path: String) -> Result<InfoJson, String> {
     let root = workspace_root(&state)?;
     let p = PathBuf::from(&path);
@@ -2430,7 +2436,7 @@ fn get_app_version() -> String {
 
 // ==================== 全局环境变量命令 ====================
 
-#[tauri::command]
+#[tauri::command(async)]
 fn read_envs(state: State<'_, WorkspaceState>) -> Result<EnvStore, String> {
     let root = workspace_root(&state)?;
     Ok(read_env_file(&root))

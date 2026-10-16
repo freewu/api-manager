@@ -1194,7 +1194,8 @@ use tauri::State;
 
 
 /// 列出对象存储（分组 + 对象定义）
-#[tauri::command]
+/// 标注 (async)：扫描磁盘读写较慢，放到工作线程执行，避免阻塞主屏幕渲染
+#[tauri::command(async)]
 pub(crate) fn list_objects(
     state: State<'_, WorkspaceState>,
 ) -> Result<ObjectStore, String> {
@@ -1354,7 +1355,8 @@ pub(crate) fn import_ddl(
 }
 
 /// 对象被接口文档引用的统计（接口数量 + 引用接口列表）
-#[tauri::command]
+/// 标注 (async)：需要遍历整个工作区读取所有接口文件，必须放到工作线程，避免阻塞主屏幕渲染
+#[tauri::command(async)]
 pub(crate) fn object_usage(
     state: State<'_, WorkspaceState>,
     store: ObjectStore,
