@@ -753,8 +753,34 @@
 
         let result = import_openapi_file(&root, &spec_file).unwrap();
         assert_eq!(result.count, 2);
+        assert_eq!(result.objects, 1, "components/schemas 应写入对象管理");
         let folder = PathBuf::from(&result.folder);
         assert!(folder.join("__info.json").exists());
+
+        // 对象管理：Pet 对象写入与接口分组同名的分组
+        let store = list_objects_impl(&root).unwrap();
+        assert!(
+            store.groups.iter().any(|g| g.id == "PetStore"),
+            "应新建对象分组 PetStore：{:?}",
+            store.groups.iter().map(|g| g.id.clone()).collect::<Vec<_>>()
+        );
+        let pet = store.objects.iter().find(|o| o.name == "Pet").expect("应生成 Pet 对象");
+        assert_eq!(pet.group, "PetStore");
+        assert_eq!(pet.object_name, "Pet", "schema 名合法时应作为代码生成类名");
+        let kinds: Vec<(String, String)> = pet
+            .properties
+            .iter()
+            .map(|p| (p.key.clone(), p.kind.clone()))
+            .collect();
+        assert_eq!(
+            kinds,
+            vec![
+                ("id".to_string(), "Integer".to_string()),
+                ("name".to_string(), "String".to_string()),
+                ("status".to_string(), "String".to_string()),
+            ]
+        );
+        assert!(root.join("PetStore").join("pets").exists(), "接口分组应正常创建");
 
         // 分组目录开闭状态：写入 __info.json 的 collapsed 并读回（重开应用按此状态显示）
         write_folder_collapsed(&folder, true).unwrap();
@@ -784,6 +810,13 @@
         .unwrap();
         assert_eq!(post_api.body.mode, "json");
         assert!(post_api.body.raw.contains("\"name\""));
+        // 请求体 $ref 引用 Pet 对象 → 写入接口「文档」Body 对象绑定（source=body 且 key 为空）
+        assert_eq!(post_api.doc_params.len(), 1, "应写入 Body 对象绑定");
+        assert_eq!(post_api.doc_params[0].source, "body");
+        assert_eq!(post_api.doc_params[0].key, "");
+        assert_eq!(post_api.doc_params[0].object_name, "Pet");
+        // 未被引用的 GET 接口不写入绑定
+        assert!(get_api.doc_params.is_empty());
 
         // 拖动排序：把 pets 下接口顺序写入 __info.json 的 apis，同级按该顺序显示
         let get_path = pets.join("GET _pets_{id}.json");
@@ -838,6 +871,110 @@
         let result2 = import_openapi_file(&root, &yaml_file).unwrap();
         assert_eq!(result2.count, 2);
         assert!(PathBuf::from(&result2.folder).join("pets").exists());
+        // 重复导入：结构相同的对象直接复用，不新建、不报错
+        assert_eq!(result2.objects, 1, "复用已有对象也应计入导入结果");
+        let store2 = list_objects_impl(&root).unwrap();
+        assert_eq!(
+            store2.objects.iter().filter(|o| o.name == "Pet").count(),
+            1,
+            "重复导入不应产生结构相同的重复对象"
+        );
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    /// OpenAPI 对象导入：嵌套对象 / $ref 引用 / allOf 合并 / 非对象 schema 跳过 / 循环引用
+    #[test]
+    fn test_import_openapi_objects() {
+        let root = std::env::temp_dir().join(format!("oas-obj-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let spec = serde_json::json!({
+            "openapi": "3.0.0",
+            "info": { "title": "Object Demo", "version": "1.0" },
+            "paths": {
+                "/nodes": {
+                    "post": {
+                        "summary": "新建节点",
+                        "requestBody": {
+                            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Node" } } }
+                        },
+                        "responses": { "200": { "description": "ok" } }
+                    }
+                }
+            },
+            "components": {
+                "schemas": {
+                    // 基础类型 schema 不生成对象（userId 引用后按 String 映射）
+                    "UserId": { "type": "string", "format": "uuid" },
+                    // allOf 合并 + 内联嵌套对象 + 数组对象
+                    "Audit": {
+                        "type": "object",
+                        "properties": { "createdAt": { "type": "string", "format": "date-time", "description": "创建时间" } }
+                    },
+                    "Node": {
+                        "type": "object",
+                        "description": "节点",
+                        "allOf": [ { "$ref": "#/components/schemas/Audit" } ],
+                        "properties": {
+                            "id": { "$ref": "#/components/schemas/UserId" },
+                            "count": { "type": "number" },
+                            "enabled": { "type": "boolean" },
+                            "createdDate": { "type": "string", "format": "date" },
+                            "meta": { "type": "object", "properties": { "tag": { "type": "string" } } },
+                            "items": { "type": "array", "items": { "type": "string" } },
+                            "children": { "type": "array", "items": { "$ref": "#/components/schemas/Node" } }
+                        }
+                    }
+                }
+            }
+        });
+        let spec_file = root.join("obj.json");
+        fs::write(&spec_file, serde_json::to_string(&spec).unwrap()).unwrap();
+
+        let result = import_openapi_file(&root, &spec_file).unwrap();
+        assert_eq!(result.count, 1);
+        // Node + Audit + NodeMeta = 3 个对象（UserId 是基础类型，不生成对象）
+        assert_eq!(result.objects, 3, "嵌套对象与引用对象应一并写入对象管理");
+
+        let store = list_objects_impl(&root).unwrap();
+        let by_name = |n: &str| {
+            store
+                .objects
+                .iter()
+                .find(|o| o.name == n)
+                .unwrap_or_else(|| panic!("应生成对象 {n}"))
+                .clone()
+        };
+        let node = by_name("Node");
+        assert_eq!(node.group, "Object Demo");
+        assert_eq!(node.description, "节点");
+        let prop = |key: &str| node.properties.iter().find(|p| p.key == key).unwrap().clone();
+        // $ref 指向基础类型 → 按类型映射，不建立对象引用
+        assert_eq!(prop("id").kind, "String");
+        assert!(prop("id").ref_hash.is_empty());
+        assert_eq!(prop("count").kind, "Float");
+        assert_eq!(prop("enabled").kind, "Boolean");
+        assert_eq!(prop("createdDate").kind, "Date");
+        assert_eq!(prop("items").kind, "List");
+        assert_eq!(prop("items").item_kind, "String");
+        // allOf 合并进来的字段（含说明）
+        assert_eq!(prop("createdAt").kind, "Datetime");
+        assert_eq!(prop("createdAt").description, "创建时间");
+        // 内联对象 → 独立对象 + refHash 指向
+        let meta = by_name("NodeMeta");
+        assert_eq!(prop("meta").kind, "Object");
+        assert_eq!(prop("meta").ref_hash, meta.hash);
+        // 数组元素为对象 → itemKind=Object + refHash；循环引用回边不建立引用
+        assert_eq!(prop("children").kind, "List");
+        assert_eq!(prop("children").item_kind, "Object");
+        assert!(prop("children").ref_hash.is_empty(), "循环引用回边不建立 refHash");
+        // 接口文档绑定到 Node 对象
+        let api: ApiFile =
+            serde_json::from_str(&fs::read_to_string(root.join("Object Demo").join("POST _nodes.json")).unwrap())
+                .unwrap();
+        assert_eq!(api.doc_params.len(), 1);
+        assert_eq!(api.doc_params[0].object_name, "Node");
 
         let _ = fs::remove_dir_all(&root);
     }
