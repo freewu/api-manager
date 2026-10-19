@@ -3,15 +3,15 @@
 [English](README.md) · **简体中文** · [繁體中文](README.tc.md)
 
 [![Release](https://img.shields.io/github/v/release/freewu/api-manager?style=flat-square&color=2E59A7&label=release&sort=semver)](https://github.com/freewu/api-manager/releases)
-[![License](https://img.shields.io/github/license/freewu/api-manager?style=flat-square&color=2E59A7)](LICENSE)
+[![License](docs/badges/license-mit.svg)](LICENSE)
 [![Downloads](https://img.shields.io/github/downloads/freewu/api-manager/total?style=flat-square&color=2E59A7)](https://github.com/freewu/api-manager/releases)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-2E59A7?style=flat-square)](#下载)
+[![Platform](docs/badges/platform-windows-macos-linux.svg)](#下载)
 
-[![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?style=flat-square&logo=tauri&logoColor=white)](https://tauri.app)
-[![Rust](https://img.shields.io/badge/Rust-1.77%2B-000000?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
+[![Tauri](docs/badges/tauri-2.svg)](https://tauri.app)
+[![Rust](docs/badges/rust-1.77.svg)](https://www.rust-lang.org)
+[![React](docs/badges/react-18.svg)](https://react.dev)
+[![TypeScript](docs/badges/typescript-5.svg)](https://www.typescriptlang.org)
+[![Vite](docs/badges/vite-5.svg)](https://vitejs.dev)
 
 使用 **Tauri 2**（Rust + React）开发的 API 接口文档、接口测试与 Mock 工具，界面布局参考 Postman。**目录即集合、一个接口一个 JSON 文件**，接口定义可以随代码一起提交到 Git，便于评审、追溯与团队协作。
 
@@ -268,12 +268,12 @@ just test
 
 | 层次 | 技术栈 |
 | --- | --- |
-| 桌面外壳 | [![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?style=flat-square&logo=tauri&logoColor=white)](https://tauri.app) [![Rust](https://img.shields.io/badge/Rust-1.77%2B-000000?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org) |
-| 前端 | [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev) [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org) [![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev) |
-| 后端（Rust） | [![Axum](https://img.shields.io/badge/Axum-0.7-000000?style=flat-square&logo=rust&logoColor=white)](https://github.com/tokio-rs/axum) [![reqwest](https://img.shields.io/badge/reqwest-0.12-000000?style=flat-square&logo=rust&logoColor=white)](https://github.com/seanmonstar/reqwest) [![Tokio](https://img.shields.io/badge/Tokio-1-000000?style=flat-square&logo=rust&logoColor=white)](https://tokio.rs) [![tower-http](https://img.shields.io/badge/tower--http-0.6-000000?style=flat-square&logo=rust&logoColor=white)](https://github.com/tower-rs/tower-http) |
-| 数据与协议 | [![serde](https://img.shields.io/badge/serde-1-000000?style=flat-square&logo=rust&logoColor=white)](https://serde.rs) [![serde_json](https://img.shields.io/badge/serde__json-1-000000?style=flat-square&logo=rust&logoColor=white)](https://github.com/serde-rs/json) [![serde_yaml](https://img.shields.io/badge/serde__yaml-0.9-000000?style=flat-square&logo=rust&logoColor=white)](https://github.com/dtolnay/serde-yaml) [![roxmltree](https://img.shields.io/badge/roxmltree-0.20-000000?style=flat-square&logo=rust&logoColor=white)](https://github.com/RazrFalcon/roxmltree) [![socket.io-client](https://img.shields.io/badge/socket.io--client-4-010101?style=flat-square&logo=socketdotio&logoColor=white)](https://socket.io) |
-| 编辑器与高亮 | [![Vditor](https://img.shields.io/badge/Vditor-4-4285F4?style=flat-square)](https://b3log.org/vditor/) [![highlight.js](https://img.shields.io/badge/highlight.js-11-1E293B?style=flat-square)](https://highlightjs.org) |
-| 工具链 | [![just](https://img.shields.io/badge/just-command%20runner-7B68EE?style=flat-square)](https://just.systems) [![Tauri CLI](https://img.shields.io/badge/tauri--cli-2-24C8DB?style=flat-square&logo=tauri&logoColor=white)](https://tauri.app) [![tauri-plugin-dialog](https://img.shields.io/badge/tauri--plugin--dialog-2-24C8DB?style=flat-square&logo=tauri&logoColor=white)](https://github.com/tauri-apps/plugins-workspace) [![tauri-plugin-opener](https://img.shields.io/badge/tauri--plugin--opener-2-24C8DB?style=flat-square&logo=tauri&logoColor=white)](https://github.com/tauri-apps/plugins-workspace) |
+| 桌面外壳 | [![Tauri](docs/badges/tauri-2.svg)](https://tauri.app) [![Rust](docs/badges/rust-1.77.svg)](https://www.rust-lang.org) |
+| 前端 | [![React](docs/badges/react-18.svg)](https://react.dev) [![TypeScript](docs/badges/typescript-5.svg)](https://www.typescriptlang.org) [![Vite](docs/badges/vite-5.svg)](https://vitejs.dev) |
+| 后端（Rust） | [![Axum](docs/badges/axum-0.7.svg)](https://github.com/tokio-rs/axum) [![reqwest](docs/badges/reqwest-0.12.svg)](https://github.com/seanmonstar/reqwest) [![Tokio](docs/badges/tokio-1.svg)](https://tokio.rs) [![tower-http](docs/badges/tower-http-0.6.svg)](https://github.com/tower-rs/tower-http) |
+| 数据与协议 | [![serde](docs/badges/serde-1.svg)](https://serde.rs) [![serde_json](docs/badges/serde_json-1.svg)](https://github.com/serde-rs/json) [![serde_yaml](docs/badges/serde_yaml-0.9.svg)](https://github.com/dtolnay/serde-yaml) [![roxmltree](docs/badges/roxmltree-0.20.svg)](https://github.com/RazrFalcon/roxmltree) [![socket.io-client](docs/badges/socket.io-client-4.svg)](https://socket.io) |
+| 编辑器与高亮 | [![Vditor](docs/badges/vditor-4.svg)](https://b3log.org/vditor/) [![highlight.js](docs/badges/highlight.js-11.svg)](https://highlightjs.org) |
+| 工具链 | [![just](docs/badges/just-command-runner.svg)](https://just.systems) [![Tauri CLI](docs/badges/tauri-cli-2.svg)](https://tauri.app) [![tauri-plugin-dialog](docs/badges/tauri-plugin-dialog-2.svg)](https://github.com/tauri-apps/plugins-workspace) [![tauri-plugin-opener](docs/badges/tauri-plugin-opener-2.svg)](https://github.com/tauri-apps/plugins-workspace) |
 
 - **主题色**：群青 `#2E59A7`
 - 应用内「设置 → 关于」也会列出全部依赖及其声明版本
