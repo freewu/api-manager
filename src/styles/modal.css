@@ -680,7 +680,7 @@
   color: var(--text);
   background: rgba(88, 166, 255, 0.06);
 }
-/* 技术栈徽章（shields.io）：图片本身带边框与底色，去掉按钮外框 */
+/* 技术栈徽章（本地 SVG）：图形本身带边框与底色，去掉按钮外框 */
 .about-dep--badge {
   padding: 0;
   border: 0;
@@ -691,10 +691,9 @@
   background: transparent;
   transform: translateY(-1px);
 }
+/* 尺寸由 svg 自身的 width/height 决定（已按文本实测宽度计算），这里只去掉行内元素的多余留白 */
 .about-dep-badge {
   display: block;
-  height: 20px;
-  width: auto;
 }
 /* 核心栈分组：与下方完整依赖列表用虚线分隔 */
 .about-deps-core {
@@ -705,10 +704,6 @@
 .about-deps-core .about-deps-group-title {
   color: var(--text-dim);
   font-weight: 600;
-}
-.about-dep-version {
-  font-size: 10.5px;
-  color: var(--accent);
 }
 .about-footnote {
   margin-top: 14px;

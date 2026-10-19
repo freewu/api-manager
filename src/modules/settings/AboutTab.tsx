@@ -1,10 +1,10 @@
-import { useState } from "react";
 import { openExternal } from "../../commands";
 import { useT } from "../../i18n";
 import logoUrl from "../../assets/logo.png";
 import { ISSUE_URL, JUSTFILE_URL, PROJECT_URL } from "./constants";
 import { DEP_GROUPS } from "./deps";
-import { badgeUrl, CORE_STACK, groupBadges, type StackBadge } from "./badges";
+import { BadgeSvg } from "./BadgeSvg";
+import { CORE_STACK, groupBadges, type StackBadge } from "./badges";
 import { SettingsSection } from "./Section";
 
 interface Props {
@@ -31,36 +31,18 @@ function LinkRow({ icon, title, desc, url }: { icon: string; title: string; desc
   );
 }
 
-/** 单个技术栈徽章（shields.io）：离线 / 加载失败时自动降级为文字标签 */
+/** 单个技术栈徽章：本地 SVG 绘制，离线也能正常显示 */
 function StackBadgeItem({ badge }: { badge: StackBadge }) {
-  const [failed, setFailed] = useState(false);
-  const alt = `${badge.label} ${badge.version}`;
   return (
     <button
       type="button"
-      className={failed ? "about-dep" : "about-dep about-dep--badge"}
-      title={`${alt} ↗`}
+      className="about-dep about-dep--badge"
+      title={`${badge.label} ${badge.version} ↗`}
       onClick={() => {
         void openExternal(badge.url);
       }}
     >
-      {failed ? (
-        <>
-          <span className="about-dep-name">{badge.label}</span>
-          <span className="about-dep-version">{badge.version}</span>
-        </>
-      ) : (
-        <img
-          className="about-dep-badge"
-          src={badgeUrl(badge)}
-          alt={alt}
-          loading="lazy"
-          draggable={false}
-          onError={() => {
-            setFailed(true);
-          }}
-        />
-      )}
+      <BadgeSvg badge={badge} />
     </button>
   );
 }

@@ -1,7 +1,7 @@
 /**
- * 关于页「技术栈徽章」：把项目实际使用的技术栈渲染成 shields.io 徽章。
- * 徽章地址为静态徽章（/badge/标签-版本-颜色），由 shields.io 动态生成；
- * 离线或网络不可用时由组件自动降级为文字标签，不影响功能。
+ * 关于页「技术栈徽章」：把项目实际使用的技术栈渲染成徽章（本地 SVG 绘制，离线也能正常显示）。
+ * 徽章样式与 shields.io 的 flat-square 风格一致（左标签灰底 + 右版本品牌色底 + 矢量图标），
+ * 但数据全部来自本地（badgeLogos），不请求任何网络资源。
  */
 import type { DepGroup } from "./deps";
 
@@ -12,7 +12,7 @@ export interface StackBadge {
   version: string;
   /** 右半部分背景色（十六进制，不带 #） */
   color: string;
-  /** simple-icons 图标 slug（可选，取不到图标时自动省略） */
+  /** simple-icons 图标 slug（可选，本地图标表里没有时自动省略） */
   logo?: string;
   /** 图标颜色，默认白色 */
   logoColor?: string;
@@ -20,25 +20,7 @@ export interface StackBadge {
   url: string;
 }
 
-/**
- * shields.io 静态徽章转义规则：
- * `-` → `--`、`_` → `__`、空格 → `_`，其余字符按 URL 编码（`+` → %2B、`/` → %2F）。
- */
-function esc(text: string): string {
-  return encodeURIComponent(text.replace(/-/g, "--").replace(/_/g, "__").replace(/ /g, "_"));
-}
-
-/** 生成 shields.io 静态徽章地址 */
-export function badgeUrl(badge: StackBadge): string {
-  const params = new URLSearchParams({ style: "flat-square" });
-  if (badge.logo) {
-    params.set("logo", badge.logo);
-    params.set("logoColor", badge.logoColor ?? "white");
-  }
-  return `https://img.shields.io/badge/${esc(badge.label)}-${esc(badge.version)}-${badge.color}?${params.toString()}`;
-}
-
-/** 组件名 → simple-icons 图标（只保留 shields.io 能取到的图标，取不到就不带图标） */
+/** 组件名 → 徽章图标 slug（本地图标表里没有时不带图标） */
 const LOGOS: Record<string, string> = {
   tauri: "tauri",
   "tauri-plugin-dialog": "tauri",

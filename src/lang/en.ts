@@ -379,7 +379,7 @@ export const EN: Record<string, string> = {
   "settings.justfileTitle": "Dev commands (justfile)",
   "settings.justfileDesc": "just dev / just test / just build / just release …",
   "settings.aboutDeps": "Open source components",
-  "settings.aboutDepsHint": "Badges powered by shields.io; fall back to text labels when offline",
+  "settings.aboutDepsHint": "Badges are drawn as local SVG, so they render fine offline",
   "settings.aboutCoreStack": "Core stack",
   "settings.aboutDepsFrontend": "Frontend (npm)",
   "settings.aboutDepsRust": "Backend (Cargo)",

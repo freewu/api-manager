@@ -369,7 +369,7 @@ export const TW: Record<string, string> = {
   "settings.justfileTitle": "開發命令（justfile）",
   "settings.justfileDesc": "just dev / just test / just build / just release …",
   "settings.aboutDeps": "開源組件",
-  "settings.aboutDepsHint": "徽章由 shields.io 生成，離線時自動降級為文字標籤",
+  "settings.aboutDepsHint": "徽章由本地 SVG 繪製，離線也能正常顯示",
   "settings.aboutCoreStack": "核心技術棧",
   "settings.aboutDepsFrontend": "前端依賴（npm）",
   "settings.aboutDepsRust": "後端依賴（Cargo）",

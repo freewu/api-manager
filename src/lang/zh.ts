@@ -383,7 +383,7 @@ export const ZH: Record<string, string> = {
   "settings.justfileTitle": "开发命令（justfile）",
   "settings.justfileDesc": "just dev / just test / just build / just release …",
   "settings.aboutDeps": "开源组件",
-  "settings.aboutDepsHint": "徽章由 shields.io 生成，离线时自动降级为文字标签",
+  "settings.aboutDepsHint": "徽章由本地 SVG 绘制，离线也能正常显示",
   "settings.aboutCoreStack": "核心技术栈",
   "settings.aboutDepsFrontend": "前端依赖（npm）",
   "settings.aboutDepsRust": "后端依赖（Cargo）",
