@@ -13,11 +13,11 @@ README（[英文](../README.md) / [简体中文](../README.cn.md) / [繁體中�
 | `vite-5.svg` | Vite: 5 | `badge/Vite-5-646CFF?style=flat-square&logo=vite&logoColor=white` |
 | `axum-0.7.svg` | Axum: 0.7 | `badge/Axum-0.7-000000?style=flat-square&logo=rust&logoColor=white` |
 | `reqwest-0.12.svg` | reqwest: 0.12 | `badge/reqwest-0.12-000000?style=flat-square&logo=rust&logoColor=white` |
-| `tokio-1.svg` | Tokio: 1 | `badge/Tokio-1-000000?style=flat-square&logo=rust&logoColor=white` |
-| `tower-http-0.6.svg` | tower-http: 0.6 | `badge/tower--http-0.6-000000?style=flat-square&logo=rust&logoColor=white` |
+| `tokio-1.svg` | Tokio: 1 | `badge/Tokio-1-000000?style=flat-square&logo=tokio&logoColor=white` |
+| `tower-http-0.6.svg` | tower-http: 0.6 | `badge/tower--http-0.6-000000?style=flat-square&logo=tower&logoColor=white` |
 | `serde-1.svg` | serde: 1 | `badge/serde-1-000000?style=flat-square&logo=rust&logoColor=white` |
-| `serde_json-1.svg` | serde_json: 1 | `badge/serde__json-1-000000?style=flat-square&logo=rust&logoColor=white` |
-| `serde_yaml-0.9.svg` | serde_yaml: 0.9 | `badge/serde__yaml-0.9-000000?style=flat-square&logo=rust&logoColor=white` |
+| `serde_json-1.svg` | serde_json: 1 | `badge/serde__json-1-000000?style=flat-square&logo=json&logoColor=white` |
+| `serde_yaml-0.9.svg` | serde_yaml: 0.9 | `badge/serde__yaml-0.9-000000?style=flat-square&logo=yaml&logoColor=white` |
 | `roxmltree-0.20.svg` | roxmltree: 0.20 | `badge/roxmltree-0.20-000000?style=flat-square&logo=rust&logoColor=white` |
 | `socket.io-client-4.svg` | socket.io-client: 4 | `badge/socket.io--client-4-010101?style=flat-square&logo=socketdotio&logoColor=white` |
 | `vditor-4.svg` | Vditor: 4 | `badge/Vditor-4-4285F4?style=flat-square` |
@@ -37,6 +37,8 @@ README（[英文](../README.md) / [简体中文](../README.cn.md) / [繁體中�
 curl -sSfL -o docs/badges/tauri-2.svg \
   "https://img.shields.io/badge/Tauri-2-24C8DB?style=flat-square&logo=tauri&logoColor=white"
 ```
+
+图标优先使用各依赖的官方 logo（`logo=tokio` / `logo=json` / `logo=yaml` / `logo=tower` / `logo=tauri` / `logo=react` / `logo=typescript` / `logo=vite` / `logo=socketdotio`）；`axum`、`reqwest`、`serde`、`roxmltree` 在 Simple Icons 中没有官方图标，因此沿用 Rust 图标。
 
 注意 shields.io 的转义规则：`--` 表示字面 `-`，`__` 表示字面 `_`，`_` 表示空格，`+` 需写成 `%2B`。
 
