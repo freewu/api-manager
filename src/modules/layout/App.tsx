@@ -164,6 +164,7 @@ export default function App() {
   const {
     store: objectsStore,
     usage: objectsUsage,
+    refresh: refreshObjects,
     save: saveObjectsStore,
     doImport: importObjectsJson,
     doImportDdl: importObjectsDdl,
@@ -291,6 +292,7 @@ export default function App() {
     loadAll,
     mockRunning: mock.running,
     reloadMockIfRunning,
+    refreshObjects,
     onToast: showToast,
     t,
   });
@@ -320,6 +322,8 @@ export default function App() {
     setView(v);
     // 每次进入历史视图都自动刷新一次列表
     if (v === "history") history.reload();
+    // 对象列表可能被导入（OpenAPI / Swagger 等）或外部改动过，进入视图时重新读盘
+    if (v === "objects") void refreshObjects().catch(() => {});
   };
 
   // ---------- 全局快捷键（设置页可自定义，见 设置 → 快捷键） ----------

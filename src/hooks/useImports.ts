@@ -25,16 +25,20 @@ export function useImports(opts: {
   loadAll: (ws: string) => Promise<void>;
   mockRunning: boolean;
   reloadMockIfRunning: (running: boolean) => Promise<void>;
+  /** 导入完成后刷新对象管理列表（OpenAPI / Swagger 等导入会写入 components/schemas 对象） */
+  refreshObjects?: () => Promise<void>;
   onToast: (msg: string) => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
 }) {
-  const { workspace, loadAll, mockRunning, reloadMockIfRunning, onToast, t } = opts;
+  const { workspace, loadAll, mockRunning, reloadMockIfRunning, refreshObjects, onToast, t } = opts;
   /** 导入结果弹窗数据（null = 未打开） */
   const [result, setResult] = useState<ImportResultView | null>(null);
 
   const finish = async (toastKey: string, vars?: Record<string, string | number>) => {
     if (!workspace) return;
     await loadAll(workspace);
+    // 部分格式（OpenAPI / Swagger）会把文档里的对象定义写入对象管理，导入后需同步刷新列表
+    void refreshObjects?.().catch(() => {});
     onToast(t(toastKey, vars));
     void reloadMockIfRunning(mockRunning);
   };
@@ -61,6 +65,7 @@ export function useImports(opts: {
       if (!result) return; // 用户取消
       if (!workspace) return;
       await loadAll(workspace);
+      void refreshObjects?.().catch(() => {});
       if (result.vars > 0) {
         onToast(t("toast.importedPostman", { count: result.vars, env: result.env }));
       } else {
